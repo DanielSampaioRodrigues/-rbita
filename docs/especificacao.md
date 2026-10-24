@@ -1,0 +1,244 @@
+# Órbita — Especificação
+
+24/10/2026 · Daniel Sampaio Rodrigues
+
+## Visão e propósito
+
+O Órbita é um organizador de vida completo para pessoas autistas e com TDAH, gratuito, em português, com os dados no próprio aparelho e interface totalmente personalizável.
+
+**Problema que resolve.** Pessoas neurodivergentes costumam ter muitas ideias e abrir muitas frentes ao mesmo tempo. Sem um jeito de priorizar, pausar e retomar, isso vira frustração. Ao mesmo tempo, precisam de previsibilidade e de uma vida organizada.
+
+**Posicionamento.** Já existem apps para neurodivergentes, como o Tiimo e o Structured. O espaço vazio é outro: eles são em inglês, cobram assinatura, guardam dados na nuvem deles, focam mais em TDAH e personalizam pouco a interface. Este programa ocupa justamente esse espaço:
+
+- em português;
+- gratuito, distribuído por doação;
+- local-first, com os dados no aparelho;
+- com foco autista;
+- com personalização total, do temático ao neutro.
+
+**Primeiro usuário.** O próprio Dan, organizando suas frentes no Windows. Mac e mobile vêm depois dos testes.
+
+**Objetivo secundário.** Fortalecer o engajamento e a presença profissional de Dan junto à comunidade neurodivergente.
+
+## Princípios de design
+
+Cada tela e cada função passam por estes sete princípios. Quando uma ideia nova entrar em conflito com eles, vencem os princípios.
+
+1. **Previsibilidade.** Nada muda sem aviso. As atualizações mostram o que mudou e podem ser adiadas. As transições de atividade são avisadas com antecedência. A semana-modelo é fixa e visível.
+2. **Baixo estímulo por padrão.** Sem som, sem animação forte e sem notificações insistentes, a menos que a pessoa ligue. O botão de baixo estímulo leva tudo ao neutro com um clique.
+3. **Sem culpa.** Pausar é uma ação válida, não um fracasso. Não há sequências de dias que zeram, nem tarefas atrasadas em vermelho gritante, nem mensagens de cobrança.
+4. **Sem gamificação punitiva.** Recompensas, se houver, são opcionais e nunca tiram nada da pessoa.
+5. **Captura sem atrito.** Registrar uma ideia, um gasto ou um sintoma leva poucos segundos, por texto ou voz, de qualquer tela.
+6. **Retomar é tão importante quanto começar.** Todo projeto, leitura ou tarefa longa guarda onde parou e qual é o próximo passo.
+7. **Acessibilidade sensorial e cognitiva.** Fontes para dislexia, densidade ajustável, contraste garantido, atalhos de teclado para tudo e linguagem simples e literal, sem ironia nem metáforas ambíguas.
+
+## Módulos
+
+São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kanban, mapa mental, linha do tempo ou calendário, e os módulos se conectam entre si (um remédio do módulo de saúde aparece na agenda; uma leitura acadêmica vira projeto).
+
+### 1. Ideias e projetos (o coração)
+
+- **Captura rápida** de ideias por texto ou voz, com transcrição local.
+- **Estacionamento de ideias**: a ideia fica guardada sem virar compromisso até a pessoa decidir.
+- **Limite de projetos ativos**, definido pela pessoa. Ao passar do limite, o programa pede para hibernar outro.
+- **Hibernação sem culpa** com **cartão "onde parei"**: em que ponto estava, próximo passo, arquivos e links.
+- Etapas, subtarefas e quebra de tarefas grandes em passos pequenos (com ajuda de IA opcional).
+- Visualizações: lista, kanban, mapa mental, linha do tempo e calendário.
+
+### 2. Tempo e rotina
+
+- Agenda diária e semanal visual, com semana-modelo.
+- Rotinas passo a passo, com imagens ou ícones opcionais.
+- Avisos de transição antes da troca de atividade.
+- Timer visual de foco e de pausa.
+
+### 3. Energia
+
+- Registro rápido do nível de energia do dia.
+- Planejamento por energia: tarefas marcadas como leves, médias ou pesadas.
+- **Modo baixa energia**, que mostra só o essencial: remédio, comer, uma tarefa.
+
+### 4. Dinheiro
+
+- Contas recorrentes com aviso antecipado.
+- Registro de gastos simples, por categoria.
+- **Lista de espera de compras**, com prazo definido pela pessoa (por exemplo, 48 horas) antes de comprar.
+- Gastos com interesses especiais visíveis, sem julgamento.
+- Metas de reserva.
+
+### 5. Saúde
+
+- Medicação com confirmação de dose tomada, controle de estoque e aviso de receita vencendo.
+- Consultas e exames com lembrete.
+- Registro curto de sono, sintomas e sobrecarga sensorial.
+- **Resumo para levar à consulta**, gerado a partir dos registros.
+- **Plano de crise** para meltdown ou shutdown, escrito pela pessoa num momento bom: sinais, o que ajuda, com quem falar.
+
+### 6. Cuidado psicológico e psiquiátrico
+
+- Sessões de terapia e consultas psiquiátricas na agenda, com lembrete.
+- **"O que levar para a sessão"**: anotações feitas durante a semana.
+- Registro curto do que ficou de cada sessão.
+- **Perguntas para o psiquiatra**, com histórico de medicação, doses e efeitos percebidos, ligado ao módulo de saúde.
+
+### 7. Vida acadêmica
+
+- Disciplinas, aulas, prazos, provas e trabalhos num calendário único.
+- Leituras com status: a ler, lendo, fichada.
+- Projetos longos (TCC, artigos) com o mesmo cartão "onde parei".
+
+### 8. Hobbies e interesses
+
+- Arquivo de interesses e hiperfocos, com notas, imagens e links.
+- Espaço de prazer, sem metas nem cobrança de produtividade.
+
+### 9. Caderno infinito
+
+- **Vários cadernos**, quantos a pessoa quiser, organizados numa **estante** com pastas e etiquetas (por exemplo: faculdade, terapia, ideias, desenho).
+- **Dois modos, à escolha da pessoa**, em cada caderno:
+  - **Quadro infinito**: espaço sem bordas, que cresce para todos os lados, bom para mapas, rascunhos e ideias soltas.
+  - **Modo caderno**, no estilo Goodnotes: páginas com tamanho definido (A4, A5, carta), viradas uma a uma, com índice e marcadores.
+- **Capas personalizáveis**: cor, textura, imagem ou SVG da própria pessoa, título e etiqueta; galeria de capas prontas, temáticas e neutras.
+- **Folhas personalizáveis**:
+  - cor e textura do papel (branco, creme, pólen, cinza, escuro);
+  - modelo de linhas: liso, pautado, quadriculado, pontilhado, isométrico, planner e partitura;
+  - espaçamento das linhas, cor e espessura das linhas, margem e cabeçalho ligados ou desligados;
+  - modelo diferente por página, se a pessoa quiser, e importação de modelos próprios (PDF, PNG ou SVG).
+- Importar PDF para anotar por cima, e exportar páginas ou cadernos inteiros em PDF.
+- Escrita com caneta, mouse ou dedo, com **sensibilidade à pressão** e rejeição da palma da mão.
+- Ferramentas: caneta, lápis, pincel, marca-texto, borracha, formas que se ajustam sozinhas, texto, setas, notas adesivas, imagens e laço de seleção para mover, redimensionar e recolorir.
+- Ligado ao resto: um rascunho pode ser anexado a um projeto, e uma nota pode virar ideia no estacionamento.
+- Base técnica: biblioteca de quadro livre de código aberto (por exemplo, Excalidraw) para o modo infinito, mais um motor de páginas para o modo caderno; entrada por caneta também no iPad e em mesas digitalizadoras.
+
+### 10. Leitura
+
+- **Estante de livros** com status: quero ler, lendo, lido e pausado (abandonar um livro não é fracasso). Metas de leitura só se a pessoa quiser.
+- **Leitor de EPUB e PDF completo**:
+  - fonte, tamanho, entrelinha, margens e alinhamento ajustáveis, incluindo fontes para dislexia;
+  - cor do fundo (branco, creme, pólen, cinza, escuro) e modo de páginas ou rolagem;
+  - régua de leitura que destaca a linha atual e escurece o resto;
+  - leitura em voz alta, com velocidade ajustável;
+  - busca no livro, sumário navegável e dicionário.
+- **Marcações**: grifos em várias cores com significado definido pela pessoa, notas na margem, marcadores e escrita com caneta por cima, com sensibilidade à pressão.
+- **Fichamentos**: modelos prontos (citação, resumo, comentário, paráfrase) gerados a partir dos grifos, sempre com página ou posição. Exportação em Word, PDF ou Markdown, com referência no padrão ABNT.
+- **Diário de leitura**: onde parei, impressões, data de início e fim.
+- **Busca em todas as anotações** de todos os livros ao mesmo tempo.
+- IA opcional para explicar um trecho, resumir um capítulo ou ajudar no fichamento.
+- Ligado ao resto: o livro pode ficar ligado a uma disciplina da vida acadêmica, um fichamento pode ir para um caderno e uma leitura longa pode virar projeto.
+- Base técnica: motores de código aberto para EPUB e PDF (por exemplo, foliate-js ou epub.js, e PDF.js). Decidido: o motor de leitura é construído aqui, como um pacote separado, e reaproveitado no leitor da Arcano 3 e na biblioteca do Escuta.
+
+## Personalização e interface
+
+A interface deve ir além da do Escuta: a pessoa monta o próprio ambiente, do mais temático ao mais neutro, sem nunca perder a legibilidade.
+
+**Fundos aceitos**
+
+| Formato | Uso | Observação |
+| --- | --- | --- |
+| Cor sólida e gradiente | Fundo simples | Escolhidos no próprio programa |
+| Textura e padrão | Papel, tecido, grafismos | Padrões podem se repetir em mosaico |
+| PNG, JPG, WebP | Fotos e imagens da pessoa | Com desfoque e escurecimento ajustáveis |
+| SVG | Ilustrações, padrões vetoriais, molduras | Nítido em qualquer tamanho e leve |
+
+**SVG em detalhe.** O vetor escala sem perder resolução em qualquer tela, do celular ao monitor 4K. Quando o SVG usar cores "neutras" (o padrão `currentColor`), ele pode herdar as cores do tema e mudar junto com ele. SVG pode conter código escondido, então todo arquivo importado passa por uma **limpeza de segurança** que remove scripts e links externos. SVG animado é aceito, mas congela automaticamente no modo baixo estímulo. Outros vetores (PDF, AI, EPS) ficam fora da primeira versão; a pessoa exporta em SVG antes.
+
+**Outros recursos**
+
+- **Contraste automático**: ao escolher um fundo, os painéis se ajustam (opacidade, desfoque, cor do texto) para manter o texto legível, com verificação de contraste mínimo.
+- **Pacotes de tema completos**: cores, fontes, ícones, cantos, sombras e fundo. Exemplos temáticos: Biblioteca, Espaço, Floresta. Exemplos neutros: Papel, Cinza calmo, Mínimo.
+- **Editor de tema** para ajustar cada elemento, com pré-visualização ao vivo.
+- **Layout montável**: a tela inicial em blocos que a pessoa arrasta, redimensiona, liga e desliga.
+- **Botão de baixo estímulo**: tudo neutro, sem animação e sem cor forte, com um clique e de volta com outro.
+- **Importar e exportar temas** num arquivo único, para a comunidade compartilhar.
+- Densidade, tamanho de fonte e espaçamento ajustáveis; modo claro e escuro.
+
+## Privacidade e dados
+
+Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela quiser. Isso pesa especialmente em saúde, dinheiro e cuidado psicológico.
+
+- **Local-first**: o programa funciona inteiro sem internet e sem conta.
+- **Criptografia** do banco de dados, com senha ou PIN definido pela pessoa.
+- **Trava extra opcional** para os módulos de saúde e de cuidado psicológico.
+- **Backup** em arquivo único criptografado, que a pessoa guarda onde quiser (pendrive, Drive, iCloud).
+- **Exportação** dos dados em formatos abertos (por exemplo, CSV e Markdown), para ninguém ficar preso ao programa.
+- **Sincronização entre aparelhos** só numa onda futura e sempre opcional, com criptografia de ponta a ponta.
+- **IA opcional**: nenhuma função depende de IA. Se a pessoa ativar, ela sabe exatamente o que é enviado e para onde.
+- Sem coleta de uso, sem anúncios e sem rastreamento. Alinhado à LGPD.
+
+## IA e assistente
+
+A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função depende dela.
+
+- **Chave própria (API)**: Claude, GPT, Gemini, Grok e Sabiá. A pessoa cola a chave da própria conta, e o custo de uso fica com ela.
+- **Opção local**: um modelo rodando no próprio computador, sem chave, sem custo e sem os dados saírem do aparelho.
+- **Provedor por função**: dá para usar um na conversa e outro na revisão de texto.
+- **Janela de conversa**: a pessoa fala ou escreve do jeito que vier ("tenho consulta quinta, preciso pagar a luz e tive uma ideia de livro"), e a IA separa e lança cada coisa no módulo certo.
+- **A IA propõe, a pessoa confirma**: antes de gravar, aparece a lista do que vai ser lançado e onde, para aprovar, editar ou descartar. Nada entra sem confirmação.
+- **Ditado em todo lugar**: botão de microfone em todo campo de texto, com transcrição local.
+- **Revisão de texto**: a IA revisa o que foi digitado ou transcrito e mostra o antes e o depois.
+- **Aviso de envio sensível**: antes de mandar dados de saúde ou de terapia a um provedor externo, o programa avisa. A pessoa pode bloquear o envio desses módulos.
+
+**Sobre a IA local.** É um download opcional, separado do instalador, para o programa continuar leve. Ao ativar, o Órbita avalia o computador e recomenda o modelo que cabe nele.
+
+- Peso aproximado: um modelo pequeno ocupa de 2 a 5 GB em disco e precisa de 8 GB de memória ou mais para rodar bem; a transcrição local ocupa algumas centenas de MB (valores a confirmar na construção).
+- Uso indicado: lançar itens a partir da conversa, organizar, resumir e revisar texto.
+- Limite: é mais lento e menos capaz que Claude, GPT ou Gemini em conversas longas ou complexas.
+- No mobile, a IA local fica para depois; lá a pessoa usa a chave de um provedor.
+
+## Arquitetura técnica
+
+Uma base de código única gera todas as versões. O Windows vem primeiro; Mac, Android e iOS saem do mesmo código depois.
+
+| Camada | Proposta | Por quê |
+| --- | --- | --- |
+| Aplicativo | Tauri 2 | Uma base para Windows, Mac, Android e iOS; instalador leve |
+| Interface | Web (TypeScript + framework de componentes) | Facilita temas, layout montável e SVG |
+| Banco de dados | SQLite local criptografado | Funciona sem internet; arquivo único fácil de fazer backup |
+| Transcrição de voz | Modelo local | Áudio não sai do aparelho |
+| Repositório | GitHub privado | Histórico, backup e decisão sobre código aberto no lançamento |
+| Construção | Claude Code | Repositório, testes e commits; concepção e design ficam no chat |
+
+**Estrutura de dados.** Todos os módulos compartilham alguns tipos básicos: item (ideia, projeto, tarefa, leitura), evento (agenda), registro (energia, sintoma, gasto, sessão) e anexo (imagem, arquivo, link). Cada tipo tem etiquetas e ligações com outros itens. É isso que permite ver os mesmos dados em várias visualizações e conectar os módulos.
+
+**Pacotes compartilhados.** O motor de leitura (e, se possível, o motor de temas e o caderno) fica em pacotes separados dentro do repositório, para poder ser reaproveitado no leitor da Arcano 3 e no Escuta sem depender do Órbita inteiro.
+
+**Distribuição.** No Windows e no Mac, instalador próprio com botão de atualização. No mobile, as lojas exigem conta de desenvolvedor: a Apple cobra cerca de US$ 99 por ano e a Google, uma taxa única de US$ 25 (valores a confirmar). Uma versão web instalável é a alternativa sem custo.
+
+## Ondas de construção
+
+A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas primeiras entregam o programa completo no Windows; Mac e mobile só entram depois dos testes. Cada onda só começa quando a anterior passa pelo seu portão.
+
+1. **Onda 1 · Base e coração (Windows)**
+   - Base: banco criptografado, motor de temas e fundos (com SVG), as cinco visualizações.
+   - Módulos: Ideias e projetos, Tempo e rotina, Energia; IA, conversa e ditado.
+   - Portão: Dan usa no dia a dia por algumas semanas e aprova.
+2. **Onda 2 · Vida prática (Windows)**
+   - Módulos: Dinheiro, Saúde, Cuidado psicológico e psiquiátrico.
+   - Vida acadêmica, Hobbies, Caderno infinito, Leitura; backup e exportação.
+   - Portão: grupo de teste neurodivergente usa e aprova.
+3. **Onda 3 · Mac e mobile**
+   - Versões Mac, Android, iOS e iPad a partir do mesmo código.
+   - Sincronização opcional entre aparelhos, criptografada de ponta a ponta.
+   - Portão: estável em todas as plataformas.
+4. **Onda 4 · Lançamento e comunidade**
+   - Distribuição gratuita, página do projeto, galeria de temas da comunidade.
+   - Decisão sobre código aberto.
+
+**Critério de pronto de toda onda**
+
+- Funciona sem internet e sem perder dados ao fechar o programa.
+- Respeita os sete princípios de design.
+- Tem atalhos de teclado e funciona no modo baixo estímulo.
+- Backup testado: salvar, apagar e restaurar.
+
+## Decisões em aberto
+
+Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto e no Prelo; a IA entra com escolha de provedor; o nome é Órbita.
+
+- [ ] Consultar o nome Órbita no INPI.
+- [ ] Código aberto ou não, decidido no lançamento.
+- [ ] Motor de temas compartilhado com o Escuta ou totalmente separado.
+- [ ] Qual modelo local oferecer como opção sem chave.
+- [ ] Grupo de pessoas autistas e com TDAH para testar a partir da Onda 2.
+- [ ] Lojas de aplicativo ou versão web instalável para o mobile.
+- [ ] Onde hospedar os instaladores e a página de doação.

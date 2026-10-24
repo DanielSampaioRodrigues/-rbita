@@ -1,0 +1,31 @@
+# Dependências e builds
+node_modules/
+dist/
+build/
+target/
+src-tauri/target/
+src-tauri/gen/
+
+# Ambiente e segredos
+.env
+.env.*
+*.key
+*.pem
+
+# Dados locais (nunca versionar dados pessoais)
+*.db
+*.sqlite
+*.sqlite3
+*.orbita-backup
+
+# Modelos de IA locais
+models/
+*.gguf
+*.bin
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
