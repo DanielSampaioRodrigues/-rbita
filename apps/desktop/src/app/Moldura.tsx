@@ -1,4 +1,4 @@
-import { House, Keyboard, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { House, Keyboard, Lock, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Interruptor } from "../componentes/Interruptor";
@@ -17,10 +17,11 @@ interface Props {
   secao: Secao;
   aoEscolherSecao: (secao: Secao) => void;
   aoVerAtalhos: () => void;
+  aoBloquear: () => void;
   children: ReactNode;
 }
 
-export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, children }: Props) {
+export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, children }: Props) {
   const { prefs, mudar } = usePreferencias();
 
   return (
@@ -59,6 +60,10 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, children }: Prop
             <Keyboard aria-hidden="true" size="1.15em" strokeWidth={1.75} />
             {textos.moldura.verAtalhos}
             <kbd className="lateral-dica">F1</kbd>
+          </Button>
+          <Button className="lateral-item discreto" onPress={aoBloquear}>
+            <Lock aria-hidden="true" size="1.15em" strokeWidth={1.75} />
+            {textos.moldura.bloquear}
           </Button>
           <p className="lateral-versao">{textos.app.versao(__VERSAO__)}</p>
         </div>

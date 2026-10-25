@@ -16,6 +16,8 @@ export interface Paleta {
   textoSobreDestaque: string;
   /** Anel de foco do teclado. */
   foco: string;
+  /** Avisos e erros: chama atenção sem alarmar (nada de vermelho gritante). */
+  atencao: string;
 }
 
 export interface Tema {

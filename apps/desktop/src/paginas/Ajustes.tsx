@@ -14,12 +14,14 @@ import {
   type Fonte,
   type ModoCor,
 } from "../preferencias";
+import type { ModoAbrir } from "../api";
 import { textos } from "../textos/pt-BR";
+import { Seguranca } from "./Seguranca";
 
 const t = textos.ajustes;
 const chaves = <T extends string>(o: Record<T, unknown>) => Object.keys(o) as T[];
 
-export function Ajustes() {
+export function Ajustes({ modo, aoMudarSeguranca }: { modo: ModoAbrir | null; aoMudarSeguranca: () => void }) {
   const { prefs, mudar, voltarAoPadrao } = usePreferencias();
   const [confirmando, setConfirmando] = useState(false);
 
@@ -86,12 +88,14 @@ export function Ajustes() {
               />
               <p className="campo-ajuda">{t.baixoEstimuloExplicacao}</p>
             </div>
+            <Button className="botao" onPress={() => setConfirmando(true)}>
+              {t.voltarPadrao}
+            </Button>
           </section>
+
+          <Seguranca modo={modo} aoMudar={aoMudarSeguranca} />
       </div>
 
-      <Button className="botao" onPress={() => setConfirmando(true)}>
-        {t.voltarPadrao}
-      </Button>
 
       <ModalOverlay className="sobreposicao" isOpen={confirmando} onOpenChange={setConfirmando} isDismissable>
         <Modal className="janela pequena">

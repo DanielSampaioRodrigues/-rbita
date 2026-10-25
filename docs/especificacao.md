@@ -171,7 +171,16 @@ A interface deve ir além da do Escuta: a pessoa monta o próprio ambiente, do m
 Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela quiser. Isso pesa especialmente em saúde, dinheiro e cuidado psicológico.
 
 - **Local-first**: o programa funciona inteiro sem internet e sem conta.
-- **Criptografia** do banco de dados, com senha definida pela pessoa. Na primeira abertura o programa gera uma **chave de recuperação** para imprimir ou guardar: sem a senha e sem essa chave, ninguém recupera os dados. Opção "lembrar neste computador", que guarda a chave no cofre do Windows. PIN curto não é aceito como única proteção do arquivo.
+- **Criptografia** do banco de dados inteiro, com uma chave sorteada no aparelho. Essa chave fica trancada de três jeitos:
+  - **senha** (mínimo de 12 caracteres; uma frase de 3 ou 4 palavras funciona bem), digitada raramente: na criação, em backups, em aparelho novo e quando o PIN falha;
+  - **chave de recuperação**: 6 palavras sorteadas da lista padrão em português (sem acentos, reconhecidas pelas 4 primeiras letras), mais um **arquivo de recuperação**, para quem esqueceu a senha;
+  - **jeito de abrir no dia a dia**, escolhido por aparelho: **PIN** (padrão, de 4 a 8 números), **senha** ou **abrir direto**. O PIN e o abrir direto usam um segredo guardado pelo Windows (Gerenciador de Credenciais): numa cópia do arquivo levada para outro computador, eles não servem. Depois de 5 erros seguidos de PIN, o Órbita pede a senha. Nada é apagado por tentativas erradas.
+- **Recuperação sem servidor.** Não há recuperação por e-mail ou SMS: isso exigiria um servidor capaz de abrir os dados, contra a promessa de que os dados não saem do aparelho, e contra a LGPD no caso de dados de saúde e terapia. No lugar disso:
+  - a chave pode ser salva em arquivo (pendrive, nuvem), impressa, copiada para o próprio e-mail ou entregue a uma pessoa de confiança;
+  - pode ser vista de novo em Ajustes, com a senha;
+  - as telas de recuperação são calmas, um passo por vez, sem tempo limite;
+  - com a sincronização (Onda 3), um aparelho já aberto poderá criar uma senha nova para o outro.
+- **Windows Hello** (digital, rosto ou PIN do Windows) como jeito de abrir: etapa própria, logo depois do banco criptografado.
 - **Trava extra opcional** para os módulos de saúde e de cuidado psicológico.
 - **Backup** em arquivo único criptografado, que a pessoa guarda onde quiser (pendrive, Drive, iCloud).
 - **Exportação** dos dados em formatos abertos (por exemplo, CSV e Markdown), para ninguém ficar preso ao programa.
@@ -272,7 +281,7 @@ A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas pr
 
 ## Decisões em aberto
 
-Já decidido (25/10/2026): interface em React; backup básico na Onda 1; senha com chave de recuperação; IA local via Ollama na Onda 1.
+Já decidido (25/10/2026): interface em React; backup básico na Onda 1; senha forte com PIN no dia a dia e chave de recuperação de 6 palavras; sem recuperação por e-mail ou SMS; IA local via Ollama na Onda 1.
 
 Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto e no Prelo; a IA entra com escolha de provedor; o nome é Órbita.
 
@@ -285,3 +294,4 @@ Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto
 - [ ] Onde hospedar os instaladores e a página de doação.
 - [ ] Como o Escuta vai receber o motor de leitura (dependência direta do repositório no GitHub ou pacote privado), decidido na Onda 2.
 - [ ] Assinatura digital do instalador do Windows (até lá, o Windows mostra um aviso ao instalar).
+- [ ] Sincronização (Onda 3): onde ficam os dados sincronizados (pasta da própria pessoa no Drive, OneDrive ou iCloud, sem servidor do Órbita; ou um servidor pequeno, mais simples no celular, com custo e manutenção) e como resolver edições feitas em dois aparelhos sem internet.

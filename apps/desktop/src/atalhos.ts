@@ -8,7 +8,8 @@ export type AcaoAtalho =
   | "alternarClaroEscuro"
   | "aumentarLetra"
   | "diminuirLetra"
-  | "letraPadrao";
+  | "letraPadrao"
+  | "bloquear";
 
 export interface Atalho {
   acao: AcaoAtalho;
@@ -71,7 +72,16 @@ export const ATALHOS: Atalho[] = [
     descricao: "Voltar a letra ao tamanho padrão",
     combinacoes: [{ ctrl: true, shift: false, teclas: ["0"] }],
   },
+  {
+    acao: "bloquear",
+    teclas: [["Ctrl", "Shift", "Q"]],
+    descricao: "Bloquear o Órbita",
+    combinacoes: [{ ctrl: true, shift: true, teclas: ["q", "Q"] }],
+  },
 ];
+
+/** Ações que só fazem sentido com o Órbita aberto. */
+export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irAjustes", "bloquear"];
 
 /** Atalhos que não dependem do app, listados só para consulta. */
 export const ATALHOS_GERAIS: { teclas: string[][]; descricao: string }[] = [

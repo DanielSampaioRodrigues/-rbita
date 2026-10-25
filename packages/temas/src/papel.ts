@@ -15,6 +15,7 @@ export const papel: Tema = {
     destaque: "#3f6b5c",
     textoSobreDestaque: "#ffffff",
     foco: "#2c5d8f",
+    atencao: "#8a4a26",
   },
   escuro: {
     fundo: "#191b1f",
@@ -27,6 +28,7 @@ export const papel: Tema = {
     destaque: "#8fbcaa",
     textoSobreDestaque: "#13201b",
     foco: "#8fb8e6",
+    atencao: "#e2a47c",
   },
   baixoEstimulo: {
     claro: { destaque: "#575c63", foco: "#3d4249" },

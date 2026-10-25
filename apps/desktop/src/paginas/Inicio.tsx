@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "react-aria-components";
 import { textos } from "../textos/pt-BR";
+import { Notas } from "./Notas";
 
 const t = textos.inicio;
 
@@ -13,6 +14,8 @@ export function Inicio({ aoIrAjustes }: { aoIrAjustes: () => void }) {
         {t.irAjustes}
         <ArrowRight aria-hidden="true" size="1.1em" />
       </Button>
+
+      <Notas />
 
       <section className="cartao">
         <h2>{t.novidadesTitulo(__VERSAO__)}</h2>

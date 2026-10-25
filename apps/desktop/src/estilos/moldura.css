@@ -76,3 +76,51 @@
   .lateral-dica,
   .lateral-versao { display: none; }
 }
+
+/* Telas de entrada (criar, abrir, recuperar) */
+.acesso {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.acesso-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--espaco-4);
+  padding: var(--espaco-4) var(--espaco-5);
+}
+
+.acesso-topo .lateral-marca { padding: 0; }
+
+.acesso-centro {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--espaco-4) var(--espaco-5) var(--espaco-7);
+}
+
+.acesso-cartao {
+  width: min(36rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-4);
+  padding: var(--espaco-6);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto-grande);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra);
+}
+
+.acesso-cartao h1 { font-size: 1.6rem; }
+
+.acesso-passo {
+  font-size: 0.85rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cor-texto-suave);
+}
+
+.acesso-cartao > .botao { align-self: flex-start; }

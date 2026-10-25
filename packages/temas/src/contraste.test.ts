@@ -35,6 +35,7 @@ function verificarPaleta(p: Paleta) {
     exigir(`destaque sobre ${nomeFundo}`, p.destaque, fundo, MINIMO.texto);
     exigir(`borda de controle sobre ${nomeFundo}`, p.bordaControle, fundo, MINIMO.controle);
     exigir(`foco sobre ${nomeFundo}`, p.foco, fundo, MINIMO.controle);
+    exigir(`atenção sobre ${nomeFundo}`, p.atencao, fundo, MINIMO.texto);
   }
   exigir("texto sobre destaque", p.textoSobreDestaque, p.destaque, MINIMO.texto);
   return falhas;

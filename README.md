@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 2 de 17, base visual (fontes, ajustes, baixo estímulo e atalhos).
+Onda 1 (base e coração, Windows): etapa 3 de 18, banco criptografado com senha, PIN e chave de recuperação.
