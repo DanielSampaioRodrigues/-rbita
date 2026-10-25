@@ -1,2 +1,1 @@
-- **Editor de tema em tempo real**: ao mudar uma cor (ou pedir algo à IA), o app inteiro já mostra o resultado, não só a prévia. Se apertar "Cancelar", tudo volta como estava; para ficar, aperte "Salvar e usar".
-- **Prévia do editor mais fiel**: o contorno nas letras não aparece mais dentro da prévia.
+- **Leitor de tela na energia**: as opções "Como está sua energia agora?" ganharam um nome falado próprio ("Energia baixa, 2 de 5"), porque o NVDA não estava lendo. Obrigado pelo teste!

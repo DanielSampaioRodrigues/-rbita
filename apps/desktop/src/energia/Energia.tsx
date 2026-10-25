@@ -44,7 +44,8 @@ export function RegistroRapido() {
         className="niveis-energia"
       >
         {t.niveis.map((nome, i) => (
-          <ToggleButton key={i} id={String(i + 1)} className="nivel-energia">
+          // Nome explícito: alguns leitores de tela (NVDA) não liam o texto de dentro do botão.
+          <ToggleButton key={i} id={String(i + 1)} className="nivel-energia" aria-label={t.nivelFalado(nome, i + 1)}>
             <span className="nivel-barras" aria-hidden="true">
               {[1, 2, 3, 4, 5].map((b) => (
                 <span key={b} className={b <= i + 1 ? "barra cheia" : "barra"} />

@@ -1,6 +1,6 @@
 # O que falta implementar
 
-25/10/2026 · versão 0.29.1. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
+25/10/2026 · versão 0.29.2. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
 
 ## 1. Pendências da Onda 1 (o que está pela metade)
 
@@ -17,7 +17,7 @@
 - [ ] **Conta Microsoft (OneDrive) no Windows**: o código está pronto; falta registrar o app na Microsoft. Conta pessoal não registra sem diretório: tentar o Azure for Students pelo pacote de estudante do GitHub, ou uma conta do Azure. Depois, guardar o ID em `ORBITA_MICROSOFT_CLIENT_ID` nos segredos do GitHub (passo a passo em `docs/configurar-contas.md`, parte 3).
 - [ ] **Avaliar Dropbox e Nextcloud/WebDAV** como contas extras para a recuperação (tabela na especificação).
 - [ ] **Testes de Dan no Windows** do que foi feito nesta rodada: ligar a conta Google (0.22.0) e ver a cópia em Ajustes; instalar do zero num computador ou usuário novo do Windows para ver a primeira configuração leve e o "trazer meus dados da minha conta"; PIN errado 5 vezes abrindo com as 6 palavras.
-- [ ] **Teste com leitor de tela de verdade** (NVDA), de preferência com quem usa. Só dá para fazer no Windows.
+- [ ] **Teste com leitor de tela de verdade** (NVDA), de preferência com quem usa. Só dá para fazer no Windows. Primeira rodada de Dan (0.29.1): tudo leu, menos as opções de energia (corrigido na 0.29.2, falta reconferir). Falta a rodada com alguém que usa leitor de tela no dia a dia.
 - [ ] **Portão da Onda 1**: Dan usar no dia a dia por algumas semanas e aprovar (lista em `docs/revisao-onda-1.md`).
 
 ## 2. Onda 2: vida prática (Windows)

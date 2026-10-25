@@ -608,6 +608,7 @@ export const textos = {
     intro: "Registrar a energia ajuda a escolher o que cabe no dia. Não existe nível certo.",
     pergunta: "Como está sua energia agora?",
     niveis: ["Muito baixa", "Baixa", "Média", "Boa", "Muito boa"],
+    nivelFalado: (nome: string, n: number) => `Energia ${nome.toLowerCase()}, ${n} de 5`,
     registrada: (nivel: string, hora: string) => `Registrado às ${hora}: ${nivel}.`,
     historico: "Últimos 14 dias",
     semRegistro: "Sem registro",
