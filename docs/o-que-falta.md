@@ -63,4 +63,5 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [ ] Como o Escuta recebe o motor de leitura (dependência do GitHub ou pacote privado).
 - [ ] Qual modelo local oferecer como opção sem chave (hoje: Ollama, com a recomendação pela memória do computador).
 - [ ] Conta de desenvolvedor da Apple: individual (aparece o nome de Dan) ou de empresa (com CNPJ, aparece a marca). Decidir perto da Onda 3.
-- [ ] **Levar o trabalho para a branch principal (`main`)** do `-rbita` e do `orbita-versoes`. Hoje tudo, inclusive as páginas públicas e a publicação das versões, roda na branch de trabalho `claude/orbita-setup-planning-cfbqzz`. Se ela for trocada, mudar também a origem do GitHub Pages.
+- [x] **Levar o trabalho para a branch principal (`main`)** do `-rbita` (feito na 0.29.2: `main` e `claude/orbita-setup-planning-cfbqzz` estão iguais; sessões novas trabalham a partir do `main`).
+- [ ] O mesmo no `orbita-versoes`: as páginas públicas ainda saem da branch `claude/orbita-setup-planning-cfbqzz` de lá. Se trocar, mudar também a origem do GitHub Pages.
