@@ -71,11 +71,11 @@ pub(crate) fn cliente() -> Result<reqwest::Client, Erro> {
 /// Resposta com erro do provedor, em linguagem simples.
 pub(crate) fn erro_http(status: reqwest::StatusCode) -> Erro {
     match status.as_u16() {
-        401 | 403 => erro("acesso", "A conta não deixou o Órbita entrar. Pode ser que o acesso tenha sido tirado; conecte a conta de novo em Ajustes."),
+        s @ (401 | 403) => erro("acesso", format!("A conta não deixou o Órbita entrar (código {s}). Pode ser que o acesso tenha sido tirado; desligue e ligue a conta de novo em Ajustes.")),
         429 => erro("limite", "A conta pediu para esperar um pouco. Tente de novo mais tarde."),
         507 => erro("espaco", "Não há espaço livre na conta. Libere espaço no Drive ou OneDrive e tente de novo."),
         s if s >= 500 => erro("servico", "O serviço da conta está com problema agora. Tente de novo mais tarde."),
-        _ => erro("resposta", "A conta respondeu de um jeito inesperado. Tente de novo."),
+        s => erro("resposta", format!("A conta respondeu de um jeito inesperado (código {s}). Tente de novo.")),
     }
 }
 

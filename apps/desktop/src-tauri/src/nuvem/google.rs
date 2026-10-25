@@ -57,6 +57,11 @@ pub async fn trocar_codigo(cred: Credenciais, codigo: &str, verificador: &str, r
     }
     let corpo = pedir_token(&campos).await?;
     let renovacao = corpo["refresh_token"].as_str().ok_or_else(|| erro("resposta", "O Google não devolveu a autorização completa. Tente entrar de novo."))?;
+    // O Google deixa a pessoa desmarcar cada permissão: sem a do Drive, não adianta seguir.
+    if !corpo["scope"].as_str().is_some_and(|e| e.contains("drive.appdata")) {
+        revogar(renovacao).await;
+        return Err(erro("permissao", SEM_PERMISSAO_DRIVE));
+    }
     let email = corpo["id_token"].as_str().and_then(email_do_id_token).unwrap_or_else(|| "conta Google".into());
     Ok(Conta { renovacao: renovacao.to_string(), email })
 }
@@ -71,6 +76,26 @@ pub async fn renovar(cred: Credenciais, renovacao: &str) -> Result<(String, Opti
     Ok((acesso.to_string(), corpo["refresh_token"].as_str().map(str::to_string)))
 }
 
+const SEM_PERMISSAO_DRIVE: &str = "Na tela do Google, a permissão do Drive ficou desmarcada, então o Órbita não consegue guardar a cópia. Desligue a conta, ligue de novo e deixe marcada a opção \"Ver, criar e excluir os próprios dados de configuração no Google Drive\".";
+
+/// Erro do Drive em linguagem simples. O Google explica o motivo no corpo da resposta.
+async fn falha(resposta: reqwest::Response) -> Erro {
+    let status = resposta.status();
+    let corpo: Value = resposta.json().await.unwrap_or(Value::Null);
+    motivo_do_erro(status, &corpo)
+}
+
+fn motivo_do_erro(status: reqwest::StatusCode, corpo: &Value) -> Erro {
+    let texto = corpo.to_string();
+    if texto.contains("insufficientPermissions") || texto.contains("ACCESS_TOKEN_SCOPE_INSUFFICIENT") || texto.contains("insufficient authentication scopes") {
+        return erro("permissao", SEM_PERMISSAO_DRIVE);
+    }
+    if texto.contains("accessNotConfigured") || texto.contains("SERVICE_DISABLED") {
+        return erro("servico", "O Google Drive não está ligado no cadastro do Órbita no Google. Isso é do lado de quem publica o Órbita, não seu.");
+    }
+    erro_http(status)
+}
+
 /// Id do arquivo com esse nome na pasta do app, se existir.
 async fn achar(acesso: &str, nome: &str) -> Result<Option<String>, Erro> {
     let consulta = format!("name = '{}' and trashed = false", nome.replace('\'', "\\'"));
@@ -82,7 +107,7 @@ async fn achar(acesso: &str, nome: &str) -> Result<Option<String>, Erro> {
         .await
         .map_err(|e| falha_de_rede(&e))?;
     if !resposta.status().is_success() {
-        return Err(erro_http(resposta.status()));
+        return Err(falha(resposta).await);
     }
     let corpo: Value = resposta.json().await.map_err(|e| falha_de_rede(&e))?;
     Ok(corpo["files"].get(0).and_then(|f| f["id"].as_str()).map(str::to_string))
@@ -103,7 +128,7 @@ pub async fn enviar(acesso: &str, nome: &str, dados: Vec<u8>) -> Result<(), Erro
         .await
         .map_err(|e| falha_de_rede(&e))?;
     if !resposta.status().is_success() {
-        return Err(erro_http(resposta.status()));
+        return Err(falha(resposta).await);
     }
     let destino = resposta
         .headers()
@@ -113,7 +138,7 @@ pub async fn enviar(acesso: &str, nome: &str, dados: Vec<u8>) -> Result<(), Erro
         .to_string();
     let resposta = c.put(destino).body(dados).send().await.map_err(|e| falha_de_rede(&e))?;
     if !resposta.status().is_success() {
-        return Err(erro_http(resposta.status()));
+        return Err(falha(resposta).await);
     }
     Ok(())
 }
@@ -122,7 +147,7 @@ pub async fn baixar(acesso: &str, nome: &str) -> Result<Option<Vec<u8>>, Erro> {
     let Some(id) = achar(acesso, nome).await? else { return Ok(None) };
     let resposta = cliente()?.get(format!("{ARQUIVOS}/{id}?alt=media")).bearer_auth(acesso).send().await.map_err(|e| falha_de_rede(&e))?;
     if !resposta.status().is_success() {
-        return Err(erro_http(resposta.status()));
+        return Err(falha(resposta).await);
     }
     Ok(Some(resposta.bytes().await.map_err(|e| falha_de_rede(&e))?.to_vec()))
 }
@@ -131,7 +156,7 @@ pub async fn apagar(acesso: &str, nome: &str) -> Result<(), Erro> {
     let Some(id) = achar(acesso, nome).await? else { return Ok(()) };
     let resposta = cliente()?.delete(format!("{ARQUIVOS}/{id}")).bearer_auth(acesso).send().await.map_err(|e| falha_de_rede(&e))?;
     if !resposta.status().is_success() && resposta.status() != reqwest::StatusCode::NOT_FOUND {
-        return Err(erro_http(resposta.status()));
+        return Err(falha(resposta).await);
     }
     Ok(())
 }
@@ -146,6 +171,15 @@ pub async fn revogar(renovacao: &str) {
 #[cfg(test)]
 mod testes {
     use super::*;
+
+    #[test]
+    fn explica_a_permissao_desmarcada() {
+        let corpo = json!({"error": {"code": 403, "errors": [{"reason": "insufficientPermissions"}], "status": "PERMISSION_DENIED"}});
+        assert!(matches!(motivo_do_erro(reqwest::StatusCode::FORBIDDEN, &corpo), Erro::Nuvem { motivo: "permissao", .. }));
+        let corpo = json!({"error": {"errors": [{"reason": "accessNotConfigured"}]}});
+        assert!(matches!(motivo_do_erro(reqwest::StatusCode::FORBIDDEN, &corpo), Erro::Nuvem { motivo: "servico", .. }));
+        assert!(matches!(motivo_do_erro(reqwest::StatusCode::FORBIDDEN, &Value::Null), Erro::Nuvem { motivo: "acesso", .. }));
+    }
 
     #[test]
     fn a_entrada_pede_so_a_pasta_do_app() {

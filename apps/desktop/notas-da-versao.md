@@ -1,3 +1,2 @@
-- **Guardar a recuperação na sua conta Google**: em Ajustes > "Guardar na minha conta", ligue a sua conta Google. A chave de recuperação e uma cópia criptografada dos seus dados ficam numa pasta escondida do seu Drive, que só o Órbita vê. Num computador novo, é só entrar com a conta para trazer tudo de volta.
-- A cópia é atualizada sozinha uma vez por dia. Dá para enviar na hora ou desligar quando quiser.
-- Quem preferir continua só com as 6 palavras. A conta Microsoft chega numa próxima versão.
+- **Conta Google**: se, na tela do Google, a permissão do Drive ficar desmarcada, o Órbita agora explica isso e diz como resolver, em vez de um aviso genérico.
+- Em Ajustes, o mesmo aviso de erro não aparece mais duas vezes.

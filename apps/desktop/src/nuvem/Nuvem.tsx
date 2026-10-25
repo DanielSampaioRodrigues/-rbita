@@ -248,7 +248,8 @@ export function AjustesNuvem() {
         </>
       )}
       <Aviso tipo="ok">{aviso}</Aviso>
-      <Aviso>{erro}</Aviso>
+      {/* O erro do envio já aparece em "a última cópia não deu certo": não repetir. */}
+      <Aviso>{erro !== situacao?.erro ? erro : null}</Aviso>
 
       <Janela titulo={t.desligarTitulo} aberta={desligando} aoFechar={() => setDesligando(false)} pequena>
         <div className="formulario">

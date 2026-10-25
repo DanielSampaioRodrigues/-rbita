@@ -1,6 +1,6 @@
 [package]
 name = "orbita"
-version = "0.22.0"
+version = "0.22.1"
 description = "Órbita — organizador de vida para pessoas neurodivergentes"
 authors = ["Daniel Sampaio Rodrigues"]
 edition = "2021"
