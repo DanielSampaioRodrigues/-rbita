@@ -1,2 +1,1 @@
-- **Caixas de vidro**: em Ajustes > Tema e fundo, o controle "Caixas: de opacas a vidro" deixa as caixas e a barra lateral transparentes, com o fundo desfocado por trás. Com a trava de contraste, elas param no ponto em que o texto ainda dá para ler; sem a trava, vão até o fim. No baixo estímulo (Ctrl + Shift + B), voltam a ser opacas.
-- **Fundo com as cores originais**: "Mostrar o fundo com as cores originais" tira todo o filtro do fundo (sem véu, sem desfoque e sem escurecimento).
+- **Editor de tema mais fácil de ler**: a parte de editar as cores, os cantos e os ícones agora fica dentro de uma caixa, então dá para ler mesmo com fundos cheios de desenho ou com as cores originais ligadas.

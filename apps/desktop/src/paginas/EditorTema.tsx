@@ -107,7 +107,7 @@ export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inici
       <CriarTemaIa tema={tema} aoAplicar={aplicarDaIa} ia={ia} aoMudarIa={setIa} />
       <DesenharIconesIa tema={tema} aoAplicar={setTema} ia={ia} />
       <div className="editor-tema">
-        <div className="formulario">
+        <div className="formulario cartao">
           <Campo rotulo={t.nome} valor={tema.nome} aoMudar={(nome) => setTema((x) => ({ ...x, nome }))} autoFocus />
           <div className="campo">
             <span className="campo-rotulo" id="modo-editor">{t.modo}</span>
