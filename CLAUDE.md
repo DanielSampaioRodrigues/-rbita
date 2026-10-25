@@ -8,6 +8,7 @@ Orientações para o Claude Code neste repositório. A fonte de verdade do produ
 - Fale sempre em **português**, de forma direta e simples. Explique decisões técnicas em linguagem leiga, em poucas linhas.
 - Dan prefere ser questionado nas premissas antes da execução. Se algo na especificação parecer errado ou arriscado, diga antes de construir.
 - Design e qualidade visual são muito importantes para ele.
+- Público: pessoas neurodivergentes em geral (autistas, TDAH, dislexia, altas habilidades e outras). Não trate o app como só de TDAH nem só de autismo.
 
 ## Como trabalhar
 

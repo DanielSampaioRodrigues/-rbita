@@ -4,7 +4,7 @@
 
 ## Visão e propósito
 
-O Órbita é um organizador de vida completo para pessoas autistas e com TDAH, gratuito, em português, com os dados no próprio aparelho e interface totalmente personalizável.
+O Órbita é um organizador de vida completo para pessoas neurodivergentes (autistas, com TDAH, dislexia, altas habilidades e outras formas de neurodivergência), gratuito, em português, com os dados no próprio aparelho e interface totalmente personalizável.
 
 **Problema que resolve.** Pessoas neurodivergentes costumam ter muitas ideias e abrir muitas frentes ao mesmo tempo. Sem um jeito de priorizar, pausar e retomar, isso vira frustração. Ao mesmo tempo, precisam de previsibilidade e de uma vida organizada.
 
@@ -13,7 +13,7 @@ O Órbita é um organizador de vida completo para pessoas autistas e com TDAH, g
 - em português;
 - gratuito, distribuído por doação;
 - local-first, com os dados no aparelho;
-- com foco autista;
+- pensado para a neurodivergência como um todo, não só para TDAH;
 - com personalização total, do temático ao neutro.
 
 **Primeiro usuário.** O próprio Dan, organizando suas frentes no Windows. Mac e mobile vêm depois dos testes.
@@ -73,6 +73,14 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - Registro curto de sono, sintomas e sobrecarga sensorial.
 - **Resumo para levar à consulta**, gerado a partir dos registros.
 - **Plano de crise** para meltdown ou shutdown, escrito pela pessoa num momento bom: sinais, o que ajuda, com quem falar.
+- **Integração com dados de saúde e relógios inteligentes** (Onda 3, só no app de celular):
+  - **iPhone e Apple Watch**: Apple Saúde (HealthKit).
+  - **Android** (Samsung, Xiaomi, Google, Fitbit e outros): Health Connect, que reúne os dados do Samsung Health, do Mi Fitness e de outros apps (compatibilidade de cada marca a confirmar). Garmin, se entrar, exige integração própria.
+  - Dados úteis: sono, frequência cardíaca e variabilidade (como sinal possível de estresse e sobrecarga), passos e atividade, ciclo menstrual.
+  - **Somente leitura**, com a pessoa escolhendo cada tipo de dado; tudo fica no aparelho e entra nos registros e no resumo para a consulta.
+  - Os dados são apresentados como apoio à percepção da própria pessoa, nunca como diagnóstico nem alerta alarmista.
+  - O computador recebe esses dados pela sincronização entre aparelhos; Windows e Mac não acessam o Apple Saúde nem o Health Connect diretamente.
+  - Futuro: app no relógio para captura rápida, confirmação de remédio e avisos de transição discretos por vibração.
 
 ### 6. Cuidado psicológico e psiquiátrico
 
@@ -219,6 +227,7 @@ A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas pr
 3. **Onda 3 · Mac e mobile**
    - Versões Mac, Android, iOS e iPad a partir do mesmo código.
    - Sincronização opcional entre aparelhos, criptografada de ponta a ponta.
+   - Integração com Apple Saúde e Health Connect (relógios inteligentes).
    - Portão: estável em todas as plataformas.
 4. **Onda 4 · Lançamento e comunidade**
    - Distribuição gratuita, página do projeto, galeria de temas da comunidade.
@@ -239,6 +248,6 @@ Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto
 - [ ] Código aberto ou não, decidido no lançamento.
 - [ ] Motor de temas compartilhado com o Escuta ou totalmente separado.
 - [ ] Qual modelo local oferecer como opção sem chave.
-- [ ] Grupo de pessoas autistas e com TDAH para testar a partir da Onda 2.
-- [ ] Lojas de aplicativo ou versão web instalável para o mobile.
+- [ ] Grupo de teste diverso (autistas, TDAH, dislexia, altas habilidades) a partir da Onda 2.
+- [ ] Lojas de aplicativo ou versão web instalável para o mobile. Atenção: a integração com Apple Saúde e Health Connect só funciona em app nativo de loja; a versão web não acessa esses dados.
 - [ ] Onde hospedar os instaladores e a página de doação.

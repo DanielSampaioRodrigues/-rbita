@@ -1,6 +1,6 @@
 # Órbita
 
-Organizador de vida gratuito para pessoas autistas e com TDAH, em português, com os dados no próprio aparelho e interface totalmente personalizável.
+Organizador de vida gratuito para pessoas neurodivergentes (autistas, com TDAH, dislexia, altas habilidades e outras), em português, com os dados no próprio aparelho e interface totalmente personalizável.
 
 > Repositório privado em desenvolvimento. A decisão sobre abrir o código será tomada no lançamento.
 
