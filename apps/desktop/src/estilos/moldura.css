@@ -150,3 +150,8 @@
 }
 
 .lateral .foco-mini { color: var(--cor-destaque); font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* Setas de voltar e avançar: sempre no mesmo lugar, no alto da área de conteúdo. */
+/* Altura zero: as setas ocupam o espaço que a página já deixa no topo, sem empurrar nada. */
+.setas-navegacao { display: flex; gap: var(--espaco-1); height: 0; padding: var(--espaco-3) var(--espaco-5) 0; position: relative; z-index: 1; }
+.setas-navegacao .botao-icone[data-disabled] { opacity: 0.4; cursor: default; }

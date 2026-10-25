@@ -11,7 +11,10 @@ export type AcaoAtalho =
   | "irEnergia"
   | "alternarBaixaEnergia"
   | "capturar"
+  | "irAparencia"
   | "irAjustes"
+  | "voltar"
+  | "avancar"
   | "alternarBaixoEstimulo"
   | "alternarClaroEscuro"
   | "aumentarLetra"
@@ -94,6 +97,24 @@ export const ATALHOS: Atalho[] = [
     combinacoes: [{ ctrl: true, shift: true, teclas: ["e", "E"] }],
   },
   {
+    acao: "irAparencia",
+    teclas: [["Ctrl", "8"]],
+    descricao: "Ir para Aparência (tema, fundo, letras)",
+    combinacoes: [{ ctrl: true, shift: false, teclas: ["8"] }],
+  },
+  {
+    acao: "voltar",
+    teclas: [["Alt", "←"]],
+    descricao: "Voltar para a tela anterior",
+    combinacoes: [{ ctrl: false, shift: false, alt: true, teclas: ["ArrowLeft"] }],
+  },
+  {
+    acao: "avancar",
+    teclas: [["Alt", "→"]],
+    descricao: "Avançar de novo",
+    combinacoes: [{ ctrl: false, shift: false, alt: true, teclas: ["ArrowRight"] }],
+  },
+  {
     acao: "irAjustes",
     teclas: [["Ctrl", ","]],
     descricao: "Abrir os Ajustes",
@@ -138,7 +159,7 @@ export const ATALHOS: Atalho[] = [
 ];
 
 /** Ações que só fazem sentido com o Órbita aberto. */
-export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irIdeias", "irProjetos", "irAgenda", "irRotinas", "irFoco", "irEnergia", "irAjustes", "bloquear", "capturar", "alternarBaixaEnergia"];
+export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irIdeias", "irProjetos", "irAgenda", "irRotinas", "irFoco", "irEnergia", "irAparencia", "irAjustes", "voltar", "avancar", "bloquear", "capturar", "alternarBaixaEnergia"];
 
 /** Atalhos que não dependem do app, listados só para consulta. */
 export const ATALHOS_GERAIS: { teclas: string[][]; descricao: string }[] = [

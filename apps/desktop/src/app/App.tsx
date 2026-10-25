@@ -13,6 +13,7 @@ import { usePreferencias } from "../estado";
 import { Agenda } from "../agenda/Agenda";
 import { PaginaFoco, ProvedorFoco } from "../foco/Foco";
 import { Ajustes } from "../paginas/Ajustes";
+import { Aparencia } from "../paginas/Aparencia";
 import { Rotinas } from "../rotinas/Rotinas";
 import { BaixaEnergia } from "../energia/BaixaEnergia";
 import { PaginaEnergia } from "../energia/Energia";
@@ -31,12 +32,15 @@ import { ProvedorRecado } from "./Recado";
 import { ProvedorAtualizacao } from "../atualizacao/atualizacao";
 import { AvisoAtualizacao } from "../atualizacao/TelasAtualizacao";
 
+type Lugar = { secao: Secao; projeto: string | null };
+
 export function App() {
   const { prefs, mudar } = usePreferencias();
   const [situacao, setSituacao] = useState<Situacao | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
-  const [secao, setSecao] = useState<Secao>("inicio");
-  const [projetoAberto, setProjetoAberto] = useState<string | null>(null);
+  // Histórico de lugares, para as setas de voltar e avançar (como num navegador).
+  const [historico, setHistorico] = useState<{ lugares: Lugar[]; posicao: number }>({ lugares: [{ secao: "inicio", projeto: null }], posicao: 0 });
+  const { secao, projeto: projetoAberto } = historico.lugares[historico.posicao];
   const [atalhosAbertos, setAtalhosAbertos] = useState(false);
   const [capturando, setCapturando] = useState(false);
   // Captura pedida com o Órbita bloqueado: abre logo depois de desbloquear.
@@ -68,15 +72,29 @@ export function App() {
     return () => clearTimeout(id);
   }, [aberto]);
 
-  const irPara = useCallback((s: Secao) => {
-    setSecao(s);
-    setProjetoAberto(null);
+  const navegar = useCallback((lugar: Lugar) => {
+    setHistorico(({ lugares, posicao }) => {
+      const atual = lugares[posicao];
+      if (atual.secao === lugar.secao && atual.projeto === lugar.projeto) return { lugares, posicao };
+      // Ir para um lugar novo descarta o "avançar", como num navegador. Guarda no máximo 50.
+      const novos = [...lugares.slice(0, posicao + 1), lugar].slice(-50);
+      return { lugares: novos, posicao: novos.length - 1 };
+    });
   }, []);
+  const irPara = useCallback((s: Secao) => navegar({ secao: s, projeto: null }), [navegar]);
+  const abrirProjeto = useCallback((id: string) => navegar({ secao: "projetos", projeto: id }), [navegar]);
+  const voltar = useCallback(() => setHistorico((h) => ({ ...h, posicao: Math.max(0, h.posicao - 1) })), []);
+  const avancar = useCallback(() => setHistorico((h) => ({ ...h, posicao: Math.min(h.lugares.length - 1, h.posicao + 1) })), []);
 
-  const abrirProjeto = useCallback((id: string) => {
-    setSecao("projetos");
-    setProjetoAberto(id);
-  }, []);
+  // Botões de voltar e avançar do mouse.
+  useEffect(() => {
+    const aoClicar = (e: MouseEvent) => {
+      if (e.button === 3) (e.preventDefault(), voltar());
+      if (e.button === 4) (e.preventDefault(), avancar());
+    };
+    window.addEventListener("mouseup", aoClicar);
+    return () => window.removeEventListener("mouseup", aoClicar);
+  }, [voltar, avancar]);
 
   const pedirCaptura = useCallback(() => {
     if (aberto) setCapturando(true);
@@ -120,7 +138,10 @@ export function App() {
       irFoco: () => irPara("foco"),
       irEnergia: () => irPara("energia"),
       alternarBaixaEnergia: () => mudar({ baixaEnergia: !prefs.baixaEnergia }),
+      irAparencia: () => irPara("aparencia"),
       irAjustes: () => irPara("ajustes"),
+      voltar,
+      avancar,
       alternarBaixoEstimulo: () => mudar({ baixoEstimulo: !prefs.baixoEstimulo }),
       alternarClaroEscuro: () => mudar({ modoCor: modoEfetivo(prefs) === "escuro" ? "claro" : "escuro" }),
       aumentarLetra: () => mudar({ tamanho: Math.min(prefs.tamanho + 1, TAMANHOS.length - 1) }),
@@ -136,7 +157,7 @@ export function App() {
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [prefs, mudar, aberto, bloquear, irPara, pedirCaptura]);
+  }, [prefs, mudar, aberto, bloquear, irPara, pedirCaptura, voltar, avancar]);
 
   let tela;
   if (falha)
@@ -160,10 +181,11 @@ export function App() {
       pagina = <PaginaEnergia aoLigarBaixa={() => mudar({ baixaEnergia: true })} aoAbrirProjeto={abrirProjeto} />;
     else if (secao === "projetos")
       pagina = projetoAberto ? (
-        <Projeto key={projetoAberto} id={projetoAberto} aoVoltar={() => setProjetoAberto(null)} />
+        <Projeto key={projetoAberto} id={projetoAberto} aoVoltar={() => irPara("projetos")} />
       ) : (
         <Projetos aoAbrir={abrirProjeto} aoMudarLimite={() => irPara("ajustes")} />
       );
+    else if (secao === "aparencia") pagina = <Aparencia />;
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} temSenha={situacao.temSenha} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
     tela = (
@@ -177,7 +199,10 @@ export function App() {
                 <BaixaEnergia aoSair={() => mudar({ baixaEnergia: false })} aoCapturar={pedirCaptura} />
               </>
             ) : (
-              <Moldura secao={secao} aoEscolherSecao={irPara} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
+              <Moldura
+                secao={secao}
+                aoEscolherSecao={irPara}
+                navegacao={{ podeVoltar: historico.posicao > 0, podeAvancar: historico.posicao < historico.lugares.length - 1, voltar, avancar }} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
                 <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
                 <AvisoAtualizacao />
                 {pagina}

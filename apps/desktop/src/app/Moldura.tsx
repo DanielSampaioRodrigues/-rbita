@@ -1,4 +1,4 @@
-import { BatteryMedium, CalendarDays, FolderKanban, ListChecks, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, type LucideIcon } from "../icones";
+import { ArrowLeft, ArrowRight, Palette, BatteryMedium, CalendarDays, FolderKanban, ListChecks, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, type LucideIcon } from "../icones";
 import type { ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Interruptor } from "../componentes/Interruptor";
@@ -7,7 +7,7 @@ import { textos } from "../textos/pt-BR";
 import { formatarRestante, useFoco } from "../foco/Foco";
 import { Marca } from "./Marca";
 
-export type Secao = "inicio" | "ideias" | "projetos" | "agenda" | "rotinas" | "foco" | "energia" | "ajustes";
+export type Secao = "inicio" | "ideias" | "projetos" | "agenda" | "rotinas" | "foco" | "energia" | "aparencia" | "ajustes";
 
 const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "inicio", icone: House, nome: textos.secoes.inicio },
@@ -17,6 +17,7 @@ const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "rotinas", icone: ListChecks, nome: textos.secoes.rotinas },
   { id: "foco", icone: Timer, nome: textos.secoes.foco },
   { id: "energia", icone: BatteryMedium, nome: textos.secoes.energia },
+  { id: "aparencia", icone: Palette, nome: textos.secoes.aparencia },
   { id: "ajustes", icone: SlidersHorizontal, nome: textos.secoes.ajustes },
 ];
 
@@ -26,10 +27,12 @@ interface Props {
   aoVerAtalhos: () => void;
   aoBloquear: () => void;
   aoCapturar: () => void;
+  /** Setas de voltar e avançar entre as funções (como num navegador). */
+  navegacao: { podeVoltar: boolean; podeAvancar: boolean; voltar: () => void; avancar: () => void };
   children: ReactNode;
 }
 
-export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCapturar, children }: Props) {
+export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCapturar, navegacao, children }: Props) {
   const { prefs, mudar } = usePreferencias();
   const foco = useFoco();
 
@@ -91,6 +94,15 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
       </aside>
 
       <main className="conteudo" id="conteudo">
+        {/* Ficam sempre no mesmo lugar; sem para onde ir, aparecem apagadas. */}
+        <div className="setas-navegacao">
+          <Button className="botao-icone" aria-label={`${textos.navegacao.voltar} (Alt + ←)`} isDisabled={!navegacao.podeVoltar} onPress={navegacao.voltar}>
+            <ArrowLeft aria-hidden="true" size="1.1em" />
+          </Button>
+          <Button className="botao-icone" aria-label={`${textos.navegacao.avancar} (Alt + →)`} isDisabled={!navegacao.podeAvancar} onPress={navegacao.avancar}>
+            <ArrowRight aria-hidden="true" size="1.1em" />
+          </Button>
+        </div>
         {children}
       </main>
     </div>

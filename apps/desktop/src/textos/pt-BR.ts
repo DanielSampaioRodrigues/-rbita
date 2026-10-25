@@ -13,7 +13,16 @@ export const textos = {
     rotinas: "Rotinas",
     foco: "Foco",
     energia: "Energia",
+    aparencia: "Aparência",
     ajustes: "Ajustes",
+  },
+  navegacao: {
+    voltar: "Voltar",
+    avancar: "Avançar",
+  },
+  aparencia: {
+    titulo: "Aparência",
+    descricao: "Tema, fundo, letras e tela. As mudanças aparecem na hora e ficam salvas neste computador.",
   },
   moldura: {
     capturar: "Capturar",
@@ -183,7 +192,7 @@ export const textos = {
     falta_nome: "Dê um nome ao tema para salvar.",
     semContrasteTitulo: "Algumas cores estão com pouco contraste",
     semContrasteTexto:
-      "Do jeito que está, parte do texto fica difícil de ler. O Órbita pode ajustar só essas cores, mantendo o tom, ou você pode salvar assim mesmo liberando a trava de contraste (dá para religar em Ajustes > Tema e fundo).",
+      "Do jeito que está, parte do texto fica difícil de ler. O Órbita pode ajustar só essas cores, mantendo o tom, ou você pode salvar assim mesmo liberando a trava de contraste (dá para religar em Aparência > Tema e fundo).",
     voltarCores: "Voltar e mexer nas cores",
     salvarSemTrava: "Salvar assim e liberar a trava",
     ajustarESalvar: "Ajustar sozinho e salvar",
