@@ -4,7 +4,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
-use super::{agora_ms, novo_id};
+use super::{anexos, agora_ms, novo_id};
 use crate::erro::Erro;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -19,6 +19,10 @@ pub struct Passo {
     /// Tempo sugerido, em minutos.
     #[serde(default)]
     pub minutos: Option<u32>,
+    /// Id do anexo de imagem do passo (foto ou desenho), se houver. Só leitura:
+    /// a imagem é anexada pelos comandos de anexos, com o passo como item.
+    #[serde(default)]
+    pub imagem: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -49,10 +53,16 @@ fn passos(conn: &Connection, rotina: &str) -> Result<Vec<Passo>, Erro> {
     let lista = c
         .query_map([rotina], |r| {
             let d: DadosPasso = serde_json::from_str(&r.get::<_, String>(2)?).unwrap_or_default();
-            Ok(Passo { id: r.get(0)?, titulo: r.get(1)?, icone: d.icone, minutos: d.minutos })
+            Ok(Passo { id: r.get(0)?, titulo: r.get(1)?, icone: d.icone, minutos: d.minutos, imagem: None })
         })?
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(lista)
+    lista
+        .into_iter()
+        .map(|mut p| {
+            p.imagem = anexos::listar_do_item(conn, &p.id)?.into_iter().rev().find(|a| a.tipo == "imagem").map(|a| a.id);
+            Ok(p)
+        })
+        .collect()
 }
 
 pub fn listar(conn: &Connection) -> Result<Vec<Rotina>, Erro> {

@@ -73,6 +73,8 @@ pub struct Projeto {
     pub tarefas_feitas: u32,
     pub tarefas_total: u32,
     pub alterado_em: i64,
+    /// Ids das etiquetas.
+    pub etiquetas: Vec<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -87,6 +89,37 @@ pub struct Tarefa {
     pub peso: Option<String>,
     /// Prazo ("AAAA-MM-DD"), opcional.
     pub prazo: Option<String>,
+    /// Ids das etiquetas.
+    pub etiquetas: Vec<String>,
+}
+
+/// Um item qualquer, só com o necessário para mostrar numa lista de ligações.
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ItemResumo {
+    pub id: String,
+    /// ideia, projeto ou tarefa.
+    pub tipo: String,
+    pub titulo: String,
+    pub estado: Option<String>,
+}
+
+/// Itens ligados a este (ideias, projetos, tarefas), nos dois sentidos.
+pub fn resumo_ligados(conn: &Connection, id: &str) -> Result<Vec<ItemResumo>, Erro> {
+    let mut lista = Vec::new();
+    for outro in etiquetas::ligados(conn, id)? {
+        let r = conn
+            .query_row(
+                "SELECT id, tipo, CASE WHEN tipo = 'ideia' THEN conteudo ELSE titulo END, estado FROM item WHERE id = ?1 AND excluido_em IS NULL",
+                [&outro],
+                |r| Ok(ItemResumo { id: r.get(0)?, tipo: r.get(1)?, titulo: r.get(2)?, estado: r.get(3)? }),
+            )
+            .optional()?;
+        if let Some(r) = r.filter(|r| ["ideia", "projeto", "tarefa"].contains(&r.tipo.as_str())) {
+            lista.push(r);
+        }
+    }
+    Ok(lista)
 }
 
 const ESTADOS_PROJETO: &[&str] = &["ativo", "pausado", "concluido"];
@@ -235,19 +268,24 @@ fn projeto_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Projeto> {
         criado_em: r.get(5)?,
         tarefas_feitas: r.get(6)?,
         tarefas_total: r.get(7)?,
+        etiquetas: vec![],
     })
+}
+
+fn com_etiquetas(conn: &Connection, mut p: Projeto) -> Result<Projeto, Erro> {
+    p.etiquetas = etiquetas::do_item(conn, &p.id)?;
+    Ok(p)
 }
 
 pub fn listar_projetos(conn: &Connection) -> Result<Vec<Projeto>, Erro> {
     let mut c = conn.prepare(&format!("{SELECAO_PROJETO} ORDER BY p.alterado_em DESC"))?;
     let projetos = c.query_map([], projeto_da_linha)?.collect::<Result<Vec<_>, _>>()?;
-    Ok(projetos)
+    projetos.into_iter().map(|p| com_etiquetas(conn, p)).collect()
 }
 
 pub fn obter_projeto(conn: &Connection, id: &str) -> Result<Projeto, Erro> {
-    conn.query_row(&format!("{SELECAO_PROJETO} AND p.id = ?1"), [id], projeto_da_linha)
-        .optional()?
-        .ok_or(Erro::NaoEncontrado)
+    let p = conn.query_row(&format!("{SELECAO_PROJETO} AND p.id = ?1"), [id], projeto_da_linha).optional()?.ok_or(Erro::NaoEncontrado)?;
+    com_etiquetas(conn, p)
 }
 
 /// Cria um projeto ativo (respeitando o limite) ou já pausado.
@@ -323,11 +361,14 @@ pub fn listar_tarefas(conn: &Connection, projeto_id: &str) -> Result<Vec<Tarefa>
            AND (pai_id = ?1 OR pai_id IN (SELECT id FROM item WHERE pai_id = ?1 AND tipo = 'tarefa' AND excluido_em IS NULL))
          ORDER BY ordem, criado_em",
     )?;
-    let tarefas = c
+    let mut tarefas = c
         .query_map([projeto_id], |r| {
-            Ok(Tarefa { id: r.get(0)?, pai_id: r.get(1)?, titulo: r.get(2)?, estado: r.get(3)?, ordem: r.get(4)?, peso: r.get(5)?, prazo: r.get(6)? })
+            Ok(Tarefa { id: r.get(0)?, pai_id: r.get(1)?, titulo: r.get(2)?, estado: r.get(3)?, ordem: r.get(4)?, peso: r.get(5)?, prazo: r.get(6)?, etiquetas: vec![] })
         })?
         .collect::<Result<Vec<_>, _>>()?;
+    for t in &mut tarefas {
+        t.etiquetas = etiquetas::do_item(conn, &t.id)?;
+    }
     Ok(tarefas)
 }
 
@@ -358,7 +399,7 @@ pub fn criar_tarefa(conn: &Connection, pai_id: &str, titulo: &str) -> Result<Tar
         [pai_id],
         |r| r.get(0),
     )?;
-    let tarefa = Tarefa { id: novo_id(), pai_id: pai_id.to_string(), titulo, estado: "a_fazer".into(), ordem, peso: None, prazo: None };
+    let tarefa = Tarefa { id: novo_id(), pai_id: pai_id.to_string(), titulo, estado: "a_fazer".into(), ordem, peso: None, prazo: None, etiquetas: vec![] };
     let agora = agora_ms();
     conn.execute(
         "INSERT INTO item (id, tipo, titulo, estado, pai_id, ordem, criado_em, alterado_em) VALUES (?1, 'tarefa', ?2, 'a_fazer', ?3, ?4, ?5, ?5)",

@@ -21,8 +21,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let pasta = app.path().app_data_dir()?;
+            // Cópias temporárias de anexos abertos da última vez: apagadas.
+            let _ = std::fs::remove_dir_all(comandos::pasta_temporaria_anexos());
             let guarda = Arc::new(GuardaDoSistema { servico: app.config().identifier.clone() });
             app.manage(ditado::Ditado::new(pasta.join("modelos-de-voz")));
             app.manage(bandeja::Bandeja::new(&pasta));
@@ -137,6 +140,14 @@ pub fn run() {
             comandos::excluir_etiqueta,
             comandos::definir_etiquetas_item,
             comandos::ligar_itens,
+            comandos::itens_ligados,
+            comandos::listar_anexos,
+            comandos::anexar_arquivo,
+            comandos::anexar_link,
+            comandos::imagem_anexo,
+            comandos::abrir_anexo,
+            comandos::salvar_anexo,
+            comandos::excluir_anexo,
             comandos::gerar_tema_ia,
             comandos::modelos_imagem_ia,
             comandos::gerar_imagem_ia,

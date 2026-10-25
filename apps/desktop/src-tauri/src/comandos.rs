@@ -9,7 +9,7 @@ use serde::Serialize;
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, energia, etiquetas, eventos, itens, rotinas};
+use crate::banco::{self, anexos, energia, etiquetas, eventos, itens, rotinas};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -721,4 +721,86 @@ pub async fn modelos_imagem_ia(estado: State<'_, Estado>, provedor_id: String) -
 pub async fn gerar_imagem_ia(estado: State<'_, Estado>, provedor_id: String, modelo: String, pedido: String) -> Result<String, Erro> {
     let escolhido = estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor_id))?;
     cliente::gerar_imagem(&escolhido, &modelo, &tema::pedido_de_imagem(&pedido)).await
+}
+
+#[tauri::command]
+pub async fn itens_ligados(estado: State<'_, Estado>, id: String) -> Result<Vec<itens::ItemResumo>, Erro> {
+    estado.com_sessao(|s| itens::resumo_ligados(&s.conn, &id))
+}
+
+// ---------- Anexos ----------
+
+#[tauri::command]
+pub async fn listar_anexos(estado: State<'_, Estado>, item: String) -> Result<Vec<anexos::Anexo>, Erro> {
+    estado.com_sessao(|s| anexos::listar_do_item(&s.conn, &item))
+}
+
+/// Lê o arquivo escolhido e guarda dentro do banco criptografado.
+#[tauri::command]
+pub async fn anexar_arquivo(estado: State<'_, Estado>, item: String, caminho: String) -> Result<anexos::Anexo, Erro> {
+    let caminho = PathBuf::from(caminho);
+    let tamanho = std::fs::metadata(&caminho)?.len() as usize;
+    if tamanho > anexos::MAXIMO_BYTES {
+        return Err(Erro::Arquivo("o arquivo passa de 20 MB, o limite para anexos".into()));
+    }
+    let conteudo = std::fs::read(&caminho)?;
+    let nome = caminho.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    estado.com_sessao(|s| anexos::anexar_arquivo(&s.conn, &item, &nome, &conteudo))
+}
+
+#[tauri::command]
+pub async fn anexar_link(estado: State<'_, Estado>, item: String, nome: String, endereco: String) -> Result<anexos::Anexo, Erro> {
+    estado.com_sessao(|s| anexos::anexar_link(&s.conn, &item, &nome, &endereco))
+}
+
+/// A imagem como endereço de dados, para mostrar na tela.
+#[tauri::command]
+pub async fn imagem_anexo(estado: State<'_, Estado>, id: String) -> Result<String, Erro> {
+    use base64::Engine;
+    estado.com_sessao(|s| {
+        let a = anexos::obter(&s.conn, &id)?;
+        if a.tipo != "imagem" {
+            return Err(Erro::NaoEncontrado);
+        }
+        let bytes = anexos::conteudo(&s.conn, &id)?;
+        Ok(format!("data:{};base64,{}", anexos::mime(&a.nome), base64::engine::general_purpose::STANDARD.encode(bytes)))
+    })
+}
+
+/// Pasta das cópias temporárias para abrir anexos com outro programa.
+pub fn pasta_temporaria_anexos() -> PathBuf {
+    std::env::temp_dir().join("orbita-anexos")
+}
+
+/// Abre um link no navegador, ou o arquivo no programa padrão do computador.
+/// Arquivos viram uma cópia temporária (sem criptografia), apagada quando o Órbita abre de novo.
+#[tauri::command]
+pub async fn abrir_anexo(app: tauri::AppHandle, estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    use tauri_plugin_opener::OpenerExt;
+    let (a, conteudo) = estado.com_sessao(|s| {
+        let a = anexos::obter(&s.conn, &id)?;
+        let c = if a.tipo == "link" { Vec::new() } else { anexos::conteudo(&s.conn, &id)? };
+        Ok((a, c))
+    })?;
+    if a.tipo == "link" {
+        return app.opener().open_url(&a.endereco, None::<&str>).map_err(|e| Erro::Interno(e.to_string()));
+    }
+    let pasta = pasta_temporaria_anexos().join(&a.id);
+    std::fs::create_dir_all(&pasta)?;
+    let caminho = pasta.join(&a.nome);
+    std::fs::write(&caminho, conteudo)?;
+    app.opener().open_path(caminho.to_string_lossy(), None::<&str>).map_err(|e| Erro::Interno(e.to_string()))
+}
+
+/// Salva uma cópia do anexo onde a pessoa escolher.
+#[tauri::command]
+pub async fn salvar_anexo(estado: State<'_, Estado>, id: String, caminho: String) -> Result<(), Erro> {
+    let conteudo = estado.com_sessao(|s| anexos::conteudo(&s.conn, &id))?;
+    std::fs::write(caminho, conteudo)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn excluir_anexo(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| anexos::excluir(&s.conn, &id))
 }

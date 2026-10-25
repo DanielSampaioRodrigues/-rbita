@@ -386,7 +386,8 @@ mod testes {
         )
         .unwrap();
         let rotina = rotinas::criar(&conn, "Manhã").unwrap();
-        rotinas::salvar_passo(&conn, &rotina.id, rotinas::Passo { id: String::new(), titulo: "Tomar água".into(), icone: String::new(), minutos: Some(1) }).unwrap();
+        let passo = rotinas::salvar_passo(&conn, &rotina.id, rotinas::Passo { titulo: "Tomar água".into(), minutos: Some(1), ..Default::default() }).unwrap();
+        crate::banco::anexos::anexar_arquivo(&conn, &passo.id, "copo.png", b"imagem-do-copo").unwrap();
         energia::registrar(&conn, 2, "dia pesado").unwrap();
         let claude = ia::Provedor { id: String::new(), tipo: ia::TipoProvedor::Claude, nome: "Claude".into(), url: "https://api.anthropic.com".into(), modelo: "claude-opus-5-5".into() };
         ia::salvar_provedor(&conn, claude, Some("sk-ant-chave-1234")).unwrap();
@@ -415,6 +416,9 @@ mod testes {
         assert!(ev.iter().any(|e| e.titulo == "Terapia" && e.repeticao.is_some()));
         let r = rotinas::listar(&conn).unwrap();
         assert_eq!(r[0].passos[0].titulo, "Tomar água");
+        // O anexo (conteúdo dentro do banco) volta junto.
+        let img = r[0].passos[0].imagem.clone().expect("imagem do passo");
+        assert_eq!(crate::banco::anexos::conteudo(&conn, &img).unwrap(), b"imagem-do-copo");
         assert_eq!(energia::listar(&conn, 0, i64::MAX).unwrap()[0].nota, "dia pesado");
         let e = ia::estado(&conn).unwrap();
         assert_eq!(e.provedores[0].final_chave.as_deref(), Some("1234"));

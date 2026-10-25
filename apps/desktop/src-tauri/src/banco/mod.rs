@@ -4,6 +4,7 @@
 //! etiquetas e ligações. Todo registro tem identificador único, datas de
 //! criação e alteração e exclusão marcada, para a sincronização futura.
 
+pub mod anexos;
 pub mod energia;
 pub mod etiquetas;
 pub mod eventos;
@@ -119,6 +120,14 @@ pub(crate) const MIGRACOES: &[&str] = &[
     ALTER TABLE item ADD COLUMN ordem REAL NOT NULL DEFAULT 0;
     CREATE INDEX item_pai ON item (pai_id, excluido_em);
     UPDATE item SET tipo = 'ideia', estado = 'guardada' WHERE tipo = 'nota';
+    "#,
+    // 3 · conteúdo dos anexos (imagens e arquivos), dentro do banco criptografado:
+    //     protegidos pela senha e incluídos no backup sem passo extra.
+    r#"
+    CREATE TABLE anexo_conteudo (
+        anexo_id TEXT PRIMARY KEY REFERENCES anexo (id),
+        conteudo BLOB NOT NULL
+    );
     "#,
 ];
 
