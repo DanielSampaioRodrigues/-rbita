@@ -1,6 +1,7 @@
-import { ajustarPaleta, CHAVES_PALETA, conferirPaleta, variaveisDaPaleta, type Paleta, type Tema } from "@orbita/temas";
+import { ajustarPaleta, CHAVES_PALETA, conferirPaleta, variaveisDaPaleta, type Paleta, type Tema, ICONES_PADRAO, type Icones } from "@orbita/temas";
 import { CriarTemaIa } from "../ia/CriarTemaIa";
-import { Check, TriangleAlert, Wand2 } from "lucide-react";
+import { Segmentado } from "../componentes/Segmentado";
+import { Check, TriangleAlert, Wand2, CalendarDays, FolderKanban, Home } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { Aviso, Campo } from "../componentes/Campo";
@@ -39,13 +40,21 @@ function CampoCor({ chave, valor, aoMudar, falha }: { chave: keyof Paleta; valor
 }
 
 /** Prévia ao vivo: um pedaço do app desenhado só com as cores em edição. */
-function Previa({ paleta, cantos, sombra }: { paleta: Paleta; cantos: number; sombra: boolean }) {
-  const estilo = { ...variaveisDaPaleta(paleta), "--multiplicador-cantos": String(cantos), ...(sombra ? {} : { "--sombra": "none" }) } as React.CSSProperties;
+function Previa({ paleta, cantos, sombra, icones }: { paleta: Paleta; cantos: number; sombra: boolean; icones: Icones }) {
+  const estilo = {
+    ...variaveisDaPaleta(paleta),
+    "--multiplicador-cantos": String(cantos),
+    "--traco-icone": String(icones.traco),
+    "--pontas-icone": icones.pontas === "retas" ? "square" : "round",
+    "--juncao-icone": icones.pontas === "retas" ? "miter" : "round",
+    ...(sombra ? {} : { "--sombra": "none" }),
+  } as React.CSSProperties;
   return (
     <div className="previa-tema" style={estilo} aria-label={t.previa} role="img">
       <div className="previa-tema-lateral">
-        <span className="previa-tema-item ativo">Início</span>
-        <span className="previa-tema-item">Projetos</span>
+        <span className="previa-tema-item ativo com-icone"><Home aria-hidden="true" size="1em" /> Início</span>
+        <span className="previa-tema-item com-icone"><FolderKanban aria-hidden="true" size="1em" /> Projetos</span>
+        <span className="previa-tema-item com-icone"><CalendarDays aria-hidden="true" size="1em" /> Agenda</span>
       </div>
       <div className="previa-tema-conteudo">
         <div className="cartao compacto">
@@ -67,6 +76,7 @@ export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; a
   const falhas = new Set(resultados.filter((r) => !r.passa).map((r) => r.frente));
   const tudoPassa = (["claro", "escuro"] as const).every((m) => conferirPaleta(tema[m]).every((r) => r.passa));
 
+  const icones = tema.icones ?? ICONES_PADRAO;
   const mudarCor = (chave: keyof Paleta, valor: string) => setTema((x) => ({ ...x, [modo]: { ...x[modo], [chave]: valor } }));
 
   return (
@@ -99,10 +109,22 @@ export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; a
             </ToggleButtonGroup>
           </div>
           <Interruptor rotulo={t.sombra} ligado={tema.sombra !== false} aoMudar={(sombra) => setTema((x) => ({ ...x, sombra }))} />
+          <Segmentado
+            rotulo={t.tracoIcones}
+            valor={String(icones.traco)}
+            opcoes={[["1.5", t.tracos.fino], ["2", t.tracos.medio], ["2.5", t.tracos.grosso]].map(([valor, nome]) => ({ valor, nome }))}
+            aoMudar={(v) => setTema((x) => ({ ...x, icones: { ...icones, traco: Number(v) } }))}
+          />
+          <Segmentado<Icones["pontas"]>
+            rotulo={t.pontasIcones}
+            valor={icones.pontas}
+            opcoes={[{ valor: "redondas", nome: t.pontas.redondas }, { valor: "retas", nome: t.pontas.retas }]}
+            aoMudar={(pontas) => setTema((x) => ({ ...x, icones: { ...icones, pontas } }))}
+          />
         </div>
 
         <div className="editor-lado">
-          <Previa paleta={paleta} cantos={tema.cantos ?? 1} sombra={tema.sombra !== false} />
+          <Previa paleta={paleta} cantos={tema.cantos ?? 1} sombra={tema.sombra !== false} icones={icones} />
           <section className="cartao compacto" aria-labelledby="contraste-editor">
             <h2 id="contraste-editor">{t.contraste}</h2>
             <ul className="lista-contraste">

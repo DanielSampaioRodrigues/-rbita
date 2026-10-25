@@ -118,12 +118,18 @@ export function lerArquivoTema(texto: string): { tema: Tema; ajustado: boolean }
   const escuroOk = ajustarPaleta(escuro);
   const ajustado = JSON.stringify([claro, escuro]) !== JSON.stringify([claroOk, escuroOk]);
   const cantos = typeof bruto.cantos === "number" ? Math.max(0, Math.min(2, bruto.cantos)) : 1;
+  const ic = (typeof bruto.icones === "object" && bruto.icones !== null ? bruto.icones : {}) as Record<string, unknown>;
+  const icones = {
+    traco: typeof ic.traco === "number" ? Math.max(1, Math.min(3, ic.traco)) : 2,
+    pontas: ic.pontas === "retas" ? ("retas" as const) : ("redondas" as const),
+  };
   return {
     ajustado,
     tema: {
       id: `proprio-${Date.now().toString(36)}`,
       nome,
       cantos,
+      icones,
       sombra: bruto.sombra !== false,
       claro: claroOk,
       escuro: escuroOk,
@@ -138,7 +144,7 @@ export function lerArquivoTema(texto: string): { tema: Tema; ajustado: boolean }
 
 export function gravarArquivoTema(tema: Tema): string {
   return JSON.stringify(
-    { formato: FORMATO_TEMA, versao: 1, nome: tema.nome, cantos: tema.cantos ?? 1, sombra: tema.sombra !== false, claro: tema.claro, escuro: tema.escuro, fundo: tema.fundoPadrao },
+    { formato: FORMATO_TEMA, versao: 1, nome: tema.nome, cantos: tema.cantos ?? 1, icones: tema.icones, sombra: tema.sombra !== false, claro: tema.claro, escuro: tema.escuro, fundo: tema.fundoPadrao },
     null,
     2,
   );

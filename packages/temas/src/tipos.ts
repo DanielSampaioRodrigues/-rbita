@@ -35,6 +35,8 @@ export interface Tema {
   cantos?: number;
   /** false tira as sombras. */
   sombra?: boolean;
+  /** Jeito dos ícones (todos são desenhos de traço). */
+  icones?: Icones;
   /** Fundo sugerido pelo tema; a pessoa pode trocar. */
   fundoPadrao?: Fundo;
   claro: Paleta;
@@ -42,3 +44,12 @@ export interface Tema {
   /** Versão sem cor de destaque, usada no modo de baixo estímulo. */
   baixoEstimulo: { claro: Partial<Paleta>; escuro: Partial<Paleta> };
 }
+
+/** Espessura do traço dos ícones e o jeito das pontas. */
+export interface Icones {
+  /** 1.5 (fino), 2 (médio, padrão) ou 2.5 (grosso). */
+  traco: number;
+  pontas: "redondas" | "retas";
+}
+
+export const ICONES_PADRAO: Icones = { traco: 2, pontas: "redondas" };
