@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "../icones";
 import { useEffect, useRef, useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { api, ErroOrbita, type ProvedorVisivel } from "../api";

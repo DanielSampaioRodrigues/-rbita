@@ -1,4 +1,4 @@
-import { Plus, X } from "lucide-react";
+import { Plus, X } from "../icones";
 import { useEffect, useRef, useState } from "react";
 import { Button, Checkbox, Input, TextField } from "react-aria-components";
 import { api, ErroOrbita, type ProvedorVisivel } from "../api";

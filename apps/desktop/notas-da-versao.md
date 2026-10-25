@@ -1,3 +1,3 @@
-- **Modelo por função na IA**: em Ajustes, cada função (quebrar tarefas, separar a captura, revisar textos) escolhe a IA e também o modelo, de uma lista com todos os modelos da sua conta. Dá para usar um modelo mais rápido para revisar e um mais forte para quebrar tarefas, ou empresas diferentes.
-- **Tema com IA**: o desenho de fundo agora aparece em ladrilhos pequenos, como na prévia. Antes, ele era esticado na janela inteira e quase sumia.
-- Conta Google: se a permissão do Drive ficar desmarcada, o Órbita explica isso e diz como resolver.
+- **Ícones com estilo**: no editor de tema, escolha entre três estilos de ícones (linhas limpas, arredondado ou geométrico), o preenchimento (só linha, cheio ou dois tons) e um efeito (rabiscado, carimbo ou brilho). Pedindo à IA "um tema punk", ela já escolhe isso também. Os efeitos somem no modo baixo estímulo.
+- **Desenhar ícones com IA (experimental)**: a IA desenha todos os ícones do Órbita no estilo que você descrever. Os desenhos podem sair irregulares; você vê tudo antes de aplicar e pode voltar aos ícones prontos quando quiser.
+- **Personalização com IA e modelo próprios**: no painel "Criar com IA" do editor de tema, escolha a IA e o modelo para temas e ícones. A escolha aparece também em Ajustes.

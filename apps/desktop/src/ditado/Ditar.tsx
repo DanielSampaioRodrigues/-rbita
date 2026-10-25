@@ -1,4 +1,4 @@
-import { Mic, Square } from "lucide-react";
+import { Mic, Square } from "../icones";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "react-aria-components";
 import { api, ErroOrbita } from "../api";

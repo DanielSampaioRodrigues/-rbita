@@ -1,4 +1,4 @@
-import { Check, CornerDownRight, Pencil, Plus, Trash2, Sparkles } from "lucide-react";
+import { Check, CornerDownRight, Pencil, Plus, Trash2, Sparkles } from "../icones";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "react-aria-components";
 import { api, type Tarefa } from "../api";

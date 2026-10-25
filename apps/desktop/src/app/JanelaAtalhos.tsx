@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X } from "../icones";
 import { Button, Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { ATALHOS, ATALHOS_GERAIS } from "../atalhos";
 import { Teclas } from "../componentes/Teclas";

@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "../icones";
 import { useState } from "react";
 import { Button, Form, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 import { MODOS_REESCRITA, type ModoReescrita } from "../api";

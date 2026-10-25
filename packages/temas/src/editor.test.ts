@@ -67,3 +67,31 @@ describe("tema escrito por IA", () => {
     expect(() => temaDaIa('{"nome": "x", "claro": {"fundo": "#fff"}}')).toThrow(/faltou alguma cor/);
   });
 });
+
+describe("ícones do tema", () => {
+  it("lê família, preenchimento e efeito, e cai no padrão com valores estranhos", () => {
+    const base = JSON.parse(gravarArquivoTema(TEMAS[0]));
+    const { tema } = lerArquivoTema(JSON.stringify({ ...base, icones: { traco: 2.5, pontas: "retas", familia: "phosphor", preenchimento: "cheio", efeito: "carimbo" } }));
+    expect(tema.icones).toMatchObject({ familia: "phosphor", preenchimento: "cheio", efeito: "carimbo", pontas: "retas" });
+    const { tema: estranho } = lerArquivoTema(JSON.stringify({ ...base, icones: { familia: "outra", efeito: "piscar" } }));
+    expect(estranho.icones).toMatchObject({ familia: "lucide", efeito: "nenhum", preenchimento: "linha" });
+  });
+
+  it("desenhos próprios saem limpos, com a cor do tema e sem nomes estranhos", () => {
+    const base = JSON.parse(gravarArquivoTema(TEMAS[0]));
+    const desenhos = {
+      Home: '<path d="M3 10 12 3l9 7v11H3z" stroke="#ff0000" onclick="alert(1)"/><script>alert(1)</script>',
+      Plus: '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor"/></svg>',
+      Vazio: "<g></g>",
+      "../mal": "<path d='M0 0'/>",
+    };
+    const { tema } = lerArquivoTema(JSON.stringify({ ...base, icones: { traco: 2, pontas: "redondas", desenhos } }));
+    const d = tema.icones?.desenhos ?? {};
+    expect(Object.keys(d).sort()).toEqual(["Home", "Plus"]);
+    expect(d.Home).toContain('stroke="currentColor"');
+    expect(d.Home).not.toMatch(/script|onclick|ff0000/);
+    expect(d.Plus).not.toContain("<svg");
+    // Volta igual ao gravar e ler de novo.
+    expect(lerArquivoTema(gravarArquivoTema(tema)).tema.icones?.desenhos).toEqual(d);
+  });
+});

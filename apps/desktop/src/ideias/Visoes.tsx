@@ -1,5 +1,5 @@
 import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { ChevronRight, Link2, StickyNote } from "lucide-react";
+import { ChevronRight, Link2, StickyNote } from "../icones";
 import { useRef, type ReactNode } from "react";
 import { textoSimples } from "../componentes/textoSimples";
 import { Button } from "react-aria-components";

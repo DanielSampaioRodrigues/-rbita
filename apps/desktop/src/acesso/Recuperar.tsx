@@ -1,4 +1,4 @@
-import { FileText, Keyboard } from "lucide-react";
+import { FileText, Keyboard } from "../icones";
 import { useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { api, ErroOrbita, escolherArquivoRecuperacao } from "../api";

@@ -6,7 +6,7 @@
 pub const SISTEMA: &str = "Você cria temas visuais para o Órbita, um organizador para pessoas neurodivergentes. \
 Os temas devem ser calmos e confortáveis para quem tem sensibilidade sensorial: nada de cores muito saturadas, nada de vermelho gritante, contraste alto no texto. \
 Responda só com um JSON, sem nenhum texto antes ou depois, neste formato:\n\
-{\"nome\": \"nome curto do tema\", \"cantos\": 1, \"sombra\": true, \"icones\": {\"traco\": 2, \"pontas\": \"redondas\"}, \"claro\": PALETA, \"escuro\": PALETA, \"fundoSvg\": \"<svg ...>...</svg>\"}\n\
+{\"nome\": \"nome curto do tema\", \"cantos\": 1, \"sombra\": true, \"icones\": {\"traco\": 2, \"pontas\": \"redondas\", \"familia\": \"lucide\", \"preenchimento\": \"linha\", \"efeito\": \"nenhum\"}, \"claro\": PALETA, \"escuro\": PALETA, \"fundoSvg\": \"<svg ...>...</svg>\"}\n\
 PALETA tem estas 11 chaves, cada uma com uma cor hexadecimal #rrggbb: \
 fundo (fundo da janela), superficie (painéis e cartões), superficieAlternativa (áreas destacadas dentro dos painéis), \
 texto (contraste de pelo menos 7:1 sobre fundo, superficie e superficieAlternativa), textoSuave (pelo menos 4.5:1), \
@@ -16,7 +16,11 @@ foco (anel de foco do teclado, pelo menos 3:1), atencao (avisos, pelo menos 4.5:
 No modo escuro, os fundos são escuros e o texto é claro. \
 \"cantos\" vai de 0.3 (retos) a 1.4 (redondos). \
 \"icones\" é o estilo dos ícones (desenhados só com linhas): \"traco\" é a espessura da linha, de 1 (fino, delicado) a 3 (grosso, mais fácil de ver); \
-\"pontas\" é \"redondas\" (mais suave) ou \"retas\" (mais geométrico). Combine com o clima do tema e siga o que a pessoa pedir sobre os ícones. \
+\"pontas\" é \"redondas\" (mais suave) ou \"retas\" (mais geométrico); \
+\"familia\" é \"lucide\" (linhas limpas e neutras), \"phosphor\" (arredondado, amigável) ou \"tabler\" (geométrico, técnico); \
+\"preenchimento\" (só vale na phosphor) é \"linha\", \"cheio\" (ícones preenchidos, mais pesados) ou \"dois-tons\"; \
+\"efeito\" é \"nenhum\", \"rabiscado\" (traço tremido, feito à mão, bom para punk, fanzine, caderno), \"carimbo\" (sombra deslocada colorida, bom para punk, pop, retrô) ou \"brilho\" (halo suave, bom para neon, noite, ficção científica). \
+Combine tudo com o clima do tema e siga o que a pessoa pedir sobre os ícones. Para um pedido calmo ou sem estilo definido, use efeito \"nenhum\". \
 \"fundoSvg\" é opcional: um padrão discreto que se repete lado a lado (ladrilho), com viewBox de até 400 por 400, cores suaves próximas do fundo, \
 sem texto, sem scripts, sem imagens nem links externos, com no máximo 4000 caracteres. Se a pessoa pedir sem desenho, não inclua \"fundoSvg\".";
 
@@ -55,6 +59,31 @@ Cores suaves, pouco contraste, poucos detalhes, sem texto, sem letras, sem pesso
     )
 }
 
+/// Desenhar ícones próprios (experimental). A IA recebe o estilo pedido, os ícones
+/// a desenhar (nome e o que mostram) e, se houver, alguns já feitos, para manter o estilo.
+pub const SISTEMA_ICONES: &str = "Você desenha ícones de interface em SVG para o Órbita, um organizador para pessoas neurodivergentes. \
+Regras de todo ícone: área de 24 por 24 (viewBox 0 0 24 24), com 2 de margem; desenho simples, legível em 16 pixels; \
+use só path, circle, rect, line, polyline, polygon e ellipse; cor sempre currentColor (stroke=\"currentColor\" e fill=\"none\", ou fill=\"currentColor\" em partes cheias); \
+nada de texto, imagens, scripts, gradientes, filtros ou links. O ícone precisa continuar reconhecível pelo que ele mostra; o estilo muda o jeito do traço, não o significado. \
+Todos os ícones devem parecer da mesma família: mesma espessura, mesmas pontas, mesmo nível de detalhe. \
+Responda só com JSON, sem texto antes ou depois: {\"icones\": {\"Nome\": \"<path .../>...\"}} com o miolo do SVG de cada ícone (sem a tag svg).";
+
+pub const MAXIMO_ESTILO: usize = 600;
+
+/// Monta o pedido de um lote de ícones.
+pub fn pedido_de_icones(estilo: &str, icones: &[(String, String)], referencia: Option<&str>) -> String {
+    let estilo: String = estilo.trim().chars().take(MAXIMO_ESTILO).collect();
+    let mut m = format!("Estilo pedido: {estilo}\n\nDesenhe estes ícones (nome: o que mostra):\n");
+    for (nome, sentido) in icones.iter().take(20) {
+        m.push_str(&format!("- {nome}: {sentido}\n"));
+    }
+    if let Some(r) = referencia {
+        let r: String = r.chars().take(6000).collect();
+        m.push_str(&format!("\nJá desenhados neste estilo (siga exatamente o mesmo jeito):\n{r}\n"));
+    }
+    m
+}
+
 #[cfg(test)]
 mod testes {
     use super::*;
@@ -70,5 +99,14 @@ mod testes {
     fn acha_modelos_de_imagem_pela_lista() {
         let todos: Vec<String> = ["gpt-x", "gpt-image-2", "dall-e-3", "imagen-4", "text-embedding-image", "grok-vision-image"].iter().map(|s| s.to_string()).collect();
         assert_eq!(modelos_de_imagem(&todos), vec!["dall-e-3", "gpt-image-2", "imagen-4"]);
+    }
+
+    #[test]
+    fn pedido_de_icones_leva_estilo_lista_e_referencia() {
+        let lista = vec![("Home".to_string(), "casa".to_string()), ("X".to_string(), "xis".to_string())];
+        let m = pedido_de_icones("  punk  ", &lista, Some("{\"Plus\": \"<line/>\"}"));
+        assert!(m.starts_with("Estilo pedido: punk\n"));
+        assert!(m.contains("- Home: casa") && m.contains("- X: xis") && m.contains("Plus"));
+        assert!(!pedido_de_icones("a", &lista, None).contains("Já desenhados"));
     }
 }

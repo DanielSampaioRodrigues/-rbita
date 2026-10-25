@@ -1,4 +1,4 @@
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "../icones";
 import { useState } from "react";
 import { Button } from "react-aria-components";
 import { Aviso } from "../componentes/Campo";

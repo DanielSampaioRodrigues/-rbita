@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus } from "../icones";
 import { useState } from "react";
 import { Button, Checkbox, Form } from "react-aria-components";
 import { api, type Tarefa } from "../api";

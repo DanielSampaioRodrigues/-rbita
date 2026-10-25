@@ -1,4 +1,4 @@
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "../icones";
 import { createContext, useContext } from "react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 import { api, type EstadoTarefa, type Etiqueta, type Peso, type Tarefa } from "../api";

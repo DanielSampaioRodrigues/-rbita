@@ -1,4 +1,4 @@
-import { Download, ExternalLink, FileText, Link2, Paperclip, Tag, Trash2, X } from "lucide-react";
+import { Download, ExternalLink, FileText, Link2, Paperclip, Tag, Trash2, X } from "../icones";
 import { useCallback, useEffect, useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { api, escolherArquivoParaAnexar, escolherOndeSalvarAnexo, type Anexo, type Etiqueta, type ItemResumo } from "../api";

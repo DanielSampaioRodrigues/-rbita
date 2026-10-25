@@ -2,7 +2,7 @@
 // cor até passar, e ler/gravar o arquivo de tema (.orbita-tema).
 import { contraste, lerHex, MINIMO } from "./contraste";
 import { limparSvg } from "./svg";
-import type { Fundo, Paleta, Tema } from "./tipos";
+import type { Fundo, Icones, Paleta, Tema } from "./tipos";
 
 export const CHAVES_PALETA: (keyof Paleta)[] = [
   "fundo", "superficie", "superficieAlternativa", "texto", "textoSuave", "borda",
@@ -119,10 +119,15 @@ export function lerArquivoTema(texto: string): { tema: Tema; ajustado: boolean }
   const ajustado = JSON.stringify([claro, escuro]) !== JSON.stringify([claroOk, escuroOk]);
   const cantos = typeof bruto.cantos === "number" ? Math.max(0, Math.min(2, bruto.cantos)) : 1;
   const ic = (typeof bruto.icones === "object" && bruto.icones !== null ? bruto.icones : {}) as Record<string, unknown>;
-  const icones = {
+  const icones: Icones = {
     traco: typeof ic.traco === "number" ? Math.max(1, Math.min(3, ic.traco)) : 2,
-    pontas: ic.pontas === "retas" ? ("retas" as const) : ("redondas" as const),
+    pontas: ic.pontas === "retas" ? "retas" : "redondas",
+    familia: ic.familia === "phosphor" || ic.familia === "tabler" ? ic.familia : "lucide",
+    preenchimento: ic.preenchimento === "cheio" || ic.preenchimento === "dois-tons" ? ic.preenchimento : "linha",
+    efeito: ic.efeito === "rabiscado" || ic.efeito === "carimbo" || ic.efeito === "brilho" ? ic.efeito : "nenhum",
+    desenhos: lerDesenhos(ic.desenhos),
   };
+  if (!icones.desenhos) delete icones.desenhos;
   return {
     ajustado,
     tema: {
@@ -140,6 +145,37 @@ export function lerArquivoTema(texto: string): { tema: Tema; ajustado: boolean }
       fundoPadrao: lerFundo(bruto.fundo),
     },
   };
+}
+
+const MAXIMO_DESENHOS = 150;
+const MAXIMO_DESENHO = 6000;
+
+/** Só o miolo de um SVG de ícone 24 × 24, limpo e com as cores trocadas pela cor do texto. */
+export function limparDesenhoIcone(miolo: string): string | null {
+  if (miolo.length > MAXIMO_DESENHO) return null;
+  // Aceita o SVG inteiro ou só o miolo.
+  const so = miolo.replace(/^[\s\S]*?<svg\b[^>]*>/i, "").replace(/<\/svg>\s*$/i, "");
+  let limpo: string;
+  try {
+    limpo = limparSvg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${so}</svg>`);
+  } catch {
+    return null;
+  }
+  const dentro = limpo.replace(/^[\s\S]*?<svg\b[^>]*>/i, "").replace(/<\/svg>\s*$/i, "").trim();
+  if (!/<(path|circle|rect|line|polyline|polygon|ellipse)\b/i.test(dentro)) return null;
+  // As cores seguem o tema: qualquer cor fixa vira a cor do texto (contraste garantido).
+  return dentro.replace(/\b(fill|stroke)\s*=\s*"(?!none|currentColor)[^"]*"/gi, '$1="currentColor"');
+}
+
+function lerDesenhos(bruto: unknown): Record<string, string> | undefined {
+  if (typeof bruto !== "object" || bruto === null) return undefined;
+  const desenhos: Record<string, string> = {};
+  for (const [nome, svg] of Object.entries(bruto as Record<string, unknown>).slice(0, MAXIMO_DESENHOS)) {
+    if (!/^[A-Za-z0-9]{1,40}$/.test(nome) || typeof svg !== "string") continue;
+    const limpo = limparDesenhoIcone(svg);
+    if (limpo) desenhos[nome] = limpo;
+  }
+  return Object.keys(desenhos).length ? desenhos : undefined;
 }
 
 export function gravarArquivoTema(tema: Tema): string {

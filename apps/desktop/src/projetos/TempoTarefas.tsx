@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Flag } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flag } from "../icones";
 import { useState } from "react";
 import { Button } from "react-aria-components";
 import { chaveDia, diasDaGradeDoMes, inicioDoDia, inicioDoMes } from "../agenda/datas";

@@ -1,4 +1,4 @@
-import { FolderPlus, Trash2, X } from "lucide-react";
+import { FolderPlus, Trash2, X } from "../icones";
 import { CampoRico } from "../componentes/CampoRico";
 import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";

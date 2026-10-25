@@ -139,3 +139,11 @@ kbd {
 
 /* Ícones do tema: espessura do traço e pontas (os ícones são desenhos de traço). */
 svg[stroke-linecap] { stroke-width: var(--traco-icone, 2); stroke-linecap: var(--pontas-icone, round); stroke-linejoin: var(--juncao-icone, round); }
+
+/* Efeitos dos ícones, escolhidos pelo tema (a prévia do editor usa o seu próprio). No baixo estímulo, nenhum. */
+[data-icones-efeito="nenhum"] { --filtro-icone: none; }
+[data-icones-efeito="rabiscado"] { --filtro-icone: url(#orbita-rabiscado); }
+[data-icones-efeito="carimbo"] { --filtro-icone: drop-shadow(0.12em 0.12em 0 color-mix(in srgb, var(--cor-destaque) 70%, transparent)); }
+[data-icones-efeito="brilho"] { --filtro-icone: drop-shadow(0 0 0.14em color-mix(in srgb, var(--cor-destaque) 80%, transparent)); }
+svg.icone { filter: var(--filtro-icone, none); }
+:root[data-baixo-estimulo="true"] svg.icone { filter: none; }

@@ -1,6 +1,6 @@
 # O que falta implementar
 
-25/10/2026 · versão 0.22.0. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
+25/10/2026 · versão 0.23.0. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
 
 ## 1. Pendências da Onda 1 (o que está pela metade)
 
@@ -49,7 +49,8 @@ Plano em etapas em `docs/plano-onda-2.md`.
 ## 4. Onda 4: lançamento e comunidade
 
 - [ ] Distribuição gratuita, página do projeto e de doação, onde hospedar os instaladores.
-- [ ] Galeria de temas da comunidade, incluindo **conjuntos de ícones redesenhados** (hoje o tema e a IA mudam só o traço e as pontas; redesenhar os ícones com IA ficou para cá, porque a IA tende a desenhar cada ícone num estilo).
+- [ ] Galeria de temas da comunidade, incluindo conjuntos de ícones (desde a 0.23.0 há três famílias prontas, efeitos e o desenho de ícones com IA, experimental).
+- [ ] **Importar coleção de ícones em SVG** (por exemplo, comprada ou baixada de um banco como o Magnific/Freepik): a pessoa escolhe os arquivos e liga cada um a um ícone do Órbita. Uso pessoal tudo bem; para publicar na galeria, conferir a licença da coleção.
 - [ ] **Logo do Órbita no login do Google** (exige a verificação de marca do Google, que leva semanas; hoje a tela de permissão aparece sem logo).
 - [ ] Assinatura digital do instalador do Windows (tira o aviso "O Windows protegeu o computador").
 - [ ] Lojas de aplicativo ou versão web instalável no celular.

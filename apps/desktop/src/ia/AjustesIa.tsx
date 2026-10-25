@@ -1,4 +1,4 @@
-import { Bot, Cpu } from "lucide-react";
+import { Bot, Cpu } from "../icones";
 import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";
 import { api, type EstadoIa, type FuncaoIa, type ProvedorVisivel } from "../api";
@@ -10,7 +10,7 @@ import { JanelaProvedor } from "./JanelaProvedor";
 import { recarregarRecursos } from "../ditado/recursos";
 
 const t = textos.ia;
-const FUNCOES: FuncaoIa[] = ["quebrar", "conversa", "revisao"];
+const FUNCOES: FuncaoIa[] = ["quebrar", "conversa", "revisao", "personalizacao"];
 const NENHUM = "nenhum";
 /** Na escolha de modelo: o modelo padrão do provedor. */
 const PADRAO = "__padrao__";
@@ -27,8 +27,8 @@ function modelosDe(p: ProvedorVisivel): Promise<string[]> {
   return modelosEmCache.get(chave)!;
 }
 
-/** Uma função: qual IA (empresa) e qual modelo dela. */
-function Funcao({ funcao, estado, aoMudar }: { funcao: FuncaoIa; estado: EstadoIa; aoMudar: (e: EstadoIa) => void }) {
+/** Uma função: qual IA (empresa) e qual modelo dela. Usado em Ajustes e no editor de tema. */
+export function EscolherIaDaFuncao({ funcao, estado, aoMudar, legenda }: { funcao: FuncaoIa; estado: EstadoIa; aoMudar: (e: EstadoIa) => void; legenda?: string }) {
   const provedor = estado.provedores.find((p) => p.id === estado.funcoes[funcao]) ?? null;
   const modelo = estado.modelos[funcao] ?? null;
   const [lista, setLista] = useState<string[] | null | "erro">(null);
@@ -52,7 +52,7 @@ function Funcao({ funcao, estado, aoMudar }: { funcao: FuncaoIa; estado: EstadoI
 
   return (
     <fieldset className="grupo-campos funcao-ia">
-      <legend className="campo-rotulo">{t.funcoes[funcao]}</legend>
+      <legend className="campo-rotulo">{legenda ?? t.funcoes[funcao]}</legend>
       <div className="linha-campos">
         <Escolha
           rotulo={t.provedorDaFuncao}
@@ -125,7 +125,7 @@ export function AjustesIa() {
           <h3>{t.funcoesTitulo}</h3>
           <p className="campo-ajuda">{t.funcoesAjuda}</p>
           {FUNCOES.map((f) => (
-            <Funcao key={f} funcao={f} estado={estado} aoMudar={setEstado} />
+            <EscolherIaDaFuncao key={f} funcao={f} estado={estado} aoMudar={setEstado} />
           ))}
         </>
       )}

@@ -1,4 +1,4 @@
-import { FileUp } from "lucide-react";
+import { FileUp } from "../icones";
 import { useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { avaliarPin } from "../acesso/validacao";

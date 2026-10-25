@@ -595,3 +595,8 @@
 /* Conversa com a IA ao conferir a lista separada */
 .conversa-ia { display: grid; gap: var(--espaco-3); margin-top: var(--espaco-4); padding-top: var(--espaco-4); border-top: 1px solid var(--cor-borda); }
 .pedidos-feitos ol { margin: var(--espaco-1) 0 0; padding-left: 1.4em; display: grid; gap: var(--espaco-1); color: var(--cor-texto-suave); }
+
+/* Prévia dos ícones desenhados pela IA */
+.grade-icones-ia { list-style: none; margin: 0; padding: var(--espaco-3); display: grid; grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr)); gap: var(--espaco-2); border: 1px solid var(--cor-borda); border-radius: var(--canto); background: var(--cor-superficie); }
+.grade-icones-ia li { display: grid; place-items: center; height: 2.75rem; border-radius: var(--canto-pequeno); color: var(--cor-texto); }
+.grade-icones-ia li.faltou { opacity: 0.35; }

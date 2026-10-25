@@ -1,4 +1,4 @@
-import { BatteryLow } from "lucide-react";
+import { BatteryLow } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { chaveDia, inicioDoDia, somarDias } from "../agenda/datas";

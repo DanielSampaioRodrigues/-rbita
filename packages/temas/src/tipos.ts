@@ -45,11 +45,23 @@ export interface Tema {
   baixoEstimulo: { claro: Partial<Paleta>; escuro: Partial<Paleta> };
 }
 
-/** Espessura do traço dos ícones e o jeito das pontas. */
+export type FamiliaIcones = "lucide" | "phosphor" | "tabler";
+export type PreenchimentoIcones = "linha" | "cheio" | "dois-tons";
+export type EfeitoIcones = "nenhum" | "rabiscado" | "carimbo" | "brilho";
+
+/** Estilo dos ícones: família, traço, pontas, preenchimento, efeito e desenhos próprios. */
 export interface Icones {
-  /** 1.5 (fino), 2 (médio, padrão) ou 2.5 (grosso). */
+  /** Espessura do traço, de 1 a 3. */
   traco: number;
   pontas: "redondas" | "retas";
+  /** Lucide (linhas limpas, o padrão), Phosphor (arredondada) ou Tabler (geométrica). */
+  familia?: FamiliaIcones;
+  /** Só na Phosphor: linha, cheio ou dois tons. */
+  preenchimento?: PreenchimentoIcones;
+  /** Efeito por cima do desenho. Some no baixo estímulo. */
+  efeito?: EfeitoIcones;
+  /** Desenhos próprios (feitos pela IA), por nome do ícone: só o miolo do SVG, 24 × 24, já limpo. */
+  desenhos?: Record<string, string>;
 }
 
-export const ICONES_PADRAO: Icones = { traco: 2, pontas: "redondas" };
+export const ICONES_PADRAO: Icones = { traco: 2, pontas: "redondas", familia: "lucide", preenchimento: "linha", efeito: "nenhum" };

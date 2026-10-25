@@ -1,4 +1,4 @@
-import { Copy, Download, Printer } from "lucide-react";
+import { Copy, Download, Printer } from "../icones";
 import { useState } from "react";
 import { Button } from "react-aria-components";
 import { salvarArquivoRecuperacao } from "../api";

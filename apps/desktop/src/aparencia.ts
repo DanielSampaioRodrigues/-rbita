@@ -2,6 +2,7 @@ import { aplicarVariaveis, lerHex, paletaFinal, variaveisDaPaleta, type Modo, ty
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { aplicarFundo } from "./fundo";
+import { definirEstiloIcones } from "./icones";
 import {
   DENSIDADES,
   ESPACO_LETRAS,
@@ -46,6 +47,9 @@ export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = docume
   raiz.dataset.modo = modo;
   raiz.dataset.baixoEstimulo = String(prefs.baixoEstimulo);
   raiz.dataset.semSombra = String(tema.sombra === false);
+  // Ícones: família, preenchimento e desenhos próprios vêm do tema; o efeito vai para o CSS.
+  definirEstiloIcones(tema.icones);
+  raiz.dataset.iconesEfeito = tema.icones?.efeito ?? "nenhum";
   void aplicarFundo(raiz, prefs.fundo ?? tema.fundoPadrao ?? { tipo: "cor" }, paleta, {
     baixoEstimulo: prefs.baixoEstimulo,
     reduzirAnimacao: consultaMovimento().matches,

@@ -165,6 +165,7 @@ pub fn run() {
             comandos::salvar_anexo,
             comandos::excluir_anexo,
             comandos::gerar_tema_ia,
+            comandos::desenhar_icones_ia,
             comandos::modelos_imagem_ia,
             comandos::gerar_imagem_ia,
             comandos::definir_bandeja,

@@ -1,4 +1,4 @@
-import { Flag } from "lucide-react";
+import { Flag } from "../icones";
 import { useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { api, type Tarefa } from "../api";

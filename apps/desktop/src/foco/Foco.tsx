@@ -1,4 +1,4 @@
-import { Pause, Play, Square } from "lucide-react";
+import { Pause, Play, Square } from "../icones";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Button, Form } from "react-aria-components";
 import { useRecado } from "../app/Recado";

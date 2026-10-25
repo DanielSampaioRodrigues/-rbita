@@ -1,4 +1,4 @@
-import { PenLine } from "lucide-react";
+import { PenLine } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, Checkbox } from "react-aria-components";
 import { LinhaOcorrencia } from "../agenda/Agenda";

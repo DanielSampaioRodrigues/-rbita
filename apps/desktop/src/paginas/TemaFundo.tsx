@@ -1,5 +1,5 @@
 import { GRADIENTES, gravarArquivoTema, lerArquivoTema, limparSvg, PADROES, paletaFinal, SvgInvalido, TEMAS, camadaDeFundo, type Fundo, type Tema } from "@orbita/temas";
-import { Download, ImagePlus, Palette, Shapes, Trash2, Upload } from "lucide-react";
+import { Download, ImagePlus, Palette, Shapes, Trash2, Upload } from "../icones";
 import { Button } from "react-aria-components";
 import { exportarTema } from "../api";
 import { useRecado } from "../app/Recado";

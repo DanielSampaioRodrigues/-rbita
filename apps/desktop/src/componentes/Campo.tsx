@@ -1,4 +1,4 @@
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "../icones";
 import { useRef, useState, type ReactNode } from "react";
 import { Button, Input, Label, Text, TextArea, TextField } from "react-aria-components";
 import { useDitar } from "../ditado/Ditar";

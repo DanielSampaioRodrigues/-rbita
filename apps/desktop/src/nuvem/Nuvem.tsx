@@ -1,4 +1,4 @@
-import { Cloud, CloudUpload, LogIn } from "lucide-react";
+import { Cloud, CloudUpload, LogIn } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
 import { avaliarPin } from "../acesso/validacao";

@@ -1,4 +1,4 @@
-import { Tags, Trash2 } from "lucide-react";
+import { Tags, Trash2 } from "../icones";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { api, type CorEtiqueta, type Etiqueta, type Ideia } from "../api";

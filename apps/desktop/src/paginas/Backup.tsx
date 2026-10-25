@@ -1,4 +1,4 @@
-import { Download, FolderOpen, Upload } from "lucide-react";
+import { Download, FolderOpen, Upload } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { api, escolherOndeSalvarBackup, escolherPasta, type SituacaoBackup } from "../api";

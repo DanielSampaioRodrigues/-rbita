@@ -1,7 +1,7 @@
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, BatteryLow, EyeOff, GripVertical, LayoutGrid, Lightbulb, MoveHorizontal, PenLine, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, BatteryLow, EyeOff, GripVertical, LayoutGrid, Lightbulb, MoveHorizontal, PenLine, Plus } from "../icones";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { LinhaOcorrencia } from "../agenda/Agenda";

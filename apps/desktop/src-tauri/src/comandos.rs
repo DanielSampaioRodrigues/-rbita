@@ -746,8 +746,25 @@ pub async fn gerar_tema_ia(estado: State<'_, Estado>, provedor_id: String, pedid
     if pedido.trim().is_empty() {
         return Err(Erro::TextoVazio);
     }
-    let escolhido = estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor_id))?;
+    let escolhido = estado.com_sessao(|s| ia::provedor_para(&s.conn, "personalizacao", &provedor_id))?;
     cliente::completar(&escolhido, tema::SISTEMA, &tema::montar_pedido(&pedido, anterior.as_deref(), com_desenho)).await
+}
+
+/// Experimental: a IA desenha um lote de ícones (nome e o que mostram) no estilo pedido.
+/// Devolve o texto da IA; a tela lê o JSON, limpa cada desenho e mostra antes de aplicar.
+#[tauri::command]
+pub async fn desenhar_icones_ia(
+    estado: State<'_, Estado>,
+    provedor_id: String,
+    estilo: String,
+    icones: Vec<(String, String)>,
+    referencia: Option<String>,
+) -> Result<String, Erro> {
+    if estilo.trim().is_empty() || icones.is_empty() {
+        return Err(Erro::TextoVazio);
+    }
+    let escolhido = estado.com_sessao(|s| ia::provedor_para(&s.conn, "personalizacao", &provedor_id))?;
+    cliente::completar(&escolhido, tema::SISTEMA_ICONES, &tema::pedido_de_icones(&estilo, &icones, referencia.as_deref())).await
 }
 
 /// Modelos de imagem que a conta da pessoa tem nesse provedor (pode ser nenhum).

@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Pause, Pencil, Play, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Pause, Pencil, Play, RotateCcw, Sparkles, Trash2 } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { api, type Etiqueta, type EstadoProjeto, type ProvedorVisivel, type Projeto as TipoProjeto, type Tarefa } from "../api";

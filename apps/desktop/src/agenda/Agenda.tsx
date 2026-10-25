@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Flag, Plus, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flag, Plus, Repeat } from "../icones";
 import { useEffect, useMemo, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { api, type Evento, type Prazo } from "../api";

@@ -24,7 +24,8 @@ const CONFIG_IA: &str = "ia";
 const PREFIXO_CHAVE: &str = "ia_chave:";
 
 /// Funções que podem usar IA, cada uma com o seu provedor.
-pub const FUNCOES: &[&str] = &["quebrar", "conversa", "revisao"];
+/// "personalizacao": criar temas e desenhar ícones.
+pub const FUNCOES: &[&str] = &["quebrar", "conversa", "revisao", "personalizacao"];
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -66,6 +67,9 @@ struct ConfigIa {
     #[serde(default)]
     modelos: BTreeMap<String, String>,
     bloquear_sensivel: bool,
+    /// Configurações de antes da 0.23 não tinham a função "personalizacao".
+    #[serde(default)]
+    personalizacao_migrada: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -106,8 +110,19 @@ fn validar_url(url: &str) -> Result<String, Erro> {
 
 fn ler(conn: &Connection) -> Result<ConfigIa, Erro> {
     Ok(match banco::ler_config(conn, CONFIG_IA)? {
-        Some(json) => serde_json::from_str(&json).unwrap_or_default(),
-        None => ConfigIa::default(),
+        Some(json) => {
+            let mut c: ConfigIa = serde_json::from_str(&json).unwrap_or_default();
+            // Quem já usava a IA ganha a função nova com o provedor da revisão (ou o primeiro).
+            if !c.personalizacao_migrada {
+                let id = c.funcoes.get("revisao").cloned().or_else(|| c.provedores.first().map(|p| p.id.clone()));
+                if let Some(id) = id {
+                    c.funcoes.entry("personalizacao".into()).or_insert(id);
+                }
+                c.personalizacao_migrada = true;
+            }
+            c
+        }
+        None => ConfigIa { personalizacao_migrada: true, ..ConfigIa::default() },
     })
 }
 
@@ -218,6 +233,18 @@ pub fn provedor_por_id(conn: &Connection, id: &str) -> Result<Escolhido, Erro> {
     let provedor = ler(conn)?.provedores.into_iter().find(|p| p.id == id).ok_or(Erro::NaoEncontrado)?;
     let chave = ler_chave(conn, id)?;
     Ok(Escolhido { provedor, chave })
+}
+
+/// Um provedor escolhido na tela para uma função: se for o mesmo da função, vale o modelo dela.
+pub fn provedor_para(conn: &Connection, funcao: &str, id: &str) -> Result<Escolhido, Erro> {
+    let config = ler(conn)?;
+    let mut escolhido = provedor_por_id(conn, id)?;
+    if config.funcoes.get(funcao).map(String::as_str) == Some(id) {
+        if let Some(m) = config.modelos.get(funcao) {
+            escolhido.provedor.modelo = m.clone();
+        }
+    }
+    Ok(escolhido)
 }
 
 /// O provedor escolhido para a função. `sensivel`: o pedido leva dados de

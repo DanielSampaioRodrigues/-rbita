@@ -1,7 +1,7 @@
 import {
   Backpack, BedDouble, BookOpen, CalendarDays, Coffee, Footprints, GlassWater, Heart, House, Laptop, Moon, Music,
   Pill, Shirt, ShowerHead, Smartphone, Sun, Utensils, Wind, type LucideIcon,
-} from "lucide-react";
+} from "../icones";
 
 /** Ícones que a pessoa pode escolher para cada passo. Nome literal ao lado, sempre. */
 export const ICONES: Record<string, { icone: LucideIcon; nome: string }> = {

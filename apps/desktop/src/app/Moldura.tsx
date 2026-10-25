@@ -1,4 +1,4 @@
-import { BatteryMedium, CalendarDays, FolderKanban, ListChecks, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { BatteryMedium, CalendarDays, FolderKanban, ListChecks, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, type LucideIcon } from "../icones";
 import type { ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Interruptor } from "../componentes/Interruptor";

@@ -1,14 +1,14 @@
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "../icones";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "react-aria-components";
 import { gravarArquivoTema, svgComoUrl, temaDaIa, type Fundo, type Tema } from "@orbita/temas";
 import { api, ErroOrbita, type EstadoIa } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
-import { Escolha } from "../componentes/Escolha";
 import { Segmentado } from "../componentes/Segmentado";
 import { reduzirImagem } from "../fundo";
 import { textos } from "../textos/pt-BR";
 import { modeloDe } from "./provedores";
+import { EscolherIaDaFuncao } from "./AjustesIa";
 
 const t = textos.temaIa;
 type TipoFundo = "nenhum" | "svg" | "png";
@@ -17,9 +17,9 @@ type TipoFundo = "nenhum" | "svg" | "png";
  * Painel do editor de tema: conversa com a IA para criar ou ajustar o tema.
  * Cada pedido manda junto o tema atual, para a IA ajustar em vez de recomeçar.
  */
-export function CriarTemaIa({ tema, aoAplicar }: { tema: Tema; aoAplicar: (t: Tema) => void }) {
-  const [ia, setIa] = useState<EstadoIa | null>(null);
-  const [provedorId, setProvedorId] = useState<string | null>(null);
+export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; aoAplicar: (t: Tema) => void; ia: EstadoIa | null; aoMudarIa: (e: EstadoIa) => void }) {
+  // A IA e o modelo da função "Personalização" (os mesmos de Ajustes).
+  const provedorId = ia?.funcoes.personalizacao ?? null;
   const [modelosImagem, setModelosImagem] = useState<string[] | null>(null);
   const [fundo, setFundo] = useState<TipoFundo>("svg");
   const [pedido, setPedido] = useState("");
@@ -27,13 +27,6 @@ export function CriarTemaIa({ tema, aoAplicar }: { tema: Tema; aoAplicar: (t: Te
   const [fase, setFase] = useState<"parado" | "tema" | "imagem">("parado");
   const [aviso, setAviso] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const pedidoAtual = useRef(0);
-
-  useEffect(() => {
-    api.estadoIa().then((e) => {
-      setIa(e);
-      setProvedorId(e.provedores.find((p) => p.id === e.funcoes.quebrar)?.id ?? e.provedores[0]?.id ?? null);
-    }, () => setIa(null));
-  }, []);
 
   const provedor = ia?.provedores.find((p) => p.id === provedorId) ?? null;
   const podeImagem = provedor ? ["gpt", "gemini", "grok"].includes(modeloDe(provedor.tipo, provedor.url).id) : false;
@@ -48,7 +41,17 @@ export function CriarTemaIa({ tema, aoAplicar }: { tema: Tema; aoAplicar: (t: Te
   }, [provedorId]);
 
   if (!ia) return null;
-  if (!provedor) return <p className="texto-suave">{t.semProvedor}</p>;
+  if (ia.provedores.length === 0) return <p className="texto-suave">{t.semProvedor}</p>;
+  const seletor = <EscolherIaDaFuncao funcao="personalizacao" estado={ia} aoMudar={aoMudarIa} legenda={t.provedor} />;
+  if (!provedor) {
+    return (
+      <section className="cartao compacto tema-ia" aria-labelledby="tema-ia-titulo">
+        <h2 id="tema-ia-titulo" className="com-icone"><Sparkles aria-hidden="true" size="1em" /> {t.titulo}</h2>
+        {seletor}
+        <p className="texto-suave">{t.escolhaUmaIa}</p>
+      </section>
+    );
+  }
 
   const temImagem = podeImagem && !!modelosImagem?.length;
   const fundos: TipoFundo[] = temImagem ? ["nenhum", "svg", "png"] : ["nenhum", "svg"];
@@ -89,9 +92,7 @@ export function CriarTemaIa({ tema, aoAplicar }: { tema: Tema; aoAplicar: (t: Te
     <section className="cartao compacto tema-ia" aria-labelledby="tema-ia-titulo">
       <h2 id="tema-ia-titulo" className="com-icone"><Sparkles aria-hidden="true" size="1em" /> {t.titulo}</h2>
       <p className="texto-suave">{t.explicacao}</p>
-      {ia.provedores.length > 1 && (
-        <Escolha rotulo={t.provedor} valor={provedor.id} opcoes={ia.provedores.map((p) => ({ valor: p.id, nome: `${p.nome} (${p.modelo})` }))} aoMudar={setProvedorId} />
-      )}
+      {seletor}
       <p className="campo-ajuda">{podeImagem ? t.pode_png(nomeProvedor) : t.so_svg(nomeProvedor)}</p>
       {podeImagem && (
         <p className="campo-ajuda" role="status">

@@ -1,4 +1,4 @@
-import { BellRing } from "lucide-react";
+import { BellRing } from "../icones";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "react-aria-components";
 import { expandir, somarDias, type Ocorrencia } from "../agenda/datas";

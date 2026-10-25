@@ -1,8 +1,10 @@
-import { ajustarPaleta, CHAVES_PALETA, conferirPaleta, variaveisDaPaleta, type Paleta, type Tema, ICONES_PADRAO, type Icones } from "@orbita/temas";
+import { ajustarPaleta, CHAVES_PALETA, conferirPaleta, variaveisDaPaleta, type Paleta, type Tema, ICONES_PADRAO, type Icones, type FamiliaIcones, type PreenchimentoIcones, type EfeitoIcones } from "@orbita/temas";
 import { CriarTemaIa } from "../ia/CriarTemaIa";
+import { DesenharIconesIa } from "../ia/DesenharIconesIa";
 import { Segmentado } from "../componentes/Segmentado";
-import { Check, TriangleAlert, Wand2, CalendarDays, FolderKanban, Home } from "lucide-react";
+import { EstiloIconesLocal, Check, TriangleAlert, Wand2, CalendarDays, FolderKanban, Home } from "../icones";
 import { useEffect, useId, useState } from "react";
+import { api, type EstadoIa } from "../api";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
@@ -50,7 +52,8 @@ function Previa({ paleta, cantos, sombra, icones }: { paleta: Paleta; cantos: nu
     ...(sombra ? {} : { "--sombra": "none" }),
   } as React.CSSProperties;
   return (
-    <div className="previa-tema" style={estilo} aria-label={t.previa} role="img">
+    <EstiloIconesLocal.Provider value={icones}>
+    <div className="previa-tema" style={estilo} aria-label={t.previa} role="img" data-icones-efeito={icones.efeito ?? "nenhum"}>
       <div className="previa-tema-lateral">
         <span className="previa-tema-item ativo com-icone"><Home aria-hidden="true" size="1em" /> Início</span>
         <span className="previa-tema-item com-icone"><FolderKanban aria-hidden="true" size="1em" /> Projetos</span>
@@ -65,11 +68,17 @@ function Previa({ paleta, cantos, sombra, icones }: { paleta: Paleta; cantos: nu
         </div>
       </div>
     </div>
+    </EstiloIconesLocal.Provider>
   );
 }
 
 export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; aoSalvar: (tema: Tema) => void; aoCancelar: () => void }) {
   const [tema, setTema] = useState<Tema>(inicial);
+  // Estado da IA: os dois painéis usam a IA e o modelo de "Personalização".
+  const [ia, setIa] = useState<EstadoIa | null>(null);
+  useEffect(() => {
+    api.estadoIa().then(setIa, () => setIa(null));
+  }, []);
   const [modo, setModo] = useState<Modo>("claro");
   const paleta = tema[modo];
   const resultados = conferirPaleta(paleta);
@@ -82,7 +91,8 @@ export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; a
   return (
     <div className="pagina pagina-larga">
       <h1>{t.titulo}</h1>
-      <CriarTemaIa tema={tema} aoAplicar={setTema} />
+      <CriarTemaIa tema={tema} aoAplicar={setTema} ia={ia} aoMudarIa={setIa} />
+      <DesenharIconesIa tema={tema} aoAplicar={setTema} ia={ia} />
       <div className="editor-tema">
         <div className="formulario">
           <Campo rotulo={t.nome} valor={tema.nome} aoMudar={(nome) => setTema((x) => ({ ...x, nome }))} autoFocus />
@@ -121,6 +131,27 @@ export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; a
             opcoes={[{ valor: "redondas", nome: t.pontas.redondas }, { valor: "retas", nome: t.pontas.retas }]}
             aoMudar={(pontas) => setTema((x) => ({ ...x, icones: { ...icones, pontas } }))}
           />
+          <Segmentado<FamiliaIcones>
+            rotulo={t.familiaIcones}
+            valor={icones.familia ?? "lucide"}
+            opcoes={(["lucide", "phosphor", "tabler"] as const).map((valor) => ({ valor, nome: t.familias[valor] }))}
+            aoMudar={(familia) => setTema((x) => ({ ...x, icones: { ...icones, familia } }))}
+          />
+          {icones.familia === "phosphor" && (
+            <Segmentado<PreenchimentoIcones>
+              rotulo={t.preenchimentoIcones}
+              valor={icones.preenchimento ?? "linha"}
+              opcoes={(["linha", "cheio", "dois-tons"] as const).map((valor) => ({ valor, nome: t.preenchimentos[valor] }))}
+              aoMudar={(preenchimento) => setTema((x) => ({ ...x, icones: { ...icones, preenchimento } }))}
+            />
+          )}
+          <Segmentado<EfeitoIcones>
+            rotulo={t.efeitoIcones}
+            valor={icones.efeito ?? "nenhum"}
+            opcoes={(["nenhum", "rabiscado", "carimbo", "brilho"] as const).map((valor) => ({ valor, nome: t.efeitos[valor] }))}
+            aoMudar={(efeito) => setTema((x) => ({ ...x, icones: { ...icones, efeito } }))}
+          />
+          <p className="campo-ajuda">{t.efeitoAjuda}</p>
         </div>
 
         <div className="editor-lado">

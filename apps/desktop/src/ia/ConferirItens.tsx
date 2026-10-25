@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, Checkbox, Input, TextField } from "react-aria-components";
 import { api, type ItemProposto, type Projeto, type TipoItemProposto } from "../api";

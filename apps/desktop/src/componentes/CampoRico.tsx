@@ -17,7 +17,7 @@ import {
   Redo2,
   Underline,
   Undo2,
-} from "lucide-react";
+} from "../icones";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button, Form, Toolbar, ToggleButton } from "react-aria-components";
 import { useDitar } from "../ditado/Ditar";

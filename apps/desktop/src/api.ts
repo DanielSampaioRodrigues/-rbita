@@ -246,7 +246,7 @@ function comoErro(e: unknown): ErroOrbita {
 }
 
 export type TipoProvedor = "claude" | "compativel";
-export type FuncaoIa = "quebrar" | "conversa" | "revisao";
+export type FuncaoIa = "quebrar" | "conversa" | "revisao" | "personalizacao";
 
 export interface Provedor {
   /** Vazio ao criar. */
@@ -420,6 +420,8 @@ interface Api {
   ouvirProgressoDitado(aoMudar: (baixado: number, total: number) => void): Promise<() => void>;
   /** A IA escreve um tema (texto com JSON). `anterior`: tema atual, para ajustar. */
   gerarTemaIa(provedorId: string, pedido: string, anterior: string | null, comDesenho: boolean): Promise<string>;
+  /** Experimental: a IA desenha um lote de ícones. Devolve o texto da IA (JSON com o miolo dos SVGs). */
+  desenharIconesIa(provedorId: string, estilo: string, icones: [string, string][], referencia: string | null): Promise<string>;
   /** Modelos de imagem que a conta tem nesse provedor (pode ser nenhum). */
   modelosImagemIa(provedorId: string): Promise<string[]>;
   /** Imagem de fundo gerada pela IA, como endereço de dados. */
@@ -541,6 +543,7 @@ const nativa: Api = {
   ditadoDescartar: () => chamar("ditado_descartar"),
   gerarTemaIa: (provedorId, pedido, anterior, comDesenho) => chamar("gerar_tema_ia", { provedorId, pedido, anterior, comDesenho }),
   modelosImagemIa: (provedorId) => chamar("modelos_imagem_ia", { provedorId }),
+  desenharIconesIa: (provedorId, estilo, icones, referencia) => chamar("desenhar_icones_ia", { provedorId, estilo, icones, referencia }),
   gerarImagemIa: (provedorId, modelo, pedido) => chamar("gerar_imagem_ia", { provedorId, modelo, pedido }),
   nuvemDisponivel: () => chamar("nuvem_disponivel"),
   nuvemSituacao: () => chamar("nuvem_situacao"),
@@ -1109,12 +1112,12 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
+function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, modelos: {}, bloquearSensivel: false };
   if (comClaude) {
     estado.provedores.push({ id: "p1", tipo: "claude", nome: "Claude", url: "https://api.anthropic.com", modelo: "claude-opus-5-5", finalChave: "x9Qa", local: false });
-    estado.funcoes = { quebrar: "p1", conversa: "p1", revisao: "p1" };
+    estado.funcoes = { quebrar: "p1", conversa: "p1", revisao: "p1", personalizacao: "p1" };
     estado.provedores.push({ id: "p2", tipo: "compativel", nome: "GPT", url: "https://api.openai.com/v1", modelo: "gpt-x", finalChave: "k2Lm", local: false });
   }
   const copia = () => structuredClone(estado);
@@ -1125,7 +1128,7 @@ function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" |
       const local = /^http:\/\/(localhost|127\.0\.0\.1)/.test(p.url);
       if (!p.id) {
         const novo = { ...p, id: `p${Date.now()}`, finalChave: chave ? chave.slice(-4) : null, local };
-        if (estado.provedores.length === 0) estado.funcoes = { quebrar: novo.id, conversa: novo.id, revisao: novo.id };
+        if (estado.provedores.length === 0) estado.funcoes = { quebrar: novo.id, conversa: novo.id, revisao: novo.id, personalizacao: novo.id };
         estado.provedores.push(novo);
       } else {
         const i = estado.provedores.findIndex((x) => x.id === p.id);
@@ -1204,6 +1207,12 @@ ${JSON.stringify(tema)}`;
         provedor: "Claude",
         local: false,
       };
+    },
+    // Desenhos de mentira: um quadrado torto com um X, igual para todos (só para ver a tela).
+    desenharIconesIa: async (_p, _estilo, icones) => {
+      await espera(700);
+      const desenho = '<path d="M4 5l15-1 1 15-16 1z"/><path d="M8 8l8 8M16 8l-8 8"/>';
+      return JSON.stringify({ icones: Object.fromEntries(icones.map(([n]) => [n, desenho])) });
     },
     // Entende só dois pedidos: uma hora nova ("às 16h") e tirar o último item.
     ajustarOrganizacaoIa: async (_texto, lista, mudanca) => {

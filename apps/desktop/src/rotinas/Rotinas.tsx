@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ImagePlus, MoreHorizontal, Pencil, Play, Plus, Timer, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ImagePlus, MoreHorizontal, Pencil, Play, Plus, Timer, Trash2, X } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, Form, Label, Menu, MenuItem, MenuTrigger, Popover, Radio, RadioGroup } from "react-aria-components";
 import { api, escolherArquivoParaAnexar, type Passo, type Rotina } from "../api";

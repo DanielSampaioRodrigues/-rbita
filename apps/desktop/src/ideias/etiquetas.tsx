@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check } from "../icones";
 import { useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup, ToggleButton } from "react-aria-components";
 import { api, CORES_ETIQUETA, type CorEtiqueta, type Etiqueta } from "../api";

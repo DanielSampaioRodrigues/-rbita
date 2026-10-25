@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check } from "../icones";
 import { Input, Label, TextField } from "react-aria-components";
 import { QUANTIDADE, reconhecer, separar } from "../palavras";
 import { textos } from "../textos/pt-BR";
