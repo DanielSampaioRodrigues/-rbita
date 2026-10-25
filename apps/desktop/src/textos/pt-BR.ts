@@ -71,6 +71,7 @@ export const textos = {
       "Prazos em projetos e tarefas, que aparecem na agenda; linha do tempo dos projetos e mapa mental das tarefas.",
       "IA opcional, com a sua chave (Claude, GPT, Gemini, Grok, Sabiá) ou no seu computador (Ollama): sugere passos pequenos para uma tarefa, e você escolhe quais entram.",
       "Capturar > Separar com IA: escreva tudo de uma vez e a IA separa em ideias, tarefas e compromissos, para você conferir antes de guardar.",
+      "Ditado: fale em vez de digitar, com a transcrição feita no seu computador (instale em Ajustes > Ditado). Depois, dá para revisar o texto com IA e ver antes e depois.",
     ],
     dicaAtalhos: "Tudo no Órbita pode ser feito pelo teclado. Aperte F1 para ver os atalhos.",
   },
@@ -605,9 +606,8 @@ export const textos = {
     linhaProvedor: (modelo: string, final: string | null, local: boolean) =>
       local ? `${modelo} · no seu computador` : final ? `${modelo} · chave terminando em ${final}` : `${modelo} · sem chave`,
     funcoesTitulo: "Qual provedor usar em cada função",
-    funcoes: { quebrar: "Quebrar tarefas em passos", conversa: "Conversa", revisao: "Revisão de texto" },
+    funcoes: { quebrar: "Quebrar tarefas em passos", conversa: "Separar o que foi capturado", revisao: "Revisar texto depois do ditado" },
     naoUsar: "Não usar IA",
-    emBreve: "chega numa próxima versão",
     sensivel: "Não enviar dados de saúde e terapia para fora do computador",
     sensivelAjuda:
       "Saúde e cuidado psicológico chegam na Onda 2. Mesmo com esta opção desligada, o Órbita sempre avisa antes de enviar esses dados. Ligada, só uma IA local (Ollama) recebe.",
@@ -686,6 +686,47 @@ export const textos = {
     voltarTexto: "Voltar ao texto",
     faltaProjeto: "Escolha o projeto de cada tarefa marcada, ou mude o tipo para ideia.",
     faltaDia: "Escolha o dia de cada compromisso marcado.",
+  },
+  ditado: {
+    titulo: "Ditado (voz para texto)",
+    explicacao:
+      "Fale em vez de digitar: aparece um microfone nos campos de texto. A transcrição é feita no seu computador, sem internet e sem enviar sua voz a ninguém. Para isso, o Órbita baixa uma vez um modelo de voz.",
+    modelo: "Modelo de voz",
+    modelos: { base: "Rápido · 142 MB", small: "Mais preciso · 466 MB" },
+    recomendado: (gb: number | null, m: "base" | "small") =>
+      gb === null
+        ? "O modelo mais preciso erra menos em português; o rápido serve para computadores mais simples."
+        : m === "small"
+          ? `Seu computador tem ${gb} GB de memória: o modelo mais preciso deve rodar bem.`
+          : `Seu computador tem ${gb} GB de memória: o modelo rápido deve funcionar melhor aqui.`,
+    baixar: (tam: string) => `Baixar e instalar (${tam})`,
+    baixando: (feito: number) => `Baixando o modelo de voz: ${feito}%`,
+    cancelar: "Cancelar o download",
+    instalado: (nome: string) => `Instalado: ${nome}. O microfone já aparece nos campos de texto.`,
+    trocar: "Trocar pelo outro modelo",
+    remover: "Remover o ditado",
+    removido: "Ditado removido. O modelo de voz foi apagado do computador.",
+    removerTexto: "O modelo de voz é apagado do computador e o microfone some dos campos. Dá para baixar de novo quando quiser.",
+    instaladoAviso: "Ditado instalado.",
+    dica: "Num campo de texto, aperte o microfone ou Ctrl + Shift + M para começar e de novo para parar. Esc cancela.",
+    // No campo
+    ditar: "Ditar",
+    parar: "Parar e transcrever",
+    gravando: "Gravando. Fale e aperte o microfone (ou Ctrl + Shift + M) de novo para parar. Esc cancela.",
+    transcrevendo: "Transcrevendo no seu computador...",
+    desfazer: "Desfazer o ditado",
+    revisar: "Revisar com IA",
+    // Revisão
+    revisaoTitulo: "Revisão do texto",
+    revisando: (p: string) => `Revisando com ${p}...`,
+    antes: "Como está",
+    depois: "Revisado",
+    usarRevisao: "Usar o revisado",
+    manter: "Manter como está",
+    semMudanca: "A IA não encontrou nada para corrigir.",
+    sensivelAviso: (p: string) => `O texto parece falar de saúde ou terapia. Para revisar, ele vai para ${p}, fora do seu computador.`,
+    sensivelBloqueado: "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do computador.",
+    revisarMesmoAssim: "Revisar mesmo assim",
   },
   atalhos: {
     titulo: "Atalhos de teclado",

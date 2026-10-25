@@ -585,3 +585,24 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .escolha-valor[data-placeholder] { color: var(--cor-texto-suave); }
 .escolha-popover { max-height: 18rem; overflow-y: auto; min-width: var(--trigger-width); }
 .menu-item[data-selected] { font-weight: 650; }
+
+/* Barra de andamento (download do modelo de voz) */
+.barra-progresso { display: grid; gap: var(--espaco-2); }
+.barra-progresso-trilho { height: 0.6rem; border-radius: 999px; background: var(--cor-superficie-alternativa); border: 1px solid var(--cor-borda-controle); overflow: hidden; }
+.barra-progresso-preenchido { height: 100%; background: var(--cor-destaque); }
+
+/* Ditado no campo: sem piscar nem vermelho; o estado vem escrito. */
+.entrada-botao.gravando { color: var(--cor-texto-sobre-destaque); background: var(--cor-destaque); }
+.entrada-botao.gravando[data-hovered] { color: var(--cor-texto-sobre-destaque); background: var(--cor-destaque); }
+.ditado-situacao { margin: 0; font-size: 0.9rem; color: var(--cor-texto-suave); }
+.ditado-situacao.gravando { color: var(--cor-texto); font-weight: 600; }
+.ditado-acoes { margin-top: var(--espaco-1); }
+.entrada .entrada-texto.multilinha { border: none; }
+
+/* Revisão: antes e depois */
+.revisao-comparar { display: grid; gap: var(--espaco-3); }
+.revisao-comparar section { display: grid; gap: var(--espaco-1); }
+.revisao-texto { margin: 0; padding: var(--espaco-3); border: 1px solid var(--cor-borda); border-radius: var(--canto); white-space: pre-wrap; }
+.revisao-texto.revisado { border-color: var(--cor-destaque); border-width: 2px; }
+.ditado-ancora { display: grid; gap: var(--espaco-2); }
+.ditado-ancora:empty { display: none; }

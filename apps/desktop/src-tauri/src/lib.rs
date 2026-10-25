@@ -2,6 +2,7 @@ mod backup;
 mod banco;
 mod cofre;
 mod comandos;
+mod ditado;
 mod erro;
 mod hello;
 mod ia;
@@ -22,6 +23,7 @@ pub fn run() {
         .setup(|app| {
             let pasta = app.path().app_data_dir()?;
             let guarda = Arc::new(GuardaDoSistema { servico: app.config().identifier.clone() });
+            app.manage(ditado::Ditado::new(pasta.join("modelos-de-voz")));
             app.manage(Estado::new(Cofre::new(pasta, guarda)));
             #[cfg(desktop)]
             registrar_captura_global(app);
@@ -98,6 +100,14 @@ pub fn run() {
             comandos::memoria_do_computador,
             comandos::sugerir_passos_ia,
             comandos::organizar_texto_ia,
+            comandos::revisar_texto_ia,
+            comandos::ditado_estado,
+            comandos::ditado_baixar,
+            comandos::ditado_cancelar_download,
+            comandos::ditado_remover,
+            comandos::ditado_comecar,
+            comandos::ditado_parar,
+            comandos::ditado_descartar,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

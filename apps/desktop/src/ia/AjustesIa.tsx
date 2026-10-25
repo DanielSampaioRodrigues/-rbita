@@ -7,21 +7,22 @@ import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar } from "../componentes/Janela";
 import { textos } from "../textos/pt-BR";
 import { JanelaProvedor } from "./JanelaProvedor";
+import { recarregarRecursos } from "../ditado/recursos";
 
 const t = textos.ia;
 const FUNCOES: FuncaoIa[] = ["quebrar", "conversa", "revisao"];
-/** Funções que ainda não existem na tela; dá para escolher o provedor desde já. */
-const EM_BREVE: FuncaoIa[] = ["conversa", "revisao"];
 const NENHUM = "nenhum";
 
 /** Cartão de IA em Ajustes: provedores, provedor por função e bloqueio de dados sensíveis. */
 export function AjustesIa() {
-  const [estado, setEstado] = useState<EstadoIa | null>(null);
+  const [estado, setEstadoLocal] = useState<EstadoIa | null>(null);
+  // A revisão nos campos de texto depende daqui: avisa quando muda.
+  const setEstado = (e: EstadoIa) => (setEstadoLocal(e), void recarregarRecursos());
   const [janela, setJanela] = useState<{ editando: ProvedorVisivel | null } | null>(null);
   const [removendo, setRemovendo] = useState<ProvedorVisivel | null>(null);
 
   useEffect(() => {
-    api.estadoIa().then(setEstado, () => {});
+    api.estadoIa().then(setEstadoLocal, () => {});
   }, []);
 
   if (!estado) return null;
@@ -64,7 +65,7 @@ export function AjustesIa() {
           {FUNCOES.map((f) => (
             <Escolha
               key={f}
-              rotulo={EM_BREVE.includes(f) ? `${t.funcoes[f]} (${t.emBreve})` : t.funcoes[f]}
+              rotulo={t.funcoes[f]}
               valor={estado.funcoes[f] ?? NENHUM}
               opcoes={[{ valor: NENHUM, nome: t.naoUsar }, ...estado.provedores.map((p) => ({ valor: p.id, nome: `${p.nome} (${p.modelo})` }))]}
               aoMudar={async (v) => setEstado(await api.definirFuncaoIa(f, v === NENHUM ? null : v))}

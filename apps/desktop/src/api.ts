@@ -1,6 +1,7 @@
 // Ponte com a parte nativa (Rust). Fora do app (navegador, testes de tela),
 // usa uma simulação em memória para a interface poder ser vista e testada.
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 export type ModoAbrir = "hello" | "pin" | "senha" | "direto";
@@ -151,6 +152,7 @@ export type CodigoErro =
   | "nao_encontrado"
   | "arquivo"
   | "ia"
+  | "ditado"
   | "interno";
 
 export class ErroOrbita extends Error {
@@ -218,6 +220,14 @@ export interface Organizacao {
   itens: ItemProposto[];
   provedor: string;
   local: boolean;
+}
+
+export type ModeloVoz = "base" | "small";
+
+export interface EstadoDitado {
+  instalado: ModeloVoz | null;
+  baixando: boolean;
+  gravando: boolean;
 }
 
 export interface Sugestao {
@@ -294,6 +304,18 @@ interface Api {
   sugerirPassosIa(alvo: string): Promise<Sugestao>;
   /** Separa um texto em ideias, tarefas e compromissos. Não grava nada. */
   organizarTextoIa(texto: string, sensivel: boolean): Promise<Organizacao>;
+  /** Revisa ortografia e pontuação. Não grava nada. */
+  revisarTextoIa(texto: string, sensivel: boolean): Promise<string>;
+  ditadoEstado(): Promise<EstadoDitado>;
+  ditadoBaixar(modelo: ModeloVoz): Promise<EstadoDitado>;
+  ditadoCancelarDownload(): Promise<void>;
+  ditadoRemover(): Promise<EstadoDitado>;
+  ditadoComecar(): Promise<void>;
+  /** Para de gravar e devolve o texto transcrito no computador. */
+  ditadoParar(): Promise<string>;
+  ditadoDescartar(): Promise<void>;
+  /** Andamento do download do modelo de voz. Devolve a função para parar de ouvir. */
+  ouvirProgressoDitado(aoMudar: (baixado: number, total: number) => void): Promise<() => void>;
 }
 
 const chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
@@ -370,6 +392,15 @@ const nativa: Api = {
   memoriaDoComputador: () => chamar("memoria_do_computador"),
   sugerirPassosIa: (alvo) => chamar("sugerir_passos_ia", { alvo }),
   organizarTextoIa: (texto, sensivel) => chamar("organizar_texto_ia", { texto, sensivel }),
+  revisarTextoIa: (texto, sensivel) => chamar("revisar_texto_ia", { texto, sensivel }),
+  ditadoEstado: () => chamar("ditado_estado"),
+  ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
+  ditadoCancelarDownload: () => chamar("ditado_cancelar_download"),
+  ditadoRemover: () => chamar("ditado_remover"),
+  ditadoComecar: () => chamar("ditado_comecar"),
+  ditadoParar: () => chamar("ditado_parar"),
+  ditadoDescartar: () => chamar("ditado_descartar"),
+  ouvirProgressoDitado: (aoMudar) => listen<{ baixado: number; total: number }>("ditado-progresso", (e) => aoMudar(e.payload.baixado, e.payload.total)),
 };
 
 /** Parte da simulação que cuida de ideias, projetos e tarefas (mesmas regras da parte nativa). */
@@ -731,6 +762,7 @@ function criarSimulacao(): Api {
       return { ...backup };
     },
     ...comIa,
+    ...simularDitado(params0.get("ditado")),
     // A IA de mentira não conhece os projetos: liga a tarefa ao primeiro ativo.
     organizarTextoIa: async (texto, sensivel) => {
       const o = await comIa.organizarTextoIa(texto, sensivel);
@@ -740,8 +772,44 @@ function criarSimulacao(): Api {
   };
 }
 
+/** Ditado de mentira. `?ditado=1` já vem instalado; `?ditado=silencio` não ouve nada. */
+function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoBaixar" | "ditadoCancelarDownload" | "ditadoRemover" | "ditadoComecar" | "ditadoParar" | "ditadoDescartar" | "ouvirProgressoDitado"> {
+  const estado: EstadoDitado = { instalado: modo ? "small" : null, baixando: false, gravando: false };
+  const ouvintes = new Set<(b: number, t: number) => void>();
+  let cancelar = false;
+  return {
+    ditadoEstado: async () => ({ ...estado }),
+    ditadoBaixar: async (modelo) => {
+      const total = modelo === "base" ? 142e6 : 466e6;
+      estado.baixando = true;
+      cancelar = false;
+      for (let i = 1; i <= 20; i++) {
+        await new Promise((r) => setTimeout(r, 120));
+        if (cancelar) {
+          estado.baixando = false;
+          throw new ErroOrbita("ditado", "Download cancelado.");
+        }
+        ouvintes.forEach((f) => f((total * i) / 20, total));
+      }
+      Object.assign(estado, { baixando: false, instalado: modelo });
+      return { ...estado };
+    },
+    ditadoCancelarDownload: async () => void (cancelar = true),
+    ditadoRemover: async () => ((estado.instalado = null), { ...estado }),
+    ditadoComecar: async () => void (estado.gravando = true),
+    ditadoParar: async () => {
+      estado.gravando = false;
+      await new Promise((r) => setTimeout(r, 900));
+      if (modo === "silencio") throw new ErroOrbita("ditado", "Não ouvi nada. Confira se o microfone está ligado e se o Windows deixa programas usarem o microfone (Configurações > Privacidade > Microfone).");
+      return "lembrar de levar o laudo na consulta de quinta e comprar pão";
+    },
+    ditadoDescartar: async () => void (estado.gravando = false),
+    ouvirProgressoDitado: async (f) => (ouvintes.add(f), () => void ouvintes.delete(f)),
+  };
+}
+
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa"> {
+function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "revisarTextoIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, bloquearSensivel: false };
   if (comClaude) {
@@ -784,6 +852,11 @@ function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" |
       return ["modelo-a", "modelo-b"];
     },
     memoriaDoComputador: async () => 16,
+    revisarTextoIa: async (texto) => {
+      await espera(900);
+      const t = texto.trim();
+      return t.charAt(0).toUpperCase() + t.slice(1).replace(/\s+,/g, ",").replace(/ e tive/, ", e tive") + (/[.!?]$/.test(t) ? "" : ".");
+    },
     organizarTextoIa: async (_texto, sensivel) => {
       await espera(1200);
       if (comErro) throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");

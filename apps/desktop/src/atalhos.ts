@@ -146,6 +146,7 @@ export const ATALHOS_GERAIS: { teclas: string[][]; descricao: string }[] = [
   { teclas: [["Setas"]], descricao: "Escolher entre opções de um grupo" },
   { teclas: [["Espaço"], ["Enter"]], descricao: "Ativar o botão ou a opção em foco" },
   { teclas: [["Esc"]], descricao: "Fechar a janela aberta" },
+  { teclas: [["Ctrl", "Shift", "M"]], descricao: "Ditar no campo de texto em foco (com o ditado instalado em Ajustes)" },
 ];
 
 export function acaoDoEvento(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">): AcaoAtalho | null {

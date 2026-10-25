@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 15 de 18, separar com IA o que foi capturado.
+Onda 1 (base e coração, Windows): etapa 16 de 18, ditado no computador e revisão de texto.

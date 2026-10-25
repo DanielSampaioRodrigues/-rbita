@@ -1,6 +1,6 @@
 [package]
 name = "orbita"
-version = "0.14.0"
+version = "0.15.0"
 description = "Órbita — organizador de vida para pessoas neurodivergentes"
 authors = ["Daniel Sampaio Rodrigues"]
 edition = "2021"
@@ -32,11 +32,15 @@ sha2 = "0.10"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # Conversa com os provedores de IA (só quando a pessoa liga a IA).
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Ditado local: transcrição com whisper.cpp (o modelo é baixado à parte).
+whisper-rs = "0.16"
+sha1 = "0.10"
 
 [target.'cfg(any(windows, target_os = "macos", target_os = "linux"))'.dependencies]
 tauri-plugin-global-shortcut = "2.4"
 
 [target.'cfg(windows)'.dependencies]
+cpal = "0.18"
 keyring = { version = "3.6", features = ["windows-native"] }
 windows = { version = "0.62", features = ["Foundation", "Security_Credentials_UI", "Win32_Foundation", "Win32_System_WinRT", "Win32_System_SystemInformation"] }
 windows-future = "0.3"

@@ -13,7 +13,8 @@ use crate::banco::{self, energia, eventos, itens, rotinas};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
-use crate::ia::{self, cliente, organizar, quebrar, EstadoIa, Provedor};
+use crate::ditado::{self, Ditado, EstadoDitado};
+use crate::ia::{self, cliente, organizar, quebrar, revisar, EstadoIa, Provedor};
 
 const CONFIG_PALAVRAS: &str = "palavras_recuperacao";
 
@@ -564,4 +565,81 @@ pub async fn organizar_texto_ia(estado: State<'_, Estado>, texto: String, sensiv
         return Err(Erro::Ia { motivo: "resposta", mensagem: "A IA não conseguiu separar o texto. Tente de novo, ou guarde como ideia.".into() });
     }
     Ok(Organizacao { itens, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
+}
+
+/// Revisa ortografia e pontuação. Não grava nada: a tela mostra antes e depois.
+#[tauri::command]
+pub async fn revisar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel: bool) -> Result<String, Erro> {
+    let texto: String = texto.trim().chars().take(revisar::MAXIMO_DE_CARACTERES).collect();
+    if texto.is_empty() {
+        return Err(Erro::TextoVazio);
+    }
+    let escolhido = estado.com_sessao(|s| ia::provedor_da_funcao(&s.conn, "revisao", sensivel))?;
+    let revisado = revisar::limpar(&cliente::completar(&escolhido, revisar::SISTEMA, &texto).await?);
+    if revisado.is_empty() {
+        return Err(Erro::Ia { motivo: "resposta", mensagem: "A revisão veio vazia. Tente de novo.".into() });
+    }
+    Ok(revisado)
+}
+
+// ---------- Ditado (voz para texto, no computador) ----------
+
+#[tauri::command]
+pub async fn ditado_estado(ditado: State<'_, Ditado>) -> Result<EstadoDitado, Erro> {
+    Ok(ditado.estado())
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProgressoDitado {
+    baixado: u64,
+    total: u64,
+}
+
+/// Baixa o modelo de voz. O andamento chega pelo evento "ditado-progresso".
+#[tauri::command]
+pub async fn ditado_baixar(app: tauri::AppHandle, ditado: State<'_, Ditado>, modelo: String) -> Result<EstadoDitado, Erro> {
+    use tauri::Emitter;
+    ditado.baixar(&modelo, |baixado, total| {
+        let _ = app.emit("ditado-progresso", ProgressoDitado { baixado, total });
+    })
+    .await?;
+    Ok(ditado.estado())
+}
+
+#[tauri::command]
+pub async fn ditado_cancelar_download(ditado: State<'_, Ditado>) -> Result<(), Erro> {
+    ditado.cancelar_download();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn ditado_remover(ditado: State<'_, Ditado>) -> Result<EstadoDitado, Erro> {
+    ditado.remover()?;
+    Ok(ditado.estado())
+}
+
+#[tauri::command]
+pub async fn ditado_comecar(ditado: State<'_, Ditado>) -> Result<(), Erro> {
+    ditado.comecar()
+}
+
+/// Para de gravar e transcreve no computador. Pode levar alguns segundos.
+#[tauri::command]
+pub async fn ditado_parar(app: tauri::AppHandle) -> Result<String, Erro> {
+    use tauri::Manager;
+    tauri::async_runtime::spawn_blocking(move || {
+        let d = app.state::<Ditado>();
+        let audio = d.parar()?;
+        let ctx = d.contexto()?;
+        ditado::transcrever(&ctx, &audio)
+    })
+    .await
+    .map_err(|e| Erro::Interno(e.to_string()))?
+}
+
+#[tauri::command]
+pub async fn ditado_descartar(ditado: State<'_, Ditado>) -> Result<(), Erro> {
+    ditado.descartar();
+    Ok(())
 }

@@ -266,7 +266,14 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 - **Confira antes de guardar**: cada item pode ser desmarcado, editado, trocado de tipo, de projeto ou de dia. Tarefa sem projeto ou compromisso sem dia não deixam guardar até a pessoa decidir. A parte nativa confere tudo o que a IA devolve: data ou hora inválida, tipo desconhecido ou compromisso sem dia viram ideia, para nada se perder.
 - **Aviso de dado sensível**: se o texto parece falar de saúde ou terapia e o provedor é de fora do computador, o Órbita avisa antes de enviar e oferece guardar como ideia, sem IA. Com o bloqueio ligado em Ajustes, não envia. A detecção é por palavras e, na dúvida, avisa.
 
-- Peso aproximado: um modelo pequeno ocupa de 2 a 5 GB em disco e precisa de 8 GB de memória ou mais para rodar bem; a transcrição local ocupa algumas centenas de MB (valores a confirmar na construção).
+**Como ficou na Onda 1 (etapa 16).**
+- **Ditado local** com o whisper.cpp, embutido no Órbita. O modelo de voz é baixado à parte, em Ajustes > Ditado: **Rápido** (142 MB) ou **Mais preciso** (466 MB, recomendado com 8 GB de memória ou mais). O download é conferido pela soma publicada pelo whisper.cpp; arquivo diferente é descartado. Fica só um modelo no disco; dá para trocar ou remover.
+- **Microfone em todo campo de texto** (menos senhas e números): o botão dentro do campo ou **Ctrl + Shift + M** começa e para; **Esc** cancela. Enquanto grava, o botão fica na cor de destaque e uma linha escrita diz o que está acontecendo, sem piscar nem som. A transcrição é feita no computador, em português; a voz não sai do aparelho. Gravação de até 5 minutos por vez.
+- Silêncio não vira texto: se o áudio não tem som suficiente, o Órbita diz que não ouviu e lembra da permissão de microfone do Windows (o whisper costuma "inventar" frases quando recebe silêncio).
+- Depois de ditar: **Desfazer o ditado** e, se houver IA escolhida para a revisão, **Revisar com IA**, que mostra **como está e revisado** lado a lado; a pessoa escolhe. Texto que parece de saúde ou terapia passa pelo mesmo aviso da etapa 15.
+- Por enquanto o ditado grava só no Windows; Mac e celular entram na Onda 3.
+
+- Peso aproximado: um modelo pequeno ocupa de 2 a 5 GB em disco e precisa de 8 GB de memória ou mais para rodar bem; a transcrição local ocupa de 142 MB a 466 MB, conforme o modelo de voz escolhido.
 - Uso indicado: lançar itens a partir da conversa, organizar, resumir e revisar texto.
 - Limite: é mais lento e menos capaz que Claude, GPT ou Gemini em conversas longas ou complexas.
 - No mobile, a IA local fica para depois; lá a pessoa usa a chave de um provedor.

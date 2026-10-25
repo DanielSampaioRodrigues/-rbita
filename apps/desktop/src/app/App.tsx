@@ -1,5 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { recarregarRecursos } from "../ditado/recursos";
 import { CriarCofre } from "../acesso/CriarCofre";
 import { Desbloquear } from "../acesso/Desbloquear";
 import { MolduraAcesso } from "../acesso/Moldura";
@@ -47,6 +48,10 @@ export function App() {
   useEffect(atualizar, [atualizar]);
 
   const aberto = situacao?.aberto ?? false;
+  // Microfone e revisão nos campos dependem de dados que só abrem com o cofre.
+  useEffect(() => {
+    if (aberto) void recarregarRecursos();
+  }, [aberto]);
 
   const irPara = useCallback((s: Secao) => {
     setSecao(s);

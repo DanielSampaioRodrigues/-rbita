@@ -117,7 +117,7 @@ export function JanelaProvedor({
         )}
         {qual === "outro" && <Campo rotulo={t.nome} valor={nome} aoMudar={setNome} />}
         {(qual === "outro" || qual === "ollama") && (
-          <Campo rotulo={t.endereco} valor={url} aoMudar={(v) => (setUrl(v), setModelos(null))} descricao={t.enderecoAjuda} />
+          <Campo semDitado rotulo={t.endereco} valor={url} aoMudar={(v) => (setUrl(v), setModelos(null))} descricao={t.enderecoAjuda} />
         )}
         {escolhido.precisaChave && (
           <Campo
@@ -138,7 +138,7 @@ export function JanelaProvedor({
         {modelos && modelos.length > 0 && (
           <Escolha rotulo={t.modelo} valor={modelo || null} opcoes={modelos.map((m) => ({ valor: m, nome: m }))} aoMudar={setModelo} descricao={t.modeloAjuda} />
         )}
-        {modelos && modelos.length === 0 && <Campo rotulo={t.modeloEscrito} valor={modelo} aoMudar={setModelo} />}
+        {modelos && modelos.length === 0 && <Campo semDitado rotulo={t.modeloEscrito} valor={modelo} aoMudar={setModelo} />}
         <div className="janela-acoes">
           <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
           <Button className="botao principal" isDisabled={ocupado || !modelos || !modelo.trim()} onPress={salvar}>
