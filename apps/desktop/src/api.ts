@@ -39,6 +39,26 @@ export interface Projeto {
   alteradoEm: number;
 }
 
+export interface Repeticao {
+  frequencia: "diaria" | "semanal" | "mensal";
+  dias: number[];
+  ate: number | null;
+}
+
+export interface Evento {
+  /** Vazio ao criar. */
+  id: string;
+  titulo: string;
+  inicio: number;
+  fim: number | null;
+  diaInteiro: boolean;
+  repeticao: Repeticao | null;
+  /** Bloco fixo da semana-modelo. */
+  modelo: boolean;
+  notas: string;
+  excecoes: string[];
+}
+
 export interface Tarefa {
   id: string;
   paiId: string;
@@ -133,6 +153,10 @@ interface Api {
   criarTarefa(paiId: string, titulo: string): Promise<Tarefa>;
   mudarEstadoTarefa(id: string, novo: EstadoTarefa): Promise<void>;
   moverTarefa(id: string, antesDe: string | null): Promise<void>;
+  listarEventos(de: number, ate: number): Promise<Evento[]>;
+  salvarEvento(evento: Evento): Promise<Evento>;
+  pularDataEvento(id: string, data: string): Promise<void>;
+  excluirEvento(id: string): Promise<void>;
   fazerBackup(caminho: string): Promise<void>;
   infoBackup(caminho: string): Promise<InfoBackup>;
   restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }): Promise<ModoAbrir>;
@@ -182,6 +206,10 @@ const nativa: Api = {
   criarTarefa: (paiId, titulo) => chamar("criar_tarefa", { paiId, titulo }),
   mudarEstadoTarefa: (id, novo) => chamar("mudar_estado_tarefa", { id, novo }),
   moverTarefa: (id, antesDe) => chamar("mover_tarefa", { id, antesDe }),
+  listarEventos: (de, ate) => chamar("listar_eventos", { de, ate }),
+  salvarEvento: (evento) => chamar("salvar_evento", { evento }),
+  pularDataEvento: (id, data) => chamar("pular_data_evento", { id, data }),
+  excluirEvento: (id) => chamar("excluir_evento", { id }),
   fazerBackup: (caminho) => chamar("fazer_backup", { caminho }),
   infoBackup: (caminho) => chamar("info_backup", { caminho }),
   restaurarBackup: (caminho, { senha, palavras }) =>
@@ -309,6 +337,41 @@ function simularItens() {
   };
 }
 
+function simularAgenda() {
+  const eventos: Evento[] = [];
+  const hoje = new Date();
+  const em = (dias: number, h: number, m = 0) => new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias, h, m).getTime();
+  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+    const base = { id: "", diaInteiro: false, repeticao: null, modelo: false, notas: "", excecoes: [] };
+    eventos.push(
+      { ...base, id: "a1", titulo: "Consulta com a psiquiatra", inicio: em(0, 15), fim: em(0, 16) },
+      { ...base, id: "a2", titulo: "Terapia", inicio: em(-3, 10), fim: em(-3, 11), repeticao: { frequencia: "semanal", dias: [new Date(em(-3, 0)).getDay()], ate: null } },
+      { ...base, id: "a3", titulo: "Aula de Psicopatologia", inicio: em(-14, 19), fim: em(-14, 21), modelo: true, repeticao: { frequencia: "semanal", dias: [1, 3], ate: null } },
+      { ...base, id: "a4", titulo: "Trabalho de edição", inicio: em(-14, 9), fim: em(-14, 12), modelo: true, repeticao: { frequencia: "semanal", dias: [1, 2, 3, 4, 5], ate: null } },
+      { ...base, id: "a5", titulo: "Entrega do artigo", inicio: em(2, 0), fim: null, diaInteiro: true },
+    );
+  }
+  return {
+    listarEventos: async () => eventos.map((e) => ({ ...e })),
+    salvarEvento: async (e: Evento) => {
+      if (!e.titulo.trim()) throw new ErroOrbita("texto_vazio", "Escreva alguma coisa antes de salvar.");
+      const salvo = { ...e, id: e.id || crypto.randomUUID(), titulo: e.titulo.trim() };
+      const i = eventos.findIndex((x) => x.id === salvo.id);
+      if (i >= 0) eventos[i] = salvo;
+      else eventos.push(salvo);
+      return salvo;
+    },
+    pularDataEvento: async (id: string, data: string) => {
+      const e = eventos.find((x) => x.id === id);
+      if (e && !e.excecoes.includes(data)) e.excecoes.push(data);
+    },
+    excluirEvento: async (id: string) => {
+      const i = eventos.findIndex((x) => x.id === id);
+      if (i >= 0) eventos.splice(i, 1);
+    },
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["janela", "cometa", "farol", "bambu", "orvalho", "tijolo"];
@@ -383,6 +446,7 @@ function criarSimulacao(): Api {
       s.aberto = false;
     },
     ...simularItens(),
+    ...simularAgenda(),
     fazerBackup: async () => {
       await espera();
     },

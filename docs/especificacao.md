@@ -62,6 +62,13 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - Avisos de transição antes da troca de atividade.
 - Timer visual de foco e de pausa.
 
+**Como ficou na Onda 1 (etapa 8).**
+- **Agenda** em quatro visualizações: dia, semana (segunda a domingo), mês e **semana-modelo**.
+- Compromissos com data, horário de começo e fim (ou dia inteiro), notas e **repetição**: todo dia, em dias da semana escolhidos ou todo mês, com data final opcional. Num compromisso que se repete, dá para **tirar só um dia** sem mexer nos outros.
+- **Semana-modelo**: compromissos marcados como "bloco fixo" (aulas, trabalho, terapia). Aparecem tracejados e mais claros em toda a agenda, e numa visualização própria com os sete dias.
+- O **Início** mostra os compromissos de hoje.
+- Horários em lista, sem grade de horas: mais fácil de ler e de usar pelo teclado.
+
 ### 3. Energia
 
 - Registro rápido do nível de energia do dia.

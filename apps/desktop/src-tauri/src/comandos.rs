@@ -9,7 +9,7 @@ use serde::Serialize;
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, itens};
+use crate::banco::{self, eventos, itens};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -367,4 +367,26 @@ pub async fn mudar_estado_tarefa(estado: State<'_, Estado>, id: String, novo: St
 #[tauri::command]
 pub async fn mover_tarefa(estado: State<'_, Estado>, id: String, antes_de: Option<String>) -> Result<(), Erro> {
     estado.com_sessao(|s| itens::mover_tarefa(&s.conn, &id, antes_de.as_deref()))
+}
+
+// ---------- Agenda ----------
+
+#[tauri::command]
+pub async fn listar_eventos(estado: State<'_, Estado>, de: i64, ate: i64) -> Result<Vec<eventos::Evento>, Erro> {
+    estado.com_sessao(|s| eventos::listar(&s.conn, de, ate))
+}
+
+#[tauri::command]
+pub async fn salvar_evento(estado: State<'_, Estado>, evento: eventos::Evento) -> Result<eventos::Evento, Erro> {
+    estado.com_sessao(|s| eventos::salvar(&s.conn, evento))
+}
+
+#[tauri::command]
+pub async fn pular_data_evento(estado: State<'_, Estado>, id: String, data: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| eventos::pular_data(&s.conn, &id, &data))
+}
+
+#[tauri::command]
+pub async fn excluir_evento(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| eventos::excluir(&s.conn, &id))
 }

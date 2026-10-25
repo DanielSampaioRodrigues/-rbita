@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapas 5 a 7 de 18, captura, ideias, projetos e tarefas (marco "mínimo usável").
+Onda 1 (base e coração, Windows): etapa 8 de 18, agenda com semana-modelo (as etapas 5 a 7, marco "mínimo usável", estão prontas).

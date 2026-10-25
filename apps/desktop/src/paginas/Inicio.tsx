@@ -1,6 +1,8 @@
 import { Lightbulb, PenLine } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";
+import { expandir, inicioDoDia, somarDias, type Ocorrencia } from "../agenda/datas";
+import { LinhaOcorrencia } from "../agenda/Agenda";
 import { api, type Projeto } from "../api";
 import { useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
@@ -11,18 +13,22 @@ const t = textos.inicio;
 interface Props {
   aoCapturar: () => void;
   aoAbrirProjeto: (id: string) => void;
-  aoIr: (secao: "ideias" | "projetos") => void;
+  aoIr: (secao: "ideias" | "projetos" | "agenda") => void;
 }
 
 /** Retomar importa tanto quanto começar: o Início abre com os projetos ativos e o próximo passo de cada um. */
 export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr }: Props) {
   const [ativos, setAtivos] = useState<Projeto[]>([]);
   const [ideias, setIdeias] = useState(0);
+  const [hoje, setHoje] = useState<Ocorrencia[]>([]);
   const mudancas = useMudancas();
 
   useEffect(() => {
     api.listarProjetos().then((ps) => setAtivos(ps.filter((p) => p.estado === "ativo")), () => {});
     api.listarIdeias().then((is) => setIdeias(is.length), () => {});
+    const de = inicioDoDia(new Date());
+    const ate = somarDias(de, 1);
+    api.listarEventos(de.getTime(), ate.getTime()).then((es) => setHoje(expandir(es, de, ate)), () => {});
   }, [mudancas]);
 
   return (
@@ -32,6 +38,24 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr }: Props) {
       <Button className="botao principal" onPress={aoCapturar}>
         <PenLine aria-hidden="true" size="1.1em" /> {t.capturar}
       </Button>
+
+      <section className="grupo largura-leitura" aria-labelledby="hoje">
+        <h2 id="hoje">{t.hoje}</h2>
+        {hoje.length === 0 ? (
+          <p className="texto-suave">{t.nadaHoje}</p>
+        ) : (
+          <ul className="lista-ocorrencias">
+            {hoje.map((o) => (
+              <li key={o.evento.id + o.dia}>
+                <LinhaOcorrencia o={o} />
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="links">
+          <Button className="link" onPress={() => aoIr("agenda")}>{t.verAgenda}</Button>
+        </div>
+      </section>
 
       <section className="grupo largura-leitura" aria-labelledby="continuar">
         <h2 id="continuar">{t.continuar}</h2>

@@ -540,3 +540,8 @@
 
 /* O mesmo visual vale para botões de alternar (Lista/Quadro). */
 button.segmentado-opcao { border: none; background: transparent; font: inherit; letter-spacing: inherit; }
+
+.linha-campos { display: flex; flex-wrap: wrap; gap: var(--espaco-3); }
+.linha-campos .campo { flex: 1; min-width: 9rem; }
+.janela-acoes .separado { margin-right: auto; }
+input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-scheme: inherit; }

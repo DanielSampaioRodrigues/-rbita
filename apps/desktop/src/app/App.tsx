@@ -8,6 +8,7 @@ import { api, noApp, type Situacao } from "../api";
 import { acaoDoEvento, SO_ABERTO, type AcaoAtalho } from "../atalhos";
 import { Aviso } from "../componentes/Campo";
 import { usePreferencias } from "../estado";
+import { Agenda } from "../agenda/Agenda";
 import { Ajustes } from "../paginas/Ajustes";
 import { Ideias } from "../paginas/Ideias";
 import { Inicio } from "../paginas/Inicio";
@@ -89,6 +90,7 @@ export function App() {
       irInicio: () => irPara("inicio"),
       irIdeias: () => irPara("ideias"),
       irProjetos: () => irPara("projetos"),
+      irAgenda: () => irPara("agenda"),
       irAjustes: () => irPara("ajustes"),
       alternarBaixoEstimulo: () => mudar({ baixoEstimulo: !prefs.baixoEstimulo }),
       alternarClaroEscuro: () => mudar({ modoCor: modoEfetivo(prefs) === "escuro" ? "claro" : "escuro" }),
@@ -122,6 +124,7 @@ export function App() {
   else {
     let pagina;
     if (secao === "ideias") pagina = <Ideias />;
+    else if (secao === "agenda") pagina = <Agenda />;
     else if (secao === "projetos")
       pagina = projetoAberto ? (
         <Projeto key={projetoAberto} id={projetoAberto} aoVoltar={() => setProjetoAberto(null)} />

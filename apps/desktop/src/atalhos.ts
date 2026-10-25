@@ -5,6 +5,7 @@ export type AcaoAtalho =
   | "irInicio"
   | "irIdeias"
   | "irProjetos"
+  | "irAgenda"
   | "capturar"
   | "irAjustes"
   | "alternarBaixoEstimulo"
@@ -59,6 +60,12 @@ export const ATALHOS: Atalho[] = [
     combinacoes: [{ ctrl: true, shift: false, teclas: ["3"] }],
   },
   {
+    acao: "irAgenda",
+    teclas: [["Ctrl", "4"]],
+    descricao: "Ir para a Agenda",
+    combinacoes: [{ ctrl: true, shift: false, teclas: ["4"] }],
+  },
+  {
     acao: "irAjustes",
     teclas: [["Ctrl", ","]],
     descricao: "Abrir os Ajustes",
@@ -103,7 +110,7 @@ export const ATALHOS: Atalho[] = [
 ];
 
 /** Ações que só fazem sentido com o Órbita aberto. */
-export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irIdeias", "irProjetos", "irAjustes", "bloquear", "capturar"];
+export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irIdeias", "irProjetos", "irAgenda", "irAjustes", "bloquear", "capturar"];
 
 /** Atalhos que não dependem do app, listados só para consulta. */
 export const ATALHOS_GERAIS: { teclas: string[][]; descricao: string }[] = [
