@@ -152,7 +152,7 @@ export function App() {
       ) : (
         <Projetos aoAbrir={abrirProjeto} aoMudarLimite={() => irPara("ajustes")} />
       );
-    else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
+    else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} temSenha={situacao.temSenha} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
     tela = (
       <ProvedorAtualizacao procurarAoAbrir={prefs.procurarAtualizacao}>

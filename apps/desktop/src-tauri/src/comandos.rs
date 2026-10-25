@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use rusqlite::Connection;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
@@ -88,8 +88,9 @@ pub async fn situacao(estado: State<'_, Estado>) -> Result<SituacaoCompleta, Err
 
 /// Cria o cofre, já deixa aberto e devolve as 6 palavras para a pessoa guardar.
 #[tauri::command]
-pub async fn criar_cofre(estado: State<'_, Estado>, senha: String, modo: ModoAbrir, pin: Option<String>) -> Result<Vec<String>, Erro> {
-    let (chave, palavras) = estado.cofre.criar(&senha, modo, pin.as_deref())?;
+pub async fn criar_cofre(estado: State<'_, Estado>, senha: Option<String>, modo: ModoAbrir, pin: Option<String>) -> Result<Vec<String>, Erro> {
+    let senha = senha.filter(|s| !s.is_empty());
+    let (chave, palavras) = estado.cofre.criar(senha.as_deref(), modo, pin.as_deref())?;
     estado.iniciar_sessao(chave)?;
     estado.com_sessao(|s| banco::gravar_config(&s.conn, CONFIG_PALAVRAS, &palavras.join(" ")))?;
     Ok(palavras)
@@ -154,6 +155,14 @@ pub async fn conferir_palavras(estado: State<'_, Estado>, texto: String) -> Resu
     estado.cofre.abrir_com_palavras(&texto).map(|_| ())
 }
 
+/// Abrir com as 6 palavras (PIN bloqueado, Windows Hello falhando, cofre sem senha).
+/// Também libera o PIN de novo.
+#[tauri::command]
+pub async fn abrir_com_palavras(estado: State<'_, Estado>, texto: String) -> Result<(), Erro> {
+    let chave = estado.cofre.abrir_com_palavras(&texto)?;
+    estado.iniciar_sessao(chave)
+}
+
 /// Esqueci a senha: as palavras abrem o cofre e a pessoa define uma senha nova.
 #[tauri::command]
 pub async fn recuperar(estado: State<'_, Estado>, texto: String, nova_senha: String) -> Result<(), Erro> {
@@ -181,23 +190,52 @@ pub async fn gravar_arquivo_recuperacao(estado: State<'_, Estado>, caminho: Path
     Ok(())
 }
 
-/// Mostra as palavras de novo. Pede a senha, mesmo com o Órbita aberto.
+/// Confirmar que é a pessoa antes de uma ação sensível, mesmo com o Órbita aberto.
+/// Vale a senha (se houver), as 6 palavras, o PIN, ou o aparelho (Windows Hello; no
+/// "abrir direto" não há o que confirmar).
+#[derive(Deserialize)]
+#[serde(tag = "tipo", content = "valor", rename_all = "lowercase")]
+pub enum Confirmacao {
+    Senha(String),
+    Palavras(String),
+    Pin(String),
+    Aparelho,
+}
+
+async fn confirmar(estado: &Estado, janela: &WebviewWindow, confirmacao: Confirmacao) -> Result<crate::cofre::cripto::Chave, Erro> {
+    match confirmacao {
+        Confirmacao::Senha(s) => estado.cofre.abrir_com_senha(&s),
+        Confirmacao::Palavras(p) => estado.cofre.abrir_com_palavras(&p),
+        Confirmacao::Pin(p) => estado.cofre.abrir_com_pin(&p),
+        Confirmacao::Aparelho => match estado.cofre.situacao()?.modo {
+            Some(ModoAbrir::Hello) => {
+                confirmar_com_hello(janela).await?;
+                estado.cofre.abrir_depois_do_hello()
+            }
+            Some(ModoAbrir::Direto) => estado.cofre.abrir_direto(),
+            _ => Err(Erro::AparelhoSemChave),
+        },
+    }
+}
+
+/// Mostra as palavras de novo. Pede confirmação, mesmo com o Órbita aberto.
 #[tauri::command]
-pub async fn ver_palavras(estado: State<'_, Estado>, senha: String) -> Result<Vec<String>, Erro> {
-    estado.cofre.abrir_com_senha(&senha)?;
+pub async fn ver_palavras(estado: State<'_, Estado>, janela: WebviewWindow, confirmacao: Confirmacao) -> Result<Vec<String>, Erro> {
+    confirmar(&estado, &janela, confirmacao).await?;
     let palavras = estado.com_sessao(|s| banco::ler_config(&s.conn, CONFIG_PALAVRAS))?.unwrap_or_default();
     Ok(palavras.split_whitespace().map(String::from).collect())
 }
 
+/// Cria a senha (opcional) ou troca a atual.
 #[tauri::command]
-pub async fn trocar_senha(estado: State<'_, Estado>, atual: String, nova: String) -> Result<(), Erro> {
-    let chave = estado.cofre.abrir_com_senha(&atual)?;
+pub async fn definir_senha(estado: State<'_, Estado>, janela: WebviewWindow, confirmacao: Confirmacao, nova: String) -> Result<(), Erro> {
+    let chave = confirmar(&estado, &janela, confirmacao).await?;
     estado.cofre.trocar_senha(&chave, &nova)
 }
 
 #[tauri::command]
-pub async fn mudar_modo(estado: State<'_, Estado>, senha: String, modo: ModoAbrir, pin: Option<String>) -> Result<(), Erro> {
-    let chave = estado.cofre.abrir_com_senha(&senha)?;
+pub async fn mudar_modo(estado: State<'_, Estado>, janela: WebviewWindow, confirmacao: Confirmacao, modo: ModoAbrir, pin: Option<String>) -> Result<(), Erro> {
+    let chave = confirmar(&estado, &janela, confirmacao).await?;
     estado.cofre.mudar_modo(&chave, modo, pin.as_deref())
 }
 
@@ -225,6 +263,8 @@ pub async fn restaurar_backup(
     caminho: PathBuf,
     senha: Option<String>,
     palavras: Option<String>,
+    modo: Option<ModoAbrir>,
+    pin: Option<String>,
 ) -> Result<ModoAbrir, Erro> {
     let segredo = match (senha, palavras) {
         (Some(s), _) => backup::Segredo::Senha(s),
@@ -239,7 +279,8 @@ pub async fn restaurar_backup(
     }
     // O banco atual precisa estar fechado para ser movido para a pasta de segurança.
     *estado.sessao.lock().unwrap() = None;
-    let (chave, modo) = backup::restaurar(&estado.cofre, &caminho, &segredo)?;
+    let escolha = modo.map(|m| (m, pin.as_deref()));
+    let (chave, modo) = backup::restaurar(&estado.cofre, &caminho, &segredo, escolha)?;
     estado.iniciar_sessao(chave)?;
     Ok(modo)
 }

@@ -42,6 +42,8 @@ pub struct Cabecalho {
 pub struct Informacao {
     pub criado_em: i64,
     pub versao_app: String,
+    /// Sem senha, o backup abre com as 6 palavras, e a pessoa escolhe como abrir no dia a dia.
+    pub tem_senha: bool,
 }
 
 pub enum Segredo {
@@ -132,14 +134,24 @@ pub fn ler(origem: &Path) -> Result<(Cabecalho, Vec<u8>), Erro> {
 
 pub fn informacao(origem: &Path) -> Result<Informacao, Erro> {
     let (c, _) = ler(origem)?;
-    Ok(Informacao { criado_em: c.criado_em, versao_app: c.versao_app })
+    Ok(Informacao { criado_em: c.criado_em, versao_app: c.versao_app, tem_senha: c.envelopes.tem_senha() })
 }
 
 /// Restaura um backup. Quem chama precisa ter fechado o banco antes.
 /// Os dados atuais vão para `anteriores/<data>/`, nunca são apagados.
 /// Devolve a chave dos dados restaurados e o jeito de abrir que ficou valendo.
-pub fn restaurar(cofre: &Cofre, origem: &Path, segredo: &Segredo) -> Result<(Chave, ModoAbrir), Erro> {
+/// `escolha`: como abrir no dia a dia depois (obrigatória se o backup não tem senha).
+pub fn restaurar(cofre: &Cofre, origem: &Path, segredo: &Segredo, escolha: Option<(ModoAbrir, Option<&str>)>) -> Result<(Chave, ModoAbrir), Erro> {
     let (cabecalho, dados) = ler(origem)?;
+    // Confere a escolha antes de mexer em qualquer coisa (um PIN inválido não pode deixar o cofre pela metade).
+    match escolha {
+        Some((ModoAbrir::Pin, pin)) => crate::cofre::validar_pin(pin.unwrap_or(""))?,
+        Some((ModoAbrir::Senha, _)) if !cabecalho.envelopes.tem_senha() => return Err(Erro::SemSenha),
+        _ => {}
+    }
+    if escolha.is_none() && !cabecalho.envelopes.tem_senha() && !matches!(cofre.situacao()?.modo, Some(ModoAbrir::Hello | ModoAbrir::Direto)) {
+        return Err(Erro::SemSenha);
+    }
     let chave = match segredo {
         Segredo::Senha(s) => cabecalho.envelopes.abrir_com_senha(s)?,
         Segredo::Palavras(p) => cabecalho.envelopes.abrir_com_palavras(p)?,
@@ -157,7 +169,7 @@ pub fn restaurar(cofre: &Cofre, origem: &Path, segredo: &Segredo) -> Result<(Cha
     let modo_anterior = cofre.situacao()?.modo;
     guardar_atuais(cofre)?;
     fs::rename(&novo, cofre.caminho_banco())?;
-    let modo = cofre.instalar_restauracao(cabecalho.envelopes, &chave, modo_anterior)?;
+    let modo = cofre.instalar_restauracao(cabecalho.envelopes, &chave, modo_anterior, escolha)?;
     Ok((chave, modo))
 }
 
@@ -226,7 +238,7 @@ mod testes {
 
     /// Cria um cofre com duas ideias e faz backup. Devolve as palavras.
     fn preparar(a: &Ambiente, destino: &Path, modo: ModoAbrir) -> Vec<String> {
-        let (chave, palavras) = a.cofre.criar(SENHA, modo, Some("2468")).unwrap();
+        let (chave, palavras) = a.cofre.criar(Some(SENHA), modo, Some("2468")).unwrap();
         let conn = banco::abrir(&a.cofre.caminho_banco(), &chave).unwrap();
         itens::criar_ideia(&conn, "primeira").unwrap();
         itens::criar_ideia(&conn, "segunda").unwrap();
@@ -247,7 +259,7 @@ mod testes {
 
         // Computador novo: pasta vazia, outra guarda do aparelho.
         let novo = ambiente();
-        let (chave, modo) = restaurar(&novo.cofre, &arquivo, &Segredo::Senha(SENHA.into())).unwrap();
+        let (chave, modo) = restaurar(&novo.cofre, &arquivo, &Segredo::Senha(SENHA.into()), None).unwrap();
         assert_eq!(modo, ModoAbrir::Senha);
         assert_eq!(textos_das_ideias(&novo.cofre, &chave), vec!["segunda", "primeira"]);
         // E a senha continua abrindo o cofre restaurado.
@@ -260,7 +272,7 @@ mod testes {
         let arquivo = origem._pasta.path().join("b.orbita-backup");
         let palavras = preparar(&origem, &arquivo, ModoAbrir::Senha);
         let novo = ambiente();
-        let (chave, _) = restaurar(&novo.cofre, &arquivo, &Segredo::Palavras(palavras.join(" "))).unwrap();
+        let (chave, _) = restaurar(&novo.cofre, &arquivo, &Segredo::Palavras(palavras.join(" ")), None).unwrap();
         assert_eq!(textos_das_ideias(&novo.cofre, &chave).len(), 2);
     }
 
@@ -270,7 +282,7 @@ mod testes {
         let arquivo = a._pasta.path().join("b.orbita-backup");
         preparar(&a, &arquivo, ModoAbrir::Senha);
         let antes = fs::read(a.cofre.caminho_banco()).unwrap();
-        assert!(matches!(restaurar(&a.cofre, &arquivo, &Segredo::Senha("errada errada errada".into())), Err(Erro::SenhaErrada)));
+        assert!(matches!(restaurar(&a.cofre, &arquivo, &Segredo::Senha("errada errada errada".into()), None), Err(Erro::SenhaErrada)));
         assert_eq!(fs::read(a.cofre.caminho_banco()).unwrap(), antes);
         assert!(!a.cofre.pasta().join("anteriores").exists());
     }
@@ -284,7 +296,7 @@ mod testes {
         let chave = a.cofre.abrir_com_senha(SENHA).unwrap();
         itens::criar_ideia(&banco::abrir(&a.cofre.caminho_banco(), &chave).unwrap(), "depois do backup").unwrap();
 
-        let (chave, modo) = restaurar(&a.cofre, &arquivo, &Segredo::Senha(SENHA.into())).unwrap();
+        let (chave, modo) = restaurar(&a.cofre, &arquivo, &Segredo::Senha(SENHA.into()), None).unwrap();
         assert_eq!(modo, ModoAbrir::Hello);
         assert!(a.cofre.abrir_depois_do_hello().is_ok());
         assert_eq!(textos_das_ideias(&a.cofre, &chave).len(), 2);
@@ -332,7 +344,7 @@ mod testes {
     #[test]
     fn automatico_guarda_so_os_ultimos_7_e_nao_toca_em_outros_arquivos() {
         let a = ambiente();
-        let (chave, _) = a.cofre.criar(SENHA, ModoAbrir::Senha, None).unwrap();
+        let (chave, _) = a.cofre.criar(Some(SENHA), ModoAbrir::Senha, None).unwrap();
         let conn = banco::abrir(&a.cofre.caminho_banco(), &chave).unwrap();
         let pasta = a._pasta.path().join("Drive");
         fs::create_dir_all(&pasta).unwrap();
@@ -358,7 +370,7 @@ mod testes {
         use crate::ia;
 
         let origem = ambiente();
-        let (chave, _) = origem.cofre.criar(SENHA, ModoAbrir::Pin, Some("2468")).unwrap();
+        let (chave, _) = origem.cofre.criar(Some(SENHA), ModoAbrir::Pin, Some("2468")).unwrap();
         let conn = banco::abrir(&origem.cofre.caminho_banco(), &chave).unwrap();
         let ideia = itens::criar_ideia(&conn, "Livro sobre faróis").unwrap();
         itens::salvar_nota_ideia(&conn, &ideia.id, "Um farol por capítulo").unwrap();
@@ -403,7 +415,7 @@ mod testes {
         drop(origem);
 
         let novo = ambiente();
-        let (chave, _) = restaurar(&novo.cofre, &copia, &Segredo::Senha(SENHA.into())).unwrap();
+        let (chave, _) = restaurar(&novo.cofre, &copia, &Segredo::Senha(SENHA.into()), None).unwrap();
         let conn = banco::abrir(&novo.cofre.caminho_banco(), &chave).unwrap();
         let i = &itens::listar_ideias(&conn).unwrap()[0];
         assert_eq!((i.texto.as_str(), i.nota.as_str(), i.etiquetas.len()), ("Livro sobre faróis", "Um farol por capítulo", 1));
@@ -424,5 +436,27 @@ mod testes {
         assert_eq!(e.provedores[0].final_chave.as_deref(), Some("1234"));
         // A senha continua abrindo o cofre restaurado.
         assert!(novo.cofre.abrir_com_senha(SENHA).is_ok());
+    }
+
+    #[test]
+    fn backup_sem_senha_abre_com_as_palavras_e_pede_o_jeito_de_abrir() {
+        let origem = ambiente();
+        let pasta = tempfile::tempdir().unwrap();
+        let arquivo = pasta.path().join("sem-senha.orbita-backup");
+        let (chave, palavras) = origem.cofre.criar(None, ModoAbrir::Pin, Some("2468")).unwrap();
+        let conn = banco::abrir(&origem.cofre.caminho_banco(), &chave).unwrap();
+        itens::criar_ideia(&conn, "sem senha").unwrap();
+        criar(&origem.cofre, &conn, &chave, &arquivo).unwrap();
+        assert!(!informacao(&arquivo).unwrap().tem_senha);
+
+        let novo = ambiente();
+        let segredo = Segredo::Palavras(palavras.join(" "));
+        // Sem dizer como abrir, não restaura (não há senha para voltar).
+        assert!(matches!(restaurar(&novo.cofre, &arquivo, &segredo, None), Err(Erro::SemSenha)));
+        assert!(matches!(restaurar(&novo.cofre, &arquivo, &segredo, Some((ModoAbrir::Senha, None))), Err(Erro::SemSenha)));
+        let (chave, modo) = restaurar(&novo.cofre, &arquivo, &segredo, Some((ModoAbrir::Pin, Some("1357")))).unwrap();
+        assert_eq!(modo, ModoAbrir::Pin);
+        assert_eq!(textos_das_ideias(&novo.cofre, &chave), vec!["sem senha"]);
+        assert!(novo.cofre.abrir_com_pin("1357").is_ok());
     }
 }

@@ -13,21 +13,24 @@ type Forma = "hello" | "pin" | "senha" | "recuperar";
 
 export function Desbloquear({ situacao, aoAbrir }: { situacao: Situacao; aoAbrir: () => void }) {
   const pinDisponivel = situacao.modo === "pin" && situacao.tentativasRestantes > 0;
-  const [forma, setForma] = useState<Forma>(situacao.modo === "hello" ? "hello" : pinDisponivel ? "pin" : "senha");
+  const comSenha = situacao.temSenha;
+  // Plano B quando o jeito rápido não serve: a senha, ou (sem senha) as 6 palavras.
+  const reserva: Forma = comSenha ? "senha" : "recuperar";
+  const [forma, setForma] = useState<Forma>(situacao.modo === "hello" ? "hello" : pinDisponivel ? "pin" : situacao.modo === "direto" ? "senha" : reserva);
   const [valor, setValor] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [motivo] = useState(motivoDoBloqueio);
   useEffect(esquecerMotivo, []);
   const [erro, setErro] = useState<string | null>(
-    situacao.modo === "pin" && !pinDisponivel ? t.pinBloqueado : null,
+    situacao.modo === "pin" && !pinDisponivel ? t.pinBloqueado(comSenha) : null,
   );
   const [pinBloqueado, setPinBloqueado] = useState(!pinDisponivel);
 
   // "Abrir direto": tenta sozinho; se o computador não tiver a chave, pede a senha.
   useEffect(() => {
     if (situacao.modo !== "direto") return;
-    api.abrirDireto().then(aoAbrir, () => setErro(t.semChave));
-  }, [situacao.modo, aoAbrir]);
+    api.abrirDireto().then(aoAbrir, () => (setErro(t.semChave(comSenha)), setForma(reserva)));
+  }, [situacao.modo, aoAbrir, comSenha, reserva]);
 
   const trocar = (f: Forma) => {
     setForma(f);
@@ -50,15 +53,20 @@ export function Desbloquear({ situacao, aoAbrir }: { situacao: Situacao; aoAbrir
       else if (["pin_bloqueado", "aparelho_sem_chave", "hello_indisponivel"].includes(err.codigo)) {
         // O jeito rápido não serve mais aqui: já mostra o campo de senha.
         setPinBloqueado(true);
-        setForma("senha");
-        setErro(err.codigo === "pin_bloqueado" ? t.pinBloqueado : err.codigo === "hello_indisponivel" ? err.message : t.semChave);
+        setForma(reserva);
+        setErro(err.codigo === "pin_bloqueado" ? t.pinBloqueado(comSenha) : err.codigo === "hello_indisponivel" ? err.message : t.semChave(comSenha));
       } else setErro(err.message);
     } finally {
       setOcupado(false);
     }
   };
 
-  if (forma === "recuperar") return <Recuperar aoVoltar={() => trocar("senha")} aoConcluir={aoAbrir} />;
+  // De onde voltar da recuperação: a senha, ou o jeito rápido se ele ainda serve.
+  const voltarPara: Forma | null = comSenha ? "senha" : situacao.modo === "hello" && !pinBloqueado ? "hello" : situacao.modo === "pin" && !pinBloqueado ? "pin" : null;
+  if (forma === "recuperar")
+    return <Recuperar comSenha={comSenha} aviso={erro} aoVoltar={voltarPara ? () => trocar(voltarPara) : undefined} aoConcluir={aoAbrir} />;
+  // "Abrir direto" tentando sozinho: só uma tela calma enquanto isso.
+  if (situacao.modo === "direto" && forma === "senha" && !comSenha) return <MolduraAcesso><p role="status">{textos.comum.aguarde}</p></MolduraAcesso>;
 
   return (
     <MolduraAcesso>
@@ -78,14 +86,14 @@ export function Desbloquear({ situacao, aoAbrir }: { situacao: Situacao; aoAbrir
           </Button>
         </div>
         <div className="links">
-          {(forma === "pin" || forma === "hello") && <Button className="link" onPress={() => trocar("senha")}>{t.usarSenha}</Button>}
+          {(forma === "pin" || forma === "hello") && <Button className="link" onPress={() => trocar(reserva)}>{comSenha ? t.usarSenha : t.usarPalavras}</Button>}
           {forma === "senha" && situacao.modo === "hello" && !pinBloqueado && (
             <Button className="link" onPress={() => trocar("hello")}>{t.usarHello}</Button>
           )}
           {forma === "senha" && situacao.modo === "pin" && !pinBloqueado && (
             <Button className="link" onPress={() => trocar("pin")}>{t.usarPin}</Button>
           )}
-          <Button className="link" onPress={() => trocar("recuperar")}>{t.esqueci}</Button>
+          {comSenha && <Button className="link" onPress={() => trocar("recuperar")}>{t.esqueci}</Button>}
         </div>
       </Form>
     </MolduraAcesso>

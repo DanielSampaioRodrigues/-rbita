@@ -1,2 +1,4 @@
-- **Atualização dentro do Órbita**: em Ajustes > Atualizações, o botão "Procurar atualização" mostra o que mudou antes de instalar, e dá para deixar para depois. Ao abrir, o Órbita também confere sozinho e só mostra um aviso (dá para desligar).
-- Tema com IA também propõe e ajusta o estilo dos ícones ("ícones mais grossos e retos").
+- **Começar ficou mais simples**: quem instala o Órbita agora não precisa inventar senha. São dois passos: escolher como abrir (Windows Hello, PIN ou direto) e guardar as 6 palavras da chave de recuperação.
+- **As 6 palavras resolvem tudo**: se o PIN bloquear ou o Windows Hello falhar, dá para abrir com elas, e o PIN volta a funcionar.
+- **Senha opcional**: quem quiser cria uma em Ajustes > Segurança. Quem já tem senha continua igual.
+- Para ver a chave de recuperação ou mudar como o Órbita abre, a confirmação usa o seu jeito de sempre (PIN, Windows Hello ou senha).

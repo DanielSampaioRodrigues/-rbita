@@ -1,7 +1,10 @@
 import { FileUp } from "lucide-react";
 import { useState } from "react";
 import { Button, Form } from "react-aria-components";
+import { avaliarPin } from "../acesso/validacao";
 import { api, ErroOrbita, escolherBackup, type InfoBackup, type ModoAbrir } from "../api";
+import { useHelloDisponivel } from "../useHello";
+import { EscolhaModo } from "./EscolhaModo";
 import { QUANTIDADE, reconhecer } from "../palavras";
 import { textos } from "../textos/pt-BR";
 import { Aviso, Campo } from "./Campo";
@@ -34,6 +37,12 @@ export function RestaurarBackup({ substitui, aoVoltar, aoConcluir }: Props) {
   const [senha, setSenha] = useState("");
   const [palavras, setPalavras] = useState<string[]>(Array(QUANTIDADE).fill(""));
   const [modoFinal, setModoFinal] = useState<ModoAbrir | null>(null);
+  // Backup sem senha: a pessoa escolhe como abrir depois (não há senha para voltar).
+  const comHello = useHelloDisponivel() ?? false;
+  const [escolhido, setEscolhido] = useState<ModoAbrir | null>(null);
+  const modoDepois: ModoAbrir = escolhido ?? (comHello ? "hello" : "pin");
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -86,29 +95,48 @@ export function RestaurarBackup({ substitui, aoVoltar, aoConcluir }: Props) {
     );
   }
 
-  const pronto = usarPalavras ? palavras.every((p) => reconhecer(p)) : senha.length > 0;
+  const semSenha = !arquivo.info.temSenha;
+  const comPalavras = usarPalavras || semSenha;
+  const avPin = avaliarPin(pin, pin2);
+  const pronto = (comPalavras ? palavras.every((p) => reconhecer(p)) : senha.length > 0) && (!semSenha || modoDepois !== "pin" || avPin.ok);
   const restaurar = () =>
     executar(async () => {
-      const segredo = usarPalavras ? { palavras: palavras.join(" ") } : { senha };
-      setModoFinal(await api.restaurarBackup(arquivo.caminho, segredo));
+      const segredo = comPalavras ? { palavras: palavras.join(" ") } : { senha };
+      const escolha = semSenha ? { modo: modoDepois, pin: modoDepois === "pin" ? pin : undefined } : undefined;
+      setModoFinal(await api.restaurarBackup(arquivo.caminho, segredo, escolha));
     });
 
   return (
     <Form className="formulario" onSubmit={(e) => (e.preventDefault(), pronto && !ocupado && restaurar())}>
       <p className="campo-rotulo">{t.deData(formato.format(arquivo.info.criadoEm))}</p>
-      {usarPalavras ? (
+      {comPalavras ? (
         <>
-          <p className="texto-suave">{t.palavrasTexto}</p>
+          <p className="texto-suave">{semSenha ? t.semSenhaTexto : t.palavrasTexto}</p>
           <CampoPalavras valores={palavras} aoMudar={setPalavras} />
         </>
       ) : (
         <Campo rotulo={textos.senha.rotulo} valor={senha} aoMudar={setSenha} secreto autoFocus descricao={t.senhaTexto} />
       )}
-      <div className="links">
-        <Button className="link" onPress={() => (setErro(null), setUsarPalavras((v) => !v))}>
-          {usarPalavras ? t.usarSenha : t.usarPalavras}
-        </Button>
-      </div>
+      {!semSenha && (
+        <div className="links">
+          <Button className="link" onPress={() => (setErro(null), setUsarPalavras((v) => !v))}>
+            {usarPalavras ? t.usarSenha : t.usarPalavras}
+          </Button>
+        </div>
+      )}
+      {semSenha && (
+        <>
+          <p className="campo-rotulo">{t.comoAbrirDepois}</p>
+          <EscolhaModo valor={modoDepois} aoMudar={setEscolhido} rotulo={t.comoAbrirDepois} comHello={comHello} comSenha={false} />
+          {modoDepois === "pin" && (
+            <>
+              <Campo rotulo={textos.pin.rotulo} valor={pin} aoMudar={setPin} secreto numerico maximo={8} descricao={textos.pin.dica} />
+              <Campo rotulo={textos.pin.confirmar} valor={pin2} aoMudar={setPin2} secreto numerico maximo={8} />
+              <Aviso>{avPin.erro}</Aviso>
+            </>
+          )}
+        </>
+      )}
       {substitui && <p className="texto-suave">{t.avisoSubstituir}</p>}
       <Aviso>{erro}</Aviso>
       <div className="botoes">

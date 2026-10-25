@@ -33,11 +33,12 @@ const chaves = <T extends string>(o: Record<T, unknown>) => Object.keys(o) as T[
 
 interface Props {
   modo: ModoAbrir | null;
+  temSenha: boolean;
   aoMudarSeguranca: () => void;
   aoRestaurar: () => void;
 }
 
-export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
+export function Ajustes({ modo, temSenha, aoMudarSeguranca, aoRestaurar }: Props) {
   const { prefs, mudar, voltarAoPadrao } = usePreferencias();
   const [confirmando, setConfirmando] = useState(false);
   const [editandoTema, setEditandoTema] = useState<Tema | null>(null);
@@ -165,7 +166,7 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
           </section>
 
           <LimiteProjetos />
-          <Seguranca modo={modo} aoMudar={aoMudarSeguranca} />
+          <Seguranca modo={modo} temSenha={temSenha} aoMudar={aoMudarSeguranca} />
           <AjustesJanela />
           <AjustesAtualizacao />
           <Backup aoRestaurar={aoRestaurar} />

@@ -6,7 +6,7 @@
 
 | Envelope | Tranca com | Observação |
 | --- | --- | --- |
-| senha | Argon2id da senha (64 MB, 3 passadas, cerca de 0,3 s) | Sempre existe |
+| senha | Argon2id da senha (64 MB, 3 passadas, cerca de 0,3 s) | Opcional desde a 0.21.0 |
 | recuperação | Argon2id das 6 palavras | Sempre existe |
 | PIN | Argon2id do PIN, com um segredo do aparelho como "pimenta" | Só neste computador |
 | abrir direto | o segredo do aparelho | Só neste computador |
@@ -30,3 +30,11 @@ O segredo do aparelho fica no Gerenciador de Credenciais do Windows, preso ao us
 - Exclusões são marcadas (`excluido_em`), não apagadas, para a sincronização futura.
 
 **Windows Hello** (25/10/2026). O Windows confirma a pessoa (digital, rosto ou PIN do Windows) e só então o Órbita usa o segredo do aparelho. O pedido é preso à janela do Órbita (`RequestVerificationForWindowAsync`), para não abrir atrás dela. A proteção é do mesmo nível do PIN: contra quem mexe no computador, não contra um vírus no usuário. Se o Windows Hello deixar de funcionar, o Órbita pede a senha.
+
+**Senha opcional** (25/10/2026, versão 0.21.0, pedido de Dan). Senha, 6 palavras e arquivo eram burocracia demais: levavam a anotar tudo num papel e assustavam na primeira vez. Agora a criação tem dois passos: como abrir no dia a dia (Windows Hello recomendado, PIN ou abrir direto) e guardar as 6 palavras. Não se inventa senha.
+- **A segurança não cai.** O envelope que vale em qualquer computador passa a ser só o das palavras: cerca de 66 bits com Argon2id, mais forte que a maioria das senhas que as pessoas inventam. A senha continua existindo como opção, em Ajustes > Segurança ("Criar uma senha").
+- **Onde se pedia a senha, valem as palavras.** PIN bloqueado, Windows Hello falhando ou abrir direto sem a chave do aparelho levam direto à tela "Abrir com a chave de recuperação", que abre e libera o PIN de novo.
+- **Confirmar que é você** (ver a chave, mudar como abre, criar senha) usa o jeito de sempre: senha se houver, senão PIN ou Windows Hello; no abrir direto não há o que confirmar. As 6 palavras servem sempre.
+- **Backup sem senha** abre com as 6 palavras, e quem restaura escolhe na hora como abrir depois (não há senha para voltar).
+- Cofres já criados com senha não mudam nada. O próximo passo é guardar a recuperação na conta Google ou Microsoft da própria pessoa (ver a especificação, "Menos burocracia").
+

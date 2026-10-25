@@ -9,10 +9,12 @@ interface Props {
   rotulo: string;
   /** Só mostra o Windows Hello quando o computador tem. */
   comHello: boolean;
+  /** Só mostra "senha" se a pessoa criou uma. */
+  comSenha?: boolean;
 }
 
-export function EscolhaModo({ valor, aoMudar, rotulo, comHello }: Props) {
-  const modos: ModoAbrir[] = comHello ? ["hello", "pin", "senha", "direto"] : ["pin", "senha", "direto"];
+export function EscolhaModo({ valor, aoMudar, rotulo, comHello, comSenha = true }: Props) {
+  const modos = (["hello", "pin", "senha", "direto"] as ModoAbrir[]).filter((m) => (m !== "hello" || comHello) && (m !== "senha" || comSenha));
   const recomendado: ModoAbrir = comHello ? "hello" : "pin";
   return (
     <RadioGroup className="campo" value={valor} onChange={(v) => aoMudar(v as ModoAbrir)}>

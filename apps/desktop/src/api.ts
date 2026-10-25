@@ -11,7 +11,12 @@ export interface Situacao {
   modo: ModoAbrir | null;
   tentativasRestantes: number;
   aberto: boolean;
+  /** Sem senha, onde antes se pedia a senha valem as 6 palavras. */
+  temSenha: boolean;
 }
+
+/** Confirmar que é a pessoa antes de uma ação sensível (ver a chave, mudar como abre, criar senha). */
+export type Confirmacao = { tipo: "senha" | "palavras" | "pin"; valor: string } | { tipo: "aparelho" };
 
 export interface Ideia {
   id: string;
@@ -170,6 +175,8 @@ export interface SituacaoBackup {
 export interface InfoBackup {
   criadoEm: number;
   versaoApp: string;
+  /** Sem senha, o backup abre com as 6 palavras e a pessoa escolhe como abrir depois. */
+  temSenha: boolean;
 }
 
 export type CodigoErro =
@@ -179,6 +186,7 @@ export type CodigoErro =
   | "palavras_erradas"
   | "chave_errada"
   | "senha_curta"
+  | "sem_senha"
   | "pin_invalido"
   | "cofre_existe"
   | "cofre_ausente"
@@ -282,7 +290,10 @@ export interface Sugestao {
 
 interface Api {
   situacao(): Promise<Situacao>;
-  criarCofre(senha: string, modo: ModoAbrir, pin?: string): Promise<string[]>;
+  /** `senha` é opcional: sem ela, as 6 palavras fazem o papel de senha. */
+  criarCofre(senha: string | null, modo: ModoAbrir, pin?: string): Promise<string[]>;
+  /** Abre com as 6 palavras e libera o PIN de novo. */
+  abrirComPalavras(texto: string): Promise<void>;
   abrirComSenha(senha: string): Promise<void>;
   abrirComPin(pin: string): Promise<void>;
   abrirDireto(): Promise<void>;
@@ -292,9 +303,10 @@ interface Api {
   recuperar(texto: string, novaSenha: string): Promise<void>;
   lerArquivoRecuperacao(caminho: string): Promise<string>;
   gravarArquivoRecuperacao(caminho: string): Promise<void>;
-  verPalavras(senha: string): Promise<string[]>;
-  trocarSenha(atual: string, nova: string): Promise<void>;
-  mudarModo(senha: string, modo: ModoAbrir, pin?: string): Promise<void>;
+  verPalavras(confirmacao: Confirmacao): Promise<string[]>;
+  /** Cria a senha (se não houver) ou troca a atual. */
+  definirSenha(confirmacao: Confirmacao, nova: string): Promise<void>;
+  mudarModo(confirmacao: Confirmacao, modo: ModoAbrir, pin?: string): Promise<void>;
   bloquear(): Promise<void>;
   listarIdeias(): Promise<Ideia[]>;
   criarIdeia(texto: string): Promise<Ideia>;
@@ -353,7 +365,8 @@ interface Api {
   listarPrazos(de: string, ate: string): Promise<Prazo[]>;
   fazerBackup(caminho: string): Promise<void>;
   infoBackup(caminho: string): Promise<InfoBackup>;
-  restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }): Promise<ModoAbrir>;
+  /** `escolha`: como abrir no dia a dia depois (obrigatória se o backup não tem senha). */
+  restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }, escolha?: { modo: ModoAbrir; pin?: string }): Promise<ModoAbrir>;
   situacaoBackup(): Promise<SituacaoBackup>;
   definirBackupAutomatico(pasta: string | null): Promise<SituacaoBackup>;
   estadoIa(): Promise<EstadoIa>;
@@ -406,6 +419,7 @@ const chamar = async <T>(comando: string, args?: Record<string, unknown>): Promi
 const nativa: Api = {
   situacao: () => chamar("situacao"),
   criarCofre: (senha, modo, pin) => chamar("criar_cofre", { senha, modo, pin: pin ?? null }),
+  abrirComPalavras: (texto) => chamar("abrir_com_palavras", { texto }),
   abrirComSenha: (senha) => chamar("abrir_com_senha", { senha }),
   abrirComPin: (pin) => chamar("abrir_com_pin", { pin }),
   abrirDireto: () => chamar("abrir_direto"),
@@ -415,9 +429,9 @@ const nativa: Api = {
   recuperar: (texto, novaSenha) => chamar("recuperar", { texto, novaSenha }),
   lerArquivoRecuperacao: (caminho) => chamar("ler_arquivo_recuperacao", { caminho }),
   gravarArquivoRecuperacao: (caminho) => chamar("gravar_arquivo_recuperacao", { caminho }),
-  verPalavras: (senha) => chamar("ver_palavras", { senha }),
-  trocarSenha: (atual, nova) => chamar("trocar_senha", { atual, nova }),
-  mudarModo: (senha, modo, pin) => chamar("mudar_modo", { senha, modo, pin: pin ?? null }),
+  verPalavras: (confirmacao) => chamar("ver_palavras", { confirmacao }),
+  definirSenha: (confirmacao, nova) => chamar("definir_senha", { confirmacao, nova }),
+  mudarModo: (confirmacao, modo, pin) => chamar("mudar_modo", { confirmacao, modo, pin: pin ?? null }),
   bloquear: () => chamar("bloquear"),
   listarIdeias: () => chamar("listar_ideias"),
   criarIdeia: (texto) => chamar("criar_ideia", { texto }),
@@ -471,8 +485,8 @@ const nativa: Api = {
   listarPrazos: (de, ate) => chamar("listar_prazos", { de, ate }),
   fazerBackup: (caminho) => chamar("fazer_backup", { caminho }),
   infoBackup: (caminho) => chamar("info_backup", { caminho }),
-  restaurarBackup: (caminho, { senha, palavras }) =>
-    chamar("restaurar_backup", { caminho, senha: senha ?? null, palavras: palavras ?? null }),
+  restaurarBackup: (caminho, { senha, palavras }, escolha) =>
+    chamar("restaurar_backup", { caminho, senha: senha ?? null, palavras: palavras ?? null, modo: escolha?.modo ?? null, pin: escolha?.pin ?? null }),
   situacaoBackup: () => chamar("situacao_backup"),
   definirBackupAutomatico: (pasta) => chamar("definir_backup_automatico", { pasta }),
   estadoIa: () => chamar("estado_ia"),
@@ -849,7 +863,7 @@ function simularEnergia() {
 
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
-  const PALAVRAS = ["janela", "cometa", "farol", "bambu", "orvalho", "tijolo"];
+  const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
   const s = { existe: false, modo: null as ModoAbrir | null, senha: "", pin: "", erradas: 0, aberto: false };
   const backup: SituacaoBackup = { pasta: null, ultimo: null, erro: null };
   const comItens = simularItens();
@@ -865,14 +879,25 @@ function criarSimulacao(): Api {
       throw new ErroOrbita("chave_errada", "A chave de recuperação não abre estes dados.");
   };
   const params = new URLSearchParams(globalThis.location?.search ?? "");
-  if (params.get("cofre")) Object.assign(s, { existe: true, modo: params.get("cofre"), senha: "gato azul na janela", pin: "2468" });
+  // `?senha=nao`: cofre criado sem senha (só as 6 palavras).
+  if (params.get("cofre")) Object.assign(s, { existe: true, modo: params.get("cofre"), senha: params.get("senha") === "nao" ? "" : "gato azul na janela", pin: "2468" });
+  const confirmar = async (conf: Confirmacao) => {
+    await espera();
+    if (conf.tipo === "senha" && (!s.senha || conf.valor !== s.senha)) throw new ErroOrbita(s.senha ? "senha_errada" : "sem_senha", s.senha ? "A senha não confere." : "Estes dados não têm senha.");
+    if (conf.tipo === "pin" && conf.valor !== s.pin) throw new ErroOrbita("pin_errado", "O PIN não confere.");
+    if (conf.tipo === "palavras") await conferir(conf.valor);
+  };
   if (params.get("aberto")) s.aberto = true;
   return {
-    situacao: async () => ({ existe: s.existe, modo: s.modo, tentativasRestantes: 5 - s.erradas, aberto: s.aberto }),
+    situacao: async () => ({ existe: s.existe, modo: s.modo, tentativasRestantes: 5 - s.erradas, aberto: s.aberto, temSenha: !!s.senha }),
     criarCofre: async (senha, modo, pin) => {
       await espera();
-      Object.assign(s, { existe: true, modo, senha, pin: pin ?? "", aberto: true });
+      Object.assign(s, { existe: true, modo, senha: senha ?? "", pin: pin ?? "", aberto: true });
       return PALAVRAS;
+    },
+    abrirComPalavras: async (texto) => {
+      await conferir(texto);
+      Object.assign(s, { erradas: 0, aberto: true });
     },
     abrirComSenha: async (senha) => {
       await espera();
@@ -907,19 +932,16 @@ function criarSimulacao(): Api {
     },
     lerArquivoRecuperacao: async () => PALAVRAS.join(" "),
     gravarArquivoRecuperacao: async () => {},
-    verPalavras: async (senha) => {
-      await espera();
-      if (senha !== s.senha) return falha("senha_errada", "A senha não confere.");
+    verPalavras: async (conf) => {
+      await confirmar(conf);
       return PALAVRAS;
     },
-    trocarSenha: async (atual, nova) => {
-      await espera();
-      if (atual !== s.senha) return falha("senha_errada", "A senha não confere.");
+    definirSenha: async (conf, nova) => {
+      await confirmar(conf);
       s.senha = nova;
     },
-    mudarModo: async (senha, modo, pin) => {
-      await espera();
-      if (senha !== s.senha) return falha("senha_errada", "A senha não confere.");
+    mudarModo: async (conf, modo, pin) => {
+      await confirmar(conf);
       Object.assign(s, { modo, pin: pin ?? "" });
     },
     bloquear: async () => {
@@ -933,12 +955,16 @@ function criarSimulacao(): Api {
     fazerBackup: async () => {
       await espera();
     },
-    infoBackup: async () => ({ criadoEm: Date.now() - 86_400_000, versaoApp: "0.5.0" }),
-    restaurarBackup: async (_c, { senha, palavras }) => {
+    // `?backup=semsenha`: o backup de exemplo não tem senha (abre com as palavras).
+    infoBackup: async () => ({ criadoEm: Date.now() - 86_400_000, versaoApp: "0.5.0", temSenha: params.get("backup") !== "semsenha" }),
+    restaurarBackup: async (_c, { senha, palavras }, escolha) => {
+      const backupComSenha = params.get("backup") !== "semsenha";
       if (palavras) await conferir(palavras);
-      else if (senha !== "gato azul na janela") return falha("senha_errada", "A senha não confere.");
-      Object.assign(s, { existe: true, modo: "senha", senha: "gato azul na janela", aberto: true });
-      return "senha";
+      else if (!backupComSenha || senha !== "gato azul na janela") return falha("senha_errada", "A senha não confere.");
+      if (!backupComSenha && (!escolha || escolha.modo === "senha")) return falha("sem_senha", "Estes dados não têm senha. Use as 6 palavras da chave de recuperação.");
+      const modo = escolha?.modo ?? "senha";
+      Object.assign(s, { existe: true, modo, senha: backupComSenha ? "gato azul na janela" : "", pin: escolha?.pin ?? "", aberto: true });
+      return modo;
     },
     situacaoBackup: async () => ({ ...backup }),
     definirBackupAutomatico: async (pasta) => {

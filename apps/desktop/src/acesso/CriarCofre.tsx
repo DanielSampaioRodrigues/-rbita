@@ -8,17 +8,16 @@ import { RestaurarBackup } from "../componentes/RestaurarBackup";
 import { textos } from "../textos/pt-BR";
 import { useHelloDisponivel } from "../useHello";
 import { MolduraAcesso } from "./Moldura";
-import { avaliarPin, avaliarSenha } from "./validacao";
+import { avaliarPin } from "./validacao";
 
 const t = textos.criar;
 const c = textos.comum;
 
-type Passo = "boasVindas" | "restaurar" | "senha" | "modo" | "pin" | "chave";
+// Sem senha para inventar: as 6 palavras são a tranca forte (a senha é opcional, em Ajustes).
+type Passo = "boasVindas" | "restaurar" | "modo" | "pin" | "chave";
 
 export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [passo, setPasso] = useState<Passo>("boasVindas");
-  const [senha, setSenha] = useState("");
-  const [senha2, setSenha2] = useState("");
   const comHello = useHelloDisponivel() ?? false;
   // Até a pessoa escolher, a recomendação: Windows Hello quando houver, senão PIN.
   const [escolhido, setModo] = useState<ModoAbrir | null>(null);
@@ -29,16 +28,15 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  const avSenha = avaliarSenha(senha, senha2);
   const avPin = avaliarPin(pin, pin2);
-  const ordem: Passo[] = modo === "pin" ? ["senha", "modo", "pin", "chave"] : ["senha", "modo", "chave"];
+  const ordem: Passo[] = modo === "pin" ? ["modo", "pin", "chave"] : ["modo", "chave"];
   const numero = (p: Passo) => c.passo(ordem.indexOf(p) + 1, ordem.length);
 
   const criar = async () => {
     setOcupado(true);
     setErro(null);
     try {
-      setPalavras(await api.criarCofre(senha, modo, modo === "pin" ? pin : undefined));
+      setPalavras(await api.criarCofre(null, modo, modo === "pin" ? pin : undefined));
       setPasso("chave");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -53,7 +51,7 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
         <h1>{t.boasVindasTitulo}</h1>
         <p>{t.boasVindasTexto}</p>
         <p className="texto-suave">{t.boasVindasPassos}</p>
-        <Button className="botao principal" autoFocus onPress={() => setPasso("senha")}>{t.comecar}</Button>
+        <Button className="botao principal" autoFocus onPress={() => setPasso("modo")}>{t.comecar}</Button>
         <div className="links">
           <Button className="link" onPress={() => setPasso("restaurar")}>{textos.backup.tenhoBackup}</Button>
         </div>
@@ -70,35 +68,16 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
     );
   }
 
-  if (passo === "senha") {
-    return (
-      <MolduraAcesso passo={numero("senha")}>
-        <Form className="formulario" onSubmit={(e) => (e.preventDefault(), avSenha.ok && setPasso("modo"))}>
-          <h1>{t.senhaTitulo}</h1>
-          <p>{t.senhaTexto}</p>
-          <Campo rotulo={textos.senha.rotulo} valor={senha} aoMudar={setSenha} secreto autoFocus autoComplete="new-password"
-            descricao={avSenha.dica ?? textos.senha.dica} />
-          <Campo rotulo={textos.senha.confirmar} valor={senha2} aoMudar={setSenha2} secreto autoComplete="new-password" />
-          <Aviso>{avSenha.erro}</Aviso>
-          <div className="botoes">
-            <Button className="botao" onPress={() => setPasso("boasVindas")}>{c.voltar}</Button>
-            <Button className="botao principal" type="submit" isDisabled={!avSenha.ok}>{c.continuar}</Button>
-          </div>
-        </Form>
-      </MolduraAcesso>
-    );
-  }
-
   if (passo === "modo") {
     return (
       <MolduraAcesso passo={numero("modo")}>
         <Form className="formulario" onSubmit={(e) => (e.preventDefault(), modo === "pin" ? setPasso("pin") : criar())}>
           <h1>{t.modoTitulo}</h1>
           <p className="texto-suave">{t.modoTexto}</p>
-          <EscolhaModo valor={modo} aoMudar={setModo} rotulo={t.modoTitulo} comHello={comHello} />
+          <EscolhaModo valor={modo} aoMudar={setModo} rotulo={t.modoTitulo} comHello={comHello} comSenha={false} />
           <Aviso>{erro}</Aviso>
           <div className="botoes">
-            <Button className="botao" onPress={() => setPasso("senha")}>{c.voltar}</Button>
+            <Button className="botao" onPress={() => setPasso("boasVindas")}>{c.voltar}</Button>
             <Button className="botao principal" type="submit" isDisabled={ocupado}>{ocupado ? t.protegendo : c.continuar}</Button>
           </div>
         </Form>

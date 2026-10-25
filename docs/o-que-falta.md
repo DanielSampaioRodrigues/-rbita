@@ -1,6 +1,6 @@
 # O que falta implementar
 
-25/10/2026 · versão 0.20.0. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
+25/10/2026 · versão 0.21.0. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
 
 ## 1. Pendências da Onda 1 (o que está pela metade)
 
@@ -12,7 +12,7 @@
 - [x] **Ícones do tema**: traço e pontas ajustáveis (0.19.0). Desenhar ícones próprios fica para a galeria da comunidade.
 - [x] **Conversa com a IA**: pedir mudanças na lista separada pela captura (0.19.0).
 - [x] **Auditoria automática de acessibilidade** (axe-core, WCAG 2.2 AA): sem problemas nos temas claro e escuro (0.19.0).
-- [ ] **Primeira configuração leve** (etapa A): sem inventar senha; Windows Hello, PIN ou abrir direto, e as 6 palavras como recuperação. Senha opcional.
+- [x] **Primeira configuração leve** (etapa A, 0.21.0): sem inventar senha; Windows Hello, PIN ou abrir direto, e as 6 palavras como recuperação. Senha opcional.
 - [ ] **Proteger com a conta Google ou Microsoft** (etapa B): chave de recuperação e backup criptografado no Drive ou OneDrive da pessoa, sem servidor do Órbita. Apple fica para a Onda 3.
 - [ ] **Teste com leitor de tela de verdade** (NVDA), de preferência com quem usa. Só dá para fazer no Windows.
 - [ ] **Portão da Onda 1**: Dan usar no dia a dia por algumas semanas e aprovar (lista em `docs/revisao-onda-1.md`).

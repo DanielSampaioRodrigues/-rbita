@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { avaliarPin, avaliarSenha } from "../acesso/validacao";
 import { api, type ModoAbrir } from "../api";
+import { useConfirmarIdentidade } from "../componentes/ConfirmarIdentidade";
 import { Aviso, Campo } from "../componentes/Campo";
 import { ChaveRecuperacao } from "../componentes/ChaveRecuperacao";
 import { EscolhaModo } from "../componentes/EscolhaModo";
@@ -14,7 +15,7 @@ const c = textos.comum;
 
 type Janela = "modo" | "senha" | "chave" | null;
 
-export function Seguranca({ modo, aoMudar }: { modo: ModoAbrir | null; aoMudar: () => void }) {
+export function Seguranca({ modo, temSenha, aoMudar }: { modo: ModoAbrir | null; temSenha: boolean; aoMudar: () => void }) {
   const [janela, setJanela] = useState<Janela>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const fechar = () => setJanela(null);
@@ -34,20 +35,21 @@ export function Seguranca({ modo, aoMudar }: { modo: ModoAbrir | null; aoMudar: 
         </div>
         <Button className="botao" onPress={() => (setAviso(null), setJanela("modo"))}>{t.mudar}</Button>
       </div>
+      <p className="texto-suave">{temSenha ? t.comSenha : t.semSenha}</p>
       <div className="botoes">
-        <Button className="botao" onPress={() => (setAviso(null), setJanela("senha"))}>{t.trocarSenha}</Button>
+        <Button className="botao" onPress={() => (setAviso(null), setJanela("senha"))}>{temSenha ? t.trocarSenha : t.criarSenha}</Button>
         <Button className="botao" onPress={() => (setAviso(null), setJanela("chave"))}>{t.verChave}</Button>
       </div>
       <Aviso tipo="ok">{aviso}</Aviso>
 
       <Janela titulo={t.mudarTitulo} aberta={janela === "modo"} aoFechar={fechar}>
-        <MudarModo atual={modo ?? "pin"} aoCancelar={fechar} aoConcluir={concluir} />
+        <MudarModo atual={modo ?? "pin"} temSenha={temSenha} aoCancelar={fechar} aoConcluir={concluir} />
       </Janela>
-      <Janela titulo={t.trocarTitulo} aberta={janela === "senha"} aoFechar={fechar}>
-        <TrocarSenha aoCancelar={fechar} aoConcluir={concluir} />
+      <Janela titulo={temSenha ? t.trocarTitulo : t.criarSenha} aberta={janela === "senha"} aoFechar={fechar}>
+        <DefinirSenha modo={modo} temSenha={temSenha} aoCancelar={fechar} aoConcluir={concluir} />
       </Janela>
       <Janela titulo={t.verTitulo} aberta={janela === "chave"} aoFechar={fechar}>
-        <VerChave aoFechar={fechar} />
+        <VerChave modo={modo} temSenha={temSenha} aoFechar={fechar} />
       </Janela>
     </section>
   );
@@ -70,25 +72,27 @@ function useEnvio() {
   return { ocupado, erro, enviar };
 }
 
-function MudarModo({ atual, aoCancelar, aoConcluir }: { atual: ModoAbrir; aoCancelar: () => void; aoConcluir: () => void }) {
+type PropsConfirmar = { modo: ModoAbrir | null; temSenha: boolean };
+
+function MudarModo({ atual, temSenha, aoCancelar, aoConcluir }: { atual: ModoAbrir; temSenha: boolean; aoCancelar: () => void; aoConcluir: () => void }) {
   const [modo, setModo] = useState<ModoAbrir>(atual);
   const comHello = (useHelloDisponivel() ?? false) || atual === "hello";
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
-  const [senha, setSenha] = useState("");
+  const { confirmacao, campos } = useConfirmarIdentidade(atual, temSenha);
   const { ocupado, erro, enviar } = useEnvio();
   const avPin = avaliarPin(pin, pin2);
-  const pronto = senha.length > 0 && (modo !== "pin" || avPin.ok);
+  const pronto = confirmacao !== null && (modo !== "pin" || avPin.ok);
   return (
-    <Form className="formulario" onSubmit={(e) => (e.preventDefault(), pronto && enviar(async () => (await api.mudarModo(senha, modo, modo === "pin" ? pin : undefined), aoConcluir())))}>
-      <EscolhaModo valor={modo} aoMudar={setModo} rotulo={t.mudarTitulo} comHello={comHello} />
+    <Form className="formulario" onSubmit={(e) => (e.preventDefault(), pronto && enviar(async () => (await api.mudarModo(confirmacao, modo, modo === "pin" ? pin : undefined), aoConcluir())))}>
+      <EscolhaModo valor={modo} aoMudar={setModo} rotulo={t.mudarTitulo} comHello={comHello} comSenha={temSenha} />
       {modo === "pin" && (
         <>
           <Campo rotulo={textos.pin.rotulo} valor={pin} aoMudar={setPin} secreto numerico maximo={8} descricao={textos.pin.dica} />
           <Campo rotulo={textos.pin.confirmar} valor={pin2} aoMudar={setPin2} secreto numerico maximo={8} />
         </>
       )}
-      <Campo rotulo={t.senhaAtual} valor={senha} aoMudar={setSenha} secreto descricao={t.confirmarComSenha} autoComplete="current-password" />
+      {campos}
       <Aviso>{avPin.erro && modo === "pin" ? avPin.erro : erro}</Aviso>
       <div className="janela-acoes">
         <Button className="botao" onPress={aoCancelar}>{c.cancelar}</Button>
@@ -98,17 +102,18 @@ function MudarModo({ atual, aoCancelar, aoConcluir }: { atual: ModoAbrir; aoCanc
   );
 }
 
-function TrocarSenha({ aoCancelar, aoConcluir }: { aoCancelar: () => void; aoConcluir: () => void }) {
-  const [atual, setAtual] = useState("");
+function DefinirSenha({ modo, temSenha, aoCancelar, aoConcluir }: PropsConfirmar & { aoCancelar: () => void; aoConcluir: () => void }) {
   const [nova, setNova] = useState("");
   const [nova2, setNova2] = useState("");
+  const { confirmacao, campos } = useConfirmarIdentidade(modo, temSenha);
   const { ocupado, erro, enviar } = useEnvio();
   const av = avaliarSenha(nova, nova2);
-  const pronto = atual.length > 0 && av.ok;
+  const pronto = confirmacao !== null && av.ok;
   return (
-    <Form className="formulario" onSubmit={(e) => (e.preventDefault(), pronto && enviar(async () => (await api.trocarSenha(atual, nova), aoConcluir())))}>
-      <Campo rotulo={t.senhaAtual} valor={atual} aoMudar={setAtual} secreto autoFocus autoComplete="current-password" />
-      <Campo rotulo={t.novaSenha} valor={nova} aoMudar={setNova} secreto descricao={av.dica ?? textos.senha.dica} autoComplete="new-password" />
+    <Form className="formulario" onSubmit={(e) => (e.preventDefault(), pronto && enviar(async () => (await api.definirSenha(confirmacao, nova), aoConcluir())))}>
+      {!temSenha && <p>{t.criarSenhaTexto}</p>}
+      {campos}
+      <Campo rotulo={t.novaSenha} valor={nova} aoMudar={setNova} secreto autoFocus={!temSenha} descricao={av.dica ?? textos.senha.dica} autoComplete="new-password" />
       <Campo rotulo={textos.senha.confirmar} valor={nova2} aoMudar={setNova2} secreto autoComplete="new-password" />
       <Aviso>{av.erro ?? erro}</Aviso>
       <div className="janela-acoes">
@@ -119,9 +124,9 @@ function TrocarSenha({ aoCancelar, aoConcluir }: { aoCancelar: () => void; aoCon
   );
 }
 
-function VerChave({ aoFechar }: { aoFechar: () => void }) {
-  const [senha, setSenha] = useState("");
+function VerChave({ modo, temSenha, aoFechar }: PropsConfirmar & { aoFechar: () => void }) {
   const [palavras, setPalavras] = useState<string[] | null>(null);
+  const { confirmacao, campos } = useConfirmarIdentidade(modo, temSenha);
   const { ocupado, erro, enviar } = useEnvio();
   if (palavras) {
     return (
@@ -135,12 +140,12 @@ function VerChave({ aoFechar }: { aoFechar: () => void }) {
     );
   }
   return (
-    <Form className="formulario" onSubmit={(e) => (e.preventDefault(), senha && enviar(async () => setPalavras(await api.verPalavras(senha))))}>
-      <Campo rotulo={textos.senha.rotulo} valor={senha} aoMudar={setSenha} secreto autoFocus descricao={t.confirmarComSenha} autoComplete="current-password" />
+    <Form className="formulario" onSubmit={(e) => (e.preventDefault(), confirmacao && enviar(async () => setPalavras(await api.verPalavras(confirmacao))))}>
+      {campos}
       <Aviso>{erro}</Aviso>
       <div className="janela-acoes">
         <Button className="botao" onPress={aoFechar}>{c.cancelar}</Button>
-        <Button className="botao principal" type="submit" isDisabled={!senha || ocupado}>{ocupado ? c.aguarde : c.continuar}</Button>
+        <Button className="botao principal" type="submit" autoFocus={confirmacao?.tipo === "aparelho"} isDisabled={!confirmacao || ocupado}>{ocupado ? c.aguarde : c.continuar}</Button>
       </div>
     </Form>
   );

@@ -23,8 +23,22 @@ function mensagem(e: unknown): string {
   return String(e);
 }
 
-/** Esqueci a senha: um passo por tela, sem pressa, sem apagar nada. */
-export function Recuperar({ aoVoltar, aoConcluir }: { aoVoltar: () => void; aoConcluir: () => void }) {
+/**
+ * Esqueci a senha: um passo por tela, sem pressa, sem apagar nada.
+ * Sem senha (`comSenha` falso), as palavras só abrem o Órbita, sem pedir senha nova.
+ */
+export function Recuperar({
+  aoVoltar,
+  aoConcluir,
+  comSenha = true,
+  aviso = null,
+}: {
+  /** Sem "voltar" quando não há outro jeito de abrir. */
+  aoVoltar?: () => void;
+  aoConcluir: () => void;
+  comSenha?: boolean;
+  aviso?: string | null;
+}) {
   const [passo, setPasso] = useState<Passo>("escolher");
   const [palavras, setPalavras] = useState<string[]>(Array(QUANTIDADE).fill(""));
   const [chave, setChave] = useState("");
@@ -47,6 +61,7 @@ export function Recuperar({ aoVoltar, aoConcluir }: { aoVoltar: () => void; aoCo
 
   const conferir = (texto: string) =>
     executar(async () => {
+      if (!comSenha) return void (await api.abrirComPalavras(texto), aoConcluir());
       await api.conferirPalavras(texto);
       setChave(texto);
       setPasso("novaSenha");
@@ -55,8 +70,9 @@ export function Recuperar({ aoVoltar, aoConcluir }: { aoVoltar: () => void; aoCo
   if (passo === "escolher") {
     return (
       <MolduraAcesso>
-        <h1>{t.titulo}</h1>
-        <p>{t.texto}</p>
+        <h1>{comSenha ? t.titulo : t.tituloSemSenha}</h1>
+        {aviso && <Aviso tipo="info">{aviso}</Aviso>}
+        <p>{comSenha ? t.texto : t.textoSemSenha}</p>
         <div className="botoes-grandes">
           <Button className="botao grande" autoFocus onPress={() => (setErro(null), setPasso("palavras"))}>
             <Keyboard aria-hidden="true" size="1.3em" /> {t.porPalavras}
@@ -77,9 +93,11 @@ export function Recuperar({ aoVoltar, aoConcluir }: { aoVoltar: () => void; aoCo
           </Button>
         </div>
         <Aviso>{erro}</Aviso>
-        <div className="botoes">
-          <Button className="botao" onPress={aoVoltar}>{c.voltar}</Button>
-        </div>
+        {aoVoltar && (
+          <div className="botoes">
+            <Button className="botao" onPress={aoVoltar}>{c.voltar}</Button>
+          </div>
+        )}
       </MolduraAcesso>
     );
   }
@@ -96,7 +114,7 @@ export function Recuperar({ aoVoltar, aoConcluir }: { aoVoltar: () => void; aoCo
           <div className="botoes">
             <Button className="botao" onPress={() => (setErro(null), setPasso("escolher"))}>{c.voltar}</Button>
             <Button className="botao principal" type="submit" isDisabled={!todas || ocupado}>
-              {ocupado ? c.aguarde : t.conferir}
+              {ocupado ? c.aguarde : comSenha ? t.conferir : t.abrir}
             </Button>
           </div>
         </Form>
