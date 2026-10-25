@@ -1,0 +1,104 @@
+/*
+  Base visual. As cores (--cor-*) vêm do tema, aplicadas pelo app.
+  Fonte, tamanho, densidade e espaços vêm das preferências da pessoa.
+*/
+:root {
+  /* Valores de segurança até o app aplicar as preferências. */
+  --fonte-texto: "Atkinson Hyperlegible Next Variable", "Segoe UI", sans-serif;
+  --tamanho-base: 18px;
+  --densidade: 1;
+  --espaco-letras: 0em;
+  --altura-linha: 1.5;
+
+  /* Espaços: crescem e encolhem com a densidade escolhida. */
+  --espaco-1: calc(0.25rem * var(--densidade));
+  --espaco-2: calc(0.5rem * var(--densidade));
+  --espaco-3: calc(0.75rem * var(--densidade));
+  --espaco-4: calc(1rem * var(--densidade));
+  --espaco-5: calc(1.5rem * var(--densidade));
+  --espaco-6: calc(2rem * var(--densidade));
+  --espaco-7: calc(3rem * var(--densidade));
+
+  --canto-pequeno: 0.4rem;
+  --canto: 0.7rem;
+  --canto-grande: 1rem;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.05), 0 2px 8px rgb(0 0 0 / 0.04);
+  --transicao: 120ms ease-out;
+  --largura-leitura: 44rem;
+}
+
+:root[data-modo="escuro"] {
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+/* Baixo estímulo e "reduzir animações" do Windows: nada se mexe. */
+:root[data-baixo-estimulo="true"] {
+  --transicao: 0s;
+  --sombra: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --transicao: 0s; }
+}
+
+:root[data-baixo-estimulo="true"] *,
+:root[data-baixo-estimulo="true"] *::before,
+:root[data-baixo-estimulo="true"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  font-size: var(--tamanho-base);
+  background: var(--cor-fundo);
+}
+
+html, body, #raiz { height: 100%; margin: 0; }
+
+body {
+  color: var(--cor-texto);
+  font-family: var(--fonte-texto);
+  line-height: var(--altura-linha);
+  letter-spacing: var(--espaco-letras);
+  word-spacing: calc(var(--espaco-letras) * 2);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 { line-height: 1.25; margin: 0; font-weight: 650; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+
+/* Foco do teclado sempre visível, nunca só pela cor. */
+:focus-visible,
+[data-focus-visible] {
+  outline: 3px solid var(--cor-foco);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible):not([data-focus-visible]) { outline: none; }
+
+::selection {
+  background: var(--cor-destaque);
+  color: var(--cor-texto-sobre-destaque);
+}
+
+kbd {
+  font-family: inherit;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0;
+  min-width: 1.8em;
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--cor-borda-controle);
+  border-bottom-width: 2px;
+  border-radius: var(--canto-pequeno);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  text-align: center;
+  display: inline-block;
+}

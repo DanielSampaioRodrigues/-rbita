@@ -1,0 +1,25 @@
+import { Label, Radio, RadioGroup } from "react-aria-components";
+
+interface Props<T extends string> {
+  rotulo: string;
+  valor: T;
+  /** `fonte` mostra a opção escrita nessa fonte (usado na escolha de fonte). */
+  opcoes: { valor: T; nome: string; fonte?: string }[];
+  aoMudar: (valor: T) => void;
+}
+
+/** Grupo de opções lado a lado. Setas do teclado trocam a opção. */
+export function Segmentado<T extends string>({ rotulo, valor, opcoes, aoMudar }: Props<T>) {
+  return (
+    <RadioGroup className="campo" value={valor} onChange={(v) => aoMudar(v as T)} orientation="horizontal">
+      <Label className="campo-rotulo">{rotulo}</Label>
+      <div className="segmentado">
+        {opcoes.map((o) => (
+          <Radio key={o.valor} value={o.valor} className="segmentado-opcao" style={o.fonte ? { fontFamily: o.fonte } : undefined}>
+            {o.nome}
+          </Radio>
+        ))}
+      </div>
+    </RadioGroup>
+  );
+}

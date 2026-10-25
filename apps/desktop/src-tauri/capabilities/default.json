@@ -3,5 +3,5 @@
   "identifier": "padrao",
   "description": "Permissões da janela principal",
   "windows": ["principal"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "core:window:allow-set-theme"]
 }

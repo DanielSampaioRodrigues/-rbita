@@ -1,10 +1,65 @@
 // Todas as frases da interface ficam aqui, em linguagem simples e literal.
 export const textos = {
-  boasVindas: {
-    titulo: "Órbita",
-    subtitulo: "Organizador de vida",
-    mensagem: "O programa está instalado e abrindo normalmente.",
-    proximo: "Próximo passo: a base visual, com fontes, modo claro e escuro e o botão de baixo estímulo.",
+  app: {
+    nome: "Órbita",
     versao: (versao: string) => `Versão ${versao}`,
+    navegacao: "Seções",
+  },
+  secoes: {
+    inicio: "Início",
+    ajustes: "Ajustes",
+  },
+  moldura: {
+    baixoEstimulo: "Baixo estímulo",
+    verAtalhos: "Atalhos",
+  },
+  inicio: {
+    titulo: "Início",
+    construcao:
+      "O Órbita está sendo construído aos poucos. Nesta versão, dá para ajustar a aparência do jeito que for mais confortável para você.",
+    irAjustes: "Abrir os Ajustes",
+    novidadesTitulo: (versao: string) => `O que mudou na versão ${versao}`,
+    novidades: [
+      "Barra lateral com as seções do app.",
+      "Ajustes de fonte, tamanho da letra, espaçamento, densidade e modo claro ou escuro.",
+      "Botão de baixo estímulo, que tira animações e cores de destaque.",
+      "Tela com todos os atalhos de teclado (tecla F1).",
+    ],
+    dicaAtalhos: "Tudo no Órbita pode ser feito pelo teclado. Aperte F1 para ver os atalhos.",
+  },
+  ajustes: {
+    titulo: "Ajustes",
+    descricao: "As mudanças aparecem na hora e ficam salvas neste computador.",
+    leitura: "Leitura",
+    tela: "Tela",
+    fonte: "Fonte",
+    tamanho: "Tamanho da letra",
+    tamanhos: ["Bem pequena", "Pequena", "Média", "Grande", "Bem grande"],
+    espacoLetras: "Espaço entre letras",
+    espacoLinhas: "Espaço entre linhas",
+    espacos: { normal: "Normal", maior: "Maior", muitoMaior: "Muito maior" },
+    modoCor: "Cores",
+    modos: { sistema: "Igual ao Windows", claro: "Claro", escuro: "Escuro" },
+    densidade: "Densidade",
+    densidades: { espacosa: "Espaçosa", confortavel: "Confortável", compacta: "Compacta" },
+    baixoEstimulo: "Baixo estímulo",
+    baixoEstimuloExplicacao: "Tira animações e cores de destaque. Também liga e desliga com Ctrl + Shift + B.",
+    previa: "Prévia",
+    previaTitulo: "Revisar o capítulo 3 de Introdução à Psicologia",
+    previaTexto:
+      "Ler com calma as páginas 40 a 52 e anotar as dúvidas para a próxima aula. Se cansar, pausar está tudo bem.",
+    previaBotao: "Botão de exemplo",
+    voltarPadrao: "Voltar ao padrão",
+    confirmarPadraoTitulo: "Voltar todos os ajustes ao padrão?",
+    confirmarPadraoTexto: "Fonte, tamanho, espaços, cores, densidade e baixo estímulo voltam como estavam na instalação.",
+    confirmar: "Voltar ao padrão",
+    cancelar: "Cancelar",
+  },
+  atalhos: {
+    titulo: "Atalhos de teclado",
+    doApp: "Do Órbita",
+    gerais: "Para andar pela tela",
+    ou: "ou",
+    fechar: "Fechar",
   },
 } as const;

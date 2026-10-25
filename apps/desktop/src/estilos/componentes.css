@@ -1,0 +1,211 @@
+/* Botões */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espaco-2);
+  min-height: 2.5rem;
+  padding: var(--espaco-2) var(--espaco-4);
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transicao), border-color var(--transicao);
+}
+
+.botao[data-hovered] { background: var(--cor-superficie-alternativa); }
+
+.botao.principal {
+  background: var(--cor-destaque);
+  border-color: var(--cor-destaque);
+  color: var(--cor-texto-sobre-destaque);
+}
+
+.botao.principal[data-hovered] { filter: brightness(1.08); }
+:root[data-modo="escuro"] .botao.principal[data-hovered] { filter: brightness(0.92); }
+
+.botao-icone {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: none;
+  border-radius: var(--canto);
+  background: transparent;
+  color: var(--cor-texto-suave);
+  cursor: pointer;
+}
+
+.botao-icone[data-hovered] { background: var(--cor-superficie-alternativa); color: var(--cor-texto); }
+
+/* Campos de ajuste */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-2);
+}
+
+.campo-rotulo { font-weight: 600; }
+
+.campo-ajuda { color: var(--cor-texto-suave); font-size: 0.9rem; }
+
+/* Grupo de opções lado a lado */
+.segmentado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espaco-1);
+  padding: var(--espaco-1);
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto);
+  background: var(--cor-fundo);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.segmentado-opcao {
+  padding: var(--espaco-1) var(--espaco-3);
+  min-height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: calc(var(--canto) - 0.2rem);
+  color: var(--cor-texto-suave);
+  cursor: pointer;
+  transition: background var(--transicao), color var(--transicao);
+}
+
+.segmentado-opcao[data-hovered] { color: var(--cor-texto); background: var(--cor-superficie-alternativa); }
+
+.segmentado-opcao[data-selected] {
+  background: var(--cor-destaque);
+  color: var(--cor-texto-sobre-destaque);
+  font-weight: 600;
+}
+
+/* Interruptor (liga e desliga) */
+.interruptor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espaco-3);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.interruptor.compacto { font-weight: 500; }
+
+.interruptor-trilho {
+  flex: none;
+  width: 2.6rem;
+  height: 1.5rem;
+  padding: 0.15rem;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: 999px;
+  background: var(--cor-fundo);
+  transition: background var(--transicao);
+}
+
+.interruptor-bolinha {
+  display: block;
+  width: calc(1.5rem - 0.3rem - 2px);
+  height: calc(1.5rem - 0.3rem - 2px);
+  border-radius: 50%;
+  background: var(--cor-texto-suave);
+  transition: transform var(--transicao);
+}
+
+.interruptor[data-selected] .interruptor-trilho {
+  background: var(--cor-destaque);
+  border-color: var(--cor-destaque);
+}
+
+.interruptor[data-selected] .interruptor-bolinha {
+  background: var(--cor-texto-sobre-destaque);
+  transform: translateX(1.1rem);
+}
+
+/* O foco fica no trilho, onde a pessoa está olhando. */
+.interruptor[data-focus-visible] { outline: none; }
+.interruptor[data-focus-visible] .interruptor-trilho {
+  outline: 3px solid var(--cor-foco);
+  outline-offset: 2px;
+}
+
+/* Cartões */
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-5);
+  padding: var(--espaco-5);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto-grande);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra);
+}
+
+.lista-simples { margin: 0; padding-left: 1.2em; display: grid; gap: var(--espaco-2); }
+
+/* Teclas */
+.teclas { display: inline-flex; align-items: center; gap: var(--espaco-1); flex-wrap: wrap; }
+.teclas-ou { color: var(--cor-texto-suave); padding: 0 var(--espaco-1); font-size: 0.9em; }
+
+/* Janelas */
+.sobreposicao {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--espaco-5);
+  background: rgb(20 22 26 / 0.45);
+}
+
+.janela {
+  width: min(40rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto-grande);
+  background: var(--cor-superficie);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.18);
+}
+
+.janela.pequena { width: min(30rem, 100%); }
+
+.janela-dialogo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-4);
+  padding: var(--espaco-5) var(--espaco-6) var(--espaco-6);
+  outline: none;
+}
+
+.janela-dialogo h2 { font-size: 1.35rem; }
+
+.janela-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-4); }
+
+.janela-subtitulo {
+  margin-top: var(--espaco-3);
+  font-size: 0.85rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cor-texto-suave);
+}
+
+.janela-acoes { display: flex; justify-content: flex-end; gap: var(--espaco-3); margin-top: var(--espaco-3); flex-wrap: wrap; }
+
+.lista-atalhos { margin: 0; display: grid; }
+
+.lista-atalhos > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espaco-4);
+  padding: var(--espaco-2) 0;
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+.lista-atalhos > div:last-child { border-bottom: none; }
+.lista-atalhos dd { margin: 0; flex: none; }

@@ -1,0 +1,78 @@
+.moldura {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  height: 100%;
+}
+
+.lateral {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-5);
+  width: 15rem;
+  padding: var(--espaco-5) var(--espaco-3);
+  border-right: 1px solid var(--cor-borda);
+  background: var(--cor-superficie);
+  overflow-y: auto;
+}
+
+.lateral-marca {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-3);
+  padding: 0 var(--espaco-3);
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+
+.lateral-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-1); }
+
+.lateral-item {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-3);
+  width: 100%;
+  min-height: 2.5rem;
+  padding: var(--espaco-2) var(--espaco-3);
+  border: none;
+  border-radius: var(--canto);
+  background: transparent;
+  color: var(--cor-texto-suave);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transicao), color var(--transicao);
+}
+
+.lateral-item[data-hovered] { background: var(--cor-superficie-alternativa); color: var(--cor-texto); }
+
+/* Seção atual: fundo, cor e uma barra, para não depender só da cor. */
+.lateral-item[aria-current="page"] {
+  background: var(--cor-superficie-alternativa);
+  color: var(--cor-texto);
+  font-weight: 650;
+  box-shadow: inset 3px 0 0 var(--cor-destaque);
+}
+
+.lateral-rodape {
+  margin-top: auto;
+  display: grid;
+  gap: var(--espaco-3);
+  padding-top: var(--espaco-4);
+  border-top: 1px solid var(--cor-borda);
+}
+
+.lateral-rodape .interruptor { padding: var(--espaco-2) var(--espaco-3); }
+
+.lateral-dica { margin-left: auto; }
+
+.lateral-versao { padding: 0 var(--espaco-3); font-size: 0.8rem; color: var(--cor-texto-suave); }
+
+.conteudo { overflow-y: auto; }
+
+/* Janela estreita: a barra lateral fica só com os ícones. */
+@media (max-width: 760px) {
+  .lateral { width: auto; }
+  .lateral-marca span,
+  .lateral-dica,
+  .lateral-versao { display: none; }
+}

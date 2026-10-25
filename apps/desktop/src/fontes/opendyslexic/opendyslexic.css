@@ -1,0 +1,20 @@
+/*
+  OpenDyslexic 0.990 (agosto de 2025), sem modificação, licença SIL OFL 1.1.
+  Vem direto do projeto original porque a versão do pacote @fontsource (0.920)
+  desenha o "ó" com o acento fora do lugar.
+*/
+@font-face {
+  font-family: "OpenDyslexic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./OpenDyslexic-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "OpenDyslexic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./OpenDyslexic-Bold.woff2") format("woff2");
+}

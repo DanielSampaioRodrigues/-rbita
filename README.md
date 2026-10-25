@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 1 de 17, esqueleto do app e instalador automático.
+Onda 1 (base e coração, Windows): etapa 2 de 17, base visual (fontes, ajustes, baixo estímulo e atalhos).

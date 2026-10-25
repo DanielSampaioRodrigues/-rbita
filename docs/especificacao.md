@@ -161,7 +161,10 @@ A interface deve ir além da do Escuta: a pessoa monta o próprio ambiente, do m
 - **Botão de baixo estímulo**: tudo neutro, sem animação e sem cor forte, com um clique e de volta com outro.
 - **Importar e exportar temas** num arquivo único, para a comunidade compartilhar.
 - Densidade, tamanho de fonte e espaçamento ajustáveis; modo claro e escuro.
-- **Fontes**: Atkinson Hyperlegible, Lexend e OpenDyslexic, à escolha. O espaçamento entre letras e linhas ganha destaque, porque tem evidência um pouco melhor que a troca de fonte.
+- **Fontes**: Atkinson Hyperlegible Next (padrão), Lexend e OpenDyslexic, à escolha, todas embutidas no app. O espaçamento entre letras e linhas ganha destaque, porque tem evidência um pouco melhor que a troca de fonte.
+- **Ícones**: Lucide, de traço fino e uniforme.
+- **Preferências visuais fora do cofre**: fonte, tamanho, cores e baixo estímulo ficam num arquivo próprio, sem criptografia, porque a tela de senha precisa abrir já com a aparência da pessoa. Não são dados sensíveis.
+- **Liberdade com uma trava**: a pessoa pode mudar fundo, cores, fontes, cantos, sombras, ícones e a disposição da tela inicial. A única trava é a legibilidade: se uma escolha deixar o texto ilegível, o Órbita ajusta o painel e avisa o que mudou, sem bloquear a escolha.
 
 ## Privacidade e dados
 

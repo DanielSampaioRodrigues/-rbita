@@ -1,0 +1,33 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espaco-5);
+  max-width: 62rem;
+  padding: var(--espaco-7) var(--espaco-7) var(--espaco-7);
+}
+
+.pagina > .cartao { align-self: stretch; max-width: var(--largura-leitura); }
+
+.pagina-intro { color: var(--cor-texto-suave); max-width: var(--largura-leitura); font-size: 1.05rem; }
+
+.dica { color: var(--cor-texto-suave); font-size: 0.9rem; }
+
+.ajustes-grade {
+  align-self: stretch;
+  display: grid;
+  gap: var(--espaco-5);
+  max-width: var(--largura-leitura);
+}
+
+.previa { gap: var(--espaco-3); }
+
+.previa-rotulo {
+  font-size: 0.8rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cor-texto-suave);
+}
+
+.previa .botao { align-self: flex-start; margin-top: var(--espaco-2); }
