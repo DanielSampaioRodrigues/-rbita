@@ -28,6 +28,12 @@ export function Captura({ aberta, aoFechar }: { aberta: boolean; aoFechar: () =>
   const [provedor, setProvedor] = useState<ProvedorVisivel | null>(null);
   const [bloqueiaSensivel, setBloqueiaSensivel] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  // Conversa: pedidos de mudança na lista separada.
+  const [mudanca, setMudanca] = useState("");
+  const [pedidos, setPedidos] = useState<string[]>([]);
+  const [ajustando, setAjustando] = useState(false);
+  const [avisoMudanca, setAvisoMudanca] = useState<"sensivel" | "bloqueado" | null>(null);
+  const [refeita, setRefeita] = useState(false);
   const pedidoAtual = useRef(0);
   const recado = useRecado();
 
@@ -35,6 +41,8 @@ export function Captura({ aberta, aoFechar }: { aberta: boolean; aoFechar: () =>
     if (!aberta) return;
     setFase("escrever");
     setErro(null);
+    setPedidos([]);
+    setMudanca("");
     api.estadoIa().then(
       (e) => (setProvedor(e.provedores.find((p) => p.id === e.funcoes.conversa) ?? null), setBloqueiaSensivel(e.bloquearSensivel)),
       () => setProvedor(null),
@@ -76,11 +84,47 @@ export function Captura({ aberta, aoFechar }: { aberta: boolean; aoFechar: () =>
       const o = await api.organizarTextoIa(texto, sensivel);
       if (este !== pedidoAtual.current) return;
       setLinhas(comoLinhas(o.itens));
+      setPedidos([]);
+      setRefeita(false);
       setFase("conferir");
     } catch (e) {
       if (este !== pedidoAtual.current) return;
       setErro(e instanceof ErroOrbita ? e.message : String(e));
       setFase("escrever");
+    }
+  };
+
+  const pedirMudanca = async (confirmouSensivel = false) => {
+    if (!mudanca.trim() || !provedor) return;
+    const sensivel = pareceSensivel(`${texto}\n${mudanca}`);
+    // O texto já foi conferido ao separar; aqui só avisa se o pedido trouxer algo sensível novo.
+    if (pareceSensivel(mudanca) && !pareceSensivel(texto) && !provedor.local && !confirmouSensivel)
+      return setAvisoMudanca(bloqueiaSensivel ? "bloqueado" : "sensivel");
+    setAvisoMudanca(null);
+    const este = ++pedidoAtual.current;
+    setErro(null);
+    setAjustando(true);
+    try {
+      const nomes = new Map((await api.listarProjetos()).map((p) => [p.id, p.titulo]));
+      const atuais = linhas
+        .filter((l) => l.incluir && l.texto.trim())
+        .map((l) => ({
+          tipo: l.tipo,
+          texto: l.texto.trim(),
+          ...(l.tipo === "tarefa" && l.projetoId ? { projeto: nomes.get(l.projetoId) } : {}),
+          ...(l.tipo === "compromisso" ? { data: l.data, ...(l.hora ? { hora: l.hora } : {}), ...(l.duracaoMin ? { duracaoMin: l.duracaoMin } : {}) } : {}),
+        }));
+      const o = await api.ajustarOrganizacaoIa(texto, JSON.stringify({ itens: atuais }), mudanca, sensivel);
+      if (este !== pedidoAtual.current) return;
+      setLinhas(comoLinhas(o.itens));
+      setPedidos((ps) => [...ps, mudanca.trim()]);
+      setMudanca("");
+      setRefeita(true);
+    } catch (e) {
+      if (este !== pedidoAtual.current) return;
+      setErro(e instanceof ErroOrbita ? e.message : String(e));
+    } finally {
+      if (este === pedidoAtual.current) setAjustando(false);
     }
   };
 
@@ -140,7 +184,39 @@ export function Captura({ aberta, aoFechar }: { aberta: boolean; aoFechar: () =>
 
       {fase === "conferir" && (
         <>
+          {refeita && <p className="aviso aviso-info" role="status">{ti.listaRefeita}</p>}
           <ConferirItens linhas={linhas} aoMudar={setLinhas} />
+          {provedor && (
+            <Form className="conversa-ia" onSubmit={(e) => (e.preventDefault(), pedirMudanca())}>
+              {pedidos.length > 0 && (
+                <div className="pedidos-feitos">
+                  <p className="campo-rotulo">{ti.pedidosFeitos}</p>
+                  <ol>
+                    {pedidos.map((p, i) => (
+                      <li key={i} className="quebra">{p}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+              <Campo rotulo={ti.pedirMudanca} valor={mudanca} aoMudar={(v) => (setMudanca(v), setAvisoMudanca(null))} descricao={ti.pedirMudancaAjuda} maximo={1000} />
+              <div className="botoes">
+                <Button className="botao com-icone" type="submit" isDisabled={!mudanca.trim() || ajustando}>
+                  <Sparkles aria-hidden="true" size="1em" /> {ti.enviarMudanca}
+                </Button>
+              </div>
+              {ajustando && <p role="status" className="texto-suave">{ti.ajustando(provedor.nome)}</p>}
+              {avisoMudanca && (
+                <>
+                  <Aviso tipo="info">{avisoMudanca === "sensivel" ? ti.mudancaSensivel(provedor.nome) : ti.sensivelBloqueado}</Aviso>
+                  {avisoMudanca === "sensivel" && (
+                    <div className="botoes">
+                      <Button className="botao" onPress={() => pedirMudanca(true)}>{ti.enviarMesmoAssim}</Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </Form>
+          )}
           <Aviso>{erro}</Aviso>
           <div className="janela-acoes">
             <Button className="botao separado" onPress={() => setFase("escrever")}>{ti.voltarTexto}</Button>
