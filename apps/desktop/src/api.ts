@@ -1176,7 +1176,7 @@ function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" |
       return `Aqui está o tema:
 ${JSON.stringify(tema)}`;
     },
-    modelosImagemIa: async (id) => (estado.provedores.find((p) => p.id === id)?.tipo === "claude" ? [] : ["gpt-image-2"]),
+    modelosImagemIa: async (id) => (estado.provedores.find((p) => p.id === id)?.tipo === "claude" ? [] : ["chatgpt-image-latest", "gpt-image-2", "gpt-image-2-mini"]),
     gerarImagemIa: async () => {
       await espera(1500);
       const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2b3a"/><stop offset="1" stop-color="#2f4a3a"/></linearGradient></defs><rect width="1536" height="1024" fill="url(#g)"/><path d="M0 800 L200 520 L400 800 Z M300 820 L560 460 L820 820 Z M700 830 L980 500 L1260 830 Z M1100 820 L1320 560 L1536 820 Z" fill="#183025"/><circle cx="1200" cy="200" r="60" fill="#d8e2c8" opacity="0.8"/></svg>';

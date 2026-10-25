@@ -1,5 +1,5 @@
-import { GRADIENTES, gravarArquivoTema, lerArquivoTema, limparSvg, PADROES, paletaFinal, SvgInvalido, TEMAS, camadaDeFundo, type Fundo, type Tema } from "@orbita/temas";
-import { Download, ImagePlus, Palette, Shapes, Trash2, Upload } from "../icones";
+import { GRADIENTES, ICONES_PADRAO, gravarArquivoTema, lerArquivoTema, limparSvg, PADROES, paletaFinal, SvgInvalido, TEMAS, camadaDeFundo, type Fundo, type Tema } from "@orbita/temas";
+import { Download, ImagePlus, Palette, Plus, Shapes, Trash2, Upload } from "../icones";
 import { Button } from "react-aria-components";
 import { exportarTema } from "../api";
 import { useRecado } from "../app/Recado";
@@ -18,6 +18,12 @@ const t = textos.temaFundo;
 /** Chave única de cada opção de fundo, para o grupo de escolha. */
 const chaveDe = (f: Fundo | null) =>
   !f ? "tema" : f.tipo === "gradiente" || f.tipo === "padrao" ? `${f.tipo}:${f.nome}` : f.tipo;
+
+/** Tema novo, sem nome, com as cores neutras do Papel, sem fundo e com os ícones padrão. */
+function temaDoZero(): Tema {
+  const base = TEMAS.find((x) => x.id === "papel") ?? TEMAS[0];
+  return { ...base, id: `proprio-${Date.now().toString(36)}`, nome: "", fundoPadrao: { tipo: "cor" }, icones: ICONES_PADRAO };
+}
 
 function Controle({ rotulo, valor, min, max, passo, formatar, aoMudar }: { rotulo: string; valor: number; min: number; max: number; passo: number; formatar: (v: number) => string; aoMudar: (v: number) => void }) {
   return (
@@ -126,6 +132,9 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
       </RadioGroup>
 
       <div className="botoes">
+        <Button className="botao" onPress={() => aoEditarTema(temaDoZero())}>
+          <Plus aria-hidden="true" size="1.1em" /> {t.criarDoZero}
+        </Button>
         <Button className="botao" onPress={() => aoEditarTema(proprio ? temaAtual : { ...temaAtual, id: `proprio-${Date.now().toString(36)}`, nome: `${temaAtual.nome} (meu)`, fundoPadrao: prefs.fundo?.tipo === "imagem" ? temaAtual.fundoPadrao : (prefs.fundo ?? temaAtual.fundoPadrao) })}>
           <Palette aria-hidden="true" size="1.1em" /> {proprio ? t.editar : t.criarAPartir}
         </Button>

@@ -1,2 +1,4 @@
-- **Quanto o fundo aparece**: em Ajustes > Tema e fundo há um controle deslizante novo. No começo, o Órbita deixa a leitura o mais confortável possível; arrastando, o fundo aparece mais, sem nunca deixar o texto abaixo do mínimo de leitura.
-- **Fundos desenhados mais visíveis**: padrões, desenhos em SVG e fundos criados com IA não ficam mais borrados por trás da área de conteúdo, e a área ficou menos coberta. Fotos continuam com um leve desfoque, que você ajusta.
+- **Escolher o modelo de imagem**: em "Criar com IA", ao pedir fundo em imagem (PNG), aparece o campo "Modelo de imagem", com os modelos de imagem da sua conta. As cores e os ícones continuam com o modelo de texto escolhido acima.
+- **Procurar modelos de imagem novos**: um botão consulta de novo a sua conta, para quando a empresa lançar um modelo novo.
+- **Tema criado pela IA vale na hora**: ao apertar "Criar o tema", ele já é aplicado no app inteiro e entra na sua lista de temas. Mudanças feitas à mão depois continuam pedindo "Salvar e usar".
+- **Criar um tema novo do zero**: botão novo em Ajustes > Tema e fundo, que começa com cores neutras, sem fundo e com os ícones padrão.

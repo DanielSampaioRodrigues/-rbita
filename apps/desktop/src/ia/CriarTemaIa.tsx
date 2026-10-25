@@ -1,9 +1,10 @@
-import { Sparkles } from "../icones";
+import { RefreshCw, Sparkles } from "../icones";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "react-aria-components";
 import { gravarArquivoTema, svgComoUrl, temaDaIa, type Fundo, type Tema } from "@orbita/temas";
 import { api, ErroOrbita, type EstadoIa } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
+import { Escolha } from "../componentes/Escolha";
 import { Segmentado } from "../componentes/Segmentado";
 import { reduzirImagem } from "../fundo";
 import { textos } from "../textos/pt-BR";
@@ -13,6 +14,23 @@ import { EscolherIaDaFuncao } from "./AjustesIa";
 const t = textos.temaIa;
 type TipoFundo = "nenhum" | "svg" | "png";
 
+// O modelo de imagem escolhido fica guardado por provedor (é só o nome do modelo, nada pessoal).
+const chaveImagem = (id: string) => `orbita.modeloImagem.${id}`;
+function lerModeloImagem(id: string): string | null {
+  try {
+    return localStorage.getItem(chaveImagem(id));
+  } catch {
+    return null;
+  }
+}
+function guardarModeloImagem(id: string, modelo: string) {
+  try {
+    localStorage.setItem(chaveImagem(id), modelo);
+  } catch {
+    // Sem acesso: vale só nesta sessão.
+  }
+}
+
 /**
  * Painel do editor de tema: conversa com a IA para criar ou ajustar o tema.
  * Cada pedido manda junto o tema atual, para a IA ajustar em vez de recomeçar.
@@ -21,6 +39,8 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
   // A IA e o modelo da função "Personalização" (os mesmos de Ajustes).
   const provedorId = ia?.funcoes.personalizacao ?? null;
   const [modelosImagem, setModelosImagem] = useState<string[] | null>(null);
+  const [modeloImagem, setModeloImagem] = useState<string | null>(null);
+  const [atualizado, setAtualizado] = useState(false);
   const [fundo, setFundo] = useState<TipoFundo>("svg");
   const [pedido, setPedido] = useState("");
   const [historico, setHistorico] = useState<string[]>([]);
@@ -31,12 +51,26 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
   const provedor = ia?.provedores.find((p) => p.id === provedorId) ?? null;
   const podeImagem = provedor ? ["gpt", "gemini", "grok"].includes(modeloDe(provedor.tipo, provedor.url).id) : false;
 
-  // Para quem pode gerar imagem, confere se a conta tem um modelo de imagem.
+  // Para quem pode gerar imagem, busca na conta a lista atual de modelos de imagem.
+  const buscarModelosImagem = (id: string) => {
+    setModelosImagem(null);
+    return api.modelosImagemIa(id).then(
+      (lista) => {
+        setModelosImagem(lista);
+        const guardado = lerModeloImagem(id);
+        setModeloImagem(guardado && lista.includes(guardado) ? guardado : (lista[0] ?? null));
+        if (!lista.length) setFundo((f) => (f === "png" ? "svg" : f));
+      },
+      () => setModelosImagem([]),
+    );
+  };
+
   useEffect(() => {
     setModelosImagem(null);
+    setAtualizado(false);
     if (fundo === "png") setFundo("svg");
     if (!provedor || !podeImagem) return;
-    api.modelosImagemIa(provedor.id).then(setModelosImagem, () => setModelosImagem([]));
+    void buscarModelosImagem(provedor.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provedorId]);
 
@@ -67,9 +101,9 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
       if (este !== pedidoAtual.current) return;
       const { tema: novo, ajustado } = temaDaIa(resposta);
       let fundoNovo: Fundo | undefined = fundo === "svg" ? novo.fundoPadrao : undefined;
-      if (fundo === "png" && modelosImagem?.[0]) {
+      if (fundo === "png" && modeloImagem) {
         setFase("imagem");
-        const imagem = await api.gerarImagemIa(provedor.id, modelosImagem[0], historico.concat(pedido).join(". "));
+        const imagem = await api.gerarImagemIa(provedor.id, modeloImagem, historico.concat(pedido).join(". "));
         if (este !== pedidoAtual.current) return;
         fundoNovo = { tipo: "imagem", dados: await reduzirImagem(imagem), desfoque: 0, escurecimento: 0 };
       }
@@ -94,12 +128,34 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
       <p className="texto-suave">{t.explicacao}</p>
       {seletor}
       <p className="campo-ajuda">{podeImagem ? t.pode_png(nomeProvedor) : t.so_svg(nomeProvedor)}</p>
-      {podeImagem && (
-        <p className="campo-ajuda" role="status">
-          {modelosImagem === null ? t.conferindoImagem : modelosImagem.length ? t.comImagem(modelosImagem[0]) : t.semImagem}
-        </p>
-      )}
       <Segmentado<TipoFundo> rotulo={t.fundo} valor={fundo} opcoes={fundos.map((f) => ({ valor: f, nome: t.fundos[f] }))} aoMudar={setFundo} />
+      {fundo === "png" && modelosImagem && modeloImagem && (
+        <Escolha
+          rotulo={t.modeloImagem}
+          valor={modeloImagem}
+          opcoes={modelosImagem.map((m) => ({ valor: m, nome: m }))}
+          descricao={t.modeloImagemAjuda}
+          aoMudar={(m) => (setModeloImagem(m), guardarModeloImagem(provedor.id, m))}
+        />
+      )}
+      {podeImagem && (
+        <div className="linha-ajuste">
+          <p className="campo-ajuda" role="status">
+            {modelosImagem === null
+              ? t.conferindoImagem
+              : modelosImagem.length
+                ? `${t.quantosImagem(modelosImagem.length)}${atualizado ? ` ${t.listaAtualizada}` : ""}`
+                : t.semImagem}
+          </p>
+          <Button
+            className="botao com-icone"
+            isDisabled={modelosImagem === null || fase !== "parado"}
+            onPress={() => buscarModelosImagem(provedor.id).then(() => setAtualizado(true))}
+          >
+            <RefreshCw aria-hidden="true" size="1em" /> {t.atualizarImagem}
+          </Button>
+        </div>
+      )}
       {ajustando && (
         <div className="grupo">
           <span className="campo-rotulo">{t.historico}</span>

@@ -72,8 +72,19 @@ function Previa({ paleta, cantos, sombra, icones }: { paleta: Paleta; cantos: nu
   );
 }
 
-export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; aoSalvar: (tema: Tema) => void; aoCancelar: () => void }) {
+export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inicial: Tema; aoSalvar: (tema: Tema) => void; aoGuardar: (tema: Tema) => void; aoCancelar: () => void }) {
   const [tema, setTema] = useState<Tema>(inicial);
+  // O que a IA cria já vale no app e entra na lista de temas; aqui fica o último guardado.
+  const [guardado, setGuardado] = useState<Tema | null>(null);
+  const aplicarDaIa = (novo: Tema) => {
+    setTema(novo);
+    const passa = (["claro", "escuro"] as const).every((m) => conferirPaleta(novo[m]).every((r) => r.passa));
+    if (passa && novo.nome.trim()) {
+      const final = { ...novo, nome: novo.nome.trim() };
+      aoGuardar(final);
+      setGuardado(final);
+    }
+  };
   // Estado da IA: os dois painéis usam a IA e o modelo de "Personalização".
   const [ia, setIa] = useState<EstadoIa | null>(null);
   useEffect(() => {
@@ -91,7 +102,7 @@ export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; a
   return (
     <div className="pagina pagina-larga">
       <h1>{t.titulo}</h1>
-      <CriarTemaIa tema={tema} aoAplicar={setTema} ia={ia} aoMudarIa={setIa} />
+      <CriarTemaIa tema={tema} aoAplicar={aplicarDaIa} ia={ia} aoMudarIa={setIa} />
       <DesenharIconesIa tema={tema} aoAplicar={setTema} ia={ia} />
       <div className="editor-tema">
         <div className="formulario">
@@ -179,7 +190,9 @@ export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; a
       </div>
       {!tudoPassa && <Aviso>{t.faltam}</Aviso>}
       <div className="botoes">
-        <Button className="botao" onPress={aoCancelar}>{t.cancelar}</Button>
+        <Button className="botao" onPress={aoCancelar}>
+          {!guardado ? t.cancelar : JSON.stringify(guardado) === JSON.stringify(tema) ? t.fechar : t.descartar}
+        </Button>
         <Button className="botao principal" isDisabled={!tudoPassa || !tema.nome.trim()} onPress={() => aoSalvar({ ...tema, nome: tema.nome.trim() })}>{t.salvar}</Button>
       </div>
     </div>
