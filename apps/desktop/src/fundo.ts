@@ -31,29 +31,31 @@ async function amostrar(imagemCss: string): Promise<Rgb[]> {
   return pontos;
 }
 
-const cache = new Map<string, number>();
+const cache = new Map<string, { paineis: number; cartoes: number }>();
 
-/** Desenha o fundo e ajusta a opacidade dos painéis para o texto continuar legível. */
+/**
+ * Desenha o fundo e ajusta a opacidade dos painéis para o texto continuar legível.
+ * `vidro` (0 a 100): caixas de opacas a transparentes, como vidro. Com a trava, só até o mínimo de leitura.
+ */
 export async function aplicarFundo(
   raiz: HTMLElement,
   fundo: Fundo,
   paleta: Paleta,
-  opcoes: { baixoEstimulo: boolean; reduzirAnimacao: boolean; visivel?: number; semTrava?: boolean; natural?: boolean },
+  opcoes: { baixoEstimulo: boolean; reduzirAnimacao: boolean; visivel?: number; semTrava?: boolean; natural?: boolean; vidro?: number },
 ): Promise<number> {
   const c = camadaDeFundo(fundo, paleta, opcoes);
   raiz.style.setProperty("--fundo-imagem", c.imagem);
   raiz.style.setProperty("--fundo-tamanho", c.tamanho);
   raiz.style.setProperty("--fundo-repetir", c.repetir);
   // "Cores originais": nada de desfoque nem escurecimento (os valores escolhidos ficam guardados).
-  raiz.style.setProperty("--fundo-desfoque", `${opcoes.natural ? 0 : c.desfoque}px`);
-  raiz.style.setProperty("--fundo-escurecimento", String(opcoes.natural ? 0 : c.escurecimento));
-  raiz.dataset.fundoNatural = String(!!opcoes.natural);
-  if (opcoes.natural && c.imagem !== "none") {
-    raiz.style.setProperty("--opacidade-paineis", "0");
-    return 0;
-  }
+  const natural = !!opcoes.natural && c.imagem !== "none";
+  raiz.style.setProperty("--fundo-desfoque", `${natural ? 0 : c.desfoque}px`);
+  raiz.style.setProperty("--fundo-escurecimento", String(natural ? 0 : c.escurecimento));
+  raiz.dataset.fundoNatural = String(natural);
   // "foto": painéis com leve desfoque; "desenhado": sem desfoque, para o desenho aparecer nítido.
   raiz.dataset.fundo = c.imagem === "none" ? "liso" : fundo.tipo === "imagem" ? "foto" : "desenhado";
+  const vidro = c.imagem === "none" ? 0 : Math.min(100, Math.max(0, opcoes.vidro ?? 0)) / 100;
+  raiz.dataset.vidro = String(vidro > 0);
 
   // A cobertura dos painéis é a menor que mantém o texto legível (medida no próprio fundo).
   // Foto tem um piso, porque varia muito de um ponto para outro; desenho, não.
@@ -61,26 +63,35 @@ export async function aplicarFundo(
   // "Quanto o fundo aparece" (0 a 100): vai do ponto mais legível ao mínimo de leitura (WCAG AA), nunca abaixo.
   // Sem a trava (escolha da pessoa), vai até o fundo inteiro à mostra.
   const visivel = Math.min(100, Math.max(0, opcoes.visivel ?? 0)) / 100;
-  const chave = `${c.imagem.length}|${c.imagem.slice(-200)}|${c.escurecimento}|${paleta.fundo}|${paleta.texto}|${minimo}|${visivel}|${opcoes.semTrava ? 1 : 0}`;
-  let opacidade = cache.get(chave);
-  if (opacidade === undefined) {
+  const chave = [c.imagem.length, c.imagem.slice(-200), c.escurecimento, paleta.fundo, paleta.superficie, paleta.texto, minimo, visivel, opcoes.semTrava, natural, vidro].join("|");
+  let valores = cache.get(chave);
+  if (!valores) {
     // Enquanto mede, fica opaco (seguro).
     raiz.style.setProperty("--opacidade-paineis", "1");
-    const amostras = c.amostrasConhecidas ?? (await amostrar(c.imagem));
-    // Desenhos: linhas finas raramente ficam embaixo das letras, então até 15% dos pontos
-    // podem ser as linhas (que ainda precisam de 3:1 com o texto). Fotos seguem a regra rígida.
-    const tolerancia = fundo.tipo === "imagem" ? 0.02 : 0.15;
-    if (c.imagem === "none") opacidade = 1;
+    raiz.style.setProperty("--opacidade-cartoes", "1");
+    if (c.imagem === "none") valores = { paineis: 1, cartoes: 1 };
     else {
-      const escurecidas = escurecerAmostras(amostras, c.escurecimento);
-      const rigida = opacidadeNecessaria(escurecidas, paleta, minimo, tolerancia);
-      const leve = opcoes.semTrava ? 0 : visivel > 0 ? opacidadeNecessaria(escurecidas, paleta, 0, tolerancia, LIMITES_MINIMOS) : rigida;
-      opacidade = Math.round((rigida - visivel * Math.max(0, rigida - leve)) * 100) / 100;
+      const amostras = c.amostrasConhecidas ?? (await amostrar(c.imagem));
+      // Desenhos: linhas finas raramente ficam embaixo das letras, então até 15% dos pontos
+      // podem ser as linhas (que ainda precisam de 3:1 com o texto). Fotos seguem a regra rígida.
+      const tolerancia = fundo.tipo === "imagem" ? 0.02 : 0.15;
+      const escurecidas = escurecerAmostras(amostras, natural ? 0 : c.escurecimento);
+      let paineis = 0;
+      if (!natural) {
+        const rigida = opacidadeNecessaria(escurecidas, paleta, minimo, tolerancia);
+        const leve = opcoes.semTrava ? 0 : visivel > 0 ? opacidadeNecessaria(escurecidas, paleta, 0, tolerancia, LIMITES_MINIMOS) : rigida;
+        paineis = Math.round((rigida - visivel * Math.max(0, rigida - leve)) * 100) / 100;
+      }
+      // Caixas: medidas com a cor delas (superfície), como se nada houvesse entre elas e o fundo.
+      const pisoCartoes = opcoes.semTrava || vidro === 0 ? 0 : opacidadeNecessaria(escurecidas, { ...paleta, fundo: paleta.superficie }, 0, tolerancia, LIMITES_MINIMOS);
+      const cartoes = Math.round((1 - vidro * (1 - pisoCartoes)) * 100) / 100;
+      valores = { paineis, cartoes };
     }
-    cache.set(chave, opacidade);
+    cache.set(chave, valores);
   }
-  raiz.style.setProperty("--opacidade-paineis", String(opacidade));
-  return opacidade;
+  raiz.style.setProperty("--opacidade-paineis", String(valores.paineis));
+  raiz.style.setProperty("--opacidade-cartoes", String(valores.cartoes));
+  return valores.paineis;
 }
 
 /** Reduz uma foto para no máximo 1920 px e JPEG, para caber nas preferências. */

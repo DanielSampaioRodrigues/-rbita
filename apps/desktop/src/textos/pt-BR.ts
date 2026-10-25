@@ -116,9 +116,13 @@ export const textos = {
     opacidade: (p: number) =>
       `Para o texto continuar legível, a área de conteúdo ficou com ${p}% de opacidade por cima do fundo.`,
     baixoEstimulo: "Com o baixo estímulo ligado, o fundo fica liso.",
+    vidro: "Caixas: de opacas a vidro",
+    vidroValor: (v: number) => (v === 0 ? "Opacas" : v === 100 ? "Vidro" : `${v}%`),
+    vidroAjuda: "As caixas e a barra lateral ficam transparentes, com o fundo desfocado por trás, como vidro. Com a trava de contraste, param no ponto em que o texto ainda dá para ler.",
+    vidroAjudaSemTrava: "As caixas e a barra lateral ficam transparentes, com o fundo desfocado por trás, como vidro. Sem a trava, chegam a quase nada por cima do fundo.",
     natural: "Mostrar o fundo com as cores originais",
     naturalExplicacao:
-      "Tira todo o filtro: nada por cima do fundo, sem desfoque e sem escurecimento. Só os cartões continuam com a cor do tema. Ligar isto também libera a trava de contraste.",
+      "Tira todo o filtro: nada por cima do fundo, sem desfoque e sem escurecimento. As caixas seguem o controle de vidro acima. Ligar isto também libera a trava de contraste.",
     semTrava: "Liberar a trava de contraste",
     semTravaExplicacao:
       "Normalmente o Órbita garante que o texto dá para ler: cobre um pouco o fundo e corrige cores fracas. Ligando, a decisão é sua: o fundo pode aparecer inteiro e as cores ficam como você escolher.",

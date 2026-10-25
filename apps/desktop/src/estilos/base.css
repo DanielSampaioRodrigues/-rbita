@@ -31,6 +31,7 @@
   --fundo-desfoque: 0px;
   --fundo-escurecimento: 0;
   --opacidade-paineis: 1;
+  --opacidade-cartoes: 1;
   --sombra: 0 1px 2px rgb(0 0 0 / 0.05), 0 2px 8px rgb(0 0 0 / 0.04);
   --transicao: 120ms ease-out;
   --largura-leitura: 44rem;
@@ -147,3 +148,10 @@ svg[stroke-linecap] { stroke-width: var(--traco-icone, 2); stroke-linecap: var(-
 [data-icones-efeito="brilho"] { --filtro-icone: drop-shadow(0 0 0.14em color-mix(in srgb, var(--cor-destaque) 80%, transparent)); }
 svg.icone { filter: var(--filtro-icone, none); }
 :root[data-baixo-estimulo="true"] svg.icone { filter: none; }
+
+/* Caixas de vidro: a pessoa escolhe de opacas a transparentes (Ajustes > Tema e fundo). */
+:root[data-vidro="true"] .cartao,
+:root[data-vidro="true"] .lateral {
+  background: rgb(var(--cor-superficie-rgb) / var(--opacidade-cartoes));
+  backdrop-filter: blur(12px);
+}

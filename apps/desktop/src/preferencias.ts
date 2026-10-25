@@ -50,6 +50,8 @@ export interface Preferencias {
   semTrava: boolean;
   /** Fundo com as cores originais: sem véu por cima, sem desfoque e sem escurecimento (só com a trava liberada). */
   fundoNatural: boolean;
+  /** Caixas (cartões e barra lateral) de opacas (0) a vidro transparente (100). */
+  vidro: number;
   /** Temas criados no editor ou importados. */
   temasProprios: Tema[];
   /** Tela inicial montável: ordem dos blocos, escondidos e largos. */
@@ -75,6 +77,7 @@ export const PADRAO: Preferencias = {
   fundoVisivel: 0,
   semTrava: false,
   fundoNatural: false,
+  vidro: 0,
   temasProprios: [],
   inicio: { ordem: [...BLOCOS_INICIO], ocultos: [], largos: ["energia", "hoje", "continuar", "novidades"] },
 };
@@ -110,6 +113,7 @@ export function validar(bruto: unknown): Preferencias {
     fundo: validarFundo(p.fundo),
     semTrava: p.semTrava === true,
     fundoNatural: p.fundoNatural === true,
+    vidro: typeof p.vidro === "number" && p.vidro >= 0 && p.vidro <= 100 ? Math.round(p.vidro) : PADRAO.vidro,
     fundoVisivel: typeof p.fundoVisivel === "number" && p.fundoVisivel >= 0 && p.fundoVisivel <= 100 ? Math.round(p.fundoVisivel) : PADRAO.fundoVisivel,
     inicio: validarInicio(p.inicio),
   };

@@ -250,6 +250,13 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
         </div>
       )}
 
+      {!prefs.baixoEstimulo && (fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
+        <div className="campo">
+          <Controle rotulo={t.vidro} valor={prefs.vidro} min={0} max={100} passo={10} formatar={t.vidroValor} aoMudar={(vidro) => mudar({ vidro })} />
+          <p className="campo-ajuda">{prefs.semTrava ? t.vidroAjudaSemTrava : t.vidroAjuda}</p>
+        </div>
+      )}
+
       {(fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
         <div className="campo">
           <Interruptor

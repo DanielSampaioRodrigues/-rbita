@@ -47,6 +47,7 @@ export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = docume
   aplicarVariaveis(raiz, {
     ...variaveisDaPaleta(paleta),
     "--cor-fundo-rgb": lerHex(paleta.fundo).join(" "),
+    "--cor-superficie-rgb": lerHex(paleta.superficie).join(" "),
     "--multiplicador-cantos": String(tema.cantos ?? 1),
     "--traco-icone": String(tema.icones?.traco ?? 2),
     "--pontas-icone": tema.icones?.pontas === "retas" ? "square" : "round",
@@ -69,6 +70,8 @@ export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = docume
     visivel: prefs.fundoVisivel,
     semTrava: !comTrava(prefs),
     natural: !comTrava(prefs) && prefs.fundoNatural,
+    // No baixo estímulo, caixas opacas (sem efeito de vidro).
+    vidro: prefs.baixoEstimulo ? 0 : prefs.vidro,
   });
   raiz.style.colorScheme = modo === "escuro" ? "dark" : "light";
 
