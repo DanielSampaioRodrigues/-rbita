@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CampoRico } from "../componentes/CampoRico";
 import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { api, type Evento, type Repeticao } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
@@ -152,7 +153,7 @@ export function FormEvento({ inicial, dia, aoFechar }: { inicial: Evento; dia: s
         <Interruptor rotulo={t.modelo} ligado={modelo} aoMudar={setModelo} />
         <p className="campo-ajuda">{t.modeloExplicacao}</p>
       </div>
-      <Campo rotulo={t.notas} valor={notas} aoMudar={setNotas} multilinha />
+      <CampoRico rotulo={t.notas} valor={notas} aoMudar={setNotas} />
       <Aviso>{erro}</Aviso>
       <div className="janela-acoes">
         {inicial.id && (

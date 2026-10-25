@@ -606,3 +606,32 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .revisao-texto.revisado { border-color: var(--cor-destaque); border-width: 2px; }
 .ditado-ancora { display: grid; gap: var(--espaco-2); }
 .ditado-ancora:empty { display: none; }
+.entrada-botoes-coluna { display: flex; flex-direction: column; border-left: 1px solid var(--cor-borda); }
+.entrada-botoes-coluna .entrada-botao { border-left: none; min-height: 2.75rem; }
+
+/* Caixa de texto com formatação */
+.rico-caixa { border: 1px solid var(--cor-borda-controle); border-radius: var(--canto); background: var(--cor-superficie); overflow: hidden; }
+.rico-caixa:focus-within { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.rico-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: var(--espaco-1); border-bottom: 1px solid var(--cor-borda); background: var(--cor-superficie-alternativa); }
+.rico-botao { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border: 1px solid transparent; border-radius: var(--canto-pequeno); background: transparent; color: var(--cor-texto); cursor: pointer; }
+.rico-botao[data-hovered] { background: var(--cor-superficie); }
+.rico-botao[data-selected] { background: var(--cor-superficie); border-color: var(--cor-borda-controle); color: var(--cor-destaque); }
+.rico-botao[data-disabled] { opacity: 0.4; cursor: default; }
+.rico-botao[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: -2px; }
+.rico-separador { width: 1px; height: 1.5rem; margin: 0 var(--espaco-1); background: var(--cor-borda); }
+.rico-espaco { flex: 1; }
+.rico-barra .entrada-botao { width: 2.25rem; height: 2.25rem; border-left: none; border-radius: var(--canto-pequeno); }
+.rico-conteudo { min-height: 6rem; max-height: 22rem; overflow-y: auto; padding: var(--espaco-2) var(--espaco-3); outline: none; line-height: var(--altura-linha, 1.5); }
+.rico-conteudo p, .texto-rico p { margin: 0 0 0.5em; }
+.rico-conteudo h2, .texto-rico h2 { font-size: 1.2em; margin: 0.6em 0 0.3em; }
+.rico-conteudo h3, .texto-rico h3 { font-size: 1.05em; margin: 0.5em 0 0.3em; }
+.rico-conteudo ul, .rico-conteudo ol, .texto-rico ul, .texto-rico ol { margin: 0 0 0.5em; padding-left: 1.4em; }
+.rico-conteudo blockquote, .texto-rico blockquote { margin: 0 0 0.5em; padding-left: var(--espaco-3); border-left: 3px solid var(--cor-borda-controle); color: var(--cor-texto-suave); }
+.rico-conteudo mark, .texto-rico mark { background: color-mix(in srgb, var(--cor-destaque) 22%, transparent); color: inherit; padding: 0 2px; border-radius: 2px; }
+.rico-conteudo a, .texto-rico a { color: var(--cor-destaque); text-decoration: underline; }
+.rico-conteudo ul[data-type="taskList"], .texto-rico ul[data-type="taskList"] { list-style: none; padding-left: 0.2em; }
+.rico-conteudo ul[data-type="taskList"] li, .texto-rico ul[data-type="taskList"] li { display: flex; gap: 0.5em; align-items: flex-start; }
+.rico-conteudo ul[data-type="taskList"] li > label, .texto-rico ul[data-type="taskList"] li > label { margin-top: 0.2em; }
+.rico-conteudo ul[data-type="taskList"] li > div, .texto-rico ul[data-type="taskList"] li > div { flex: 1; }
+.rico-conteudo p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--cor-texto-suave); float: left; height: 0; pointer-events: none; }
+.texto-rico > :last-child, .texto-rico > :last-child > :last-child { margin-bottom: 0; }

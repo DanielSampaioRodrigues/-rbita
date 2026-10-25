@@ -65,6 +65,11 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - **Tarefas de um projeto** têm as cinco visualizações da especificação: lista, quadro, mapa mental, **linha do tempo** e **calendário**. Tarefas sem prazo aparecem à parte, com um botão para dar prazo, sem cobrança.
 - **Criar tema com IA** no editor de tema: a pessoa descreve, a IA propõe cores e um desenho em SVG, e tudo passa pela conferência de contraste e pela limpeza de SVG. Dá para pedir ajustes conversando. Com GPT, Gemini ou Grok, também imagem (PNG), se a conta tiver modelo de imagem; a tela explica o que cada IA consegue e por quê.
 
+**Texto livre e IA nas caixas (versão 0.18.0).**
+- **Formatação completa nas caixas de texto longo** (nota da ideia, "onde parei", notas de compromisso): negrito, itálico, sublinhado, marca-texto, título, listas, lista de tarefas com caixinha, citação e link, com os atalhos de sempre (Ctrl + B, I, U, Z, Y). O texto fica guardado em **Markdown**, formato aberto. Links ficam guardados, mas o Órbita não abre sites sozinho. Campos de uma linha (títulos, nomes) continuam simples de propósito.
+- **Reescrever com IA em toda caixa de texto** (menos senhas, números e endereços): botão ✨ ao lado do microfone, com revisar ortografia, deixar mais claro, mais curto, mais detalhado, transformar em tópicos, tom mais leve, tom mais formal e "do meu jeito" (a pessoa escreve o pedido). O resultado aparece sempre como antes e depois; nada muda sem a pessoa escolher. Usa a IA escolhida para "Revisar e reescrever textos".
+- O aviso de dado sensível não dispara mais por "autismo" ou "TDAH": num app para pessoas neurodivergentes, são palavras do dia a dia. Diagnóstico, laudo, remédio e terapia continuam avisando.
+
 ### 2. Tempo e rotina
 
 - Agenda diária e semanal visual, com semana-modelo.

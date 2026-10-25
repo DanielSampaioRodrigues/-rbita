@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { CampoRico } from "../componentes/CampoRico";
+import { TextoRico } from "../componentes/TextoRico";
 import { Button, Form } from "react-aria-components";
 import { api, type Projeto } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
@@ -55,7 +57,7 @@ function Formulario({ projeto, modo, aoFechar, aoConcluir }: Props & { projeto: 
     <Form className="formulario" onSubmit={(e) => (e.preventDefault(), salvar())}>
       {modo === "pausar" && <p>{t.pausarTexto}</p>}
       <p className="campo-rotulo">{projeto.titulo}</p>
-      <Campo rotulo={t.emQuePonto} valor={texto} aoMudar={setTexto} multilinha autoFocus />
+      <CampoRico rotulo={t.emQuePonto} valor={texto} aoMudar={setTexto} autoFocus />
       <Campo rotulo={t.proximoPasso} valor={proximo} aoMudar={setProximo} descricao={t.proximoDica} />
       <Campo rotulo={t.links} valor={links} aoMudar={setLinks} multilinha descricao={t.linksDica} />
       <Aviso>{erro}</Aviso>
@@ -83,7 +85,7 @@ export function CartaoOndeParei({ projeto, aoEditar }: { projeto: Projeto; aoEdi
         <p className="texto-suave">{t.ondePareiVazio}</p>
       ) : (
         <>
-          {o.texto && <p className="quebra">{o.texto}</p>}
+          {o.texto && <TextoRico markdown={o.texto} className="quebra" />}
           {o.proximoPasso && (
             <p className="proximo-passo">
               <span className="proximo-passo-rotulo">{t.proximoRotulo}</span>

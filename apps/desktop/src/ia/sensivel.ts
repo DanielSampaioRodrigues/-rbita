@@ -1,12 +1,14 @@
 /**
  * Sinais de que um texto fala de saúde ou terapia. Serve só para avisar antes
  * de enviar a um provedor de fora do computador (princípio da especificação).
- * Não é um diagnóstico do texto: na dúvida, avisa.
+ * Não é um diagnóstico do texto: na dúvida, avisa. "Autismo" e "TDAH" ficam de
+ * fora de propósito: num app para pessoas neurodivergentes, são palavras do dia a
+ * dia, e avisar toda vez viraria ruído (diagnóstico, laudo e remédio continuam).
  */
 const SINAIS = [
   "saude", "medic", "remedio", "receita medica", "consulta", "terapia", "terapeut", "psiquiatr", "psicolog", "psicoterap",
   "neurolog", "diagnost", "laudo", "exame", "hospital", "clinica", "pronto-socorro", "plano de saude", "sintoma",
-  "ansiedade", "depress", "crise", "panico", "insonia", "dose", "mg ", "comprimido", "cid ", "autis", "tdah", "bipolar",
+  "ansiedade", "depress", "crise", "panico", "insonia", "dose", "mg ", "comprimido", "cid ", "bipolar",
   "borderline", "toc ", "suicid", "automutil", "meltdown", "shutdown", "burnout", "luto",
 ];
 

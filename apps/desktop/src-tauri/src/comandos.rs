@@ -569,13 +569,14 @@ pub async fn organizar_texto_ia(estado: State<'_, Estado>, texto: String, sensiv
 
 /// Revisa ortografia e pontuação. Não grava nada: a tela mostra antes e depois.
 #[tauri::command]
-pub async fn revisar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel: bool) -> Result<String, Erro> {
+pub async fn revisar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel: bool, modo: Option<String>, instrucao: Option<String>) -> Result<String, Erro> {
     let texto: String = texto.trim().chars().take(revisar::MAXIMO_DE_CARACTERES).collect();
     if texto.is_empty() {
         return Err(Erro::TextoVazio);
     }
     let escolhido = estado.com_sessao(|s| ia::provedor_da_funcao(&s.conn, "revisao", sensivel))?;
-    let revisado = revisar::limpar(&cliente::completar(&escolhido, revisar::SISTEMA, &texto).await?);
+    let sistema = revisar::sistema(modo.as_deref().unwrap_or("revisar"), instrucao.as_deref());
+    let revisado = revisar::limpar(&cliente::completar(&escolhido, &sistema, &texto).await?);
     if revisado.is_empty() {
         return Err(Erro::Ia { motivo: "resposta", mensagem: "A revisão veio vazia. Tente de novo.".into() });
     }

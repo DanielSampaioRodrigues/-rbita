@@ -240,6 +240,10 @@ export interface Organizacao {
 
 export type ModeloVoz = "base" | "small";
 
+/** Jeitos de reescrever um texto com IA. */
+export const MODOS_REESCRITA = ["revisar", "claro", "curto", "detalhado", "topicos", "leve", "formal", "livre"] as const;
+export type ModoReescrita = (typeof MODOS_REESCRITA)[number];
+
 export interface EstadoDitado {
   instalado: ModeloVoz | null;
   baixando: boolean;
@@ -330,7 +334,7 @@ interface Api {
   /** Separa um texto em ideias, tarefas e compromissos. Não grava nada. */
   organizarTextoIa(texto: string, sensivel: boolean): Promise<Organizacao>;
   /** Revisa ortografia e pontuação. Não grava nada. */
-  revisarTextoIa(texto: string, sensivel: boolean): Promise<string>;
+  revisarTextoIa(texto: string, sensivel: boolean, modo?: ModoReescrita, instrucao?: string): Promise<string>;
   ditadoEstado(): Promise<EstadoDitado>;
   ditadoBaixar(modelo: ModeloVoz): Promise<EstadoDitado>;
   ditadoCancelarDownload(): Promise<void>;
@@ -433,7 +437,7 @@ const nativa: Api = {
   memoriaDoComputador: () => chamar("memoria_do_computador"),
   sugerirPassosIa: (alvo) => chamar("sugerir_passos_ia", { alvo }),
   organizarTextoIa: (texto, sensivel) => chamar("organizar_texto_ia", { texto, sensivel }),
-  revisarTextoIa: (texto, sensivel) => chamar("revisar_texto_ia", { texto, sensivel }),
+  revisarTextoIa: (texto, sensivel, modo, instrucao) => chamar("revisar_texto_ia", { texto, sensivel, modo: modo ?? null, instrucao: instrucao ?? null }),
   ditadoEstado: () => chamar("ditado_estado"),
   ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
   ditadoCancelarDownload: () => chamar("ditado_cancelar_download"),
@@ -961,9 +965,11 @@ ${JSON.stringify(tema)}`;
       const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2b3a"/><stop offset="1" stop-color="#2f4a3a"/></linearGradient></defs><rect width="1536" height="1024" fill="url(#g)"/><path d="M0 800 L200 520 L400 800 Z M300 820 L560 460 L820 820 Z M700 830 L980 500 L1260 830 Z M1100 820 L1320 560 L1536 820 Z" fill="#183025"/><circle cx="1200" cy="200" r="60" fill="#d8e2c8" opacity="0.8"/></svg>';
       return `data:image/svg+xml;base64,${btoa(svg)}`;
     },
-    revisarTextoIa: async (texto) => {
+    revisarTextoIa: async (texto, _s, modo) => {
       await espera(900);
       const t = texto.trim();
+      if (modo === "topicos") return t.split(/,| e /).map((x) => `- ${x.trim().charAt(0).toUpperCase()}${x.trim().slice(1)}`).join("\n");
+      if (modo === "curto") return t.split(" ").slice(0, 6).join(" ") + ".";
       return t.charAt(0).toUpperCase() + t.slice(1).replace(/\s+,/g, ",").replace(/ e tive/, ", e tive") + (/[.!?]$/.test(t) ? "" : ".");
     },
     organizarTextoIa: async (_texto, sensivel) => {

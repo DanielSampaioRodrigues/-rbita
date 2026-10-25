@@ -4,7 +4,7 @@ import { Button } from "react-aria-components";
 import { api, ErroOrbita } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { textos } from "../textos/pt-BR";
-import { JanelaRevisao } from "./JanelaRevisao";
+import { JanelaRevisao, type PedidoReescrita } from "./JanelaRevisao";
 import { marcarGravando, useRecursos } from "./recursos";
 
 const t = textos.ditado;
@@ -33,7 +33,7 @@ export function useDitar(valor: string, aoMudar: (v: string) => void, ativo: boo
   const [erro, setErro] = useState<string | null>(null);
   /** Valor antes do último ditado (para desfazer) e depois (para saber se a pessoa mexeu). */
   const [ultimo, setUltimo] = useState<{ antes: string; depois: string; segundos: number } | null>(null);
-  const [revisando, setRevisando] = useState<string | null>(null);
+  const [revisando, setRevisando] = useState<PedidoReescrita | null>(null);
   const valorAtual = useRef(valor);
   valorAtual.current = valor;
   const recursosGravandoAqui = useRef(false);
@@ -101,11 +101,13 @@ export function useDitar(valor: string, aoMudar: (v: string) => void, ativo: boo
   // O React Aria segura as teclas no campo quando há um tratamento próprio; as
   // que não são do ditado seguem adiante (Esc fecha janelas, atalhos gerais).
   const aoTeclar = (e: KeyboardEvent & { continuePropagation?: () => void }) => {
+    // Evento comum do React (fora do React Aria): é preciso parar a propagação à mão.
+    const parar = () => (e.preventDefault(), e.continuePropagation ? undefined : e.stopPropagation());
     if (disponivel && e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === "m") {
-      e.preventDefault();
+      parar();
       void alternar();
     } else if (disponivel && e.key === "Escape" && fase === "gravando") {
-      e.preventDefault();
+      parar();
       void cancelar();
     } else {
       e.continuePropagation?.();
@@ -138,14 +140,14 @@ export function useDitar(valor: string, aoMudar: (v: string) => void, ativo: boo
         <div className="botoes ditado-acoes">
           <span className="ditado-situacao">{t.levou(ultimo.segundos)}</span>
           {recursos.revisor && (
-            <Button className="botao pequeno" onPress={() => setRevisando(valorAtual.current)}>{t.revisar}</Button>
+            <Button className="botao pequeno" onPress={() => setRevisando({ texto: valorAtual.current, modo: "revisar" })}>{t.revisar}</Button>
           )}
           <Button className="botao pequeno" onPress={() => (aoMudar(ultimo.antes), setUltimo(null), focarCampo())}>{t.desfazer}</Button>
         </div>
       )}
       {recursos.revisor && (
         <JanelaRevisao
-          texto={revisando}
+          pedido={revisando}
           revisor={recursos.revisor}
           bloquearSensivel={recursos.bloquearSensivel}
           aoFechar={() => (setRevisando(null), focarCampo())}

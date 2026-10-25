@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): construída (versão 0.17.0, com os primeiros ajustes pedidos por Dan). Agora é o portão: usar no dia a dia por algumas semanas antes da Onda 2. O que testar está em [docs/revisao-onda-1.md](docs/revisao-onda-1.md).
+Onda 1 (base e coração, Windows): construída (versão 0.18.0, com os ajustes pedidos por Dan). Agora é o portão: usar no dia a dia por algumas semanas antes da Onda 2. O que testar está em [docs/revisao-onda-1.md](docs/revisao-onda-1.md).

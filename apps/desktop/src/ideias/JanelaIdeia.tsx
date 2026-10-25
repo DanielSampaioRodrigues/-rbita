@@ -1,4 +1,5 @@
 import { FolderPlus, Trash2, X } from "lucide-react";
+import { CampoRico } from "../componentes/CampoRico";
 import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";
 import { api, type Etiqueta, type Ideia } from "../api";
@@ -76,7 +77,7 @@ export function JanelaIdeia({
     <Janela titulo={t.ideiaTitulo} aberta aoFechar={aoFechar}>
       <div className="formulario">
         <Campo rotulo={t.texto} valor={texto} aoMudar={setTexto} autoFocus />
-        <Campo rotulo={t.nota} valor={nota} aoMudar={setNota} multilinha descricao={t.notaAjuda} />
+        <CampoRico rotulo={t.nota} valor={nota} aoMudar={setNota} descricao={t.notaAjuda} />
         <EscolherEtiquetas todas={etiquetas} marcadas={marcadas} aoMudar={setMarcadas} aoCriar={aoCriarEtiqueta} />
 
         <fieldset className="grupo-campos">

@@ -11,5 +11,7 @@ describe("pareceSensivel", () => {
   it("não avisa sem motivo", () => {
     expect(pareceSensivel("pagar a luz e ideia de livro")).toBe(false);
     expect(pareceSensivel("comprar tomate")).toBe(false);
+    expect(pareceSensivel("podcast sobre pessoas autistas e com TDAH")).toBe(false);
+    expect(pareceSensivel("levar o laudo de autismo")).toBe(true);
   });
 });

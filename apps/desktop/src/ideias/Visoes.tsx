@@ -1,4 +1,5 @@
 import { ChevronRight, Link2, StickyNote } from "lucide-react";
+import { textoSimples } from "../componentes/textoSimples";
 import { Button } from "react-aria-components";
 import type { Etiqueta, Ideia } from "../api";
 import { formatoData } from "../projetos/OndeParei";
@@ -60,7 +61,7 @@ export function MuralIdeias({ ideias, etiquetas, aoAbrir }: Props) {
           <li key={i.id}>
             <Button className={cor ? `cartao mural-cartao borda-${cor}` : "cartao mural-cartao"} onPress={() => aoAbrir(i)} aria-label={t.abrir(i.texto)}>
               <span className="quebra ideia-texto">{i.texto}</span>
-              {i.nota && <span className="texto-suave pequeno mural-nota">{i.nota}</span>}
+              {i.nota && <span className="texto-suave pequeno mural-nota">{textoSimples(i.nota)}</span>}
               <Detalhes ideia={{ ...i, nota: "" }} etiquetas={etiquetas} />
             </Button>
           </li>
