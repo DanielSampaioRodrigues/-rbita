@@ -340,7 +340,7 @@ docs/                especificação e registro de decisões
 - **Arcano 3**: o sistema atual é só de automação e o site está no início; não pesa nas decisões agora.
 - **Identificador do app**: `br.com.arcano3.orbita`.
 
-**Distribuição.** No Windows e no Mac, instalador próprio com botão de atualização. No mobile, as lojas exigem conta de desenvolvedor: a Apple cobra cerca de US$ 99 por ano e a Google, uma taxa única de US$ 25 (valores a confirmar). Uma versão web instalável é a alternativa sem custo.
+**Distribuição.** No Windows e no Mac, instalador próprio com botão de atualização. **Feito no Windows (versão 0.20.0)**: instaladores assinados publicados no repositório público `orbita-versoes`; em Ajustes > Atualizações, "Procurar atualização" mostra o que mudou, com "Instalar agora" e "Agora não"; ao abrir, o Órbita só avisa (opção que dá para desligar). Detalhes em `docs/decisoes/0009-atualizacao.md`. No mobile, as lojas exigem conta de desenvolvedor: a Apple cobra cerca de US$ 99 por ano e a Google, uma taxa única de US$ 25 (valores a confirmar). Uma versão web instalável é a alternativa sem custo.
 
 ## Ondas de construção
 

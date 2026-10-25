@@ -1,6 +1,6 @@
 [package]
 name = "orbita"
-version = "0.19.0"
+version = "0.20.0"
 description = "Órbita — organizador de vida para pessoas neurodivergentes"
 authors = ["Daniel Sampaio Rodrigues"]
 edition = "2021"
@@ -40,6 +40,9 @@ base64 = "0.22"
 
 [target.'cfg(any(windows, target_os = "macos", target_os = "linux"))'.dependencies]
 tauri-plugin-global-shortcut = "2.4"
+# Atualização dentro do app (só no computador; no celular, as lojas cuidam disso).
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [target.'cfg(windows)'.dependencies]
 cpal = "0.18"

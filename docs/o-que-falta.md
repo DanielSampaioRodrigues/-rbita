@@ -1,10 +1,10 @@
 # O que falta implementar
 
-25/10/2026 · versão 0.19.0. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
+25/10/2026 · versão 0.20.0. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
 
 ## 1. Pendências da Onda 1 (o que está pela metade)
 
-- [ ] **Atualização dentro do app**: botão "procurar atualização", mostrando o que mudou e com opção de adiar (princípio 1). Hoje cada versão é um instalador novo, baixado à mão. **Espera uma decisão de Dan**: criar um repositório público só para os instaladores (`orbita-versoes`) e guardar a chave de assinatura das atualizações como segredo do GitHub.
+- [x] **Atualização dentro do app**: procurar, ver o que mudou, instalar ou adiar (0.20.0). A 0.20.0 é instalada à mão uma última vez.
 - [x] **Etiquetas e ligações em projetos e tarefas** (0.19.0).
 - [x] **Anexos**: imagens, arquivos e links em ideias, projetos e tarefas, dentro do cofre (0.19.0).
 - [x] **Rotinas com imagens** (0.19.0).

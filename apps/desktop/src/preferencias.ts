@@ -38,6 +38,8 @@ export interface Preferencias {
   baixaEnergia: boolean;
   /** Bloquear sozinho depois de tantos minutos sem uso (0 = nunca). */
   bloqueioAuto: number;
+  /** Ao abrir, consultar se há versão nova (só avisa; nada é baixado sem a pessoa mandar). */
+  procurarAtualizacao: boolean;
   /** Id de um tema pronto. */
   tema: string;
   /** null = o fundo sugerido pelo tema. */
@@ -61,6 +63,7 @@ export const PADRAO: Preferencias = {
   avisos: { ligado: true, minutos: 10, notificacao: true },
   baixaEnergia: false,
   bloqueioAuto: 0,
+  procurarAtualizacao: true,
   tema: "papel",
   fundo: null,
   temasProprios: [],
@@ -91,6 +94,7 @@ export function validar(bruto: unknown): Preferencias {
     baixoEstimulo: typeof p.baixoEstimulo === "boolean" ? p.baixoEstimulo : PADRAO.baixoEstimulo,
     avisos: validarAvisos(p.avisos),
     baixaEnergia: typeof p.baixaEnergia === "boolean" ? p.baixaEnergia : PADRAO.baixaEnergia,
+    procurarAtualizacao: typeof p.procurarAtualizacao === "boolean" ? p.procurarAtualizacao : PADRAO.procurarAtualizacao,
     bloqueioAuto: BLOQUEIOS.includes(p.bloqueioAuto as (typeof BLOQUEIOS)[number]) ? (p.bloqueioAuto as number) : PADRAO.bloqueioAuto,
     temasProprios,
     tema: [...TEMAS, ...temasProprios].some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,

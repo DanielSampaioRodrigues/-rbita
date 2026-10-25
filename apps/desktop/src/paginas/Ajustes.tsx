@@ -19,6 +19,7 @@ import { textos } from "../textos/pt-BR";
 import { Backup } from "./Backup";
 import { TemaFundo } from "./TemaFundo";
 import { EditorTema } from "./EditorTema";
+import { AjustesAtualizacao } from "../atualizacao/TelasAtualizacao";
 import type { Tema } from "@orbita/temas";
 import { LimiteProjetos } from "./LimiteProjetos";
 import { ANTECEDENCIAS } from "../preferencias";
@@ -166,6 +167,7 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
           <LimiteProjetos />
           <Seguranca modo={modo} aoMudar={aoMudarSeguranca} />
           <AjustesJanela />
+          <AjustesAtualizacao />
           <Backup aoRestaurar={aoRestaurar} />
           <AjustesIa />
           <AjustesDitado />

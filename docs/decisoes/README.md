@@ -11,3 +11,4 @@ As decisões que mudam o produto também entram em `docs/especificacao.md`.
 - [0006 · Temas, fundos e contraste automático](0006-temas-fundos.md)
 - [0007 · IA: provedores, chaves e sugestão de passos](0007-ia-provedores.md)
 - [0008 · Ditado local com whisper.cpp](0008-ditado-local.md)
+- [0009 · Atualização dentro do app](0009-atualizacao.md)

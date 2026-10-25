@@ -23,6 +23,12 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            // Atualização dentro do app: só procura e instala quando a pessoa manda.
+            #[cfg(desktop)]
+            {
+                app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+                app.handle().plugin(tauri_plugin_process::init())?;
+            }
             let pasta = app.path().app_data_dir()?;
             // Cópias temporárias de anexos abertos da última vez: apagadas.
             let _ = std::fs::remove_dir_all(comandos::pasta_temporaria_anexos());

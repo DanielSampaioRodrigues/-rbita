@@ -28,6 +28,8 @@ import { Captura } from "./Captura";
 import { JanelaAtalhos } from "./JanelaAtalhos";
 import { Moldura, type Secao } from "./Moldura";
 import { ProvedorRecado } from "./Recado";
+import { ProvedorAtualizacao } from "../atualizacao/atualizacao";
+import { AvisoAtualizacao } from "../atualizacao/TelasAtualizacao";
 
 export function App() {
   const { prefs, mudar } = usePreferencias();
@@ -153,23 +155,26 @@ export function App() {
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
     tela = (
-      <ProvedorLimite>
-        <ProvedorFoco>
-          <BloqueioAutomatico minutos={prefs.bloqueioAuto} aoBloquear={bloquear} />
-          {prefs.baixaEnergia ? (
-            <>
-              <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
-              <BaixaEnergia aoSair={() => mudar({ baixaEnergia: false })} aoCapturar={pedirCaptura} />
-            </>
-          ) : (
-            <Moldura secao={secao} aoEscolherSecao={irPara} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
-              <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
-              {pagina}
-            </Moldura>
-          )}
-          <Captura aberta={capturando} aoFechar={() => setCapturando(false)} />
-        </ProvedorFoco>
-      </ProvedorLimite>
+      <ProvedorAtualizacao procurarAoAbrir={prefs.procurarAtualizacao}>
+        <ProvedorLimite>
+          <ProvedorFoco>
+            <BloqueioAutomatico minutos={prefs.bloqueioAuto} aoBloquear={bloquear} />
+            {prefs.baixaEnergia ? (
+              <>
+                <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
+                <BaixaEnergia aoSair={() => mudar({ baixaEnergia: false })} aoCapturar={pedirCaptura} />
+              </>
+            ) : (
+              <Moldura secao={secao} aoEscolherSecao={irPara} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
+                <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
+                <AvisoAtualizacao />
+                {pagina}
+              </Moldura>
+            )}
+            <Captura aberta={capturando} aoFechar={() => setCapturando(false)} />
+          </ProvedorFoco>
+        </ProvedorLimite>
+      </ProvedorAtualizacao>
     );
   }
 

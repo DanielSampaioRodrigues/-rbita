@@ -1,0 +1,2 @@
+- **Atualização dentro do Órbita**: em Ajustes > Atualizações, o botão "Procurar atualização" mostra o que mudou antes de instalar, e dá para deixar para depois. Ao abrir, o Órbita também confere sozinho e só mostra um aviso (dá para desligar).
+- Tema com IA também propõe e ajusta o estilo dos ícones ("ícones mais grossos e retos").

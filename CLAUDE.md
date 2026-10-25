@@ -36,6 +36,7 @@ Toda tela e função passam por estes sete princípios. Em conflito, vencem os p
 - **App:** Tauri 2 (Windows primeiro; Mac, Android e iOS do mesmo código).
 - **Interface:** React + TypeScript + Vite, com React Aria e dnd-kit para acessibilidade por teclado. Temas em variáveis CSS. Monorepo com pnpm (`apps/desktop`, `packages/*`).
 - **Instalador:** o GitHub Actions monta o instalador do Windows; Dan baixa e testa. Não há como rodar o Windows aqui.
+- **Versões e atualização:** a cada versão nova, subir o número em `package.json`, `tauri.conf.json` e `Cargo.toml` e reescrever `apps/desktop/notas-da-versao.md` (o que mudou, em linguagem simples). O GitHub assina e publica sozinho no repositório público `orbita-versoes`, e o app avisa. Nunca pôr a chave privada de assinatura no repositório (fica nos segredos do GitHub).
 - **Dados:** local-first, SQLite criptografado, funciona sem internet e sem conta. Backup em arquivo único criptografado; exportação em formatos abertos.
 - **Modelo de dados comum:** item, evento, registro e anexo, com etiquetas e ligações entre si.
 - **Pacotes compartilhados:** o motor de leitura (EPUB/PDF) fica em pacote separado, reaproveitável no leitor da Arcano 3 e no Escuta. Tentar o mesmo para o motor de temas e o caderno.
