@@ -725,7 +725,7 @@ function simularAgenda() {
   };
 }
 
-function simularRotinas(itens: ReturnType<typeof simularItens>) {
+function simularRotinas(itens: ReturnType<typeof simularItens>, anexos: ReturnType<typeof simularAnexos>) {
   const rotinas: Rotina[] = [];
   if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
     rotinas.push({
@@ -741,7 +741,7 @@ function simularRotinas(itens: ReturnType<typeof simularItens>) {
     });
   }
   return {
-    listarRotinas: async () => structuredClone(rotinas),
+    listarRotinas: async () => structuredClone(rotinas).map((r) => ({ ...r, passos: r.passos.map((p) => ({ ...p, imagem: anexos.imagemDe(p.id) })) })),
     criarRotina: async (titulo: string) => {
       if (!titulo.trim()) throw new ErroOrbita("texto_vazio", "Escreva alguma coisa antes de salvar.");
       const r = { id: crypto.randomUUID(), titulo: titulo.trim(), passos: [] };
@@ -784,13 +784,14 @@ function simularRotinas(itens: ReturnType<typeof simularItens>) {
 }
 
 /** Anexos de mentira: guardados só na memória da página. */
-function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLink" | "imagemAnexo" | "abrirAnexo" | "salvarAnexo" | "excluirAnexo"> {
+function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLink" | "imagemAnexo" | "abrirAnexo" | "salvarAnexo" | "excluirAnexo"> & { imagemDe: (item: string) => string | null } {
   const anexos: (Anexo & { item: string })[] = [];
   const desenho = (cor: string) =>
     `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320"><rect width="480" height="320" fill="${cor}"/><circle cx="360" cy="90" r="40" fill="#f3efe6" opacity="0.8"/><path d="M0 260 L120 150 L230 250 L320 180 L480 280 L480 320 L0 320 Z" fill="#2f4a3a"/></svg>`)}`;
   const imagens = new Map<string, string>();
   const tipoDe = (nome: string): Anexo["tipo"] => (/\.(png|jpe?g|gif|webp|svg)$/i.test(nome) ? "imagem" : "arquivo");
   return {
+    imagemDe: (item) => anexos.filter((a) => a.item === item && a.tipo === "imagem").pop()?.id ?? null,
     listarAnexos: async (item) => anexos.filter((a) => a.item === item).map(({ item: _, ...a }) => a),
     anexarArquivo: async (item, caminho) => {
       const nome = caminho.split(/[\\/]/).pop() || "arquivo";
@@ -852,6 +853,7 @@ function criarSimulacao(): Api {
   const s = { existe: false, modo: null as ModoAbrir | null, senha: "", pin: "", erradas: 0, aberto: false };
   const backup: SituacaoBackup = { pasta: null, ultimo: null, erro: null };
   const comItens = simularItens();
+  const comAnexos = simularAnexos();
   const params0 = new URLSearchParams(globalThis.location?.search ?? "");
   let bandeja = false;
   const comIa = simularIa(params0.get("ia") !== null, params0.get("ia") === "erro");
@@ -925,9 +927,9 @@ function criarSimulacao(): Api {
     },
     ...comItens,
     ...simularAgenda(),
-    ...simularRotinas(comItens),
+    ...simularRotinas(comItens, comAnexos),
     ...simularEnergia(),
-    ...simularAnexos(),
+    ...comAnexos,
     fazerBackup: async () => {
       await espera();
     },
@@ -1165,9 +1167,10 @@ export async function escolherPasta(): Promise<string | null> {
 }
 
 /** Escolhe um arquivo para anexar. Devolve null se a pessoa cancelar. */
-export async function escolherArquivoParaAnexar(): Promise<string | null> {
-  if (!noApp) return "C:\\Users\\Dan\\Imagens\\esboço-da-capa.png";
-  const caminho = await open({ multiple: false, directory: false });
+export async function escolherArquivoParaAnexar(soImagens = false): Promise<string | null> {
+  if (!noApp) return soImagens ? "C:\\Users\\Dan\\Imagens\\copo-de-agua.png" : "C:\\Users\\Dan\\Imagens\\esboço-da-capa.png";
+  const filters = soImagens ? [{ name: "Imagens", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }] : undefined;
+  const caminho = await open({ multiple: false, directory: false, filters });
   return typeof caminho === "string" ? caminho : null;
 }
 

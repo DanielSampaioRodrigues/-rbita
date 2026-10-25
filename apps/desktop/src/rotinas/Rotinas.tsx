@@ -1,12 +1,13 @@
-import { ArrowLeft, ArrowRight, MoreHorizontal, Pencil, Play, Plus, Timer, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ImagePlus, MoreHorizontal, Pencil, Play, Plus, Timer, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, Form, Label, Menu, MenuItem, MenuTrigger, Popover, Radio, RadioGroup } from "react-aria-components";
-import { api, type Passo, type Rotina } from "../api";
+import { api, escolherArquivoParaAnexar, type Passo, type Rotina } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useFoco } from "../foco/Foco";
 import { EditarTexto } from "../paginas/Ideias";
+import { ImagemAnexo } from "../relacoes/Relacoes";
 import { textos } from "../textos/pt-BR";
 import { ICONES } from "./icones";
 
@@ -136,9 +137,11 @@ function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => vo
           {rotina.passos.map((p, i) => (
             <li key={p.id} className="passo-linha">
               <span className="passo-numero">{i + 1}</span>
-              <span className="passo-icone"><IconePasso nome={p.icone} /></span>
+              <span className="passo-icone">
+                {p.imagem ? <ImagemAnexo id={p.imagem} nome="" className="passo-imagem" /> : <IconePasso nome={p.icone} />}
+              </span>
               <span className="passo-titulo quebra">{p.titulo}</span>
-              {p.minutos && <span className="texto-suave pequeno">{t.min(p.minutos)}</span>}
+              <span className="texto-suave pequeno">{p.minutos ? t.min(p.minutos) : ""}</span>
               <MenuTrigger>
                 <Button className="botao-icone" aria-label={t.acoesPasso(p.titulo)}>
                   <MoreHorizontal aria-hidden="true" size="1.1em" />
@@ -170,7 +173,15 @@ function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => vo
           <FormPasso
             inicial={passo}
             aoCancelar={() => setPasso(null)}
-            aoSalvar={(p) => executar(async () => (await api.salvarPasso(rotina.id, p), setPasso(null)))}
+            aoSalvar={(p, imagem) =>
+              executar(async () => {
+                const salvo = await api.salvarPasso(rotina.id, p);
+                // A imagem é um anexo do passo: trocar = tirar a antiga e anexar a nova.
+                if (imagem !== undefined && passo.imagem) await api.excluirAnexo(passo.imagem);
+                if (imagem) await api.anexarArquivo(salvo.id, imagem);
+                setPasso(null);
+              })
+            }
           />
         )}
       </Janela>
@@ -194,8 +205,12 @@ function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => vo
   );
 }
 
-function FormPasso({ inicial, aoCancelar, aoSalvar }: { inicial: Passo; aoCancelar: () => void; aoSalvar: (p: Passo) => void }) {
+/** `imagem` ao salvar: undefined = não mexe; null = tira; texto = caminho da nova. */
+function FormPasso({ inicial, aoCancelar, aoSalvar }: { inicial: Passo; aoCancelar: () => void; aoSalvar: (p: Passo, imagem: string | null | undefined) => void }) {
   const [titulo, setTitulo] = useState(inicial.titulo);
+  const [imagem, setImagem] = useState<string | null | undefined>(undefined);
+  const nomeArquivo = (c: string) => c.split(/[\\/]/).pop() ?? c;
+  const temImagem = imagem ? true : imagem === null ? false : !!inicial.imagem;
   const [minutos, setMinutos] = useState(inicial.minutos ? String(inicial.minutos) : "");
   const [icone, setIcone] = useState(inicial.icone);
   return (
@@ -204,11 +219,32 @@ function FormPasso({ inicial, aoCancelar, aoSalvar }: { inicial: Passo; aoCancel
       onSubmit={(e) => {
         e.preventDefault();
         const m = parseInt(minutos, 10);
-        if (titulo.trim()) aoSalvar({ ...inicial, titulo, icone, minutos: m > 0 ? m : null });
+        if (titulo.trim()) aoSalvar({ ...inicial, titulo, icone, minutos: m > 0 ? m : null }, imagem);
       }}
     >
       <Campo rotulo={t.oQueFazer} valor={titulo} aoMudar={setTitulo} autoFocus />
       <Campo rotulo={t.minutos} valor={minutos} aoMudar={(v) => setMinutos(v.replace(/\D/g, "").slice(0, 3))} numerico />
+      <fieldset className="grupo-campos">
+        <legend className="campo-rotulo">{t.imagem}</legend>
+        <p className="campo-ajuda">{t.imagemAjuda}</p>
+        {imagem === undefined && inicial.imagem && <ImagemAnexo id={inicial.imagem} nome="" className="passo-imagem-previa" />}
+        {imagem && <p className="pequeno">{t.imagemEscolhida(nomeArquivo(imagem))}</p>}
+        {imagem === null && inicial.imagem && <p className="pequeno">{t.semImagem}</p>}
+        <div className="botoes">
+          <Button
+            className="botao pequeno com-icone"
+            onPress={async () => {
+              const c = await escolherArquivoParaAnexar(true);
+              if (c) setImagem(c);
+            }}
+          >
+            <ImagePlus aria-hidden="true" size="1em" /> {temImagem ? t.trocarImagem : t.escolherImagem}
+          </Button>
+          {temImagem && (
+            <Button className="botao pequeno" onPress={() => setImagem(null)}>{t.tirarImagem}</Button>
+          )}
+        </div>
+      </fieldset>
       <RadioGroup className="campo" value={icone} onChange={setIcone}>
         <Label className="campo-rotulo">{t.icone}</Label>
         <div className="grade-icones">
@@ -253,7 +289,11 @@ function FazerRotina({ rotina, aoFechar }: { rotina: Rotina; aoFechar: () => voi
         <div className="fazer-rotina">
           <p className="acesso-passo">{t.passoDe(atual + 1, rotina.passos.length)}</p>
           <div className="fazer-passo" aria-live="polite">
-            {passo.icone && <IconePasso nome={passo.icone} tamanho="3rem" />}
+            {passo.imagem ? (
+              <ImagemAnexo id={passo.imagem} nome="" className="fazer-imagem" />
+            ) : (
+              passo.icone && <IconePasso nome={passo.icone} tamanho="3rem" />
+            )}
             <p className="fazer-titulo quebra">{passo.titulo}</p>
             {passo.minutos && (
               <Button className="botao" onPress={() => foco.comecar(passo.minutos!, passo.titulo)}>

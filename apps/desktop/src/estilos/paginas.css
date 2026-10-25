@@ -585,3 +585,8 @@
 .anexo-grande { display: block; max-width: 100%; max-height: 65vh; margin-inline: auto; border-radius: var(--canto-pequeno); }
 .secao-relacoes { display: grid; gap: var(--espaco-3); }
 .secao-relacoes > h2 { margin: 0; }
+
+/* Imagens dos passos da rotina */
+.passo-imagem { display: block; width: 1.6rem; height: 1.6rem; object-fit: cover; border-radius: var(--canto-pequeno); }
+.passo-imagem-previa { display: block; max-width: 12rem; max-height: 9rem; object-fit: contain; border-radius: var(--canto-pequeno); border: 1px solid var(--cor-borda); }
+.fazer-imagem { display: block; max-width: min(100%, 28rem); max-height: 40vh; object-fit: contain; border-radius: var(--canto); }
