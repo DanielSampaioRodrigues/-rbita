@@ -244,6 +244,11 @@ Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela qui
   - pode ser vista de novo em Ajustes, com a senha;
   - as telas de recuperação são calmas, um passo por vez, sem tempo limite;
   - com a sincronização (Onda 3), um aparelho já aberto poderá criar uma senha nova para o outro.
+- **Menos burocracia, com conta da própria pessoa** (decisão de Dan, 25/10/2026; ainda não feito). Senha, 6 palavras e arquivo assustam, levam a anotar em papel e deixam sem saída quem perde tudo. Mudanças planejadas:
+  - **Etapa A (primeira configuração leve):** a pessoa não inventa senha. Escolhe como abrir no dia a dia (Windows Hello recomendado, PIN ou abrir direto) e guarda a recuperação. As 6 palavras são a tranca forte (cerca de 66 bits, mais forte que a maioria das senhas inventadas). A senha vira opcional, em Ajustes, para quem prefere. Onde hoje se pede a senha (PIN errado 5 vezes, Windows Hello falhando, backup), valem as 6 palavras ou a senha, se houver. Cofres já criados não mudam.
+  - **Etapa B (proteger com a conta Google ou Microsoft):** a chave de recuperação e uma cópia criptografada do backup ficam numa pasta escondida do app, no Google Drive ou no OneDrive **da própria pessoa**. Perdeu o computador: instala o Órbita, entra com a conta e tudo volta. O Google e a Microsoft guardam, mas não leem o conteúdo, e o Órbita não tem servidor nem conta própria. O limite é dito na tela: a segurança passa a ser a da conta da pessoa (com verificação em duas etapas), e quem perder a conta perde essa forma de recuperar. As 6 palavras continuam como alternativa.
+  - **Apple:** "Entrar com Apple" com iCloud chega com as versões de Mac e iPhone (Onda 3), porque exige a conta de desenvolvedor da Apple. No Windows, quem usa Apple pode escolher a conta Microsoft ou guardar o backup na pasta do iCloud Drive para Windows.
+  - Na Onda 3, a mesma base vira a sincronização entre computador e celular.
 - **Trava extra opcional** para os módulos de saúde e de cuidado psicológico.
 - **Backup** em arquivo único criptografado (`.orbita-backup`), que a pessoa guarda onde quiser (pendrive, Drive, iCloud). Abre com a senha ou com as 6 palavras, em qualquer computador; PIN e Windows Hello não viajam no backup.
   - **Na hora**, por Ajustes, ou **automático** (opcional, desligado por padrão): ao fechar ou bloquear, uma vez por dia, numa pasta escolhida, guardando os últimos 7. Se o automático falhar, Ajustes mostra o motivo.
@@ -374,7 +379,7 @@ A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas pr
 
 ## Decisões em aberto
 
-Já decidido (25/10/2026): interface em React; backup básico na Onda 1; senha forte com PIN no dia a dia e chave de recuperação de 6 palavras; sem recuperação por e-mail ou SMS; IA local via Ollama na Onda 1.
+Já decidido (25/10/2026): interface em React; backup básico na Onda 1; senha forte com PIN no dia a dia e chave de recuperação de 6 palavras; sem recuperação por e-mail ou SMS; (atualizado no mesmo dia: senha passa a ser opcional e a recuperação pode ficar na conta Google ou Microsoft da própria pessoa, sem servidor do Órbita; ver "Menos burocracia"); IA local via Ollama na Onda 1.
 
 Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto e no Prelo; a IA entra com escolha de provedor; o nome é Órbita.
 
