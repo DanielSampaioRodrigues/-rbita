@@ -16,6 +16,7 @@
 - [x] **Guardar a recuperação na conta Google** (etapa B, 0.22.0).
 - [ ] **Conta Microsoft (OneDrive) no Windows**: o código está pronto; falta registrar o app na Microsoft. Conta pessoal não registra sem diretório: tentar o Azure for Students pelo pacote de estudante do GitHub, ou uma conta do Azure. Depois, guardar o ID em `ORBITA_MICROSOFT_CLIENT_ID` nos segredos do GitHub (passo a passo em `docs/configurar-contas.md`, parte 3).
 - [ ] **Avaliar Dropbox e Nextcloud/WebDAV** como contas extras para a recuperação (tabela na especificação).
+- [ ] **Testes de Dan no Windows** do que foi feito nesta rodada: ligar a conta Google (0.22.0) e ver a cópia em Ajustes; instalar do zero num computador ou usuário novo do Windows para ver a primeira configuração leve e o "trazer meus dados da minha conta"; PIN errado 5 vezes abrindo com as 6 palavras.
 - [ ] **Teste com leitor de tela de verdade** (NVDA), de preferência com quem usa. Só dá para fazer no Windows.
 - [ ] **Portão da Onda 1**: Dan usar no dia a dia por algumas semanas e aprovar (lista em `docs/revisao-onda-1.md`).
 
@@ -38,7 +39,7 @@ Plano em etapas em `docs/plano-onda-2.md`.
 ## 3. Onda 3: Mac e celular
 
 - [ ] Versões Mac, Android, iOS e iPad do mesmo código.
-- [ ] **Sincronização opcional** criptografada de ponta a ponta (decidir onde: pasta da pessoa na nuvem ou servidor pequeno).
+- [ ] **Sincronização opcional** criptografada de ponta a ponta. Caminho mais provável: a mesma pasta do app na conta da pessoa (Drive, OneDrive, iCloud) usada desde a 0.22.0 para a recuperação, sem servidor do Órbita.
 - [ ] Ditado no Mac e no celular (hoje o microfone só grava no Windows).
 - [ ] **"Guardar na minha conta" em todas as plataformas**: Google, Microsoft e Apple (iCloud, só no Mac e no iPhone/iPad) no Mac, Android, iPhone e iPad, cada uma com seu cadastro no provedor (tabela em `docs/especificacao.md`, "Contas para guardar a recuperação").
 - [ ] IA no celular só por chave (sem IA local).
@@ -48,7 +49,8 @@ Plano em etapas em `docs/plano-onda-2.md`.
 ## 4. Onda 4: lançamento e comunidade
 
 - [ ] Distribuição gratuita, página do projeto e de doação, onde hospedar os instaladores.
-- [ ] Galeria de temas da comunidade.
+- [ ] Galeria de temas da comunidade, incluindo **conjuntos de ícones redesenhados** (hoje o tema e a IA mudam só o traço e as pontas; redesenhar os ícones com IA ficou para cá, porque a IA tende a desenhar cada ícone num estilo).
+- [ ] **Logo do Órbita no login do Google** (exige a verificação de marca do Google, que leva semanas; hoje a tela de permissão aparece sem logo).
 - [ ] Assinatura digital do instalador do Windows (tira o aviso "O Windows protegeu o computador").
 - [ ] Lojas de aplicativo ou versão web instalável no celular.
 - [ ] Decidir sobre código aberto.
@@ -59,3 +61,5 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [ ] Motor de temas compartilhado com o Escuta ou separado.
 - [ ] Como o Escuta recebe o motor de leitura (dependência do GitHub ou pacote privado).
 - [ ] Qual modelo local oferecer como opção sem chave (hoje: Ollama, com a recomendação pela memória do computador).
+- [ ] Conta de desenvolvedor da Apple: individual (aparece o nome de Dan) ou de empresa (com CNPJ, aparece a marca). Decidir perto da Onda 3.
+- [ ] **Levar o trabalho para a branch principal (`main`)** do `-rbita` e do `orbita-versoes`. Hoje tudo, inclusive as páginas públicas e a publicação das versões, roda na branch de trabalho `claude/orbita-setup-planning-cfbqzz`. Se ela for trocada, mudar também a origem do GitHub Pages.
