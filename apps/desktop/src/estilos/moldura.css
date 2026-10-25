@@ -81,9 +81,9 @@
 .conteudo { overflow-y: auto; position: relative; }
 
 /* Só fotos ganham um desfoque leve atrás do texto; desenhos ficam nítidos. */
-:root[data-fundo="foto"] .conteudo,
-:root[data-fundo="foto"] .acesso,
-:root[data-fundo="foto"] .baixa-energia {
+:root[data-fundo="foto"]:not([data-fundo-natural="true"]) .conteudo,
+:root[data-fundo="foto"]:not([data-fundo-natural="true"]) .acesso,
+:root[data-fundo="foto"]:not([data-fundo-natural="true"]) .baixa-energia {
   backdrop-filter: blur(3px);
 }
 

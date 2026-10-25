@@ -68,6 +68,7 @@ export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = docume
     reduzirAnimacao: consultaMovimento().matches,
     visivel: prefs.fundoVisivel,
     semTrava: !comTrava(prefs),
+    natural: !comTrava(prefs) && prefs.fundoNatural,
   });
   raiz.style.colorScheme = modo === "escuro" ? "dark" : "light";
 

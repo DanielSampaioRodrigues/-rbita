@@ -216,7 +216,7 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
         }}
       />
 
-      {fundo?.tipo === "imagem" && (
+      {fundo?.tipo === "imagem" && !(prefs.semTrava && prefs.fundoNatural) && (
         <div className="formulario">
           <Controle rotulo={t.desfoque} valor={fundo.desfoque} min={0} max={20} passo={1} formatar={(v) => `${v} px`} aoMudar={(desfoque) => mudar({ fundo: { ...fundo, desfoque } })} />
           <Controle
@@ -241,7 +241,7 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
         </div>
       )}
 
-      {!prefs.baixoEstimulo && (fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
+      {!prefs.baixoEstimulo && !(prefs.semTrava && prefs.fundoNatural) && (fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
         <div className="formulario">
           <div className="campo">
             <Controle rotulo={t.visivel} valor={prefs.fundoVisivel} min={0} max={100} passo={10} formatar={(v) => t.visivelValor(v, prefs.semTrava)} aoMudar={(fundoVisivel) => mudar({ fundoVisivel })} />
@@ -250,8 +250,20 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
         </div>
       )}
 
+      {(fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
+        <div className="campo">
+          <Interruptor
+            rotulo={t.natural}
+            ligado={prefs.semTrava && prefs.fundoNatural}
+            // Mostrar as cores originais exige a trava liberada; ligar aqui libera junto.
+            aoMudar={(fundoNatural) => mudar(fundoNatural ? { fundoNatural, semTrava: true } : { fundoNatural })}
+          />
+          <p className="campo-ajuda">{t.naturalExplicacao}</p>
+        </div>
+      )}
+
       <div className="campo">
-        <Interruptor rotulo={t.semTrava} ligado={prefs.semTrava} aoMudar={(semTrava) => mudar({ semTrava })} />
+        <Interruptor rotulo={t.semTrava} ligado={prefs.semTrava} aoMudar={(semTrava) => mudar(semTrava ? { semTrava } : { semTrava, fundoNatural: false })} />
         <p className="campo-ajuda">{prefs.semTrava ? t.semTravaLigada : t.semTravaExplicacao}</p>
       </div>
 

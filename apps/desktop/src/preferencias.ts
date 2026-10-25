@@ -48,6 +48,8 @@ export interface Preferencias {
   fundoVisivel: number;
   /** Trava de contraste liberada pela própria pessoa (o fundo pode aparecer inteiro e as cores ficam como ela quiser). */
   semTrava: boolean;
+  /** Fundo com as cores originais: sem véu por cima, sem desfoque e sem escurecimento (só com a trava liberada). */
+  fundoNatural: boolean;
   /** Temas criados no editor ou importados. */
   temasProprios: Tema[];
   /** Tela inicial montável: ordem dos blocos, escondidos e largos. */
@@ -72,6 +74,7 @@ export const PADRAO: Preferencias = {
   fundo: null,
   fundoVisivel: 0,
   semTrava: false,
+  fundoNatural: false,
   temasProprios: [],
   inicio: { ordem: [...BLOCOS_INICIO], ocultos: [], largos: ["energia", "hoje", "continuar", "novidades"] },
 };
@@ -106,6 +109,7 @@ export function validar(bruto: unknown): Preferencias {
     tema: [...TEMAS, ...temasProprios].some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,
     fundo: validarFundo(p.fundo),
     semTrava: p.semTrava === true,
+    fundoNatural: p.fundoNatural === true,
     fundoVisivel: typeof p.fundoVisivel === "number" && p.fundoVisivel >= 0 && p.fundoVisivel <= 100 ? Math.round(p.fundoVisivel) : PADRAO.fundoVisivel,
     inicio: validarInicio(p.inicio),
   };

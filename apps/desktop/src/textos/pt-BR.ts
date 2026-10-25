@@ -116,6 +116,9 @@ export const textos = {
     opacidade: (p: number) =>
       `Para o texto continuar legível, a área de conteúdo ficou com ${p}% de opacidade por cima do fundo.`,
     baixoEstimulo: "Com o baixo estímulo ligado, o fundo fica liso.",
+    natural: "Mostrar o fundo com as cores originais",
+    naturalExplicacao:
+      "Tira todo o filtro: nada por cima do fundo, sem desfoque e sem escurecimento. Só os cartões continuam com a cor do tema. Ligar isto também libera a trava de contraste.",
     semTrava: "Liberar a trava de contraste",
     semTravaExplicacao:
       "Normalmente o Órbita garante que o texto dá para ler: cobre um pouco o fundo e corrige cores fracas. Ligando, a decisão é sua: o fundo pode aparecer inteiro e as cores ficam como você escolher.",

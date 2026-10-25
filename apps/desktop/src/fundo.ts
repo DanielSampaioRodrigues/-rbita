@@ -38,14 +38,20 @@ export async function aplicarFundo(
   raiz: HTMLElement,
   fundo: Fundo,
   paleta: Paleta,
-  opcoes: { baixoEstimulo: boolean; reduzirAnimacao: boolean; visivel?: number; semTrava?: boolean },
+  opcoes: { baixoEstimulo: boolean; reduzirAnimacao: boolean; visivel?: number; semTrava?: boolean; natural?: boolean },
 ): Promise<number> {
   const c = camadaDeFundo(fundo, paleta, opcoes);
   raiz.style.setProperty("--fundo-imagem", c.imagem);
   raiz.style.setProperty("--fundo-tamanho", c.tamanho);
   raiz.style.setProperty("--fundo-repetir", c.repetir);
-  raiz.style.setProperty("--fundo-desfoque", `${c.desfoque}px`);
-  raiz.style.setProperty("--fundo-escurecimento", String(c.escurecimento));
+  // "Cores originais": nada de desfoque nem escurecimento (os valores escolhidos ficam guardados).
+  raiz.style.setProperty("--fundo-desfoque", `${opcoes.natural ? 0 : c.desfoque}px`);
+  raiz.style.setProperty("--fundo-escurecimento", String(opcoes.natural ? 0 : c.escurecimento));
+  raiz.dataset.fundoNatural = String(!!opcoes.natural);
+  if (opcoes.natural && c.imagem !== "none") {
+    raiz.style.setProperty("--opacidade-paineis", "0");
+    return 0;
+  }
   // "foto": painéis com leve desfoque; "desenhado": sem desfoque, para o desenho aparecer nítido.
   raiz.dataset.fundo = c.imagem === "none" ? "liso" : fundo.tipo === "imagem" ? "foto" : "desenhado";
 
