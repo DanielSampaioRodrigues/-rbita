@@ -1,0 +1,54 @@
+# Monta o instalador do Órbita para Windows a cada envio de código.
+# O instalador aparece em "Artifacts" na página da execução, no GitHub.
+name: Instalador Windows
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
+
+# Se chegar um envio novo, cancela o build antigo para poupar minutos.
+concurrency:
+  group: instalador-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Verificar tipos
+        run: pnpm typecheck
+
+      - name: Rodar testes
+        run: pnpm test
+
+      - name: Montar instalador
+        run: pnpm instalador
+
+      - name: Guardar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orbita-instalador-windows
+          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          retention-days: 30
+          if-no-files-found: error

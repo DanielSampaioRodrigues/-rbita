@@ -1,0 +1,13 @@
+{
+  "name": "orbita",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter @orbita/desktop dev",
+    "app": "pnpm --filter @orbita/desktop tauri dev",
+    "build": "pnpm --filter @orbita/desktop build",
+    "instalador": "pnpm --filter @orbita/desktop tauri build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

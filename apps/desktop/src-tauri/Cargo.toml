@@ -1,0 +1,24 @@
+[package]
+name = "orbita"
+version = "0.1.0"
+description = "Órbita — organizador de vida para pessoas neurodivergentes"
+authors = ["Daniel Sampaio Rodrigues"]
+edition = "2021"
+rust-version = "1.90"
+
+[lib]
+name = "orbita_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = [] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
