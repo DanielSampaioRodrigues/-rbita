@@ -60,6 +60,11 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - **Linha do tempo** em Projetos (botão Lista / Linha do tempo): uma faixa por projeto, do começo ao prazo, com a marca de hoje. Projetos pausados ficam em cinza. Projeto sem prazo tem a faixa tracejada no fim; sem datas, aparece a partir do dia em que foi criado. Os prazos de tarefas aparecem como losangos na faixa do projeto.
 - **Mapa mental** das tarefas do projeto (terceira opção ao lado de Lista e Quadro): o projeto no centro, etapas e subtarefas em volta. Tudo pelo teclado: setas andam, Enter cria ao lado, Ctrl + Enter cria dentro, F2 renomeia, Espaço marca como feito e Delete exclui. São os mesmos itens da lista e do quadro, com o mesmo limite de dois níveis.
 
+**Como ficou depois do primeiro teste de Dan (versão 0.17.0).**
+- **Ideias** ganharam nota, etiquetas com cor (a cor aparece sempre junto do nome e fica neutra no baixo estímulo), ligações entre ideias, busca sem acento e filtro por etiqueta. Visualizações: **lista, mural, quadro** (uma coluna por etiqueta) e **mapa** (agrupado por etiqueta). Ideias não têm linha do tempo nem calendário de propósito: ideia não tem data.
+- **Tarefas de um projeto** têm as cinco visualizações da especificação: lista, quadro, mapa mental, **linha do tempo** e **calendário**. Tarefas sem prazo aparecem à parte, com um botão para dar prazo, sem cobrança.
+- **Criar tema com IA** no editor de tema: a pessoa descreve, a IA propõe cores e um desenho em SVG, e tudo passa pela conferência de contraste e pela limpeza de SVG. Dá para pedir ajustes conversando. Com GPT, Gemini ou Grok, também imagem (PNG), se a conta tiver modelo de imagem; a tela explica o que cada IA consegue e por quê.
+
 ### 2. Tempo e rotina
 
 - Agenda diária e semanal visual, com semana-modelo.
