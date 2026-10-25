@@ -12,11 +12,14 @@ export function MenuTarefa({
   irmas,
   executar,
   aoMover,
+  aoDefinirPrazo,
 }: {
   tarefa: Tarefa;
   irmas: Tarefa[];
   executar: (acao: () => Promise<unknown>) => void;
   aoMover?: (texto: string) => void;
+  /** Abre a janela de prazo (fica fora do menu, para o menu poder fechar). */
+  aoDefinirPrazo?: (tarefa: Tarefa) => void;
 }) {
   const pos = irmas.findIndex((i) => i.id === tarefa.id);
   const acoes: { id: string; nome: string; fazer: () => Promise<unknown> }[] = [
@@ -33,6 +36,7 @@ export function MenuTarefa({
       .filter((p) => p !== tarefa.peso)
       .map((p) => ({ id: `peso-${p}`, nome: textos.energia.marcarPeso(textos.energia.pesos[p]), fazer: () => api.definirPesoTarefa(tarefa.id, p) })),
     ...(tarefa.peso ? [{ id: "sem-peso", nome: textos.energia.tirarPeso, fazer: () => api.definirPesoTarefa(tarefa.id, null) }] : []),
+    ...(aoDefinirPrazo ? [{ id: "prazo", nome: t.definirPrazo, fazer: async () => aoDefinirPrazo(tarefa) }] : []),
     { id: "excluir", nome: t.excluirTarefa, fazer: () => api.excluirItem(tarefa.id) },
   ];
   return (

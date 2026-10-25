@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 12 de 18, editor de tema e tela inicial montável.
+Onda 1 (base e coração, Windows): etapa 13 de 18, prazos, linha do tempo e mapa mental.

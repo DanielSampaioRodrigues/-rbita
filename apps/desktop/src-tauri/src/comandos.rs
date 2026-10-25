@@ -456,3 +456,20 @@ pub async fn gravar_arquivo_tema(caminho: PathBuf, conteudo: String) -> Result<(
     std::fs::write(&caminho, conteudo)?;
     Ok(())
 }
+
+// ---------- Datas e prazos ----------
+
+#[tauri::command]
+pub async fn definir_datas_projeto(estado: State<'_, Estado>, id: String, inicio: Option<String>, prazo: Option<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::definir_datas_projeto(&s.conn, &id, inicio.as_deref(), prazo.as_deref()))
+}
+
+#[tauri::command]
+pub async fn definir_prazo_tarefa(estado: State<'_, Estado>, id: String, prazo: Option<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::definir_prazo_tarefa(&s.conn, &id, prazo.as_deref()))
+}
+
+#[tauri::command]
+pub async fn listar_prazos(estado: State<'_, Estado>, de: String, ate: String) -> Result<Vec<itens::Prazo>, Erro> {
+    estado.com_sessao(|s| itens::listar_prazos(&s.conn, &de, &ate))
+}

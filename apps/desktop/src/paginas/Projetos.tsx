@@ -1,6 +1,7 @@
 import { ChevronRight, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, Form } from "react-aria-components";
+import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
+import { LinhaDoTempo } from "../projetos/LinhaDoTempo";
 import { api, type EstadoProjeto, type Projeto } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
@@ -16,6 +17,13 @@ export function Projetos({ aoAbrir, aoMudarLimite }: { aoAbrir: (id: string) => 
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [limite, setLimite] = useState(3);
   const [criando, setCriando] = useState(false);
+  const [visao, setVisao] = useState<"lista" | "linha">(() => {
+    try {
+      return localStorage.getItem("orbita.visao-projetos") === "linha" ? "linha" : "lista";
+    } catch {
+      return "lista";
+    }
+  });
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
 
@@ -41,7 +49,29 @@ export function Projetos({ aoAbrir, aoMudarLimite }: { aoAbrir: (id: string) => 
       </div>
       <Aviso>{erro}</Aviso>
 
-      {GRUPOS.map((g) => {
+      <ToggleButtonGroup
+        aria-label={t.visualizacao}
+        selectionMode="single"
+        disallowEmptySelection
+        selectedKeys={[visao]}
+        onSelectionChange={(k) => {
+          const v = [...k][0] as "lista" | "linha";
+          setVisao(v);
+          try {
+            localStorage.setItem("orbita.visao-projetos", v);
+          } catch {
+            // Só não lembra da escolha.
+          }
+        }}
+        className="segmentado"
+      >
+        <ToggleButton id="lista" className="segmentado-opcao">{t.lista}</ToggleButton>
+        <ToggleButton id="linha" className="segmentado-opcao">{t.linhaDoTempo}</ToggleButton>
+      </ToggleButtonGroup>
+
+      {visao === "linha" && <LinhaDoTempo projetos={projetos} aoAbrir={aoAbrir} />}
+
+      {visao === "lista" && GRUPOS.map((g) => {
         const lista = projetos.filter((p) => p.estado === g);
         if (g === "concluido" && lista.length === 0) return null;
         return (

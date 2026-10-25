@@ -386,3 +386,83 @@
 @media (max-width: 1000px) {
   .inicio-grade { grid-template-columns: 1fr; }
 }
+
+/* Prazos */
+.etiqueta-estado.prazo { display: inline-flex; align-items: center; gap: 3px; }
+.etiquetas { display: inline-flex; flex-wrap: wrap; gap: var(--espaco-1); }
+.ocorrencia.prazo { border-left-color: var(--cor-atencao); }
+.ocorrencia.prazo .ocorrencia-hora { display: flex; color: var(--cor-atencao); font-weight: 650; }
+.ocorrencia-projeto { grid-column: 2 / -1; }
+.semana .ocorrencia-projeto { grid-column: auto; }
+.mes-evento.prazo { border-left-color: var(--cor-atencao); font-weight: 600; }
+
+/* Mapa mental: árvore da esquerda para a direita, com linhas de ligação desenhadas em CSS. */
+.mapa-area { display: grid; gap: var(--espaco-3); }
+.mapa { overflow-x: auto; padding: var(--espaco-4) var(--espaco-2); border: 1px solid var(--cor-borda); border-radius: var(--canto-grande); background: var(--cor-superficie-alternativa); }
+.mapa ul { list-style: none; margin: 0; padding: 0; }
+.mapa-ramo { display: flex; align-items: center; position: relative; }
+.mapa .mapa-filhos { display: flex; flex-direction: column; gap: var(--espaco-2); padding-left: 2.5rem; position: relative; }
+.mapa-filhos::before { content: ""; position: absolute; left: 0; top: 50%; width: 1.25rem; border-top: 2px solid var(--cor-borda-controle); }
+.mapa-filhos > .mapa-ramo::before { content: ""; position: absolute; left: -1.25rem; top: 50%; width: 1.25rem; border-top: 2px solid var(--cor-borda-controle); }
+.mapa-filhos > .mapa-ramo::after { content: ""; position: absolute; left: -1.25rem; top: 0; bottom: 0; border-left: 2px solid var(--cor-borda-controle); }
+.mapa-filhos > .mapa-ramo:first-child::after { top: 50%; }
+.mapa-filhos > .mapa-ramo:last-child::after { bottom: 50%; }
+.mapa-filhos > .mapa-ramo:only-child::after { display: none; }
+
+.mapa-no {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espaco-2);
+  flex: none;
+  width: max-content;
+  max-width: 16rem;
+  padding: var(--espaco-2) var(--espaco-3);
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mapa-no.nivel-0 { font-weight: 650; font-size: 1.05rem; border-width: 2px; border-color: var(--cor-destaque); }
+.mapa-no.nivel-1 { font-weight: 600; }
+.mapa-no.feito { color: var(--cor-texto-suave); }
+.mapa-no.feito .quebra { text-decoration: line-through; }
+.mapa-no.selecionado { box-shadow: 0 0 0 3px var(--cor-destaque); }
+.mapa-no:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 3px; }
+
+/* Linha do tempo */
+.linha-tempo { display: grid; gap: var(--espaco-3); }
+.linha-tempo-grade { display: grid; gap: var(--espaco-2); }
+.linha-tempo-cabecalho { display: grid; grid-template-columns: 14rem 1fr; }
+.linha-tempo-eixo { position: relative; height: 1.6rem; border-bottom: 1px solid var(--cor-borda-controle); font-size: 0.8rem; color: var(--cor-texto-suave); }
+.linha-tempo-eixo span { position: absolute; top: 0; padding-left: 4px; border-left: 1px solid var(--cor-borda); height: 100%; white-space: nowrap; }
+.linha-tempo-eixo .linha-tempo-hoje-rotulo { color: var(--cor-destaque); font-weight: 650; border-left: 2px solid var(--cor-destaque); }
+.linha-tempo-linhas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-1); }
+
+.linha-tempo-linha {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 14rem 1fr;
+  align-items: center;
+  min-height: 2.5rem;
+  border: none;
+  border-radius: var(--canto);
+  background: transparent;
+  color: var(--cor-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linha-tempo-linha[data-hovered] { background: var(--cor-superficie-alternativa); }
+.linha-tempo-nome { padding: 0 var(--espaco-3); font-weight: 600; }
+.linha-tempo-trilho { position: relative; height: 2.5rem; }
+.linha-tempo-hoje { position: absolute; top: 0; bottom: 0; border-left: 2px dashed var(--cor-destaque); opacity: 0.6; }
+.linha-tempo-barra { position: absolute; top: 0.75rem; height: 1rem; min-width: 6px; border-radius: 999px; background: var(--cor-destaque); }
+.linha-tempo-barra.aberta { background: repeating-linear-gradient(90deg, var(--cor-destaque) 0 10px, transparent 10px 16px); border: 1px solid var(--cor-destaque); }
+.estado-pausado .linha-tempo-barra { background: var(--cor-borda-controle); }
+.estado-pausado .linha-tempo-barra.aberta { background: repeating-linear-gradient(90deg, var(--cor-borda-controle) 0 10px, transparent 10px 16px); border-color: var(--cor-borda-controle); }
+.linha-tempo-marco { position: absolute; top: 0.85rem; width: 0.8rem; height: 0.8rem; margin-left: -0.4rem; transform: rotate(45deg); background: var(--cor-atencao); border: 2px solid var(--cor-superficie); }

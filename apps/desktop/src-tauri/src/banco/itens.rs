@@ -43,6 +43,14 @@ struct DadosProjeto {
     onde_parei: Option<OndeParei>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pausado_em: Option<i64>,
+    /// Datas no calendário ("AAAA-MM-DD"), opcionais.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    inicio: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    prazo: Option<String>,
+    /// Campos que outras partes do app guardam (por exemplo, o peso das tarefas).
+    #[serde(flatten)]
+    outros: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -53,6 +61,9 @@ pub struct Projeto {
     pub estado: String,
     pub onde_parei: Option<OndeParei>,
     pub pausado_em: Option<i64>,
+    pub inicio: Option<String>,
+    pub prazo: Option<String>,
+    pub criado_em: i64,
     pub tarefas_feitas: u32,
     pub tarefas_total: u32,
     pub alterado_em: i64,
@@ -68,6 +79,8 @@ pub struct Tarefa {
     pub ordem: f64,
     /// leve, media ou pesada (para planejar pela energia).
     pub peso: Option<String>,
+    /// Prazo ("AAAA-MM-DD"), opcional.
+    pub prazo: Option<String>,
 }
 
 const ESTADOS_PROJETO: &[&str] = &["ativo", "pausado", "concluido"];
@@ -174,7 +187,7 @@ fn gravar_dados(conn: &Connection, id: &str, dados: &DadosProjeto) -> Result<(),
 }
 
 const SELECAO_PROJETO: &str = "
-    SELECT p.id, p.titulo, p.estado, p.dados, p.alterado_em,
+    SELECT p.id, p.titulo, p.estado, p.dados, p.alterado_em, p.criado_em,
       (SELECT count(*) FROM item t WHERE t.tipo = 'tarefa' AND t.excluido_em IS NULL AND t.estado = 'feita'
          AND (t.pai_id = p.id OR t.pai_id IN (SELECT e.id FROM item e WHERE e.pai_id = p.id))),
       (SELECT count(*) FROM item t WHERE t.tipo = 'tarefa' AND t.excluido_em IS NULL
@@ -189,9 +202,12 @@ fn projeto_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Projeto> {
         estado: r.get(2)?,
         onde_parei: dados.onde_parei,
         pausado_em: dados.pausado_em,
+        inicio: dados.inicio,
+        prazo: dados.prazo,
         alterado_em: r.get(4)?,
-        tarefas_feitas: r.get(5)?,
-        tarefas_total: r.get(6)?,
+        criado_em: r.get(5)?,
+        tarefas_feitas: r.get(6)?,
+        tarefas_total: r.get(7)?,
     })
 }
 
@@ -275,14 +291,14 @@ pub fn excluir(conn: &Connection, id: &str) -> Result<(), Erro> {
 /// Todas as tarefas de um projeto (etapas e subtarefas), na ordem.
 pub fn listar_tarefas(conn: &Connection, projeto_id: &str) -> Result<Vec<Tarefa>, Erro> {
     let mut c = conn.prepare(
-        "SELECT id, pai_id, titulo, estado, ordem, json_extract(dados, '$.peso') FROM item
+        "SELECT id, pai_id, titulo, estado, ordem, json_extract(dados, '$.peso'), json_extract(dados, '$.prazo') FROM item
          WHERE tipo = 'tarefa' AND excluido_em IS NULL
            AND (pai_id = ?1 OR pai_id IN (SELECT id FROM item WHERE pai_id = ?1 AND tipo = 'tarefa' AND excluido_em IS NULL))
          ORDER BY ordem, criado_em",
     )?;
     let tarefas = c
         .query_map([projeto_id], |r| {
-            Ok(Tarefa { id: r.get(0)?, pai_id: r.get(1)?, titulo: r.get(2)?, estado: r.get(3)?, ordem: r.get(4)?, peso: r.get(5)? })
+            Ok(Tarefa { id: r.get(0)?, pai_id: r.get(1)?, titulo: r.get(2)?, estado: r.get(3)?, ordem: r.get(4)?, peso: r.get(5)?, prazo: r.get(6)? })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(tarefas)
@@ -315,7 +331,7 @@ pub fn criar_tarefa(conn: &Connection, pai_id: &str, titulo: &str) -> Result<Tar
         [pai_id],
         |r| r.get(0),
     )?;
-    let tarefa = Tarefa { id: novo_id(), pai_id: pai_id.to_string(), titulo, estado: "a_fazer".into(), ordem, peso: None };
+    let tarefa = Tarefa { id: novo_id(), pai_id: pai_id.to_string(), titulo, estado: "a_fazer".into(), ordem, peso: None, prazo: None };
     let agora = agora_ms();
     conn.execute(
         "INSERT INTO item (id, tipo, titulo, estado, pai_id, ordem, criado_em, alterado_em) VALUES (?1, 'tarefa', ?2, 'a_fazer', ?3, ?4, ?5, ?5)",
@@ -335,6 +351,79 @@ pub fn mudar_estado_tarefa(conn: &Connection, id: &str, estado: &str) -> Result<
         .ok_or(Erro::NaoEncontrado)?;
     conn.execute("UPDATE item SET estado = ?2, alterado_em = ?3 WHERE id = ?1", params![id, estado, agora_ms()])?;
     tocar(conn, &projeto_da_tarefa(conn, &pai)?)
+}
+
+fn validar_data(data: Option<&str>) -> Result<(), Erro> {
+    if let Some(d) = data {
+        let ok = d.len() == 10
+            && d.chars().enumerate().all(|(i, c)| if i == 4 || i == 7 { c == '-' } else { c.is_ascii_digit() });
+        if !ok {
+            return Err(Erro::Interno(format!("data inválida: {d}")));
+        }
+    }
+    Ok(())
+}
+
+/// Começo e prazo de um projeto ("AAAA-MM-DD"), ambos opcionais.
+pub fn definir_datas_projeto(conn: &Connection, id: &str, inicio: Option<&str>, prazo: Option<&str>) -> Result<(), Erro> {
+    validar_data(inicio)?;
+    validar_data(prazo)?;
+    if let (Some(i), Some(p)) = (inicio, prazo) {
+        if p < i {
+            return Err(Erro::Interno("o prazo vem antes do começo".into()));
+        }
+    }
+    let mut dados = ler_dados(conn, id)?;
+    dados.inicio = inicio.map(String::from);
+    dados.prazo = prazo.map(String::from);
+    gravar_dados(conn, id, &dados)
+}
+
+/// Prazo de uma tarefa ("AAAA-MM-DD") ou nenhum.
+pub fn definir_prazo_tarefa(conn: &Connection, id: &str, prazo: Option<&str>) -> Result<(), Erro> {
+    validar_data(prazo)?;
+    let mudou = conn.execute(
+        "UPDATE item SET dados = json_set(dados, '$.prazo', ?2), alterado_em = ?3 WHERE id = ?1 AND tipo = 'tarefa'",
+        params![id, prazo, agora_ms()],
+    )?;
+    if mudou == 0 {
+        return Err(Erro::NaoEncontrado);
+    }
+    Ok(())
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Prazo {
+    pub id: String,
+    /// projeto ou tarefa
+    pub tipo: String,
+    pub titulo: String,
+    pub data: String,
+    pub projeto_id: String,
+    pub projeto: String,
+}
+
+/// Prazos entre duas datas (inclusive): projetos não concluídos e tarefas não feitas de projetos não concluídos.
+pub fn listar_prazos(conn: &Connection, de: &str, ate: &str) -> Result<Vec<Prazo>, Erro> {
+    let mut c = conn.prepare(
+        "SELECT p.id, 'projeto', p.titulo, json_extract(p.dados, '$.prazo'), p.id, p.titulo FROM item p
+           WHERE p.tipo = 'projeto' AND p.excluido_em IS NULL AND p.estado != 'concluido'
+             AND json_extract(p.dados, '$.prazo') BETWEEN ?1 AND ?2
+         UNION ALL
+         SELECT t.id, 'tarefa', t.titulo, json_extract(t.dados, '$.prazo'), p.id, p.titulo FROM item t
+           JOIN item p ON p.id = t.pai_id OR p.id = (SELECT e.pai_id FROM item e WHERE e.id = t.pai_id)
+           WHERE t.tipo = 'tarefa' AND t.excluido_em IS NULL AND t.estado != 'feita'
+             AND p.tipo = 'projeto' AND p.excluido_em IS NULL AND p.estado != 'concluido'
+             AND json_extract(t.dados, '$.prazo') BETWEEN ?1 AND ?2
+         ORDER BY 4, 3",
+    )?;
+    let lista = c
+        .query_map(params![de, ate], |r| {
+            Ok(Prazo { id: r.get(0)?, tipo: r.get(1)?, titulo: r.get(2)?, data: r.get(3)?, projeto_id: r.get(4)?, projeto: r.get(5)? })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(lista)
 }
 
 /// Peso da tarefa para planejar pela energia: leve, media, pesada ou nenhum.
@@ -466,12 +555,40 @@ mod testes {
     }
 
     #[test]
+    fn datas_de_projeto_prazos_de_tarefa_e_lista_de_prazos() {
+        let (_p, conn) = banco();
+        let p = criar_projeto(&conn, "TCC", true).unwrap();
+        mudar_estado_projeto(&conn, &p.id, "pausado", Some(OndeParei { texto: "x".into(), ..Default::default() })).unwrap();
+        definir_datas_projeto(&conn, &p.id, Some("2026-10-01"), Some("2026-12-15")).unwrap();
+        // Mudar as datas não apaga o "onde parei".
+        let lido = obter_projeto(&conn, &p.id).unwrap();
+        assert_eq!((lido.inicio.as_deref(), lido.prazo.as_deref()), (Some("2026-10-01"), Some("2026-12-15")));
+        assert_eq!(lido.onde_parei.unwrap().texto, "x");
+        assert!(definir_datas_projeto(&conn, &p.id, Some("2026-12-01"), Some("2026-11-01")).is_err());
+        assert!(definir_datas_projeto(&conn, &p.id, Some("01/12/2026"), None).is_err());
+
+        let etapa = criar_tarefa(&conn, &p.id, "Revisão").unwrap();
+        let sub = criar_tarefa(&conn, &etapa.id, "Fichar").unwrap();
+        definir_peso(&conn, &sub.id, Some("leve")).unwrap();
+        definir_prazo_tarefa(&conn, &sub.id, Some("2026-11-03")).unwrap();
+        let t = listar_tarefas(&conn, &p.id).unwrap().into_iter().find(|t| t.id == sub.id).unwrap();
+        assert_eq!((t.prazo.as_deref(), t.peso.as_deref()), (Some("2026-11-03"), Some("leve")));
+
+        let prazos = listar_prazos(&conn, "2026-11-01", "2026-12-31").unwrap();
+        assert_eq!(prazos.iter().map(|x| (x.tipo.as_str(), x.titulo.as_str())).collect::<Vec<_>>(), vec![("tarefa", "Fichar"), ("projeto", "TCC")]);
+        assert_eq!(prazos[0].projeto, "TCC");
+        mudar_estado_tarefa(&conn, &sub.id, "feita").unwrap();
+        assert_eq!(listar_prazos(&conn, "2026-11-01", "2026-12-31").unwrap().len(), 1);
+    }
+
+    #[test]
     fn notas_antigas_viram_ideias_na_migracao() {
         let pasta = tempfile::tempdir().unwrap();
         let caminho = pasta.path().join("orbita.db");
         let chave = nova_chave();
         {
             // Banco na versão 1, com uma nota de teste.
+            crate::banco::preparar_sqlite();
             let conn = Connection::open(&caminho).unwrap();
             conn.execute_batch(&format!("PRAGMA key = \"x'{}'\";", hex::encode(chave.as_ref()))).unwrap();
             conn.execute_batch(crate::banco::MIGRACOES[0]).unwrap();

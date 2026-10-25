@@ -1,7 +1,7 @@
-import { ChevronLeft, ChevronRight, Plus, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flag, Plus, Repeat } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
-import { api, type Evento } from "../api";
+import { api, type Evento, type Prazo } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
 import { useMudancas } from "../dados";
@@ -39,10 +39,11 @@ function periodo(visao: Visao, ref: Date): [Date, Date] {
   return [s, somarDias(s, 7)];
 }
 
-export function Agenda() {
+export function Agenda({ aoAbrirProjeto }: { aoAbrirProjeto: (id: string) => void }) {
   const [visao, setVisao] = useState<Visao>(visaoSalva);
   const [ref, setRef] = useState(() => inicioDoDia(new Date()));
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [prazos, setPrazos] = useState<Prazo[]>([]);
   const [editando, setEditando] = useState<{ evento: Evento; dia: string | null } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
@@ -50,6 +51,7 @@ export function Agenda() {
 
   useEffect(() => {
     api.listarEventos(de.getTime(), ate.getTime()).then(setEventos, (e) => setErro(String(e?.message ?? e)));
+    api.listarPrazos(chaveDia(de), chaveDia(somarDias(ate, -1))).then(setPrazos, () => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [de.getTime(), ate.getTime(), mudancas]);
 
@@ -121,12 +123,12 @@ export function Agenda() {
       )}
       <Aviso>{erro}</Aviso>
 
-      {visao === "dia" && <ListaDoDia ocorrencias={ocorrencias} aoAbrir={abrir} />}
+      {visao === "dia" && <ListaDoDia ocorrencias={ocorrencias} prazos={prazos.filter((p) => p.data === chaveDia(ref))} aoAbrir={abrir} aoAbrirProjeto={aoAbrirProjeto} />}
       {(visao === "semana" || visao === "modelo") && (
-        <Semana de={de} ocorrencias={ocorrencias} modelo={visao === "modelo"} aoAbrir={abrir} />
+        <Semana de={de} ocorrencias={ocorrencias} prazos={visao === "modelo" ? [] : prazos} modelo={visao === "modelo"} aoAbrir={abrir} aoAbrirProjeto={aoAbrirProjeto} />
       )}
       {visao === "mes" && (
-        <Mes referencia={ref} ocorrencias={ocorrencias} aoAbrirDia={(d) => (setRef(d), trocarVisao("dia"))} />
+        <Mes referencia={ref} ocorrencias={ocorrencias} prazos={prazos} aoAbrirDia={(d) => (setRef(d), trocarVisao("dia"))} />
       )}
 
       <Janela titulo={editando?.evento.id ? t.editarTitulo : t.novoTitulo} aberta={!!editando} aoFechar={() => setEditando(null)}>
@@ -158,10 +160,26 @@ export function LinhaOcorrencia({ o, aoAbrir, compacta }: { o: Ocorrencia; aoAbr
   );
 }
 
-function ListaDoDia({ ocorrencias, aoAbrir }: { ocorrencias: Ocorrencia[]; aoAbrir: (o: Ocorrencia) => void }) {
-  if (ocorrencias.length === 0) return <p className="texto-suave">{t.nadaNoDia}</p>;
+/** Prazo de projeto ou tarefa na agenda: abre o projeto. */
+function LinhaPrazo({ p, aoAbrirProjeto }: { p: Prazo; aoAbrirProjeto: (id: string) => void }) {
+  return (
+    <Button className="ocorrencia prazo" onPress={() => aoAbrirProjeto(p.projetoId)}>
+      <span className="ocorrencia-hora com-icone"><Flag aria-hidden="true" size="0.9em" /> {t.prazo}</span>
+      <span className="ocorrencia-titulo quebra">{p.titulo}</span>
+      {p.tipo === "tarefa" && <span className="texto-suave pequeno quebra ocorrencia-projeto">{t.doProjeto(p.projeto)}</span>}
+    </Button>
+  );
+}
+
+function ListaDoDia({ ocorrencias, prazos, aoAbrir, aoAbrirProjeto }: { ocorrencias: Ocorrencia[]; prazos: Prazo[]; aoAbrir: (o: Ocorrencia) => void; aoAbrirProjeto: (id: string) => void }) {
+  if (ocorrencias.length === 0 && prazos.length === 0) return <p className="texto-suave">{t.nadaNoDia}</p>;
   return (
     <ul className="lista-ocorrencias largura-leitura">
+      {prazos.map((p) => (
+        <li key={p.id}>
+          <LinhaPrazo p={p} aoAbrirProjeto={aoAbrirProjeto} />
+        </li>
+      ))}
       {ocorrencias.map((o) => (
         <li key={o.evento.id + o.dia}>
           <LinhaOcorrencia o={o} aoAbrir={() => aoAbrir(o)} />
@@ -171,7 +189,7 @@ function ListaDoDia({ ocorrencias, aoAbrir }: { ocorrencias: Ocorrencia[]; aoAbr
   );
 }
 
-function Semana({ de, ocorrencias, modelo, aoAbrir }: { de: Date; ocorrencias: Ocorrencia[]; modelo: boolean; aoAbrir: (o: Ocorrencia) => void }) {
+function Semana({ de, ocorrencias, prazos, modelo, aoAbrir, aoAbrirProjeto }: { de: Date; ocorrencias: Ocorrencia[]; prazos: Prazo[]; modelo: boolean; aoAbrir: (o: Ocorrencia) => void; aoAbrirProjeto: (id: string) => void }) {
   const grupos = porDia(ocorrencias);
   const hoje = chaveDia(new Date());
   if (modelo && ocorrencias.length === 0) return <p className="texto-suave largura-leitura">{t.nadaNaSemanaModelo}</p>;
@@ -188,6 +206,11 @@ function Semana({ de, ocorrencias, modelo, aoAbrir }: { de: Date; ocorrencias: O
               {eHoje && <span className="selo">{t.hoje}</span>}
             </h3>
             <ul className="lista-ocorrencias">
+              {prazos.filter((p) => p.data === chave).map((p) => (
+                <li key={p.id}>
+                  <LinhaPrazo p={p} aoAbrirProjeto={aoAbrirProjeto} />
+                </li>
+              ))}
               {doDia.map((o) => (
                 <li key={o.evento.id + o.dia}>
                   <LinhaOcorrencia o={o} aoAbrir={() => aoAbrir(o)} compacta />
@@ -201,7 +224,7 @@ function Semana({ de, ocorrencias, modelo, aoAbrir }: { de: Date; ocorrencias: O
   );
 }
 
-function Mes({ referencia, ocorrencias, aoAbrirDia }: { referencia: Date; ocorrencias: Ocorrencia[]; aoAbrirDia: (d: Date) => void }) {
+function Mes({ referencia, ocorrencias, prazos, aoAbrirDia }: { referencia: Date; ocorrencias: Ocorrencia[]; prazos: Prazo[]; aoAbrirDia: (d: Date) => void }) {
   const grupos = porDia(ocorrencias);
   const hoje = chaveDia(new Date());
   const dias = diasDaGradeDoMes(referencia);
@@ -216,7 +239,10 @@ function Mes({ referencia, ocorrencias, aoAbrirDia }: { referencia: Date; ocorre
         <div key={s} className="mes-linha" role="row">
           {dias.slice(s * 7, s * 7 + 7).map((d) => {
             const chave = chaveDia(d);
-            const doDia = (grupos.get(chave) ?? []).filter((o) => !o.evento.modelo);
+            const doDia = [
+              ...prazos.filter((p) => p.data === chave).map((p) => ({ id: p.id, titulo: t.prazoDe(p.titulo), prazo: true })),
+              ...(grupos.get(chave) ?? []).filter((o) => !o.evento.modelo).map((o) => ({ id: o.evento.id, titulo: o.evento.titulo, prazo: false })),
+            ];
             const fora = d.getMonth() !== referencia.getMonth();
             const classes = ["mes-dia", fora && "fora", chave === hoje && "hoje"].filter(Boolean).join(" ");
             return (
@@ -224,7 +250,7 @@ function Mes({ referencia, ocorrencias, aoAbrirDia }: { referencia: Date; ocorre
                 <Button className={classes} onPress={() => aoAbrirDia(d)} aria-label={`${t.abrirDia(fmtDiaLongo.format(d))}${doDia.length ? `, ${doDia.length}` : ""}`}>
                   <span className="mes-numero">{d.getDate()}</span>
                   {doDia.slice(0, 3).map((o) => (
-                    <span key={o.evento.id} className="mes-evento quebra">{o.evento.titulo}</span>
+                    <span key={o.id} className={o.prazo ? "mes-evento prazo quebra" : "mes-evento quebra"}>{o.titulo}</span>
                   ))}
                   {doDia.length > 3 && <span className="texto-suave pequeno">{t.mais(doDia.length - 3)}</span>}
                 </Button>

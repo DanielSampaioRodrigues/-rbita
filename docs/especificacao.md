@@ -55,6 +55,11 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - **Início** abre com "Continuar de onde parei": os projetos ativos com o próximo passo de cada um.
 - **Tarefas** em dois níveis (etapas e subtarefas), estados a fazer, fazendo e feita, ordem manual. Visualização em **lista** (caixas de seleção) ou **quadro** (colunas A fazer, Fazendo e Feito), com arrastar por mouse, caneta ou teclado, e um menu em cada tarefa com as mesmas ações.
 
+**Como ficou na Onda 1 (etapa 13).**
+- **Datas e prazos**: todo projeto pode ter começo e prazo, e toda tarefa pode ter prazo, sempre opcionais. Os prazos aparecem na **agenda** (dia, semana e mês) com uma bandeirinha, e um clique abre o projeto. O prazo aparece como data, nunca como contagem regressiva nem em vermelho.
+- **Linha do tempo** em Projetos (botão Lista / Linha do tempo): uma faixa por projeto, do começo ao prazo, com a marca de hoje. Projetos pausados ficam em cinza. Projeto sem prazo tem a faixa tracejada no fim; sem datas, aparece a partir do dia em que foi criado. Os prazos de tarefas aparecem como losangos na faixa do projeto.
+- **Mapa mental** das tarefas do projeto (terceira opção ao lado de Lista e Quadro): o projeto no centro, etapas e subtarefas em volta. Tudo pelo teclado: setas andam, Enter cria ao lado, Ctrl + Enter cria dentro, F2 renomeia, Espaço marca como feito e Delete exclui. São os mesmos itens da lista e do quadro, com o mesmo limite de dois níveis.
+
 ### 2. Tempo e rotina
 
 - Agenda diária e semanal visual, com semana-modelo.
@@ -297,7 +302,7 @@ A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas pr
    - Base: banco criptografado, **backup básico** (salvar e restaurar), motor de temas e fundos (com SVG), as cinco visualizações.
    - Módulos: Ideias e projetos, Tempo e rotina, Energia; IA, conversa e ditado.
    - **Marco "mínimo usável"** no meio da onda (captura, projetos, lista e kanban): Dan começa a usar no dia a dia antes do fim.
-   - Mapa mental e linha do tempo ficam no fim da onda e podem passar para a Onda 2 se atrasarem o uso diário.
+   - Mapa mental e linha do tempo ficam no fim da onda e podem passar para a Onda 2 se atrasarem o uso diário. (Feitos na etapa 13.)
    - Portão: Dan usa no dia a dia por algumas semanas e aprova.
 2. **Onda 2 · Vida prática (Windows)**
    - Módulos: Dinheiro, Saúde, Cuidado psicológico e psiquiátrico.

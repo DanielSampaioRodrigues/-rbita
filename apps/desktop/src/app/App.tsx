@@ -133,7 +133,7 @@ export function App() {
   else {
     let pagina;
     if (secao === "ideias") pagina = <Ideias />;
-    else if (secao === "agenda") pagina = <Agenda />;
+    else if (secao === "agenda") pagina = <Agenda aoAbrirProjeto={abrirProjeto} />;
     else if (secao === "rotinas") pagina = <Rotinas />;
     else if (secao === "foco") pagina = <PaginaFoco />;
     else if (secao === "energia")

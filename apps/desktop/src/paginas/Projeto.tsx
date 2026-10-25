@@ -10,16 +10,20 @@ import { useComLimite } from "../projetos/Limite";
 import { CartaoOndeParei, JanelaOndeParei } from "../projetos/OndeParei";
 import { ListaTarefas } from "../projetos/ListaTarefas";
 import { QuadroTarefas } from "../projetos/QuadroTarefas";
+import { MapaMental } from "../projetos/MapaMental";
+import { JanelaPrazo } from "../projetos/prazos";
+import { CampoData } from "../componentes/CampoData";
 import { textos } from "../textos/pt-BR";
 import { EditarTexto } from "./Ideias";
 
 const t = textos.projeto;
-type Visao = "lista" | "quadro";
+type Visao = "lista" | "quadro" | "mapa";
 const CHAVE_VISAO = "orbita.visao-tarefas";
 
 function visaoSalva(): Visao {
   try {
-    return localStorage.getItem(CHAVE_VISAO) === "quadro" ? "quadro" : "lista";
+    const v = localStorage.getItem(CHAVE_VISAO);
+    return v === "quadro" || v === "mapa" ? v : "lista";
   } catch {
     return "lista";
   }
@@ -31,6 +35,7 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
   const [visao, setVisao] = useState<Visao>(visaoSalva);
   const [janela, setJanela] = useState<"pausar" | "anotar" | "renomear" | "excluir" | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [prazoDe, setPrazoDe] = useState<Tarefa | null>(null);
   const mudancas = useMudancas();
   const comLimite = useComLimite();
   const recado = useRecado();
@@ -106,6 +111,21 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
       </div>
       <Aviso>{erro}</Aviso>
 
+      <div className="linha-campos largura-leitura" role="group" aria-label={t.datas}>
+        <CampoData
+          rotulo={t.comeco}
+          tipo="date"
+          valor={projeto.inicio ?? ""}
+          aoMudar={(v) => executar(() => api.definirDatasProjeto(id, v || null, projeto.prazo))}
+        />
+        <CampoData
+          rotulo={t.prazo}
+          tipo="date"
+          valor={projeto.prazo ?? ""}
+          aoMudar={(v) => executar(() => api.definirDatasProjeto(id, projeto.inicio, v || null))}
+        />
+      </div>
+
       <div className="largura-leitura esticado">
         <CartaoOndeParei projeto={projeto} aoEditar={() => setJanela("anotar")} />
       </div>
@@ -123,15 +143,15 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
           >
             <ToggleButton id="lista" className="segmentado-opcao">{t.lista}</ToggleButton>
             <ToggleButton id="quadro" className="segmentado-opcao">{t.quadro}</ToggleButton>
+            <ToggleButton id="mapa" className="segmentado-opcao">{t.mapa}</ToggleButton>
           </ToggleButtonGroup>
         </div>
-        {visao === "lista" ? (
-          <ListaTarefas projetoId={id} tarefas={tarefas} executar={executar} />
-        ) : (
-          <QuadroTarefas projetoId={id} tarefas={tarefas} executar={executar} aoMover={recado} />
-        )}
+        {visao === "lista" && <ListaTarefas projetoId={id} tarefas={tarefas} executar={executar} aoDefinirPrazo={setPrazoDe} />}
+        {visao === "quadro" && <QuadroTarefas projetoId={id} tarefas={tarefas} executar={executar} aoMover={recado} aoDefinirPrazo={setPrazoDe} />}
+        {visao === "mapa" && <MapaMental projetoId={id} titulo={projeto.titulo} tarefas={tarefas} executar={executar} />}
       </section>
 
+      <JanelaPrazo tarefa={prazoDe} aoFechar={() => setPrazoDe(null)} />
       <JanelaOndeParei
         projeto={janela === "pausar" || janela === "anotar" ? projeto : null}
         modo={janela === "pausar" ? "pausar" : "editar"}

@@ -34,6 +34,10 @@ export interface Projeto {
   estado: EstadoProjeto;
   ondeParei: OndeParei | null;
   pausadoEm: number | null;
+  /** Datas opcionais, "AAAA-MM-DD". */
+  inicio: string | null;
+  prazo: string | null;
+  criadoEm: number;
   tarefasFeitas: number;
   tarefasTotal: number;
   alteradoEm: number;
@@ -82,6 +86,17 @@ export interface Tarefa {
   estado: EstadoTarefa;
   ordem: number;
   peso: Peso | null;
+  /** "AAAA-MM-DD" */
+  prazo: string | null;
+}
+
+export interface Prazo {
+  id: string;
+  tipo: "projeto" | "tarefa";
+  titulo: string;
+  data: string;
+  projetoId: string;
+  projeto: string;
 }
 
 export interface RegistroEnergia {
@@ -205,6 +220,9 @@ interface Api {
   marcarBasico(data: string, texto: string, feito: boolean): Promise<void>;
   tarefasSugeridas(): Promise<TarefaSugerida[]>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
+  definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
+  definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
+  listarPrazos(de: string, ate: string): Promise<Prazo[]>;
   fazerBackup(caminho: string): Promise<void>;
   infoBackup(caminho: string): Promise<InfoBackup>;
   restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }): Promise<ModoAbrir>;
@@ -268,6 +286,9 @@ const nativa: Api = {
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
   definirPesoTarefa: (id, peso) => chamar("definir_peso_tarefa", { id, peso }),
+  definirDatasProjeto: (id, inicio, prazo) => chamar("definir_datas_projeto", { id, inicio, prazo }),
+  definirPrazoTarefa: (id, prazo) => chamar("definir_prazo_tarefa", { id, prazo }),
+  listarPrazos: (de, ate) => chamar("listar_prazos", { de, ate }),
   fazerBackup: (caminho) => chamar("fazer_backup", { caminho }),
   infoBackup: (caminho) => chamar("info_backup", { caminho }),
   restaurarBackup: (caminho, { senha, palavras }) =>
@@ -278,7 +299,7 @@ const nativa: Api = {
 
 /** Parte da simulação que cuida de ideias, projetos e tarefas (mesmas regras da parte nativa). */
 function simularItens() {
-  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null };
+  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null };
   const itens: Item[] = [];
   let limite = 3;
   const agora = () => Date.now();
@@ -298,6 +319,7 @@ function simularItens() {
   const comoProjeto = (p: Item): Projeto => {
     const t = tarefasDe(p.id);
     return { id: p.id, titulo: p.texto, estado: p.estado as EstadoProjeto, ondeParei: p.ondeParei, pausadoEm: p.pausadoEm,
+      inicio: p.inicio ?? null, prazo: p.prazo ?? null, criadoEm: p.criadoEm,
       tarefasFeitas: t.filter((x) => x.estado === "feita").length, tarefasTotal: t.length, alteradoEm: p.alteradoEm };
   };
   const achar = (id: string) => {
@@ -321,14 +343,15 @@ function simularItens() {
   if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
     novo({ tipo: "ideia", texto: "Podcast sobre neurodivergência e trabalho", estado: "guardada" });
     novo({ tipo: "ideia", texto: "Aprender encadernação japonesa", estado: "guardada" });
-    const tcc = novo({ tipo: "projeto", texto: "TCC: atenção e interesses especiais", estado: "ativo",
+    const dia = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString("sv-SE"); };
+    const tcc = novo({ tipo: "projeto", texto: "TCC: atenção e interesses especiais", estado: "ativo", inicio: dia(-40), prazo: dia(50),
       ondeParei: { texto: "Fichando o artigo da Grandin", proximoPasso: "Abrir o PDF na página 12 e terminar o fichamento", links: ["https://scholar.google.com"], atualizadoEm: agora() - 3_600_000 } });
     const e1 = novo({ tipo: "tarefa", texto: "Revisão de literatura", estado: "fazendo", paiId: tcc.id, ordem: 1 });
     novo({ tipo: "tarefa", texto: "Fichar 5 artigos", estado: "feita", paiId: e1.id, ordem: 1 });
     novo({ tipo: "tarefa", texto: "Organizar as citações", estado: "a_fazer", paiId: e1.id, ordem: 2, peso: "leve" });
-    novo({ tipo: "tarefa", texto: "Escrever a introdução", estado: "a_fazer", paiId: tcc.id, ordem: 2 });
+    novo({ tipo: "tarefa", texto: "Escrever a introdução", estado: "a_fazer", paiId: tcc.id, ordem: 2, prazo: dia(3) });
     novo({ tipo: "tarefa", texto: "Marcar reunião com a orientadora", estado: "feita", paiId: tcc.id, ordem: 3 });
-    novo({ tipo: "projeto", texto: "Reformar a estante", estado: "ativo" });
+    novo({ tipo: "projeto", texto: "Reformar a estante", estado: "ativo", inicio: dia(-5), prazo: dia(20) });
     novo({ tipo: "projeto", texto: "Curso de ilustração", estado: "pausado", pausadoEm: agora() - 86_400_000 * 9,
       ondeParei: { texto: "Terminei o módulo 3", proximoPasso: "Assistir a aula sobre luz e sombra", links: [], atualizadoEm: agora() - 86_400_000 * 9 } });
   }
@@ -373,12 +396,12 @@ function simularItens() {
     definirLimiteProjetos: async (n: number) => void (limite = n),
     listarTarefas: async (pid: string) =>
       tarefasDe(pid).sort((a, b) => a.ordem - b.ordem)
-        .map((t) => ({ id: t.id, paiId: t.paiId!, titulo: t.texto, estado: t.estado as EstadoTarefa, ordem: t.ordem, peso: t.peso ?? null })),
+        .map((t) => ({ id: t.id, paiId: t.paiId!, titulo: t.texto, estado: t.estado as EstadoTarefa, ordem: t.ordem, peso: t.peso ?? null, prazo: t.prazo ?? null })),
     criarTarefa: async (paiId: string, titulo: string) => {
       const ordem = Math.max(0, ...itens.filter((i) => i.paiId === paiId).map((i) => i.ordem)) + 1;
       const t = novo({ tipo: "tarefa", texto: vazio(titulo), estado: "a_fazer", paiId, ordem });
       projetoDa(paiId).alteradoEm = agora();
-      return { id: t.id, paiId, titulo: t.texto, estado: "a_fazer" as EstadoTarefa, ordem, peso: null };
+      return { id: t.id, paiId, titulo: t.texto, estado: "a_fazer" as EstadoTarefa, ordem, peso: null, prazo: null };
     },
     mudarEstadoTarefa: async (id: string, estado: EstadoTarefa) => {
       const t = achar(id);
@@ -386,6 +409,20 @@ function simularItens() {
       projetoDa(t.paiId!).alteradoEm = agora();
     },
     definirPesoTarefa: async (id: string, peso: Peso | null) => void (achar(id).peso = peso),
+    definirDatasProjeto: async (id: string, inicio: string | null, prazo: string | null) => void Object.assign(achar(id), { inicio, prazo }),
+    definirPrazoTarefa: async (id: string, prazo: string | null) => void (achar(id).prazo = prazo),
+    listarPrazos: async (de: string, ate: string) => {
+      const lista: Prazo[] = [];
+      for (const i of itens) {
+        if (!i.prazo || i.prazo < de || i.prazo > ate) continue;
+        if (i.tipo === "projeto" && i.estado !== "concluido") lista.push({ id: i.id, tipo: "projeto", titulo: i.texto, data: i.prazo, projetoId: i.id, projeto: i.texto });
+        if (i.tipo === "tarefa" && i.estado !== "feita") {
+          const p = projetoDa(i.paiId!);
+          if (p.estado !== "concluido") lista.push({ id: i.id, tipo: "tarefa", titulo: i.texto, data: i.prazo, projetoId: p.id, projeto: p.texto });
+        }
+      }
+      return lista.sort((a, b) => a.data.localeCompare(b.data));
+    },
     tarefasSugeridas: async () => {
       const ordem = (p: Peso | null | undefined) => (p === "leve" ? 0 : p === "media" ? 2 : p === "pesada" ? 3 : 1);
       return itens
