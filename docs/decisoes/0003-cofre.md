@@ -10,6 +10,7 @@
 | recuperação | Argon2id das 6 palavras | Sempre existe |
 | PIN | Argon2id do PIN, com um segredo do aparelho como "pimenta" | Só neste computador |
 | abrir direto | o segredo do aparelho | Só neste computador |
+| Windows Hello | o segredo do aparelho, liberado só depois da confirmação do Windows | Só neste computador |
 
 O segredo do aparelho fica no Gerenciador de Credenciais do Windows, preso ao usuário. Sem ele, o PIN não serve, nem com uma cópia do arquivo.
 
@@ -27,3 +28,5 @@ O segredo do aparelho fica no Gerenciador de Credenciais do Windows, preso ao us
 - Um banco encontrado sem cofre (criação interrompida) é renomeado, nunca apagado.
 - As palavras ficam guardadas dentro do banco criptografado, para poderem ser vistas de novo com a senha.
 - Exclusões são marcadas (`excluido_em`), não apagadas, para a sincronização futura.
+
+**Windows Hello** (25/10/2026). O Windows confirma a pessoa (digital, rosto ou PIN do Windows) e só então o Órbita usa o segredo do aparelho. O pedido é preso à janela do Órbita (`RequestVerificationForWindowAsync`), para não abrir atrás dela. A proteção é do mesmo nível do PIN: contra quem mexe no computador, não contra um vírus no usuário. Se o Windows Hello deixar de funcionar, o Órbita pede a senha.

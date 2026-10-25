@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 use rusqlite::Connection;
 use serde::Serialize;
-use tauri::State;
+use tauri::{State, WebviewWindow};
 
 use crate::banco::{self, notas::Nota};
 use crate::cofre::cripto::Chave;
@@ -82,6 +82,41 @@ pub async fn abrir_com_pin(estado: State<'_, Estado>, pin: String) -> Result<(),
 pub async fn abrir_direto(estado: State<'_, Estado>) -> Result<(), Erro> {
     let chave = estado.cofre.abrir_direto()?;
     estado.iniciar_sessao(chave)
+}
+
+#[tauri::command]
+pub async fn hello_disponivel() -> Result<bool, Erro> {
+    tauri::async_runtime::spawn_blocking(crate::hello::disponivel)
+        .await
+        .map_err(|e| Erro::Interno(e.to_string()))
+}
+
+#[tauri::command]
+pub async fn abrir_com_hello(estado: State<'_, Estado>, janela: WebviewWindow) -> Result<(), Erro> {
+    confirmar_com_hello(&janela).await?;
+    let chave = estado.cofre.abrir_depois_do_hello()?;
+    estado.iniciar_sessao(chave)
+}
+
+/// Mostra o pedido do Windows Hello por cima da janela do Órbita.
+async fn confirmar_com_hello(janela: &WebviewWindow) -> Result<(), Erro> {
+    #[cfg(windows)]
+    let ponteiro = janela.hwnd().map_err(|e| Erro::Interno(e.to_string()))?.0 as usize;
+    #[cfg(not(windows))]
+    let ponteiro = {
+        let _ = janela;
+        0usize
+    };
+    let resultado = tauri::async_runtime::spawn_blocking(move || {
+        crate::hello::confirmar(ponteiro as *mut core::ffi::c_void, "Confirme que é você para abrir o Órbita.")
+    })
+    .await
+    .map_err(|e| Erro::Interno(e.to_string()))?;
+    match resultado {
+        crate::hello::Resultado::Confirmado => Ok(()),
+        crate::hello::Resultado::Cancelado => Err(Erro::HelloCancelado),
+        crate::hello::Resultado::Indisponivel => Err(Erro::HelloIndisponivel),
+    }
 }
 
 /// Só confere as palavras, sem abrir. Serve para a tela avisar antes de pedir a nova senha.

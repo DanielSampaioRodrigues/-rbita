@@ -25,6 +25,10 @@ pub enum Erro {
     Bloqueado,
     #[error("Este computador não guardou a chave para abrir sem senha. Use a senha.")]
     AparelhoSemChave,
+    #[error("O Windows Hello foi cancelado.")]
+    HelloCancelado,
+    #[error("O Windows Hello não está disponível neste computador. Use a senha.")]
+    HelloIndisponivel,
     #[error("Não foi possível ler ou gravar um arquivo: {0}")]
     Arquivo(String),
     #[error("Erro interno: {0}")]
@@ -45,6 +49,8 @@ impl Erro {
             Erro::CofreAusente => "cofre_ausente",
             Erro::Bloqueado => "bloqueado",
             Erro::AparelhoSemChave => "aparelho_sem_chave",
+            Erro::HelloCancelado => "hello_cancelado",
+            Erro::HelloIndisponivel => "hello_indisponivel",
             Erro::Arquivo(_) => "arquivo",
             Erro::Interno(_) => "interno",
         }

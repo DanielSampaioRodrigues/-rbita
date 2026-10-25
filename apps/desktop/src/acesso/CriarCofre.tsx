@@ -5,6 +5,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { ChaveRecuperacao } from "../componentes/ChaveRecuperacao";
 import { EscolhaModo } from "../componentes/EscolhaModo";
 import { textos } from "../textos/pt-BR";
+import { useHelloDisponivel } from "../useHello";
 import { MolduraAcesso } from "./Moldura";
 import { avaliarPin, avaliarSenha } from "./validacao";
 
@@ -17,7 +18,10 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [passo, setPasso] = useState<Passo>("boasVindas");
   const [senha, setSenha] = useState("");
   const [senha2, setSenha2] = useState("");
-  const [modo, setModo] = useState<ModoAbrir>("pin");
+  const comHello = useHelloDisponivel() ?? false;
+  // Até a pessoa escolher, a recomendação: Windows Hello quando houver, senão PIN.
+  const [escolhido, setModo] = useState<ModoAbrir | null>(null);
+  const modo: ModoAbrir = escolhido ?? (comHello ? "hello" : "pin");
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
   const [palavras, setPalavras] = useState<string[]>([]);
@@ -78,7 +82,7 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
         <Form className="formulario" onSubmit={(e) => (e.preventDefault(), modo === "pin" ? setPasso("pin") : criar())}>
           <h1>{t.modoTitulo}</h1>
           <p className="texto-suave">{t.modoTexto}</p>
-          <EscolhaModo valor={modo} aoMudar={setModo} rotulo={t.modoTitulo} />
+          <EscolhaModo valor={modo} aoMudar={setModo} rotulo={t.modoTitulo} comHello={comHello} />
           <Aviso>{erro}</Aviso>
           <div className="botoes">
             <Button className="botao" onPress={() => setPasso("senha")}>{c.voltar}</Button>

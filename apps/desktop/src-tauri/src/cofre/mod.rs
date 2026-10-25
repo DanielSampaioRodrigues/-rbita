@@ -32,6 +32,7 @@ pub enum ModoAbrir {
     Pin,
     Senha,
     Direto,
+    Hello,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -167,9 +168,9 @@ impl Cofre {
                 let do_aparelho = self.guarda.obter_ou_criar(id)?;
                 envelope_por_segredo(chave, pin.as_bytes(), "pin", id, Some(do_aparelho.as_ref()))?
             }
-            ModoAbrir::Direto => {
+            ModoAbrir::Direto | ModoAbrir::Hello => {
                 let do_aparelho = self.guarda.obter_ou_criar(id)?;
-                trancar(chave, &do_aparelho, &rotulo("direto", id), None, vec![])?
+                trancar(chave, &do_aparelho, &rotulo(Self::tipo_aparelho(modo), id), None, vec![])?
             }
         };
         Ok(Some(EnvelopeAparelho { envelope, tentativas_erradas: 0 }))
@@ -248,14 +249,28 @@ impl Cofre {
         }
     }
 
-    pub fn abrir_direto(&self) -> Result<Chave, Erro> {
+    fn tipo_aparelho(modo: ModoAbrir) -> &'static str {
+        if modo == ModoAbrir::Hello { "hello" } else { "direto" }
+    }
+
+    /// Abre com o segredo do aparelho. No modo Windows Hello, quem chama já
+    /// confirmou a pessoa com o Windows antes.
+    fn abrir_pelo_aparelho(&self, esperado: ModoAbrir) -> Result<Chave, Erro> {
         let c = self.ler()?;
-        if c.modo != ModoAbrir::Direto {
+        if c.modo != esperado {
             return Err(Erro::AparelhoSemChave);
         }
         let aparelho = c.aparelho.as_ref().ok_or(Erro::AparelhoSemChave)?;
         let do_aparelho = self.guarda.ler(&c.id)?.ok_or(Erro::AparelhoSemChave)?;
-        destrancar(&aparelho.envelope, &do_aparelho, &rotulo("direto", &c.id)).ok_or(Erro::AparelhoSemChave)
+        destrancar(&aparelho.envelope, &do_aparelho, &rotulo(Self::tipo_aparelho(esperado), &c.id)).ok_or(Erro::AparelhoSemChave)
+    }
+
+    pub fn abrir_direto(&self) -> Result<Chave, Erro> {
+        self.abrir_pelo_aparelho(ModoAbrir::Direto)
+    }
+
+    pub fn abrir_depois_do_hello(&self) -> Result<Chave, Erro> {
+        self.abrir_pelo_aparelho(ModoAbrir::Hello)
     }
 
     pub fn abrir_com_palavras(&self, texto: &str) -> Result<Chave, Erro> {
@@ -370,6 +385,16 @@ mod testes {
         cofre.mudar_modo(&chave, ModoAbrir::Senha, None).unwrap();
         assert!(cofre.abrir_direto().is_err());
         assert!(guarda.0.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn hello_usa_a_chave_do_aparelho_e_nao_abre_como_direto() {
+        let (pasta, cofre, _) = novo();
+        let (chave, _) = cofre.criar(SENHA, ModoAbrir::Hello, None).unwrap();
+        assert_eq!(*cofre.abrir_depois_do_hello().unwrap(), *chave);
+        assert!(cofre.abrir_direto().is_err());
+        let outro = Cofre::new(pasta.path(), Arc::new(GuardaEmMemoria::default()));
+        assert!(matches!(outro.abrir_depois_do_hello(), Err(Erro::AparelhoSemChave)));
     }
 
     #[test]

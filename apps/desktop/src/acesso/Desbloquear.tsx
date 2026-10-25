@@ -8,11 +8,11 @@ import { Recuperar } from "./Recuperar";
 
 const t = textos.desbloquear;
 
-type Forma = "pin" | "senha" | "recuperar";
+type Forma = "hello" | "pin" | "senha" | "recuperar";
 
 export function Desbloquear({ situacao, aoAbrir }: { situacao: Situacao; aoAbrir: () => void }) {
   const pinDisponivel = situacao.modo === "pin" && situacao.tentativasRestantes > 0;
-  const [forma, setForma] = useState<Forma>(pinDisponivel ? "pin" : "senha");
+  const [forma, setForma] = useState<Forma>(situacao.modo === "hello" ? "hello" : pinDisponivel ? "pin" : "senha");
   const [valor, setValor] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(
@@ -33,21 +33,22 @@ export function Desbloquear({ situacao, aoAbrir }: { situacao: Situacao; aoAbrir
   };
 
   const entrar = async () => {
-    if (!valor || ocupado) return;
+    if ((forma !== "hello" && !valor) || ocupado) return;
     setOcupado(true);
     setErro(null);
     try {
-      await (forma === "pin" ? api.abrirComPin(valor) : api.abrirComSenha(valor));
+      await (forma === "hello" ? api.abrirComHello() : forma === "pin" ? api.abrirComPin(valor) : api.abrirComSenha(valor));
       aoAbrir();
     } catch (e) {
       const err = e instanceof ErroOrbita ? e : new ErroOrbita("interno", String(e));
       setValor("");
       if (err.codigo === "pin_errado") setErro(`${err.message} ${t.restantes(err.tentativasRestantes ?? 0)}`);
-      else if (err.codigo === "pin_bloqueado" || err.codigo === "aparelho_sem_chave") {
-        // O PIN não serve mais aqui: já mostra o campo de senha.
+      else if (err.codigo === "hello_cancelado") setErro(t.helloCancelado);
+      else if (["pin_bloqueado", "aparelho_sem_chave", "hello_indisponivel"].includes(err.codigo)) {
+        // O jeito rápido não serve mais aqui: já mostra o campo de senha.
         setPinBloqueado(true);
         setForma("senha");
-        setErro(err.codigo === "pin_bloqueado" ? t.pinBloqueado : t.semChave);
+        setErro(err.codigo === "pin_bloqueado" ? t.pinBloqueado : err.codigo === "hello_indisponivel" ? err.message : t.semChave);
       } else setErro(err.message);
     } finally {
       setOcupado(false);
@@ -60,20 +61,23 @@ export function Desbloquear({ situacao, aoAbrir }: { situacao: Situacao; aoAbrir
     <MolduraAcesso>
       <Form className="formulario" onSubmit={(e) => (e.preventDefault(), entrar())}>
         <h1>{t.titulo}</h1>
-        <p>{forma === "pin" ? t.pinTexto : t.senhaTexto}</p>
-        {forma === "pin" ? (
+        <p>{forma === "hello" ? t.helloTexto : forma === "pin" ? t.pinTexto : t.senhaTexto}</p>
+        {forma === "hello" ? null : forma === "pin" ? (
           <Campo key="pin" rotulo={textos.pin.rotulo} valor={valor} aoMudar={setValor} secreto numerico autoFocus maximo={8} />
         ) : (
           <Campo key="senha" rotulo={textos.senha.rotulo} valor={valor} aoMudar={setValor} secreto autoFocus autoComplete="current-password" />
         )}
         <Aviso>{erro}</Aviso>
         <div className="botoes">
-          <Button className="botao principal" type="submit" isDisabled={!valor || ocupado}>
-            {ocupado ? textos.comum.aguarde : textos.comum.entrar}
+          <Button className="botao principal" type="submit" autoFocus={forma === "hello"} isDisabled={(forma !== "hello" && !valor) || ocupado}>
+            {ocupado ? textos.comum.aguarde : forma === "hello" ? t.abrirHello : textos.comum.entrar}
           </Button>
         </div>
         <div className="links">
-          {forma === "pin" && <Button className="link" onPress={() => trocar("senha")}>{t.usarSenha}</Button>}
+          {(forma === "pin" || forma === "hello") && <Button className="link" onPress={() => trocar("senha")}>{t.usarSenha}</Button>}
+          {forma === "senha" && situacao.modo === "hello" && !pinBloqueado && (
+            <Button className="link" onPress={() => trocar("hello")}>{t.usarHello}</Button>
+          )}
           {forma === "senha" && situacao.modo === "pin" && !pinBloqueado && (
             <Button className="link" onPress={() => trocar("pin")}>{t.usarPin}</Button>
           )}

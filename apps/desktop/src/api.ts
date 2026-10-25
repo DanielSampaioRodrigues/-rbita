@@ -3,7 +3,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
-export type ModoAbrir = "pin" | "senha" | "direto";
+export type ModoAbrir = "hello" | "pin" | "senha" | "direto";
 
 export interface Situacao {
   existe: boolean;
@@ -30,6 +30,8 @@ export type CodigoErro =
   | "cofre_ausente"
   | "bloqueado"
   | "aparelho_sem_chave"
+  | "hello_cancelado"
+  | "hello_indisponivel"
   | "arquivo"
   | "interno";
 
@@ -59,6 +61,8 @@ interface Api {
   abrirComSenha(senha: string): Promise<void>;
   abrirComPin(pin: string): Promise<void>;
   abrirDireto(): Promise<void>;
+  helloDisponivel(): Promise<boolean>;
+  abrirComHello(): Promise<void>;
   conferirPalavras(texto: string): Promise<void>;
   recuperar(texto: string, novaSenha: string): Promise<void>;
   lerArquivoRecuperacao(caminho: string): Promise<string>;
@@ -86,6 +90,8 @@ const nativa: Api = {
   abrirComSenha: (senha) => chamar("abrir_com_senha", { senha }),
   abrirComPin: (pin) => chamar("abrir_com_pin", { pin }),
   abrirDireto: () => chamar("abrir_direto"),
+  helloDisponivel: () => chamar("hello_disponivel"),
+  abrirComHello: () => chamar("abrir_com_hello"),
   conferirPalavras: (texto) => chamar("conferir_palavras", { texto }),
   recuperar: (texto, novaSenha) => chamar("recuperar", { texto, novaSenha }),
   lerArquivoRecuperacao: (caminho) => chamar("ler_arquivo_recuperacao", { caminho }),
@@ -140,6 +146,11 @@ function criarSimulacao(): Api {
       s.aberto = true;
     },
     abrirDireto: async () => {
+      s.aberto = true;
+    },
+    helloDisponivel: async () => params.get("hello") === "1",
+    abrirComHello: async () => {
+      await espera();
       s.aberto = true;
     },
     conferirPalavras: conferir,

@@ -174,13 +174,12 @@ Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela qui
 - **Criptografia** do banco de dados inteiro, com uma chave sorteada no aparelho. Essa chave fica trancada de três jeitos:
   - **senha** (mínimo de 12 caracteres; uma frase de 3 ou 4 palavras funciona bem), digitada raramente: na criação, em backups, em aparelho novo e quando o PIN falha;
   - **chave de recuperação**: 6 palavras sorteadas da lista padrão em português (sem acentos, reconhecidas pelas 4 primeiras letras), mais um **arquivo de recuperação**, para quem esqueceu a senha;
-  - **jeito de abrir no dia a dia**, escolhido por aparelho: **PIN** (padrão, de 4 a 8 números), **senha** ou **abrir direto**. O PIN e o abrir direto usam um segredo guardado pelo Windows (Gerenciador de Credenciais): numa cópia do arquivo levada para outro computador, eles não servem. Depois de 5 erros seguidos de PIN, o Órbita pede a senha. Nada é apagado por tentativas erradas.
+  - **jeito de abrir no dia a dia**, escolhido por aparelho: **Windows Hello** (digital, rosto ou PIN do Windows; padrão quando o computador tem), **PIN** (de 4 a 8 números; padrão quando não há Windows Hello), **senha** ou **abrir direto**. O Windows Hello, o PIN e o abrir direto usam um segredo guardado pelo Windows (Gerenciador de Credenciais): numa cópia do arquivo levada para outro computador, eles não servem. Depois de 5 erros seguidos de PIN, o Órbita pede a senha. Nada é apagado por tentativas erradas.
 - **Recuperação sem servidor.** Não há recuperação por e-mail ou SMS: isso exigiria um servidor capaz de abrir os dados, contra a promessa de que os dados não saem do aparelho, e contra a LGPD no caso de dados de saúde e terapia. No lugar disso:
   - a chave pode ser salva em arquivo (pendrive, nuvem), impressa, copiada para o próprio e-mail ou entregue a uma pessoa de confiança;
   - pode ser vista de novo em Ajustes, com a senha;
   - as telas de recuperação são calmas, um passo por vez, sem tempo limite;
   - com a sincronização (Onda 3), um aparelho já aberto poderá criar uma senha nova para o outro.
-- **Windows Hello** (digital, rosto ou PIN do Windows) como jeito de abrir: etapa própria, logo depois do banco criptografado.
 - **Trava extra opcional** para os módulos de saúde e de cuidado psicológico.
 - **Backup** em arquivo único criptografado, que a pessoa guarda onde quiser (pendrive, Drive, iCloud).
 - **Exportação** dos dados em formatos abertos (por exemplo, CSV e Markdown), para ninguém ficar preso ao programa.

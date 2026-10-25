@@ -21,10 +21,8 @@ export const textos = {
     irAjustes: "Abrir os Ajustes",
     novidadesTitulo: (versao: string) => `O que mudou na versão ${versao}`,
     novidades: [
-      "Seus dados agora ficam trancados com senha, num arquivo criptografado.",
-      "No dia a dia dá para abrir com PIN, com a senha ou direto.",
-      "Chave de recuperação de 6 palavras, caso você esqueça a senha.",
-      "Notas simples, para testar que os dados ficam guardados.",
+      "Dá para abrir o Órbita com o Windows Hello: digital, rosto ou o PIN do Windows.",
+      "Para ligar, vá em Ajustes, Segurança, Mudar.",
     ],
     dicaAtalhos: "Tudo no Órbita pode ser feito pelo teclado. Aperte F1 para ver os atalhos.",
   },
@@ -85,11 +83,13 @@ export const textos = {
     soNumeros: "Use só números, de 4 a 8.",
   },
   modos: {
-    pin: { nome: "PIN", descricao: "Você digita um número curto. Só funciona neste computador.", selo: "Recomendado" },
+    selo: "Recomendado",
+    hello: { nome: "Windows Hello", descricao: "Digital, rosto ou o PIN do próprio Windows. Só funciona neste computador." },
+    pin: { nome: "PIN", descricao: "Você digita um número curto. Só funciona neste computador." },
     senha: { nome: "Senha", descricao: "Você digita a senha toda vez. É o jeito mais protegido." },
     direto: { nome: "Abrir direto", descricao: "O Órbita abre sem pedir nada. Use só se ninguém mais mexe neste computador." },
     aviso:
-      "O PIN e o abrir direto protegem contra quem mexe no computador, mas não contra um vírus no seu usuário do Windows. Para isso, só a senha.",
+      "Windows Hello, PIN e abrir direto protegem contra quem mexe no computador, mas não contra um vírus no seu usuário do Windows. Para isso, só a senha.",
   },
   criar: {
     boasVindasTitulo: "Boas-vindas ao Órbita",
@@ -98,7 +98,7 @@ export const textos = {
     boasVindasPassos: "São poucos passos: criar a senha, escolher como abrir no dia a dia e guardar uma chave de recuperação.",
     comecar: "Começar",
     senhaTitulo: "Crie uma senha",
-    senhaTexto: "Ela tranca os seus dados e os backups. Você vai digitar pouco: no dia a dia dá para usar um PIN.",
+    senhaTexto: "Ela tranca os seus dados e os backups. Você vai digitar pouco: no dia a dia dá para usar o Windows Hello ou um PIN.",
     modoTitulo: "Como abrir o Órbita no dia a dia?",
     modoTexto: "Dá para mudar depois, em Ajustes.",
     pinTitulo: "Crie um PIN",
@@ -120,6 +120,10 @@ export const textos = {
   desbloquear: {
     titulo: "Órbita bloqueado",
     pinTexto: "Digite seu PIN.",
+    helloTexto: "Use o Windows Hello: digital, rosto ou o PIN do Windows.",
+    abrirHello: "Abrir com Windows Hello",
+    helloCancelado: "O Windows Hello foi cancelado. Tente de novo ou use a senha.",
+    usarHello: "Usar o Windows Hello",
     senhaTexto: "Digite sua senha.",
     restantes: (n: number) => (n === 1 ? "Resta 1 tentativa antes de pedir a senha." : `Restam ${n} tentativas antes de pedir a senha.`),
     pinBloqueado: "Foram 5 tentativas com o PIN. Para continuar, use a senha. Nada foi apagado.",

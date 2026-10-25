@@ -1,6 +1,6 @@
 [package]
 name = "orbita"
-version = "0.3.0"
+version = "0.4.0"
 description = "Órbita — organizador de vida para pessoas neurodivergentes"
 authors = ["Daniel Sampaio Rodrigues"]
 edition = "2021"
@@ -30,6 +30,8 @@ unicode-normalization = "0.1"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3.6", features = ["windows-native"] }
+windows = { version = "0.62", features = ["Foundation", "Security_Credentials_UI", "Win32_Foundation", "Win32_System_WinRT"] }
+windows-future = "0.3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 keyring = { version = "3.6", features = ["linux-native"] }

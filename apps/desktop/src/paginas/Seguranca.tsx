@@ -6,6 +6,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { ChaveRecuperacao } from "../componentes/ChaveRecuperacao";
 import { EscolhaModo } from "../componentes/EscolhaModo";
 import { textos } from "../textos/pt-BR";
+import { useHelloDisponivel } from "../useHello";
 
 const t = textos.seguranca;
 const c = textos.comum;
@@ -83,6 +84,7 @@ function useEnvio() {
 
 function MudarModo({ atual, aoCancelar, aoConcluir }: { atual: ModoAbrir; aoCancelar: () => void; aoConcluir: () => void }) {
   const [modo, setModo] = useState<ModoAbrir>(atual);
+  const comHello = (useHelloDisponivel() ?? false) || atual === "hello";
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
   const [senha, setSenha] = useState("");
@@ -91,7 +93,7 @@ function MudarModo({ atual, aoCancelar, aoConcluir }: { atual: ModoAbrir; aoCanc
   const pronto = senha.length > 0 && (modo !== "pin" || avPin.ok);
   return (
     <Form className="formulario" onSubmit={(e) => (e.preventDefault(), pronto && enviar(async () => (await api.mudarModo(senha, modo, modo === "pin" ? pin : undefined), aoConcluir())))}>
-      <EscolhaModo valor={modo} aoMudar={setModo} rotulo={t.mudarTitulo} />
+      <EscolhaModo valor={modo} aoMudar={setModo} rotulo={t.mudarTitulo} comHello={comHello} />
       {modo === "pin" && (
         <>
           <Campo rotulo={textos.pin.rotulo} valor={pin} aoMudar={setPin} secreto numerico maximo={8} descricao={textos.pin.dica} />

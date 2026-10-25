@@ -2,6 +2,7 @@ mod banco;
 mod cofre;
 mod comandos;
 mod erro;
+mod hello;
 
 use std::sync::Arc;
 
@@ -27,6 +28,8 @@ pub fn run() {
             comandos::abrir_com_senha,
             comandos::abrir_com_pin,
             comandos::abrir_direto,
+            comandos::hello_disponivel,
+            comandos::abrir_com_hello,
             comandos::conferir_palavras,
             comandos::recuperar,
             comandos::ler_arquivo_recuperacao,
