@@ -1,6 +1,6 @@
 # O que falta implementar
 
-25/10/2026 · versão 0.28.1. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
+25/10/2026 · versão 0.28.2. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
 
 ## 1. Pendências da Onda 1 (o que está pela metade)
 

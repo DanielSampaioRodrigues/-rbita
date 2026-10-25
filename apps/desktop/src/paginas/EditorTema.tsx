@@ -8,6 +8,7 @@ import { api, type EstadoIa } from "../api";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
+import { Janela } from "../componentes/Janela";
 import { textos } from "../textos/pt-BR";
 import { usePreferencias } from "../estado";
 
@@ -75,7 +76,9 @@ function Previa({ paleta, cantos, sombra, icones }: { paleta: Paleta; cantos: nu
 
 export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inicial: Tema; aoSalvar: (tema: Tema) => void; aoGuardar: (tema: Tema) => void; aoCancelar: () => void }) {
   const [tema, setTema] = useState<Tema>(inicial);
-  const { prefs } = usePreferencias();
+  const { prefs, mudar } = usePreferencias();
+  // Salvar com cores sem contraste e a trava ligada: pergunta o que fazer, em vez de travar o botão.
+  const [perguntando, setPerguntando] = useState(false);
   // O que a IA cria já vale no app e entra na lista de temas; aqui fica o último guardado.
   const [guardado, setGuardado] = useState<Tema | null>(null);
   const aplicarDaIa = (novo: Tema) => {
@@ -195,8 +198,33 @@ export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inici
         <Button className="botao" onPress={aoCancelar}>
           {!guardado ? t.cancelar : JSON.stringify(guardado) === JSON.stringify(tema) ? t.fechar : t.descartar}
         </Button>
-        <Button className="botao principal" isDisabled={(!tudoPassa && !prefs.semTrava) || !tema.nome.trim()} onPress={() => aoSalvar({ ...tema, nome: tema.nome.trim() })}>{t.salvar}</Button>
+        <Button
+          className="botao principal"
+          isDisabled={!tema.nome.trim()}
+          onPress={() => (tudoPassa || prefs.semTrava ? aoSalvar({ ...tema, nome: tema.nome.trim() }) : setPerguntando(true))}
+        >
+          {t.salvar}
+        </Button>
       </div>
+      {!tema.nome.trim() && <p className="campo-ajuda">{t.falta_nome}</p>}
+      <Janela titulo={t.semContrasteTitulo} aberta={perguntando} aoFechar={() => setPerguntando(false)} pequena>
+        <p>{t.semContrasteTexto}</p>
+        <div className="janela-acoes">
+          <Button className="botao" onPress={() => setPerguntando(false)} autoFocus>{t.voltarCores}</Button>
+          <Button
+            className="botao"
+            onPress={() => (setPerguntando(false), mudar({ semTrava: true }), aoSalvar({ ...tema, nome: tema.nome.trim() }))}
+          >
+            {t.salvarSemTrava}
+          </Button>
+          <Button
+            className="botao principal"
+            onPress={() => (setPerguntando(false), aoSalvar({ ...tema, nome: tema.nome.trim(), claro: ajustarPaleta(tema.claro), escuro: ajustarPaleta(tema.escuro) }))}
+          >
+            {t.ajustarESalvar}
+          </Button>
+        </div>
+      </Janela>
     </div>
   );
 }

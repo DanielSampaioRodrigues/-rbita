@@ -1,1 +1,2 @@
-- **Editor de tema mais fácil de ler**: a parte de editar as cores, os cantos e os ícones agora fica dentro de uma caixa, então dá para ler mesmo com fundos cheios de desenho ou com as cores originais ligadas.
+- **Salvar tema com pouco contraste**: antes, o botão "Salvar e usar" ficava desligado sem explicar por quê, e parecia que o tema não salvava. Agora ele sempre funciona: se alguma cor estiver com pouco contraste, o Órbita pergunta se você quer voltar e mexer nas cores, ajustar sozinho e salvar, ou salvar assim mesmo liberando a trava de contraste.
+- **Editor de tema mais fácil de ler**: a parte das cores fica dentro de uma caixa.

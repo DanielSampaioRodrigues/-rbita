@@ -178,6 +178,13 @@ export const textos = {
     ajustar: "Ajustar sozinho",
     ajustarExplicacao: "Escurece ou clareia só as cores que não passam, mantendo o tom.",
     faltam: "Alguns pares estão sem contraste. Use \"Ajustar sozinho\" ou mude as cores marcadas.",
+    falta_nome: "Dê um nome ao tema para salvar.",
+    semContrasteTitulo: "Algumas cores estão com pouco contraste",
+    semContrasteTexto:
+      "Do jeito que está, parte do texto fica difícil de ler. O Órbita pode ajustar só essas cores, mantendo o tom, ou você pode salvar assim mesmo liberando a trava de contraste (dá para religar em Ajustes > Tema e fundo).",
+    voltarCores: "Voltar e mexer nas cores",
+    salvarSemTrava: "Salvar assim e liberar a trava",
+    ajustarESalvar: "Ajustar sozinho e salvar",
     faltamSemTrava: "Alguns pares estão com pouco contraste. Com a trava liberada, você pode salvar assim mesmo.",
     salvar: "Salvar e usar",
     cancelar: "Cancelar",
