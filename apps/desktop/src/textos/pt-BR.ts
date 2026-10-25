@@ -87,6 +87,7 @@ export const textos = {
       "Temas: traço e pontas dos ícones ajustáveis no editor de tema, também pedindo à IA.",
       "Atualizações dentro do Órbita (Ajustes > Atualizações): veja o que mudou antes de instalar, ou deixe para depois.",
       "Começar sem inventar senha: Windows Hello, PIN ou abrir direto, e as 6 palavras para recuperar. A senha virou opcional, em Ajustes > Segurança.",
+      "Guardar a recuperação na sua conta Google (Ajustes > Guardar na minha conta): num computador novo, é só entrar com a conta para trazer tudo de volta.",
     ],
     dicaAtalhos: "Tudo no Órbita pode ser feito pelo teclado. Aperte F1 para ver os atalhos.",
   },

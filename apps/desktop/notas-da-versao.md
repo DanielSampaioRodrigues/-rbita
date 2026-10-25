@@ -1,4 +1,3 @@
-- **Começar ficou mais simples**: quem instala o Órbita agora não precisa inventar senha. São dois passos: escolher como abrir (Windows Hello, PIN ou direto) e guardar as 6 palavras da chave de recuperação.
-- **As 6 palavras resolvem tudo**: se o PIN bloquear ou o Windows Hello falhar, dá para abrir com elas, e o PIN volta a funcionar.
-- **Senha opcional**: quem quiser cria uma em Ajustes > Segurança. Quem já tem senha continua igual.
-- Para ver a chave de recuperação ou mudar como o Órbita abre, a confirmação usa o seu jeito de sempre (PIN, Windows Hello ou senha).
+- **Guardar a recuperação na sua conta Google**: em Ajustes > "Guardar na minha conta", ligue a sua conta Google. A chave de recuperação e uma cópia criptografada dos seus dados ficam numa pasta escondida do seu Drive, que só o Órbita vê. Num computador novo, é só entrar com a conta para trazer tudo de volta.
+- A cópia é atualizada sozinha uma vez por dia. Dá para enviar na hora ou desligar quando quiser.
+- Quem preferir continua só com as 6 palavras. A conta Microsoft chega numa próxima versão.
