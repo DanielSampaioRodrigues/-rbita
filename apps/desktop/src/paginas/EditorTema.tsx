@@ -11,6 +11,7 @@ import { Interruptor } from "../componentes/Interruptor";
 import { Janela } from "../componentes/Janela";
 import { textos } from "../textos/pt-BR";
 import { usePreferencias } from "../estado";
+import { definirPreviaTema } from "../aparencia";
 
 const t = textos.editorTema;
 type Modo = "claro" | "escuro";
@@ -77,6 +78,9 @@ function Previa({ paleta, cantos, sombra, icones }: { paleta: Paleta; cantos: nu
 export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inicial: Tema; aoSalvar: (tema: Tema) => void; aoGuardar: (tema: Tema) => void; aoCancelar: () => void }) {
   const [tema, setTema] = useState<Tema>(inicial);
   const { prefs, mudar } = usePreferencias();
+  // O app inteiro acompanha o tema em edição; ao sair do editor, volta ao que está salvo.
+  useEffect(() => definirPreviaTema(tema, inicial), [tema, inicial]);
+  useEffect(() => () => definirPreviaTema(null), []);
   // Salvar com cores sem contraste e a trava ligada: pergunta o que fazer, em vez de travar o botão.
   const [perguntando, setPerguntando] = useState(false);
   // O que a IA cria já vale no app e entra na lista de temas; aqui fica o último guardado.

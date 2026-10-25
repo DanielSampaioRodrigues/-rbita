@@ -172,9 +172,12 @@ svg.icone { filter: var(--filtro-icone, none); }
 }
 
 /* Textos soltos (fora das caixas): uma faixa translúcida da cor do fundo atrás, como marca-texto. */
-:root[data-contorno="true"] .conteudo :is(h1, h2, h3, p, .link):not(.cartao *, .cartao, .janela *, .botao *) {
+:root[data-contorno="true"] .conteudo :is(h1, h2, h3, p, .link):not(.cartao *, .cartao, .janela *, .botao *, .previa-tema *) {
   width: fit-content;
   background: rgb(var(--cor-fundo-rgb) / 0.72);
   box-shadow: 0 0 0 0.3em rgb(var(--cor-fundo-rgb) / 0.72);
   border-radius: var(--canto-pequeno);
 }
+
+/* A prévia do editor mostra o tema como ele é, sem o contorno do app. */
+:root[data-contorno="true"] :is(.previa-tema, .previa-tema *) { text-shadow: none; }

@@ -1,4 +1,4 @@
-import { ajustarPaleta, aplicarVariaveis, lerHex, paletaFinal, variaveisDaPaleta, type Modo, type Paleta } from "@orbita/temas";
+import { ajustarPaleta, aplicarVariaveis, lerHex, paletaFinal, variaveisDaPaleta, type Modo, type Paleta, type Tema } from "@orbita/temas";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { aplicarFundo } from "./fundo";
@@ -39,8 +39,33 @@ export function modoEfetivo(prefs: Preferencias): Modo {
   return consultaEscuro().matches ? "escuro" : "claro";
 }
 
+// Tema aberto no editor: o app inteiro mostra as mudanças em tempo real, sem gravar nada.
+// Ao sair do editor (salvando ou cancelando), volta a valer só o que está nas preferências.
+let previa: { tema: Tema; inicial: Tema } | null = null;
+let ultimasPrefs: Preferencias | null = null;
+
+export function definirPreviaTema(tema: Tema | null, inicial?: Tema) {
+  previa = tema && inicial ? { tema, inicial } : null;
+  if (ultimasPrefs) aplicarAparencia(ultimasPrefs);
+}
+
+/** As preferências como ficariam se o tema em edição fosse salvo agora (mesma regra do salvar). */
+function comPrevia(prefs: Preferencias): Preferencias {
+  if (!previa) return prefs;
+  const { tema, inicial } = previa;
+  const fundoMudou = JSON.stringify(tema.fundoPadrao) !== JSON.stringify(inicial.fundoPadrao);
+  return {
+    ...prefs,
+    temasProprios: [...prefs.temasProprios.filter((x) => x.id !== tema.id), tema],
+    tema: tema.id,
+    fundo: tema.fundoPadrao?.tipo === "imagem" ? tema.fundoPadrao : fundoMudou ? null : prefs.fundo,
+  };
+}
+
 /** Leva as preferências para a tela: cores, fonte, tamanhos e espaços. */
-export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = document.documentElement): void {
+export function aplicarAparencia(salvas: Preferencias, raiz: HTMLElement = document.documentElement): void {
+  ultimasPrefs = salvas;
+  const prefs = comPrevia(salvas);
   const modo = modoEfetivo(prefs);
   const tema = temaDasPreferencias(prefs);
   const paleta = paletaAtual(prefs);

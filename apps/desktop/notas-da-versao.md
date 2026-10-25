@@ -1,2 +1,2 @@
-- **Aparência no menu**: tema e fundo, letras (fonte, tamanho, espaços) e tela (claro ou escuro, densidade, baixo estímulo) agora ficam num item próprio do menu, "Aparência", logo acima de Ajustes. Atalho: Ctrl + 8. Ajustes ficou mais curto, só com o funcionamento do Órbita.
-- **Setas de voltar e avançar**: no alto da tela, como num navegador, para voltar à função anterior ou avançar de novo (também dentro dos projetos). Atalhos: Alt + ← e Alt + →. Os botões laterais do mouse também funcionam.
+- **Editor de tema em tempo real**: ao mudar uma cor (ou pedir algo à IA), o app inteiro já mostra o resultado, não só a prévia. Se apertar "Cancelar", tudo volta como estava; para ficar, aperte "Salvar e usar".
+- **Prévia do editor mais fiel**: o contorno nas letras não aparece mais dentro da prévia.
