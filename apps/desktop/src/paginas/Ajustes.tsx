@@ -17,6 +17,7 @@ import {
 import type { ModoAbrir } from "../api";
 import { textos } from "../textos/pt-BR";
 import { Backup } from "./Backup";
+import { LimiteProjetos } from "./LimiteProjetos";
 import { Seguranca } from "./Seguranca";
 
 const t = textos.ajustes;
@@ -100,6 +101,7 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
             </Button>
           </section>
 
+          <LimiteProjetos />
           <Seguranca modo={modo} aoMudar={aoMudarSeguranca} />
           <Backup aoRestaurar={aoRestaurar} />
       </div>

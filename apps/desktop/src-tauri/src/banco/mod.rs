@@ -4,7 +4,7 @@
 //! etiquetas e ligações. Todo registro tem identificador único, datas de
 //! criação e alteração e exclusão marcada, para a sincronização futura.
 
-pub mod notas;
+pub mod itens;
 
 use std::path::Path;
 
@@ -14,7 +14,7 @@ use crate::cofre::cripto::Chave;
 use crate::erro::Erro;
 
 /// Cada posição é uma versão do banco; nunca altere uma migração já publicada.
-const MIGRACOES: &[&str] = &[
+pub(crate) const MIGRACOES: &[&str] = &[
     // 1 · tipos comuns
     r#"
     CREATE TABLE item (
@@ -107,6 +107,14 @@ const MIGRACOES: &[&str] = &[
         chave TEXT PRIMARY KEY,
         valor TEXT NOT NULL
     );
+    "#,
+    // 2 · hierarquia (projeto > etapa > subtarefa) e ordem manual.
+    //     As notas de teste da versão 0.3 viram ideias guardadas.
+    r#"
+    ALTER TABLE item ADD COLUMN pai_id TEXT;
+    ALTER TABLE item ADD COLUMN ordem REAL NOT NULL DEFAULT 0;
+    CREATE INDEX item_pai ON item (pai_id, excluido_em);
+    UPDATE item SET tipo = 'ideia', estado = 'guardada' WHERE tipo = 'nota';
     "#,
 ];
 

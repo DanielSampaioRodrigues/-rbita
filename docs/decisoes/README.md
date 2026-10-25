@@ -7,3 +7,4 @@ As decisões que mudam o produto também entram em `docs/especificacao.md`.
 - [0002 · Base visual: fontes, preferências e contraste](0002-base-visual.md)
 - [0003 · Cofre: senha, PIN e chave de recuperação](0003-cofre.md)
 - [0004 · Backup em arquivo único](0004-backup.md)
+- [0005 · Ideias, projetos e tarefas](0005-ideias-projetos-tarefas.md)

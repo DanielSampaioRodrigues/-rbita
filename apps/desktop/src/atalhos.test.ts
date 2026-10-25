@@ -15,6 +15,8 @@ describe("atalhos", () => {
     expect(acaoDoEvento(tecla(",", { ctrl: true }))).toBe("irAjustes");
     expect(acaoDoEvento(tecla("B", { ctrl: true, shift: true }))).toBe("alternarBaixoEstimulo");
     expect(acaoDoEvento(tecla("=", { ctrl: true }))).toBe("aumentarLetra");
+    expect(acaoDoEvento(tecla(" ", { ctrl: true, alt: true }))).toBe("capturar");
+    expect(acaoDoEvento(tecla("3", { ctrl: true }))).toBe("irProjetos");
   });
 
   it("ignora teclas comuns e combinações com Alt", () => {
@@ -27,7 +29,7 @@ describe("atalhos", () => {
     for (const a of ATALHOS)
       for (const c of a.combinacoes)
         for (const t of c.teclas) {
-          const chave = `${c.ctrl}-${c.shift}-${t}`;
+          const chave = `${c.ctrl}-${c.shift}-${!!c.alt}-${t}`;
           expect(vistas.has(chave), chave).toBe(false);
           vistas.add(chave);
         }

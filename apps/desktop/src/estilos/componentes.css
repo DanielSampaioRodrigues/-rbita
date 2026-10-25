@@ -444,3 +444,99 @@
 .cartao > .botao { align-self: flex-start; }
 
 .quebra { overflow-wrap: anywhere; }
+
+.pequeno { font-size: 0.85rem; }
+.com-icone { display: inline-flex; align-items: center; gap: var(--espaco-2); }
+.multilinha { resize: vertical; min-height: 5rem; line-height: inherit; }
+
+/* Lista de cartões (ideias, projetos) */
+.lista-cartoes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-3); }
+.cartao.compacto { padding: var(--espaco-4); gap: var(--espaco-3); }
+
+.cartao-projeto {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color var(--transicao), background var(--transicao);
+}
+
+.cartao-projeto[data-hovered] { border-color: var(--cor-borda-controle); background: var(--cor-superficie-alternativa); }
+.cartao-projeto-texto { display: grid; gap: var(--espaco-1); min-width: 0; }
+.cartao-projeto-titulo { font-weight: 650; font-size: 1.05rem; }
+.cartao-projeto-seta { flex: none; color: var(--cor-texto-suave); }
+
+/* Etiqueta de estado: texto sempre presente, cor só reforça. */
+.etiqueta-estado {
+  flex: none;
+  font-size: 0.8rem;
+  font-weight: 650;
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  border: 1px solid var(--cor-borda-controle);
+  color: var(--cor-texto-suave);
+  background: var(--cor-superficie);
+}
+
+.estado-ativo, .estado-fazendo { border-color: var(--cor-destaque); color: var(--cor-destaque); }
+
+/* Menus */
+.menu-popover {
+  min-width: 13rem;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto);
+  background: var(--cor-superficie);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.14);
+  padding: var(--espaco-1);
+}
+
+.menu { outline: none; display: grid; }
+
+.menu-item {
+  padding: var(--espaco-2) var(--espaco-3);
+  border-radius: var(--canto-pequeno);
+  cursor: pointer;
+  outline: none;
+}
+
+.menu-item[data-focused] { background: var(--cor-superficie-alternativa); }
+.menu-item[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: -3px; }
+
+/* Caixa de seleção */
+.caixa { display: inline-flex; align-items: flex-start; gap: var(--espaco-3); cursor: pointer; min-width: 0; flex: 1; }
+
+.caixa-quadrado {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.15em;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--cor-borda-controle);
+  border-radius: var(--canto-pequeno);
+  color: transparent;
+}
+
+.caixa-quadrado svg { width: 0.9rem; height: 0.9rem; }
+.caixa[data-selected] .caixa-quadrado { background: var(--cor-destaque); border-color: var(--cor-destaque); color: var(--cor-texto-sobre-destaque); }
+.caixa[data-focus-visible] { outline: none; }
+.caixa[data-focus-visible] .caixa-quadrado { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+
+/* Recado no rodapé */
+.recado-area { position: fixed; left: 50%; bottom: var(--espaco-5); transform: translateX(-50%); z-index: 20; pointer-events: none; }
+
+.recado {
+  padding: var(--espaco-2) var(--espaco-4);
+  border-radius: var(--canto);
+  background: var(--cor-texto);
+  color: var(--cor-fundo);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+}
+
+/* O mesmo visual vale para botões de alternar (Lista/Quadro). */
+button.segmentado-opcao { border: none; background: transparent; font: inherit; letter-spacing: inherit; }

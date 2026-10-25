@@ -1,25 +1,36 @@
-import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CriarCofre } from "../acesso/CriarCofre";
 import { Desbloquear } from "../acesso/Desbloquear";
 import { MolduraAcesso } from "../acesso/Moldura";
-import { Aviso } from "../componentes/Campo";
-import { textos } from "../textos/pt-BR";
 import { modoEfetivo } from "../aparencia";
-import { api, type Situacao } from "../api";
+import { api, noApp, type Situacao } from "../api";
 import { acaoDoEvento, SO_ABERTO, type AcaoAtalho } from "../atalhos";
+import { Aviso } from "../componentes/Campo";
 import { usePreferencias } from "../estado";
 import { Ajustes } from "../paginas/Ajustes";
+import { Ideias } from "../paginas/Ideias";
 import { Inicio } from "../paginas/Inicio";
+import { Projeto } from "../paginas/Projeto";
+import { Projetos } from "../paginas/Projetos";
 import { TAMANHOS } from "../preferencias";
+import { ProvedorLimite } from "../projetos/Limite";
+import { textos } from "../textos/pt-BR";
+import { Captura } from "./Captura";
 import { JanelaAtalhos } from "./JanelaAtalhos";
 import { Moldura, type Secao } from "./Moldura";
+import { ProvedorRecado } from "./Recado";
 
 export function App() {
   const { prefs, mudar } = usePreferencias();
   const [situacao, setSituacao] = useState<Situacao | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
   const [secao, setSecao] = useState<Secao>("inicio");
+  const [projetoAberto, setProjetoAberto] = useState<string | null>(null);
   const [atalhosAbertos, setAtalhosAbertos] = useState(false);
+  const [capturando, setCapturando] = useState(false);
+  // Captura pedida com o Órbita bloqueado: abre logo depois de desbloquear.
+  const capturaPendente = useRef(false);
 
   const atualizar = useCallback(() => {
     api.situacao().then(
@@ -29,23 +40,56 @@ export function App() {
   }, []);
   useEffect(atualizar, [atualizar]);
 
+  const aberto = situacao?.aberto ?? false;
+
+  const irPara = useCallback((s: Secao) => {
+    setSecao(s);
+    setProjetoAberto(null);
+  }, []);
+
+  const abrirProjeto = useCallback((id: string) => {
+    setSecao("projetos");
+    setProjetoAberto(id);
+  }, []);
+
+  const pedirCaptura = useCallback(() => {
+    if (aberto) setCapturando(true);
+    else capturaPendente.current = true;
+  }, [aberto]);
+
   const aoAbrir = useCallback(() => {
-    setSecao("inicio");
+    irPara("inicio");
     atualizar();
-  }, [atualizar]);
+  }, [atualizar, irPara]);
+
+  useEffect(() => {
+    if (aberto && capturaPendente.current) {
+      capturaPendente.current = false;
+      setCapturando(true);
+    }
+  }, [aberto]);
+
+  // Atalho global (Ctrl+Alt+Espaço), vindo da parte nativa.
+  useEffect(() => {
+    if (!noApp) return;
+    const parar = listen("capturar", pedirCaptura);
+    return () => void parar.then((f) => f());
+  }, [pedirCaptura]);
 
   const bloquear = useCallback(async () => {
+    setCapturando(false);
     await api.bloquear();
     atualizar();
   }, [atualizar]);
 
-  const aberto = situacao?.aberto ?? false;
-
   useEffect(() => {
     const executar: Record<AcaoAtalho, () => void> = {
       verAtalhos: () => setAtalhosAbertos(true),
-      irInicio: () => setSecao("inicio"),
-      irAjustes: () => setSecao("ajustes"),
+      capturar: pedirCaptura,
+      irInicio: () => irPara("inicio"),
+      irIdeias: () => irPara("ideias"),
+      irProjetos: () => irPara("projetos"),
+      irAjustes: () => irPara("ajustes"),
       alternarBaixoEstimulo: () => mudar({ baixoEstimulo: !prefs.baixoEstimulo }),
       alternarClaroEscuro: () => mudar({ modoCor: modoEfetivo(prefs) === "escuro" ? "claro" : "escuro" }),
       aumentarLetra: () => mudar({ tamanho: Math.min(prefs.tamanho + 1, TAMANHOS.length - 1) }),
@@ -61,7 +105,7 @@ export function App() {
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [prefs, mudar, aberto, bloquear]);
+  }, [prefs, mudar, aberto, bloquear, irPara, pedirCaptura]);
 
   let tela;
   if (falha)
@@ -75,21 +119,31 @@ export function App() {
   else if (!situacao) tela = null;
   else if (!situacao.existe) tela = <CriarCofre aoConcluir={aoAbrir} />;
   else if (!situacao.aberto) tela = <Desbloquear key={situacao.modo} situacao={situacao} aoAbrir={aoAbrir} />;
-  else
+  else {
+    let pagina;
+    if (secao === "ideias") pagina = <Ideias />;
+    else if (secao === "projetos")
+      pagina = projetoAberto ? (
+        <Projeto key={projetoAberto} id={projetoAberto} aoVoltar={() => setProjetoAberto(null)} />
+      ) : (
+        <Projetos aoAbrir={abrirProjeto} aoMudarLimite={() => irPara("ajustes")} />
+      );
+    else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
+    else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} />;
     tela = (
-      <Moldura secao={secao} aoEscolherSecao={setSecao} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear}>
-        {secao === "inicio" ? (
-          <Inicio aoIrAjustes={() => setSecao("ajustes")} />
-        ) : (
-          <Ajustes modo={situacao.modo} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />
-        )}
-      </Moldura>
+      <ProvedorLimite>
+        <Moldura secao={secao} aoEscolherSecao={irPara} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
+          {pagina}
+        </Moldura>
+        <Captura aberta={capturando} aoFechar={() => setCapturando(false)} />
+      </ProvedorLimite>
     );
+  }
 
   return (
-    <>
+    <ProvedorRecado>
       {tela}
       <JanelaAtalhos aberta={atalhosAbertos} aoFechar={() => setAtalhosAbertos(false)} />
-    </>
+    </ProvedorRecado>
   );
 }

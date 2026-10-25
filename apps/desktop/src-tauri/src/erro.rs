@@ -29,6 +29,12 @@ pub enum Erro {
     HelloCancelado,
     #[error("O Windows Hello não está disponível neste computador. Use a senha.")]
     HelloIndisponivel,
+    #[error("Já existem {limite} projetos ativos, o limite que você definiu.")]
+    LimiteDeProjetos { limite: u32 },
+    #[error("Escreva alguma coisa antes de salvar.")]
+    TextoVazio,
+    #[error("Não encontrei esse item. Talvez tenha sido excluído.")]
+    NaoEncontrado,
     #[error("Não deu para usar este backup: {0}.")]
     BackupInvalido(String),
     #[error("Não foi possível ler ou gravar um arquivo: {0}")]
@@ -54,6 +60,9 @@ impl Erro {
             Erro::HelloCancelado => "hello_cancelado",
             Erro::HelloIndisponivel => "hello_indisponivel",
             Erro::BackupInvalido(_) => "backup_invalido",
+            Erro::LimiteDeProjetos { .. } => "limite_projetos",
+            Erro::TextoVazio => "texto_vazio",
+            Erro::NaoEncontrado => "nao_encontrado",
             Erro::Arquivo(_) => "arquivo",
             Erro::Interno(_) => "interno",
         }
@@ -69,6 +78,7 @@ impl Serialize for Erro {
         match self {
             Erro::PinErrado { tentativas_restantes } => st.serialize_field("tentativasRestantes", tentativas_restantes)?,
             Erro::PalavrasErradas { posicoes } => st.serialize_field("posicoes", posicoes)?,
+            Erro::LimiteDeProjetos { limite } => st.serialize_field("limite", limite)?,
             _ => st.skip_field("extra")?,
         }
         st.end()

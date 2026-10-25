@@ -7,7 +7,7 @@ mod hello;
 
 use std::sync::Arc;
 
-use tauri::{Manager, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 
 use cofre::aparelho::GuardaDoSistema;
 use cofre::Cofre;
@@ -21,6 +21,8 @@ pub fn run() {
             let pasta = app.path().app_data_dir()?;
             let guarda = Arc::new(GuardaDoSistema { servico: app.config().identifier.clone() });
             app.manage(Estado::new(Cofre::new(pasta, guarda)));
+            #[cfg(desktop)]
+            registrar_captura_global(app);
             Ok(())
         })
         // Ao fechar a janela, faz o backup automático do dia, se estiver ligado.
@@ -50,10 +52,50 @@ pub fn run() {
             comandos::restaurar_backup,
             comandos::situacao_backup,
             comandos::definir_backup_automatico,
-            comandos::listar_notas,
-            comandos::criar_nota,
-            comandos::excluir_nota,
+            comandos::listar_ideias,
+            comandos::criar_ideia,
+            comandos::editar_ideia,
+            comandos::ideia_para_projeto,
+            comandos::excluir_item,
+            comandos::listar_projetos,
+            comandos::obter_projeto,
+            comandos::criar_projeto,
+            comandos::renomear,
+            comandos::mudar_estado_projeto,
+            comandos::salvar_onde_parei,
+            comandos::limite_projetos,
+            comandos::definir_limite_projetos,
+            comandos::listar_tarefas,
+            comandos::criar_tarefa,
+            comandos::mudar_estado_tarefa,
+            comandos::mover_tarefa,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");
+}
+
+/// Ctrl+Alt+Espaço, de qualquer programa: traz o Órbita para a frente com a captura aberta.
+/// Se outro programa já usa o atalho, o Órbita segue sem ele (a captura continua no app).
+#[cfg(desktop)]
+fn registrar_captura_global(app: &tauri::App) {
+    use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+    let atalho = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Space);
+    let plugin = tauri_plugin_global_shortcut::Builder::new()
+        .with_handler(move |app, recebido, evento| {
+            if recebido == &atalho && evento.state() == ShortcutState::Pressed {
+                if let Some(janela) = app.get_webview_window("principal") {
+                    let _ = janela.show();
+                    let _ = janela.unminimize();
+                    let _ = janela.set_focus();
+                }
+                let _ = app.emit("capturar", ());
+            }
+        })
+        .build();
+    if app.handle().plugin(plugin).is_ok() {
+        if let Err(e) = app.global_shortcut().register(atalho) {
+            eprintln!("atalho global de captura indisponível: {e}");
+        }
+    }
 }

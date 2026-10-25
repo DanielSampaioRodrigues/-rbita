@@ -1,4 +1,4 @@
-import { House, Keyboard, Lock, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { FolderKanban, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Interruptor } from "../componentes/Interruptor";
@@ -6,10 +6,12 @@ import { usePreferencias } from "../estado";
 import { textos } from "../textos/pt-BR";
 import { Marca } from "./Marca";
 
-export type Secao = "inicio" | "ajustes";
+export type Secao = "inicio" | "ideias" | "projetos" | "ajustes";
 
 const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "inicio", icone: House, nome: textos.secoes.inicio },
+  { id: "ideias", icone: Lightbulb, nome: textos.secoes.ideias },
+  { id: "projetos", icone: FolderKanban, nome: textos.secoes.projetos },
   { id: "ajustes", icone: SlidersHorizontal, nome: textos.secoes.ajustes },
 ];
 
@@ -18,10 +20,11 @@ interface Props {
   aoEscolherSecao: (secao: Secao) => void;
   aoVerAtalhos: () => void;
   aoBloquear: () => void;
+  aoCapturar: () => void;
   children: ReactNode;
 }
 
-export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, children }: Props) {
+export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCapturar, children }: Props) {
   const { prefs, mudar } = usePreferencias();
 
   return (
@@ -31,6 +34,11 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, chil
           <Marca />
           <span>{textos.app.nome}</span>
         </div>
+
+        <Button className="botao principal capturar" onPress={aoCapturar}>
+          <PenLine aria-hidden="true" size="1.1em" />
+          {textos.moldura.capturar}
+        </Button>
 
         <nav aria-label={textos.app.navegacao}>
           <ul className="lateral-lista">

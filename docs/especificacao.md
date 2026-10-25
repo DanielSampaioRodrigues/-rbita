@@ -47,6 +47,14 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - Etapas, subtarefas e quebra de tarefas grandes em passos pequenos (com ajuda de IA opcional).
 - Visualizações: lista, kanban, mapa mental, linha do tempo e calendário.
 
+**Como ficou na Onda 1 (etapas 5 a 7).**
+- **Capturar**: botão no topo da barra lateral e atalho **Ctrl + Alt + Espaço**, que funciona de qualquer programa, mesmo com o Órbita minimizado. Se o Órbita estiver bloqueado, a captura abre logo depois de desbloquear. Tudo capturado vai para **Ideias** (o "estacionamento").
+- **Ideias**: guardar, editar, excluir e **virar projeto** (o texto vira o título; a ideia fica ligada ao projeto).
+- **Projetos**: estados **ativo, pausado e concluído**. Limite de ativos definido pela pessoa (padrão 3, de 1 a 20). Ao esbarrar no limite, o Órbita mostra os ativos para pausar um, oferece mudar o limite ou, para projeto novo, criar já pausado. Nunca passa por cima do limite sem a pessoa decidir.
+- **Cartão "onde parei"** em todo projeto, editável a qualquer hora: em que ponto estava, próximo passo e links. Ao pausar, o Órbita oferece anotar (tudo opcional).
+- **Início** abre com "Continuar de onde parei": os projetos ativos com o próximo passo de cada um.
+- **Tarefas** em dois níveis (etapas e subtarefas), estados a fazer, fazendo e feita, ordem manual. Visualização em **lista** (caixas de seleção) ou **quadro** (colunas A fazer, Fazendo e Feito), com arrastar por mouse, caneta ou teclado, e um menu em cada tarefa com as mesmas ações.
+
 ### 2. Tempo e rotina
 
 - Agenda diária e semanal visual, com semana-modelo.

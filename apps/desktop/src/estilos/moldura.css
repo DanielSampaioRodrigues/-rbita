@@ -128,3 +128,9 @@
 }
 
 .acesso-cartao > .botao { align-self: flex-start; }
+
+.lateral .capturar { width: 100%; justify-content: flex-start; }
+
+@media (max-width: 760px) {
+  .lateral .capturar { justify-content: center; }
+}

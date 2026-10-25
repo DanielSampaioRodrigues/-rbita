@@ -9,7 +9,7 @@ use serde::Serialize;
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, notas::Nota};
+use crate::banco::{self, itens};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -277,17 +277,94 @@ pub async fn definir_backup_automatico(estado: State<'_, Estado>, pasta: Option<
     situacao_backup(estado).await
 }
 
+// ---------- Ideias, projetos e tarefas ----------
+
 #[tauri::command]
-pub async fn listar_notas(estado: State<'_, Estado>) -> Result<Vec<Nota>, Erro> {
-    estado.com_sessao(|s| banco::notas::listar(&s.conn))
+pub async fn listar_ideias(estado: State<'_, Estado>) -> Result<Vec<itens::Ideia>, Erro> {
+    estado.com_sessao(|s| itens::listar_ideias(&s.conn))
 }
 
 #[tauri::command]
-pub async fn criar_nota(estado: State<'_, Estado>, texto: String) -> Result<Nota, Erro> {
-    estado.com_sessao(|s| banco::notas::criar(&s.conn, &texto))
+pub async fn criar_ideia(estado: State<'_, Estado>, texto: String) -> Result<itens::Ideia, Erro> {
+    estado.com_sessao(|s| itens::criar_ideia(&s.conn, &texto))
 }
 
 #[tauri::command]
-pub async fn excluir_nota(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
-    estado.com_sessao(|s| banco::notas::excluir(&s.conn, &id))
+pub async fn editar_ideia(estado: State<'_, Estado>, id: String, texto: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::editar_ideia(&s.conn, &id, &texto))
+}
+
+#[tauri::command]
+pub async fn ideia_para_projeto(estado: State<'_, Estado>, id: String, ativo: bool) -> Result<itens::Projeto, Erro> {
+    estado.com_sessao(|s| itens::ideia_para_projeto(&s.conn, &id, ativo))
+}
+
+#[tauri::command]
+pub async fn excluir_item(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::excluir(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_projetos(estado: State<'_, Estado>) -> Result<Vec<itens::Projeto>, Erro> {
+    estado.com_sessao(|s| itens::listar_projetos(&s.conn))
+}
+
+#[tauri::command]
+pub async fn obter_projeto(estado: State<'_, Estado>, id: String) -> Result<itens::Projeto, Erro> {
+    estado.com_sessao(|s| itens::obter_projeto(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn criar_projeto(estado: State<'_, Estado>, titulo: String, ativo: bool) -> Result<itens::Projeto, Erro> {
+    estado.com_sessao(|s| itens::criar_projeto(&s.conn, &titulo, ativo))
+}
+
+#[tauri::command]
+pub async fn renomear(estado: State<'_, Estado>, id: String, titulo: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::renomear(&s.conn, &id, &titulo))
+}
+
+#[tauri::command]
+pub async fn mudar_estado_projeto(
+    estado: State<'_, Estado>,
+    id: String,
+    novo: String,
+    onde_parei: Option<itens::OndeParei>,
+) -> Result<itens::Projeto, Erro> {
+    estado.com_sessao(|s| itens::mudar_estado_projeto(&s.conn, &id, &novo, onde_parei))
+}
+
+#[tauri::command]
+pub async fn salvar_onde_parei(estado: State<'_, Estado>, id: String, onde_parei: itens::OndeParei) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::salvar_onde_parei(&s.conn, &id, onde_parei))
+}
+
+#[tauri::command]
+pub async fn limite_projetos(estado: State<'_, Estado>) -> Result<u32, Erro> {
+    estado.com_sessao(|s| itens::limite(&s.conn))
+}
+
+#[tauri::command]
+pub async fn definir_limite_projetos(estado: State<'_, Estado>, limite: u32) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::definir_limite(&s.conn, limite))
+}
+
+#[tauri::command]
+pub async fn listar_tarefas(estado: State<'_, Estado>, projeto_id: String) -> Result<Vec<itens::Tarefa>, Erro> {
+    estado.com_sessao(|s| itens::listar_tarefas(&s.conn, &projeto_id))
+}
+
+#[tauri::command]
+pub async fn criar_tarefa(estado: State<'_, Estado>, pai_id: String, titulo: String) -> Result<itens::Tarefa, Erro> {
+    estado.com_sessao(|s| itens::criar_tarefa(&s.conn, &pai_id, &titulo))
+}
+
+#[tauri::command]
+pub async fn mudar_estado_tarefa(estado: State<'_, Estado>, id: String, novo: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::mudar_estado_tarefa(&s.conn, &id, &novo))
+}
+
+#[tauri::command]
+pub async fn mover_tarefa(estado: State<'_, Estado>, id: String, antes_de: Option<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::mover_tarefa(&s.conn, &id, antes_de.as_deref()))
 }

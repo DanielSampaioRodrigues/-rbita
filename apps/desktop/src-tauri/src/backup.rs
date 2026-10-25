@@ -208,7 +208,7 @@ mod testes {
     use std::sync::Arc;
 
     use super::*;
-    use crate::banco::notas;
+    use crate::banco::itens;
     use crate::cofre::aparelho::GuardaEmMemoria;
 
     const SENHA: &str = "gato azul na janela";
@@ -224,19 +224,19 @@ mod testes {
         Ambiente { _pasta: pasta, cofre }
     }
 
-    /// Cria um cofre com duas notas e faz backup. Devolve as palavras.
+    /// Cria um cofre com duas ideias e faz backup. Devolve as palavras.
     fn preparar(a: &Ambiente, destino: &Path, modo: ModoAbrir) -> Vec<String> {
         let (chave, palavras) = a.cofre.criar(SENHA, modo, Some("2468")).unwrap();
         let conn = banco::abrir(&a.cofre.caminho_banco(), &chave).unwrap();
-        notas::criar(&conn, "primeira").unwrap();
-        notas::criar(&conn, "segunda").unwrap();
+        itens::criar_ideia(&conn, "primeira").unwrap();
+        itens::criar_ideia(&conn, "segunda").unwrap();
         criar(&a.cofre, &conn, &chave, destino).unwrap();
         palavras
     }
 
-    fn textos_das_notas(cofre: &Cofre, chave: &Chave) -> Vec<String> {
+    fn textos_das_ideias(cofre: &Cofre, chave: &Chave) -> Vec<String> {
         let conn = banco::abrir(&cofre.caminho_banco(), chave).unwrap();
-        notas::listar(&conn).unwrap().into_iter().map(|n| n.texto).collect()
+        itens::listar_ideias(&conn).unwrap().into_iter().map(|n| n.texto).collect()
     }
 
     #[test]
@@ -249,7 +249,7 @@ mod testes {
         let novo = ambiente();
         let (chave, modo) = restaurar(&novo.cofre, &arquivo, &Segredo::Senha(SENHA.into())).unwrap();
         assert_eq!(modo, ModoAbrir::Senha);
-        assert_eq!(textos_das_notas(&novo.cofre, &chave), vec!["segunda", "primeira"]);
+        assert_eq!(textos_das_ideias(&novo.cofre, &chave), vec!["segunda", "primeira"]);
         // E a senha continua abrindo o cofre restaurado.
         assert!(novo.cofre.abrir_com_senha(SENHA).is_ok());
     }
@@ -261,7 +261,7 @@ mod testes {
         let palavras = preparar(&origem, &arquivo, ModoAbrir::Senha);
         let novo = ambiente();
         let (chave, _) = restaurar(&novo.cofre, &arquivo, &Segredo::Palavras(palavras.join(" "))).unwrap();
-        assert_eq!(textos_das_notas(&novo.cofre, &chave).len(), 2);
+        assert_eq!(textos_das_ideias(&novo.cofre, &chave).len(), 2);
     }
 
     #[test]
@@ -282,12 +282,12 @@ mod testes {
         preparar(&a, &arquivo, ModoAbrir::Hello);
         // Depois do backup, uma nota nova que não está nele.
         let chave = a.cofre.abrir_com_senha(SENHA).unwrap();
-        notas::criar(&banco::abrir(&a.cofre.caminho_banco(), &chave).unwrap(), "depois do backup").unwrap();
+        itens::criar_ideia(&banco::abrir(&a.cofre.caminho_banco(), &chave).unwrap(), "depois do backup").unwrap();
 
         let (chave, modo) = restaurar(&a.cofre, &arquivo, &Segredo::Senha(SENHA.into())).unwrap();
         assert_eq!(modo, ModoAbrir::Hello);
         assert!(a.cofre.abrir_depois_do_hello().is_ok());
-        assert_eq!(textos_das_notas(&a.cofre, &chave).len(), 2);
+        assert_eq!(textos_das_ideias(&a.cofre, &chave).len(), 2);
 
         let guardadas: Vec<_> = fs::read_dir(a.cofre.pasta().join("anteriores")).unwrap().collect();
         assert_eq!(guardadas.len(), 1);

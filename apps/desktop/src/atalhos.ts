@@ -3,6 +3,9 @@
 export type AcaoAtalho =
   | "verAtalhos"
   | "irInicio"
+  | "irIdeias"
+  | "irProjetos"
+  | "capturar"
   | "irAjustes"
   | "alternarBaixoEstimulo"
   | "alternarClaroEscuro"
@@ -17,7 +20,8 @@ export interface Atalho {
   teclas: string[][];
   descricao: string;
   /** Teclas aceitas (event.key), com ou sem Ctrl/Shift. */
-  combinacoes: { ctrl: boolean; shift: boolean; teclas: string[] }[];
+  /** `alt` só conta quando é true; os outros atalhos recusam Alt (para não confundir com AltGr). */
+  combinacoes: { ctrl: boolean; shift: boolean; alt?: boolean; teclas: string[] }[];
 }
 
 export const ATALHOS: Atalho[] = [
@@ -35,6 +39,24 @@ export const ATALHOS: Atalho[] = [
     teclas: [["Ctrl", "1"]],
     descricao: "Ir para o Início",
     combinacoes: [{ ctrl: true, shift: false, teclas: ["1"] }],
+  },
+  {
+    acao: "capturar",
+    teclas: [["Ctrl", "Alt", "Espaço"]],
+    descricao: "Capturar uma ideia (funciona mesmo com o Órbita minimizado)",
+    combinacoes: [{ ctrl: true, shift: false, alt: true, teclas: [" "] }],
+  },
+  {
+    acao: "irIdeias",
+    teclas: [["Ctrl", "2"]],
+    descricao: "Ir para Ideias",
+    combinacoes: [{ ctrl: true, shift: false, teclas: ["2"] }],
+  },
+  {
+    acao: "irProjetos",
+    teclas: [["Ctrl", "3"]],
+    descricao: "Ir para Projetos",
+    combinacoes: [{ ctrl: true, shift: false, teclas: ["3"] }],
   },
   {
     acao: "irAjustes",
@@ -81,7 +103,7 @@ export const ATALHOS: Atalho[] = [
 ];
 
 /** Ações que só fazem sentido com o Órbita aberto. */
-export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irAjustes", "bloquear"];
+export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irIdeias", "irProjetos", "irAjustes", "bloquear", "capturar"];
 
 /** Atalhos que não dependem do app, listados só para consulta. */
 export const ATALHOS_GERAIS: { teclas: string[][]; descricao: string }[] = [
@@ -92,11 +114,10 @@ export const ATALHOS_GERAIS: { teclas: string[][]; descricao: string }[] = [
 ];
 
 export function acaoDoEvento(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">): AcaoAtalho | null {
-  if (e.altKey) return null;
   const ctrl = e.ctrlKey || e.metaKey;
   for (const atalho of ATALHOS) {
     for (const c of atalho.combinacoes) {
-      if (c.ctrl === ctrl && c.shift === e.shiftKey && c.teclas.includes(e.key)) return atalho.acao;
+      if (c.ctrl === ctrl && c.shift === e.shiftKey && !!c.alt === e.altKey && c.teclas.includes(e.key)) return atalho.acao;
     }
   }
   return null;

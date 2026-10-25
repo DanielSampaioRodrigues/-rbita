@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from "react";
-import { Button, Dialog, Form, Heading, Modal, ModalOverlay } from "react-aria-components";
+import { useState } from "react";
+import { Button, Form } from "react-aria-components";
 import { avaliarPin, avaliarSenha } from "../acesso/validacao";
 import { api, type ModoAbrir } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { ChaveRecuperacao } from "../componentes/ChaveRecuperacao";
 import { EscolhaModo } from "../componentes/EscolhaModo";
+import { Janela } from "../componentes/Janela";
 import { textos } from "../textos/pt-BR";
 import { useHelloDisponivel } from "../useHello";
 
@@ -12,19 +13,6 @@ const t = textos.seguranca;
 const c = textos.comum;
 
 type Janela = "modo" | "senha" | "chave" | null;
-
-function JanelaSimples({ titulo, aberta, aoFechar, children }: { titulo: string; aberta: boolean; aoFechar: () => void; children: ReactNode }) {
-  return (
-    <ModalOverlay className="sobreposicao" isOpen={aberta} onOpenChange={(v) => !v && aoFechar()} isDismissable>
-      <Modal className="janela">
-        <Dialog className="janela-dialogo">
-          <Heading slot="title">{titulo}</Heading>
-          {children}
-        </Dialog>
-      </Modal>
-    </ModalOverlay>
-  );
-}
 
 export function Seguranca({ modo, aoMudar }: { modo: ModoAbrir | null; aoMudar: () => void }) {
   const [janela, setJanela] = useState<Janela>(null);
@@ -52,15 +40,15 @@ export function Seguranca({ modo, aoMudar }: { modo: ModoAbrir | null; aoMudar: 
       </div>
       <Aviso tipo="ok">{aviso}</Aviso>
 
-      <JanelaSimples titulo={t.mudarTitulo} aberta={janela === "modo"} aoFechar={fechar}>
+      <Janela titulo={t.mudarTitulo} aberta={janela === "modo"} aoFechar={fechar}>
         <MudarModo atual={modo ?? "pin"} aoCancelar={fechar} aoConcluir={concluir} />
-      </JanelaSimples>
-      <JanelaSimples titulo={t.trocarTitulo} aberta={janela === "senha"} aoFechar={fechar}>
+      </Janela>
+      <Janela titulo={t.trocarTitulo} aberta={janela === "senha"} aoFechar={fechar}>
         <TrocarSenha aoCancelar={fechar} aoConcluir={concluir} />
-      </JanelaSimples>
-      <JanelaSimples titulo={t.verTitulo} aberta={janela === "chave"} aoFechar={fechar}>
+      </Janela>
+      <Janela titulo={t.verTitulo} aberta={janela === "chave"} aoFechar={fechar}>
         <VerChave aoFechar={fechar} />
-      </JanelaSimples>
+      </Janela>
     </section>
   );
 }

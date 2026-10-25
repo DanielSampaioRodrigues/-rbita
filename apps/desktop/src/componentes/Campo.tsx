@@ -1,6 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Button, Input, Label, Text, TextField } from "react-aria-components";
+import { Button, Input, Label, Text, TextArea, TextField } from "react-aria-components";
 import { textos } from "../textos/pt-BR";
 
 interface Props {
@@ -14,10 +14,21 @@ interface Props {
   autoFocus?: boolean;
   maximo?: number;
   autoComplete?: string;
+  /** Várias linhas (Enter quebra a linha em vez de enviar). */
+  multilinha?: boolean;
 }
 
-export function Campo({ rotulo, valor, aoMudar, descricao, secreto, numerico, autoFocus, maximo, autoComplete }: Props) {
+export function Campo({ rotulo, valor, aoMudar, descricao, secreto, numerico, autoFocus, maximo, autoComplete, multilinha }: Props) {
   const [visivel, setVisivel] = useState(false);
+  if (multilinha) {
+    return (
+      <TextField className="campo" value={valor} onChange={aoMudar} autoFocus={autoFocus} maxLength={maximo}>
+        <Label className="campo-rotulo">{rotulo}</Label>
+        <TextArea className="entrada-texto sozinha multilinha" rows={3} />
+        {descricao && <Text slot="description" className="campo-ajuda">{descricao}</Text>}
+      </TextField>
+    );
+  }
   return (
     <TextField className="campo" value={valor} onChange={aoMudar} autoFocus={autoFocus} maxLength={maximo}>
       <Label className="campo-rotulo">{rotulo}</Label>
