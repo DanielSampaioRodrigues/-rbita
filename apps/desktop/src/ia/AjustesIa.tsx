@@ -12,6 +12,67 @@ import { recarregarRecursos } from "../ditado/recursos";
 const t = textos.ia;
 const FUNCOES: FuncaoIa[] = ["quebrar", "conversa", "revisao"];
 const NENHUM = "nenhum";
+/** Na escolha de modelo: o modelo padrão do provedor. */
+const PADRAO = "__padrao__";
+
+/** Modelos de cada provedor, buscados uma vez (não gasta créditos). */
+const modelosEmCache = new Map<string, Promise<string[]>>();
+function modelosDe(p: ProvedorVisivel): Promise<string[]> {
+  const chave = `${p.id}|${p.url}`;
+  if (!modelosEmCache.has(chave)) {
+    const pedido = api.testarProvedorIa(p, null);
+    pedido.catch(() => modelosEmCache.delete(chave));
+    modelosEmCache.set(chave, pedido);
+  }
+  return modelosEmCache.get(chave)!;
+}
+
+/** Uma função: qual IA (empresa) e qual modelo dela. */
+function Funcao({ funcao, estado, aoMudar }: { funcao: FuncaoIa; estado: EstadoIa; aoMudar: (e: EstadoIa) => void }) {
+  const provedor = estado.provedores.find((p) => p.id === estado.funcoes[funcao]) ?? null;
+  const modelo = estado.modelos[funcao] ?? null;
+  const [lista, setLista] = useState<string[] | null | "erro">(null);
+
+  useEffect(() => {
+    if (!provedor) return;
+    let vivo = true;
+    setLista(null);
+    modelosDe(provedor).then((l) => vivo && setLista(l), () => vivo && setLista("erro"));
+    return () => void (vivo = false);
+  }, [provedor]);
+
+  const opcoesModelo = provedor
+    ? [
+        { valor: PADRAO, nome: t.modeloPadrao(provedor.modelo) },
+        ...[...new Set([...(Array.isArray(lista) ? lista : []), ...(modelo ? [modelo] : [])])]
+          .filter((m) => m !== provedor.modelo)
+          .map((m) => ({ valor: m, nome: m })),
+      ]
+    : [];
+
+  return (
+    <fieldset className="grupo-campos funcao-ia">
+      <legend className="campo-rotulo">{t.funcoes[funcao]}</legend>
+      <div className="linha-campos">
+        <Escolha
+          rotulo={t.provedorDaFuncao}
+          valor={provedor?.id ?? NENHUM}
+          opcoes={[{ valor: NENHUM, nome: t.naoUsar }, ...estado.provedores.map((p) => ({ valor: p.id, nome: p.nome }))]}
+          aoMudar={async (v) => aoMudar(await api.definirFuncaoIa(funcao, v === NENHUM ? null : v, null))}
+        />
+        {provedor && (
+          <Escolha
+            rotulo={t.modeloDaFuncao}
+            valor={modelo ?? PADRAO}
+            opcoes={opcoesModelo}
+            descricao={lista === null ? t.carregandoModelos : lista === "erro" ? t.semListaDeModelos : undefined}
+            aoMudar={async (v) => aoMudar(await api.definirFuncaoIa(funcao, provedor.id, v === PADRAO ? null : v))}
+          />
+        )}
+      </div>
+    </fieldset>
+  );
+}
 
 /** Cartão de IA em Ajustes: provedores, provedor por função e bloqueio de dados sensíveis. */
 export function AjustesIa() {
@@ -62,14 +123,9 @@ export function AjustesIa() {
       {estado.provedores.length > 0 && (
         <>
           <h3>{t.funcoesTitulo}</h3>
+          <p className="campo-ajuda">{t.funcoesAjuda}</p>
           {FUNCOES.map((f) => (
-            <Escolha
-              key={f}
-              rotulo={t.funcoes[f]}
-              valor={estado.funcoes[f] ?? NENHUM}
-              opcoes={[{ valor: NENHUM, nome: t.naoUsar }, ...estado.provedores.map((p) => ({ valor: p.id, nome: `${p.nome} (${p.modelo})` }))]}
-              aoMudar={async (v) => setEstado(await api.definirFuncaoIa(f, v === NENHUM ? null : v))}
-            />
+            <Funcao key={f} funcao={f} estado={estado} aoMudar={setEstado} />
           ))}
         </>
       )}

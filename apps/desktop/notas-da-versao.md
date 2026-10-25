@@ -1,2 +1,3 @@
-- **Conta Google**: se, na tela do Google, a permissão do Drive ficar desmarcada, o Órbita agora explica isso e diz como resolver, em vez de um aviso genérico.
-- Em Ajustes, o mesmo aviso de erro não aparece mais duas vezes.
+- **Modelo por função na IA**: em Ajustes, cada função (quebrar tarefas, separar a captura, revisar textos) escolhe a IA e também o modelo, de uma lista com todos os modelos da sua conta. Dá para usar um modelo mais rápido para revisar e um mais forte para quebrar tarefas, ou empresas diferentes.
+- **Tema com IA**: o desenho de fundo agora aparece em ladrilhos pequenos, como na prévia. Antes, ele era esticado na janela inteira e quase sumia.
+- Conta Google: se a permissão do Drive ficar desmarcada, o Órbita explica isso e diz como resolver.

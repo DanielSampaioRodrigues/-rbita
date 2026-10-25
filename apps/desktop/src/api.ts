@@ -267,6 +267,8 @@ export interface ProvedorVisivel extends Provedor {
 export interface EstadoIa {
   provedores: ProvedorVisivel[];
   funcoes: Partial<Record<FuncaoIa, string>>;
+  /** Modelo próprio da função (sem ele, vale o modelo padrão do provedor). */
+  modelos: Partial<Record<FuncaoIa, string>>;
   bloquearSensivel: boolean;
 }
 
@@ -392,7 +394,7 @@ interface Api {
   /** `chave`: null mantém a atual; texto vazio apaga. */
   salvarProvedorIa(provedor: Provedor, chave: string | null): Promise<EstadoIa>;
   removerProvedorIa(id: string): Promise<EstadoIa>;
-  definirFuncaoIa(funcao: FuncaoIa, provedorId: string | null): Promise<EstadoIa>;
+  definirFuncaoIa(funcao: FuncaoIa, provedorId: string | null, modelo?: string | null): Promise<EstadoIa>;
   bloquearSensivelIa(bloquear: boolean): Promise<EstadoIa>;
   /** Confere a chave e devolve os modelos disponíveis. Não gasta créditos. */
   testarProvedorIa(provedor: Provedor, chave: string | null): Promise<string[]>;
@@ -522,7 +524,7 @@ const nativa: Api = {
   estadoIa: () => chamar("estado_ia"),
   salvarProvedorIa: (provedor, chave) => chamar("salvar_provedor_ia", { provedor, chave }),
   removerProvedorIa: (id) => chamar("remover_provedor_ia", { id }),
-  definirFuncaoIa: (funcao, provedorId) => chamar("definir_funcao_ia", { funcao, provedorId }),
+  definirFuncaoIa: (funcao, provedorId, modelo) => chamar("definir_funcao_ia", { funcao, provedorId, modelo: modelo ?? null }),
   bloquearSensivelIa: (bloquear) => chamar("bloquear_sensivel_ia", { bloquear }),
   testarProvedorIa: (provedor, chave) => chamar("testar_provedor_ia", { provedor, chave }),
   memoriaDoComputador: () => chamar("memoria_do_computador"),
@@ -1109,7 +1111,7 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
 function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
-  const estado: EstadoIa = { provedores: [], funcoes: {}, bloquearSensivel: false };
+  const estado: EstadoIa = { provedores: [], funcoes: {}, modelos: {}, bloquearSensivel: false };
   if (comClaude) {
     estado.provedores.push({ id: "p1", tipo: "claude", nome: "Claude", url: "https://api.anthropic.com", modelo: "claude-opus-5-5", finalChave: "x9Qa", local: false });
     estado.funcoes = { quebrar: "p1", conversa: "p1", revisao: "p1" };
@@ -1134,12 +1136,14 @@ function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" |
     },
     removerProvedorIa: async (id) => {
       estado.provedores = estado.provedores.filter((p) => p.id !== id);
-      for (const f of Object.keys(estado.funcoes) as FuncaoIa[]) if (estado.funcoes[f] === id) delete estado.funcoes[f];
+      for (const f of Object.keys(estado.funcoes) as FuncaoIa[]) if (estado.funcoes[f] === id) (delete estado.funcoes[f], delete estado.modelos[f]);
       return copia();
     },
-    definirFuncaoIa: async (funcao, id) => {
+    definirFuncaoIa: async (funcao, id, modelo) => {
       if (id) estado.funcoes[funcao] = id;
       else delete estado.funcoes[funcao];
+      if (id && modelo?.trim()) estado.modelos[funcao] = modelo.trim();
+      else delete estado.modelos[funcao];
       return copia();
     },
     bloquearSensivelIa: async (bloquear) => ((estado.bloquearSensivel = bloquear), copia()),

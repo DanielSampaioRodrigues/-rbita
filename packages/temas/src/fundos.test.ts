@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { contraste } from "./contraste";
-import { camadaDeFundo, escurecerAmostras, misturar, opacidadeNecessaria, PADROES, type Rgb } from "./fundos";
+import { camadaDeFundo, escurecerAmostras, misturar, opacidadeNecessaria, PADROES, tamanhoDoLadrilho, type Rgb } from "./fundos";
 import { TEMAS } from "./prontos";
 import { papel } from "./papel";
 
@@ -56,5 +56,17 @@ describe("camadas de fundo", () => {
     expect(decodeURIComponent(animado.imagem)).toContain("<animate");
     const sistema = camadaDeFundo({ tipo: "svg", conteudo: svg, repetir: true, animar: true }, p, { baixoEstimulo: false, reduzirAnimacao: true });
     expect(decodeURIComponent(sistema.imagem)).not.toContain("<animate");
+  });
+});
+
+describe("tamanhoDoLadrilho", () => {
+  it("usa o viewBox quando o SVG não diz o tamanho (como a IA escreve)", () => {
+    expect(tamanhoDoLadrilho('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><path/></svg>')).toBe("80px 80px");
+  });
+  it("prefere largura e altura e limita tamanhos extremos", () => {
+    expect(tamanhoDoLadrilho('<svg width="120" height="60px" viewBox="0 0 10 10"></svg>')).toBe("120px 60px");
+    expect(tamanhoDoLadrilho('<svg viewBox="0 0 1200 600"></svg>')).toBe("600px 300px");
+    expect(tamanhoDoLadrilho('<svg viewBox="0 0 12 6"></svg>')).toBe("48px 24px");
+    expect(tamanhoDoLadrilho("<svg></svg>")).toBe("200px 200px");
   });
 });

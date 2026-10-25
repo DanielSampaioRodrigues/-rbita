@@ -110,9 +110,30 @@ export function camadaDeFundo(fundo: Fundo, paleta: Paleta, opcoes: { baixoEstim
     case "svg": {
       const animar = fundo.animar && !opcoes.reduzirAnimacao;
       const svg = pintarSvg(animar ? fundo.conteudo : congelarSvg(fundo.conteudo), paleta.textoSuave);
-      return { ...liso, imagem: svgComoUrl(svg), tamanho: fundo.repetir ? "auto" : "cover", repetir: fundo.repetir ? "repeat" : "no-repeat", amostrasConhecidas: null };
+      return { ...liso, imagem: svgComoUrl(svg), tamanho: fundo.repetir ? tamanhoDoLadrilho(svg) : "cover", repetir: fundo.repetir ? "repeat" : "no-repeat", amostrasConhecidas: null };
     }
   }
+}
+
+/**
+ * Tamanho de um desenho que se repete. SVG sem largura e altura (só com viewBox,
+ * como a IA costuma escrever) seria esticado na janela inteira: vira um desenho
+ * gigante, em vez de ladrilhos. Usa a largura e a altura, ou o viewBox, entre 24 e 600 px.
+ */
+export function tamanhoDoLadrilho(svg: string): string {
+  const abertura = svg.match(/<svg\b[^>]*>/i)?.[0] ?? "";
+  const atributo = (nome: string) => {
+    const v = abertura.match(new RegExp(`\\s${nome}\\s*=\\s*["']\\s*([\\d.]+)(px)?\\s*["']`, "i"));
+    return v ? Number(v[1]) : NaN;
+  };
+  let largura = atributo("width");
+  let altura = atributo("height");
+  const caixa = abertura.match(/viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*["']/i);
+  if (!(largura > 0 && altura > 0) && caixa) [largura, altura] = [Number(caixa[1]), Number(caixa[2])];
+  if (!(largura > 0 && altura > 0)) return "200px 200px";
+  // Desenhos muito pequenos ou muito grandes são ampliados ou reduzidos sem deformar.
+  const fator = Math.max(largura, altura) > 600 ? 600 / Math.max(largura, altura) : Math.min(largura, altura) < 24 ? 24 / Math.min(largura, altura) : 1;
+  return `${Math.round(largura * fator)}px ${Math.round(altura * fator)}px`;
 }
 
 /**

@@ -62,6 +62,9 @@ struct ConfigIa {
     provedores: Vec<Provedor>,
     /// função -> id do provedor.
     funcoes: BTreeMap<String, String>,
+    /// função -> modelo, quando a função usa um modelo diferente do padrão do provedor.
+    #[serde(default)]
+    modelos: BTreeMap<String, String>,
     bloquear_sensivel: bool,
 }
 
@@ -80,6 +83,7 @@ pub struct ProvedorVisivel {
 pub struct EstadoIa {
     pub provedores: Vec<ProvedorVisivel>,
     pub funcoes: BTreeMap<String, String>,
+    pub modelos: BTreeMap<String, String>,
     pub bloquear_sensivel: bool,
 }
 
@@ -127,7 +131,7 @@ pub fn estado(conn: &Connection) -> Result<EstadoIa, Erro> {
         let local = p.local();
         provedores.push(ProvedorVisivel { provedor: p, final_chave, local });
     }
-    Ok(EstadoIa { provedores, funcoes: config.funcoes, bloquear_sensivel: config.bloquear_sensivel })
+    Ok(EstadoIa { provedores, funcoes: config.funcoes, modelos: config.modelos, bloquear_sensivel: config.bloquear_sensivel })
 }
 
 /// Cria ou atualiza um provedor. `chave`: `None` mantém a atual; texto vazio apaga.
@@ -165,12 +169,15 @@ pub fn remover_provedor(conn: &Connection, id: &str) -> Result<EstadoIa, Erro> {
     let mut config = ler(conn)?;
     config.provedores.retain(|p| p.id != id);
     config.funcoes.retain(|_, p| p != id);
+    let funcoes = config.funcoes.clone();
+    config.modelos.retain(|f, _| funcoes.contains_key(f));
     banco::apagar_config(conn, &format!("{PREFIXO_CHAVE}{id}"))?;
     gravar(conn, &config)?;
     estado(conn)
 }
 
-pub fn definir_funcao(conn: &Connection, funcao: &str, provedor_id: Option<&str>) -> Result<EstadoIa, Erro> {
+/// Provedor e, se quiser, um modelo próprio para a função (`None` ou vazio: o padrão do provedor).
+pub fn definir_funcao(conn: &Connection, funcao: &str, provedor_id: Option<&str>, modelo: Option<&str>) -> Result<EstadoIa, Erro> {
     if !FUNCOES.contains(&funcao) {
         return Err(Erro::Interno(format!("função desconhecida: {funcao}")));
     }
@@ -178,10 +185,15 @@ pub fn definir_funcao(conn: &Connection, funcao: &str, provedor_id: Option<&str>
     match provedor_id {
         Some(id) if config.provedores.iter().any(|p| p.id == id) => {
             config.funcoes.insert(funcao.into(), id.into());
+            match modelo.map(str::trim).filter(|m| !m.is_empty()) {
+                Some(m) => config.modelos.insert(funcao.into(), m.into()),
+                None => config.modelos.remove(funcao),
+            };
         }
         Some(_) => return Err(Erro::NaoEncontrado),
         None => {
             config.funcoes.remove(funcao);
+            config.modelos.remove(funcao);
         }
     }
     gravar(conn, &config)?;
@@ -216,7 +228,10 @@ pub fn provedor_da_funcao(conn: &Connection, funcao: &str, sensivel: bool) -> Re
         motivo: "sem_provedor",
         mensagem: "Nenhum provedor de IA está escolhido para esta função. Dá para escolher em Ajustes, na parte de IA.".into(),
     })?;
-    let escolhido = provedor_por_id(conn, id)?;
+    let mut escolhido = provedor_por_id(conn, id)?;
+    if let Some(m) = config.modelos.get(funcao) {
+        escolhido.provedor.modelo = m.clone();
+    }
     if sensivel && config.bloquear_sensivel && !escolhido.provedor.local() {
         return Err(Erro::Ia {
             motivo: "sensivel_bloqueado",
@@ -306,9 +321,26 @@ mod testes {
         let ollama = Provedor { tipo: TipoProvedor::Compativel, nome: "Ollama".into(), url: "http://localhost:11434/v1".into(), ..claude() };
         let e = salvar_provedor(&conn, ollama, None).unwrap();
         let id = e.provedores[1].provedor.id.clone();
-        definir_funcao(&conn, "conversa", Some(&id)).unwrap();
+        definir_funcao(&conn, "conversa", Some(&id), None).unwrap();
         assert!(provedor_da_funcao(&conn, "conversa", true).is_ok());
-        definir_funcao(&conn, "conversa", None).unwrap();
+        definir_funcao(&conn, "conversa", None, None).unwrap();
         assert!(matches!(provedor_da_funcao(&conn, "conversa", false), Err(Erro::Ia { motivo: "sem_provedor", .. })));
+    }
+
+    #[test]
+    fn cada_funcao_pode_ter_seu_modelo() {
+        let (_pasta, conn) = banco_de_teste();
+        let e = salvar_provedor(&conn, claude(), Some("k")).unwrap();
+        let id = e.provedores[0].provedor.id.clone();
+        let padrao = e.provedores[0].provedor.modelo.clone();
+        definir_funcao(&conn, "revisao", Some(&id), Some("claude-haiku-5-5")).unwrap();
+        assert_eq!(provedor_da_funcao(&conn, "revisao", false).unwrap().provedor.modelo, "claude-haiku-5-5");
+        assert_eq!(provedor_da_funcao(&conn, "quebrar", false).unwrap().provedor.modelo, padrao);
+        // Sem modelo: volta ao padrão do provedor.
+        definir_funcao(&conn, "revisao", Some(&id), Some("  ")).unwrap();
+        assert_eq!(provedor_da_funcao(&conn, "revisao", false).unwrap().provedor.modelo, padrao);
+        definir_funcao(&conn, "revisao", Some(&id), Some("claude-haiku-5-5")).unwrap();
+        let e = remover_provedor(&conn, &id).unwrap();
+        assert!(e.modelos.is_empty() && e.funcoes.is_empty());
     }
 }

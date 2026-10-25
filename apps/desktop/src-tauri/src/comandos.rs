@@ -539,8 +539,8 @@ pub async fn remover_provedor_ia(estado: State<'_, Estado>, id: String) -> Resul
 }
 
 #[tauri::command]
-pub async fn definir_funcao_ia(estado: State<'_, Estado>, funcao: String, provedor_id: Option<String>) -> Result<EstadoIa, Erro> {
-    estado.com_sessao(|s| ia::definir_funcao(&s.conn, &funcao, provedor_id.as_deref()))
+pub async fn definir_funcao_ia(estado: State<'_, Estado>, funcao: String, provedor_id: Option<String>, modelo: Option<String>) -> Result<EstadoIa, Erro> {
+    estado.com_sessao(|s| ia::definir_funcao(&s.conn, &funcao, provedor_id.as_deref(), modelo.as_deref()))
 }
 
 #[tauri::command]

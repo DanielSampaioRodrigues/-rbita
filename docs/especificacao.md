@@ -279,7 +279,7 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 
 - **Chave própria (API)**: Claude, GPT, Gemini, Grok e Sabiá. A pessoa cola a chave da própria conta, e o custo de uso fica com ela.
 - **Opção local**: um modelo rodando no próprio computador, sem chave, sem custo e sem os dados saírem do aparelho.
-- **Provedor por função**: dá para usar um na conversa e outro na revisão de texto.
+- **Provedor e modelo por função**: dá para usar um na conversa e outro na revisão de texto, e escolher o modelo de cada um (por exemplo, um modelo menor e mais barato para revisar e um maior para quebrar tarefas).
 - **Janela de conversa**: a pessoa fala ou escreve do jeito que vier ("tenho consulta quinta, preciso pagar a luz e tive uma ideia de livro"), e a IA separa e lança cada coisa no módulo certo.
 - **A IA propõe, a pessoa confirma**: antes de gravar, aparece a lista do que vai ser lançado e onde, para aprovar, editar ou descartar. Nada entra sem confirmação.
 - **Ditado em todo lugar**: botão de microfone em todo campo de texto, com transcrição local.
@@ -294,7 +294,7 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 
 **Como ficou na Onda 1 (etapa 14).**
 - **Ajustes > Inteligência artificial (opcional)**: adicionar provedores (Claude, GPT, Gemini, Grok, Sabiá, Ollama ou outro compatível), colar a chave, **conferir** (o Órbita pede a lista de modelos, o que testa a chave sem gastar créditos) e escolher o modelo. Cada provedor mostra o modelo e os quatro últimos caracteres da chave.
-- **Provedor por função**: quebrar tarefas, conversa e revisão de texto. O primeiro provedor cadastrado vale para todas; dá para trocar ou escolher "não usar IA".
+- **Provedor e modelo por função**: quebrar tarefas, conversa e revisão de texto. O primeiro provedor cadastrado vale para todas; dá para trocar ou escolher "não usar IA". Desde a 0.22.2, cada função também escolhe o modelo, numa lista buscada na conta da pessoa (sem gastar créditos); sem escolha, vale o modelo padrão do provedor.
 - **Ollama**: sem chave; o Órbita lê a memória do computador e diz que tamanho de modelo deve rodar bem.
 - **Sugerir passos com IA**: no menu de cada etapa, no botão "Sugerir etapas com IA" do projeto e no mapa mental. Antes de enviar, a janela diz exatamente o que vai para o provedor. A sugestão chega como lista para marcar, editar, tirar ou completar; só o confirmado vira tarefa.
 - **Erros em linguagem simples**: chave recusada, limite ou créditos, modelo não encontrado, sem internet, Ollama fechado, demora.
