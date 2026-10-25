@@ -70,6 +70,15 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - **Reescrever com IA em toda caixa de texto** (menos senhas, números e endereços): botão ✨ ao lado do microfone, com revisar ortografia, deixar mais claro, mais curto, mais detalhado, transformar em tópicos, tom mais leve, tom mais formal e "do meu jeito" (a pessoa escreve o pedido). O resultado aparece sempre como antes e depois; nada muda sem a pessoa escolher. Usa a IA escolhida para "Revisar e reescrever textos".
 - O aviso de dado sensível não dispara mais por "autismo" ou "TDAH": num app para pessoas neurodivergentes, são palavras do dia a dia. Diagnóstico, laudo, remédio e terapia continuam avisando.
 
+**Pendências da Onda 1 fechadas (versão 0.19.0).**
+- **Etiquetas e ligações em projetos e tarefas**, não só em ideias. Na página do projeto, um bloco "Etiquetas, ligações e anexos"; nas tarefas, pelo menu de cada uma. As etiquetas aparecem na lista e no quadro de tarefas. Ligações valem nos dois sentidos (ideia ↔ projeto, projeto ↔ projeto).
+- **Anexos** em ideias, projetos e tarefas: imagens (com miniatura e visualização grande), arquivos (PDF e outros, até 20 MB cada) e links. Ficam **dentro do cofre criptografado** e entram no backup. Para abrir com outro programa, o Órbita grava uma cópia temporária, apagada na próxima vez que ele abrir; dá também para salvar uma cópia onde a pessoa quiser. Links só http e https.
+- **Rotinas com imagem**: cada passo pode ter uma foto ou desenho próprio, que substitui o ícone e aparece grande no modo Começar.
+- **Conversa com a IA na captura**: depois de "Separar com IA", a pessoa pede mudanças em linguagem livre e a IA refaz a lista, sempre para conferir de novo antes de guardar. Vão só os itens marcados; os pedidos ficam listados.
+- **Quadro de ideias com arrastar**: soltar em outra coluna troca a etiqueta daquela coluna pela nova; "Sem etiqueta" tira todas. Nos dois quadros (ideias e tarefas), as setas do teclado pulam de coluna em coluna; Enter abre a ideia.
+- **Ícones do tema**: o tema define traço (fino, médio, grosso) e pontas (redondas ou retas) dos ícones. Desenhar ícones próprios fica para a galeria da comunidade (Onda 4).
+- **Acessibilidade**: auditoria automática (axe-core, regras WCAG 2.2 AA) em todas as telas, nos temas claro e escuro, sem problemas. O mapa mental virou uma árvore de verdade para leitores de tela. O teste com NVDA, de preferência com quem usa leitor de tela, continua pendente.
+
 ### 2. Tempo e rotina
 
 - Agenda diária e semanal visual, com semana-modelo.
@@ -160,6 +169,7 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - Ferramentas: caneta, lápis, pincel, marca-texto, borracha, formas que se ajustam sozinhas, texto, setas, notas adesivas, imagens e laço de seleção para mover, redimensionar e recolorir.
 - Ligado ao resto: um rascunho pode ser anexado a um projeto, e uma nota pode virar ideia no estacionamento.
 - Base técnica: biblioteca de quadro livre de código aberto (por exemplo, Excalidraw) para o modo infinito, mais um motor de páginas para o modo caderno; entrada por caneta também no iPad e em mesas digitalizadoras.
+- **Os dois modos completos entram na Onda 2** (decisão de Dan, 25/10/2026): não só o quadro infinito, mas o caderno no estilo Goodnotes com tudo acima (páginas, capas, folhas, PDF, pressão e todas as ferramentas). Por ser o maior item da especificação, fica dividido em cinco etapas em `docs/plano-onda-2.md`.
 
 ### 10. Leitura
 
