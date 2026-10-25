@@ -6,6 +6,7 @@
 
 pub mod eventos;
 pub mod itens;
+pub mod rotinas;
 
 use std::path::Path;
 

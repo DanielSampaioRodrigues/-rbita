@@ -59,6 +59,20 @@ export interface Evento {
   excecoes: string[];
 }
 
+export interface Passo {
+  /** Vazio ao criar. */
+  id: string;
+  titulo: string;
+  icone: string;
+  minutos: number | null;
+}
+
+export interface Rotina {
+  id: string;
+  titulo: string;
+  passos: Passo[];
+}
+
 export interface Tarefa {
   id: string;
   paiId: string;
@@ -157,6 +171,9 @@ interface Api {
   salvarEvento(evento: Evento): Promise<Evento>;
   pularDataEvento(id: string, data: string): Promise<void>;
   excluirEvento(id: string): Promise<void>;
+  listarRotinas(): Promise<Rotina[]>;
+  criarRotina(titulo: string): Promise<Rotina>;
+  salvarPasso(rotinaId: string, passo: Passo): Promise<Passo>;
   fazerBackup(caminho: string): Promise<void>;
   infoBackup(caminho: string): Promise<InfoBackup>;
   restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }): Promise<ModoAbrir>;
@@ -210,6 +227,9 @@ const nativa: Api = {
   salvarEvento: (evento) => chamar("salvar_evento", { evento }),
   pularDataEvento: (id, data) => chamar("pular_data_evento", { id, data }),
   excluirEvento: (id) => chamar("excluir_evento", { id }),
+  listarRotinas: () => chamar("listar_rotinas"),
+  criarRotina: (titulo) => chamar("criar_rotina", { titulo }),
+  salvarPasso: (rotinaId, passo) => chamar("salvar_passo", { rotinaId, passo }),
   fazerBackup: (caminho) => chamar("fazer_backup", { caminho }),
   infoBackup: (caminho) => chamar("info_backup", { caminho }),
   restaurarBackup: (caminho, { senha, palavras }) =>
@@ -372,11 +392,70 @@ function simularAgenda() {
   };
 }
 
+function simularRotinas(itens: ReturnType<typeof simularItens>) {
+  const rotinas: Rotina[] = [];
+  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+    rotinas.push({
+      id: "r1",
+      titulo: "Manhã",
+      passos: [
+        { id: "p1", titulo: "Beber um copo de água", icone: "copo", minutos: null },
+        { id: "p2", titulo: "Tomar o remédio", icone: "remedio", minutos: null },
+        { id: "p3", titulo: "Banho", icone: "banho", minutos: 15 },
+        { id: "p4", titulo: "Café da manhã", icone: "cafe", minutos: 20 },
+        { id: "p5", titulo: "Olhar a agenda do dia", icone: "agenda", minutos: 5 },
+      ],
+    });
+  }
+  return {
+    listarRotinas: async () => structuredClone(rotinas),
+    criarRotina: async (titulo: string) => {
+      if (!titulo.trim()) throw new ErroOrbita("texto_vazio", "Escreva alguma coisa antes de salvar.");
+      const r = { id: crypto.randomUUID(), titulo: titulo.trim(), passos: [] };
+      rotinas.push(r);
+      return structuredClone(r);
+    },
+    salvarPasso: async (rotinaId: string, passo: Passo) => {
+      const r = rotinas.find((x) => x.id === rotinaId)!;
+      const salvo = { ...passo, id: passo.id || crypto.randomUUID(), titulo: passo.titulo.trim() };
+      const i = r.passos.findIndex((p) => p.id === salvo.id);
+      if (i >= 0) r.passos[i] = salvo;
+      else r.passos.push(salvo);
+      return salvo;
+    },
+    // Renomear, excluir e mover valem também para rotinas e passos (como na parte nativa).
+    renomear: async (id: string, titulo: string) => {
+      const r = rotinas.find((x) => x.id === id);
+      if (r) r.titulo = titulo.trim();
+      else await itens.renomear(id, titulo);
+    },
+    excluirItem: async (id: string) => {
+      const i = rotinas.findIndex((x) => x.id === id);
+      if (i >= 0) return void rotinas.splice(i, 1);
+      for (const r of rotinas) {
+        const j = r.passos.findIndex((p) => p.id === id);
+        if (j >= 0) return void r.passos.splice(j, 1);
+      }
+      await itens.excluirItem(id);
+    },
+    moverTarefa: async (id: string, antesDe: string | null) => {
+      const r = rotinas.find((x) => x.passos.some((p) => p.id === id));
+      if (!r) return itens.moverTarefa(id, antesDe);
+      const passo = r.passos.find((p) => p.id === id)!;
+      const resto = r.passos.filter((p) => p.id !== id);
+      const pos = antesDe ? resto.findIndex((p) => p.id === antesDe) : -1;
+      resto.splice(pos < 0 ? resto.length : pos, 0, passo);
+      r.passos = resto;
+    },
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["janela", "cometa", "farol", "bambu", "orvalho", "tijolo"];
   const s = { existe: false, modo: null as ModoAbrir | null, senha: "", pin: "", erradas: 0, aberto: false };
   const backup: SituacaoBackup = { pasta: null, ultimo: null, erro: null };
+  const comItens = simularItens();
   const espera = () => new Promise((r) => setTimeout(r, 250));
   const falha = (codigo: CodigoErro, msg: string, extra?: number) => Promise.reject(new ErroOrbita(codigo, msg, extra));
   const conferir = async (texto: string) => {
@@ -445,8 +524,9 @@ function criarSimulacao(): Api {
     bloquear: async () => {
       s.aberto = false;
     },
-    ...simularItens(),
+    ...comItens,
     ...simularAgenda(),
+    ...simularRotinas(comItens),
     fazerBackup: async () => {
       await espera();
     },

@@ -31,6 +31,7 @@ export interface Preferencias {
   espacoLinhas: EspacoLinhas;
   modoCor: ModoCor;
   baixoEstimulo: boolean;
+  avisos: { ligado: boolean; minutos: number; notificacao: boolean };
 }
 
 export const PADRAO: Preferencias = {
@@ -41,7 +42,10 @@ export const PADRAO: Preferencias = {
   espacoLinhas: "normal",
   modoCor: "sistema",
   baixoEstimulo: false,
+  avisos: { ligado: true, minutos: 10, notificacao: true },
 };
+
+export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
 
 const CHAVE = "orbita.preferencias.v1";
 
@@ -60,6 +64,7 @@ export function validar(bruto: unknown): Preferencias {
     espacoLinhas: dentro(p.espacoLinhas, ESPACO_LINHAS) ? p.espacoLinhas : PADRAO.espacoLinhas,
     modoCor: dentro(p.modoCor, ["sistema", "claro", "escuro"] as const) ? p.modoCor : PADRAO.modoCor,
     baixoEstimulo: typeof p.baixoEstimulo === "boolean" ? p.baixoEstimulo : PADRAO.baixoEstimulo,
+    avisos: validarAvisos(p.avisos),
   };
 }
 
@@ -78,4 +83,13 @@ export function salvar(prefs: Preferencias, armazenamento: Storage = localStorag
   } catch {
     // Sem espaço ou sem acesso: o app segue funcionando com o que está na tela.
   }
+}
+
+function validarAvisos(bruto: unknown): Preferencias["avisos"] {
+  const a = (typeof bruto === "object" && bruto !== null ? bruto : {}) as Record<string, unknown>;
+  return {
+    ligado: typeof a.ligado === "boolean" ? a.ligado : PADRAO.avisos.ligado,
+    minutos: ANTECEDENCIAS.includes(a.minutos as never) ? (a.minutos as number) : PADRAO.avisos.minutos,
+    notificacao: typeof a.notificacao === "boolean" ? a.notificacao : PADRAO.avisos.notificacao,
+  };
 }

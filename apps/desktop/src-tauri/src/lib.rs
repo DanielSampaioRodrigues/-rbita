@@ -17,6 +17,7 @@ use comandos::Estado;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let pasta = app.path().app_data_dir()?;
             let guarda = Arc::new(GuardaDoSistema { servico: app.config().identifier.clone() });
@@ -73,6 +74,9 @@ pub fn run() {
             comandos::salvar_evento,
             comandos::pular_data_evento,
             comandos::excluir_evento,
+            comandos::listar_rotinas,
+            comandos::criar_rotina,
+            comandos::salvar_passo,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

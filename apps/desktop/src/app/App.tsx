@@ -9,7 +9,10 @@ import { acaoDoEvento, SO_ABERTO, type AcaoAtalho } from "../atalhos";
 import { Aviso } from "../componentes/Campo";
 import { usePreferencias } from "../estado";
 import { Agenda } from "../agenda/Agenda";
+import { PaginaFoco, ProvedorFoco } from "../foco/Foco";
 import { Ajustes } from "../paginas/Ajustes";
+import { Rotinas } from "../rotinas/Rotinas";
+import { AvisosDeTransicao } from "./Avisos";
 import { Ideias } from "../paginas/Ideias";
 import { Inicio } from "../paginas/Inicio";
 import { Projeto } from "../paginas/Projeto";
@@ -91,6 +94,8 @@ export function App() {
       irIdeias: () => irPara("ideias"),
       irProjetos: () => irPara("projetos"),
       irAgenda: () => irPara("agenda"),
+      irRotinas: () => irPara("rotinas"),
+      irFoco: () => irPara("foco"),
       irAjustes: () => irPara("ajustes"),
       alternarBaixoEstimulo: () => mudar({ baixoEstimulo: !prefs.baixoEstimulo }),
       alternarClaroEscuro: () => mudar({ modoCor: modoEfetivo(prefs) === "escuro" ? "claro" : "escuro" }),
@@ -125,6 +130,8 @@ export function App() {
     let pagina;
     if (secao === "ideias") pagina = <Ideias />;
     else if (secao === "agenda") pagina = <Agenda />;
+    else if (secao === "rotinas") pagina = <Rotinas />;
+    else if (secao === "foco") pagina = <PaginaFoco />;
     else if (secao === "projetos")
       pagina = projetoAberto ? (
         <Projeto key={projetoAberto} id={projetoAberto} aoVoltar={() => setProjetoAberto(null)} />
@@ -135,10 +142,13 @@ export function App() {
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} />;
     tela = (
       <ProvedorLimite>
-        <Moldura secao={secao} aoEscolherSecao={irPara} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
-          {pagina}
-        </Moldura>
-        <Captura aberta={capturando} aoFechar={() => setCapturando(false)} />
+        <ProvedorFoco>
+          <Moldura secao={secao} aoEscolherSecao={irPara} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
+            <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
+            {pagina}
+          </Moldura>
+          <Captura aberta={capturando} aoFechar={() => setCapturando(false)} />
+        </ProvedorFoco>
       </ProvedorLimite>
     );
   }

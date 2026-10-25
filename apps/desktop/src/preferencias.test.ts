@@ -28,6 +28,11 @@ describe("preferências", () => {
     expect(resultado).toEqual({ ...PADRAO, densidade: "compacta" });
   });
 
+  it("completa os avisos de quem tinha preferências antigas", () => {
+    expect(validar({ fonte: "lexend" }).avisos).toEqual(PADRAO.avisos);
+    expect(validar({ avisos: { ligado: false, minutos: 7 } }).avisos).toEqual({ ligado: false, minutos: 10, notificacao: true });
+  });
+
   it("não quebra com texto corrompido", () => {
     const m = new Memoria();
     m.setItem("orbita.preferencias.v1", "{isto não é json");

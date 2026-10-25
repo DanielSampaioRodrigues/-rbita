@@ -69,6 +69,12 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - O **Início** mostra os compromissos de hoje.
 - Horários em lista, sem grade de horas: mais fácil de ler e de usar pelo teclado.
 
+**Como ficou na Onda 1 (etapa 9).**
+- **Rotinas** com passos em ordem; cada passo pode ter ícone (lista de 19, sempre com o nome escrito ao lado) e minutos. "Começar" mostra um passo por vez, em letra grande, com Voltar, Próximo e Sair a qualquer momento. Sem contagem de dias seguidos.
+- **Foco**: timer visual (um disco que diminui) de foco ou pausa, com durações fixas para escolher. Continua contando enquanto a pessoa navega e aparece na barra lateral. Ao terminar, aviso discreto no app e notificação do Windows, **sem som**.
+- **Avisos de transição**: ligados por padrão, 10 minutos antes de cada compromisso com horário (5, 10, 15 ou 30). Aparecem no alto do app e, se a pessoa quiser, como notificação silenciosa do Windows. Um aviso por compromisso e dia.
+- **Limite**: os avisos só funcionam com o Órbita aberto e desbloqueado, porque a agenda fica no cofre criptografado. Manter o Órbita na área de notificação ao fechar a janela fica para a etapa de fechamento.
+
 ### 3. Energia
 
 - Registro rápido do nível de energia do dia.

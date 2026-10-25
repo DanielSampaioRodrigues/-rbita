@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 8 de 18, agenda com semana-modelo (as etapas 5 a 7, marco "mínimo usável", estão prontas).
+Onda 1 (base e coração, Windows): etapa 9 de 18, rotinas, foco e avisos de transição.

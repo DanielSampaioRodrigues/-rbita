@@ -18,6 +18,7 @@ import type { ModoAbrir } from "../api";
 import { textos } from "../textos/pt-BR";
 import { Backup } from "./Backup";
 import { LimiteProjetos } from "./LimiteProjetos";
+import { ANTECEDENCIAS } from "../preferencias";
 import { Seguranca } from "./Seguranca";
 
 const t = textos.ajustes;
@@ -99,6 +100,34 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
             <Button className="botao" onPress={() => setConfirmando(true)}>
               {t.voltarPadrao}
             </Button>
+          </section>
+
+          <section className="cartao">
+            <h2>{textos.avisos.titulo}</h2>
+            <p className="campo-ajuda">{textos.avisos.explicacao}</p>
+            <Interruptor
+              rotulo={textos.avisos.ligado}
+              ligado={prefs.avisos.ligado}
+              aoMudar={(ligado) => mudar({ avisos: { ...prefs.avisos, ligado } })}
+            />
+            {prefs.avisos.ligado && (
+              <>
+                <Segmentado
+                  rotulo={textos.avisos.antecedencia}
+                  valor={String(prefs.avisos.minutos)}
+                  opcoes={ANTECEDENCIAS.map((m) => ({ valor: String(m), nome: textos.avisos.min(m) }))}
+                  aoMudar={(m) => mudar({ avisos: { ...prefs.avisos, minutos: Number(m) } })}
+                />
+                <div className="campo">
+                  <Interruptor
+                    rotulo={textos.avisos.notificacao}
+                    ligado={prefs.avisos.notificacao}
+                    aoMudar={(notificacao) => mudar({ avisos: { ...prefs.avisos, notificacao } })}
+                  />
+                  <p className="campo-ajuda">{textos.avisos.notificacaoExplicacao}</p>
+                </div>
+              </>
+            )}
           </section>
 
           <LimiteProjetos />

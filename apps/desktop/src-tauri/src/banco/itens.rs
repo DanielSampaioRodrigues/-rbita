@@ -223,7 +223,7 @@ pub fn criar_projeto(conn: &Connection, titulo: &str, ativo: bool) -> Result<Pro
 
 pub fn renomear(conn: &Connection, id: &str, titulo: &str) -> Result<(), Erro> {
     conn.execute(
-        "UPDATE item SET titulo = ?2, alterado_em = ?3 WHERE id = ?1 AND tipo IN ('projeto', 'tarefa')",
+        "UPDATE item SET titulo = ?2, alterado_em = ?3 WHERE id = ?1 AND tipo IN ('projeto', 'tarefa', 'rotina')",
         params![id, texto_limpo(titulo)?, agora_ms()],
     )?;
     Ok(())
@@ -335,13 +335,14 @@ pub fn mudar_estado_tarefa(conn: &Connection, id: &str, estado: &str) -> Result<
     tocar(conn, &projeto_da_tarefa(conn, &pai)?)
 }
 
-/// Muda a tarefa de posição: fica logo antes de `antes_de`, ou no fim se `None`.
-pub fn mover_tarefa(conn: &Connection, id: &str, antes_de: Option<&str>) -> Result<(), Erro> {
+/// Muda um item (tarefa ou passo de rotina) de posição entre os irmãos:
+/// fica logo antes de `antes_de`, ou no fim se `None`.
+pub fn mover_item(conn: &Connection, id: &str, antes_de: Option<&str>) -> Result<(), Erro> {
     let pai: String = conn
-        .query_row("SELECT pai_id FROM item WHERE id = ?1 AND tipo = 'tarefa'", [id], |r| r.get(0))
+        .query_row("SELECT pai_id FROM item WHERE id = ?1 AND pai_id IS NOT NULL", [id], |r| r.get(0))
         .optional()?
         .ok_or(Erro::NaoEncontrado)?;
-    let mut c = conn.prepare("SELECT id FROM item WHERE pai_id = ?1 AND tipo = 'tarefa' AND excluido_em IS NULL AND id != ?2 ORDER BY ordem, criado_em")?;
+    let mut c = conn.prepare("SELECT id FROM item WHERE pai_id = ?1 AND excluido_em IS NULL AND id != ?2 ORDER BY ordem, criado_em")?;
     let mut irmas: Vec<String> = c.query_map(params![pai, id], |r| r.get(0))?.collect::<Result<_, _>>()?;
     let posicao = antes_de.and_then(|a| irmas.iter().position(|x| x == a)).unwrap_or(irmas.len());
     irmas.insert(posicao, id.to_string());
@@ -435,7 +436,7 @@ mod testes {
         let p2 = obter_projeto(&conn, &p.id).unwrap();
         assert_eq!((p2.tarefas_feitas, p2.tarefas_total), (1, 4));
 
-        mover_tarefa(&conn, &frete.id, Some(&caixas.id)).unwrap();
+        mover_item(&conn, &frete.id, Some(&caixas.id)).unwrap();
         let etapas: Vec<String> = listar_tarefas(&conn, &p.id).unwrap().into_iter().filter(|t| t.pai_id == p.id).map(|t| t.titulo).collect();
         assert_eq!(etapas, vec!["Contratar frete", "Encaixotar"]);
 

@@ -1,18 +1,21 @@
-import { CalendarDays, FolderKanban, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { CalendarDays, FolderKanban, ListChecks, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Interruptor } from "../componentes/Interruptor";
 import { usePreferencias } from "../estado";
 import { textos } from "../textos/pt-BR";
+import { formatarRestante, useFoco } from "../foco/Foco";
 import { Marca } from "./Marca";
 
-export type Secao = "inicio" | "ideias" | "projetos" | "agenda" | "ajustes";
+export type Secao = "inicio" | "ideias" | "projetos" | "agenda" | "rotinas" | "foco" | "ajustes";
 
 const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "inicio", icone: House, nome: textos.secoes.inicio },
   { id: "ideias", icone: Lightbulb, nome: textos.secoes.ideias },
   { id: "projetos", icone: FolderKanban, nome: textos.secoes.projetos },
   { id: "agenda", icone: CalendarDays, nome: textos.secoes.agenda },
+  { id: "rotinas", icone: ListChecks, nome: textos.secoes.rotinas },
+  { id: "foco", icone: Timer, nome: textos.secoes.foco },
   { id: "ajustes", icone: SlidersHorizontal, nome: textos.secoes.ajustes },
 ];
 
@@ -27,6 +30,7 @@ interface Props {
 
 export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCapturar, children }: Props) {
   const { prefs, mudar } = usePreferencias();
+  const foco = useFoco();
 
   return (
     <div className="moldura">
@@ -57,6 +61,13 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
             ))}
           </ul>
         </nav>
+
+        {foco.restante != null && (
+          <Button className="lateral-item foco-mini" onPress={() => aoEscolherSecao("foco")}>
+            <Timer aria-hidden="true" size="1.15em" strokeWidth={1.75} />
+            {(foco.estado.modo === "foco" ? textos.foco.naBarra : textos.foco.naBarraPausa)(formatarRestante(foco.restante))}
+          </Button>
+        )}
 
         <div className="lateral-rodape">
           <Interruptor

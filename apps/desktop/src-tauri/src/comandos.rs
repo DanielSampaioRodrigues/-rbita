@@ -9,7 +9,7 @@ use serde::Serialize;
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, eventos, itens};
+use crate::banco::{self, eventos, itens, rotinas};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -366,7 +366,7 @@ pub async fn mudar_estado_tarefa(estado: State<'_, Estado>, id: String, novo: St
 
 #[tauri::command]
 pub async fn mover_tarefa(estado: State<'_, Estado>, id: String, antes_de: Option<String>) -> Result<(), Erro> {
-    estado.com_sessao(|s| itens::mover_tarefa(&s.conn, &id, antes_de.as_deref()))
+    estado.com_sessao(|s| itens::mover_item(&s.conn, &id, antes_de.as_deref()))
 }
 
 // ---------- Agenda ----------
@@ -389,4 +389,21 @@ pub async fn pular_data_evento(estado: State<'_, Estado>, id: String, data: Stri
 #[tauri::command]
 pub async fn excluir_evento(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| eventos::excluir(&s.conn, &id))
+}
+
+// ---------- Rotinas ----------
+
+#[tauri::command]
+pub async fn listar_rotinas(estado: State<'_, Estado>) -> Result<Vec<rotinas::Rotina>, Erro> {
+    estado.com_sessao(|s| rotinas::listar(&s.conn))
+}
+
+#[tauri::command]
+pub async fn criar_rotina(estado: State<'_, Estado>, titulo: String) -> Result<rotinas::Rotina, Erro> {
+    estado.com_sessao(|s| rotinas::criar(&s.conn, &titulo))
+}
+
+#[tauri::command]
+pub async fn salvar_passo(estado: State<'_, Estado>, rotina_id: String, passo: rotinas::Passo) -> Result<rotinas::Passo, Erro> {
+    estado.com_sessao(|s| rotinas::salvar_passo(&s.conn, &rotina_id, passo))
 }

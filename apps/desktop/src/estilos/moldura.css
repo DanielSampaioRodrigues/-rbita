@@ -134,3 +134,5 @@
 @media (max-width: 760px) {
   .lateral .capturar { justify-content: center; }
 }
+
+.lateral .foco-mini { color: var(--cor-destaque); font-weight: 650; font-variant-numeric: tabular-nums; }
