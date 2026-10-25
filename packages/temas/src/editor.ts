@@ -143,3 +143,28 @@ export function gravarArquivoTema(tema: Tema): string {
     2,
   );
 }
+
+/**
+ * Lê o tema que uma IA escreveu (JSON, às vezes com texto em volta). Passa
+ * pelas mesmas conferências de um arquivo de outra pessoa: cores válidas,
+ * contraste corrigido se precisar e SVG limpo.
+ */
+export function temaDaIa(resposta: string): { tema: Tema; ajustado: boolean } {
+  const i = resposta.indexOf("{");
+  const j = resposta.lastIndexOf("}");
+  if (i < 0 || j <= i) throw new TemaInvalido("A IA não mandou um tema. Tente de novo, talvez descrevendo de outro jeito.");
+  let bruto: Record<string, unknown>;
+  try {
+    bruto = JSON.parse(resposta.slice(i, j + 1));
+  } catch {
+    throw new TemaInvalido("A IA mandou um tema com erro de formato. Tente de novo.");
+  }
+  const svg = typeof bruto.fundoSvg === "string" && bruto.fundoSvg.includes("<svg") ? bruto.fundoSvg : null;
+  try {
+    return lerArquivoTema(
+      JSON.stringify({ ...bruto, formato: FORMATO_TEMA, fundo: svg ? { tipo: "svg", conteudo: svg, repetir: true } : bruto.fundo }),
+    );
+  } catch {
+    throw new TemaInvalido("A IA mandou um tema incompleto (faltou alguma cor). Tente de novo.");
+  }
+}

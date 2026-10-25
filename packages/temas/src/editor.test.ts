@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { contraste } from "./contraste";
-import { ajustarCor, ajustarPaleta, conferirPaleta, gravarArquivoTema, lerArquivoTema, TemaInvalido } from "./editor";
+import { ajustarCor, ajustarPaleta, conferirPaleta, gravarArquivoTema, lerArquivoTema, temaDaIa, TemaInvalido } from "./editor";
 import { paletaFinal } from "./aplicar";
 import { TEMAS } from "./prontos";
 import { papel } from "./papel";
@@ -41,5 +41,29 @@ describe("editor de tema", () => {
     expect(ajustado).toBe(true);
     expect(conferirPaleta(tema.claro).every((r) => r.passa)).toBe(true);
     expect(tema.fundoPadrao?.tipo === "svg" && tema.fundoPadrao.conteudo).not.toMatch(/onload|script/);
+  });
+});
+
+describe("tema escrito por IA", () => {
+  const base = TEMAS[0];
+  it("aceita texto em volta, corrige contraste e limpa o SVG", () => {
+    const resposta = `Claro! Aqui está:\n${JSON.stringify({
+      nome: "Floresta à noite",
+      cantos: 9,
+      claro: { ...base.claro, textoSuave: "#cccccc" },
+      escuro: base.escuro,
+      fundoSvg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><script>alert(1)</script><circle cx="20" cy="20" r="3" fill="#345"/></svg>',
+    })}\nEspero que goste.`;
+    const { tema, ajustado } = temaDaIa(resposta);
+    expect(tema.nome).toBe("Floresta à noite");
+    expect(ajustado).toBe(true);
+    expect(conferirPaleta(tema.claro).every((r) => r.passa)).toBe(true);
+    expect(tema.cantos).toBe(2);
+    expect(tema.fundoPadrao?.tipo).toBe("svg");
+    expect(JSON.stringify(tema.fundoPadrao)).not.toContain("script");
+  });
+  it("explica em linguagem simples quando falta algo", () => {
+    expect(() => temaDaIa("não sei fazer isso")).toThrow(TemaInvalido);
+    expect(() => temaDaIa('{"nome": "x", "claro": {"fundo": "#fff"}}')).toThrow(/faltou alguma cor/);
   });
 });

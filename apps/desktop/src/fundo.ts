@@ -66,8 +66,17 @@ export async function aplicarFundo(
 export async function prepararFoto(arquivo: File): Promise<string> {
   const url = URL.createObjectURL(arquivo);
   try {
+    return await reduzirImagem(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** O mesmo, a partir de um endereço de imagem (por exemplo, a que a IA gerou). */
+export async function reduzirImagem(endereco: string): Promise<string> {
+  {
     const img = new Image();
-    img.src = url;
+    img.src = endereco;
     await img.decode();
     const escala = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight));
     const canvas = document.createElement("canvas");
@@ -75,7 +84,5 @@ export async function prepararFoto(arquivo: File): Promise<string> {
     canvas.height = Math.round(img.naturalHeight * escala);
     canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL("image/jpeg", 0.82);
-  } finally {
-    URL.revokeObjectURL(url);
   }
 }

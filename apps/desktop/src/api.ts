@@ -341,6 +341,12 @@ interface Api {
   ditadoDescartar(): Promise<void>;
   /** Andamento do download do modelo de voz. Devolve a função para parar de ouvir. */
   ouvirProgressoDitado(aoMudar: (baixado: number, total: number) => void): Promise<() => void>;
+  /** A IA escreve um tema (texto com JSON). `anterior`: tema atual, para ajustar. */
+  gerarTemaIa(provedorId: string, pedido: string, anterior: string | null, comDesenho: boolean): Promise<string>;
+  /** Modelos de imagem que a conta tem nesse provedor (pode ser nenhum). */
+  modelosImagemIa(provedorId: string): Promise<string[]>;
+  /** Imagem de fundo gerada pela IA, como endereço de dados. */
+  gerarImagemIa(provedorId: string, modelo: string, pedido: string): Promise<string>;
   /** Fechar a janela deixa o Órbita na bandeja do sistema. */
   bandejaLigada(): Promise<boolean>;
   definirBandeja(ligar: boolean): Promise<void>;
@@ -435,6 +441,9 @@ const nativa: Api = {
   ditadoComecar: () => chamar("ditado_comecar"),
   ditadoParar: () => chamar("ditado_parar"),
   ditadoDescartar: () => chamar("ditado_descartar"),
+  gerarTemaIa: (provedorId, pedido, anterior, comDesenho) => chamar("gerar_tema_ia", { provedorId, pedido, anterior, comDesenho }),
+  modelosImagemIa: (provedorId) => chamar("modelos_imagem_ia", { provedorId }),
+  gerarImagemIa: (provedorId, modelo, pedido) => chamar("gerar_imagem_ia", { provedorId, modelo, pedido }),
   bandejaLigada: () => chamar("bandeja_ligada"),
   definirBandeja: (ligar) => chamar("definir_bandeja", { ligar }),
   ouvirProgressoDitado: (aoMudar) => listen<{ baixado: number; total: number }>("ditado-progresso", (e) => aoMudar(e.payload.baixado, e.payload.total)),
@@ -885,12 +894,13 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "revisarTextoIa"> {
+function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, bloquearSensivel: false };
   if (comClaude) {
     estado.provedores.push({ id: "p1", tipo: "claude", nome: "Claude", url: "https://api.anthropic.com", modelo: "claude-opus-5-5", finalChave: "x9Qa", local: false });
     estado.funcoes = { quebrar: "p1", conversa: "p1", revisao: "p1" };
+    estado.provedores.push({ id: "p2", tipo: "compativel", nome: "GPT", url: "https://api.openai.com/v1", modelo: "gpt-x", finalChave: "k2Lm", local: false });
   }
   const copia = () => structuredClone(estado);
   return {
@@ -928,6 +938,29 @@ function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" |
       return ["modelo-a", "modelo-b"];
     },
     memoriaDoComputador: async () => 16,
+    gerarTemaIa: async (_p, pedido, anterior, comDesenho) => {
+      await espera(1200);
+      const escuro = /escur|noite/i.test(pedido);
+      const verde = { claro: "#3f6b4a", escuro: "#9cc7a3" };
+      const tema = {
+        nome: anterior ? "Floresta à noite (ajustado)" : "Floresta à noite",
+        cantos: 1.4,
+        sombra: true,
+        claro: { fundo: escuro ? "#e7ece6" : "#eef2ec", superficie: "#f8faf6", superficieAlternativa: "#e3eadf", texto: "#1d2a21", textoSuave: "#4b5a4f",
+          borda: "#d2dccf", bordaControle: "#6f7f72", destaque: verde.claro, textoSobreDestaque: "#ffffff", foco: "#2c5d8f", atencao: "#8a4b22" },
+        escuro: { fundo: "#141b17", superficie: "#1c2520", superficieAlternativa: "#25302a", texto: "#e8efe9", textoSuave: "#b3c0b6",
+          borda: "#2f3b34", bordaControle: "#7f8f83", destaque: verde.escuro, textoSobreDestaque: "#10261a", foco: "#8fb4e3", atencao: "#e0a37a" },
+        ...(comDesenho ? { fundoSvg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><path d="M20 60 L28 40 L36 60 Z M52 64 L60 44 L68 64 Z" fill="#6f8f76" opacity="0.18"/><circle cx="64" cy="16" r="3" fill="#6f8f76" opacity="0.2"/></svg>' } : {}),
+      };
+      return `Aqui está o tema:
+${JSON.stringify(tema)}`;
+    },
+    modelosImagemIa: async (id) => (estado.provedores.find((p) => p.id === id)?.tipo === "claude" ? [] : ["gpt-image-2"]),
+    gerarImagemIa: async () => {
+      await espera(1500);
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2b3a"/><stop offset="1" stop-color="#2f4a3a"/></linearGradient></defs><rect width="1536" height="1024" fill="url(#g)"/><path d="M0 800 L200 520 L400 800 Z M300 820 L560 460 L820 820 Z M700 830 L980 500 L1260 830 Z M1100 820 L1320 560 L1536 820 Z" fill="#183025"/><circle cx="1200" cy="200" r="60" fill="#d8e2c8" opacity="0.8"/></svg>';
+      return `data:image/svg+xml;base64,${btoa(svg)}`;
+    },
     revisarTextoIa: async (texto) => {
       await espera(900);
       const t = texto.trim();

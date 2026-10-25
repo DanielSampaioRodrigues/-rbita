@@ -14,7 +14,7 @@ use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
 use crate::ditado::{self, Ditado, EstadoDitado};
-use crate::ia::{self, cliente, organizar, quebrar, revisar, EstadoIa, Provedor};
+use crate::ia::{self, cliente, organizar, quebrar, revisar, tema, EstadoIa, Provedor};
 
 const CONFIG_PALAVRAS: &str = "palavras_recuperacao";
 
@@ -691,4 +691,33 @@ pub async fn definir_etiquetas_item(estado: State<'_, Estado>, id: String, etiqu
 #[tauri::command]
 pub async fn ligar_itens(estado: State<'_, Estado>, a: String, b: String, ligar: bool) -> Result<(), Erro> {
     estado.com_sessao(|s| etiquetas::ligar(&s.conn, &a, &b, ligar))
+}
+
+// ---------- Tema com IA ----------
+
+/// A IA escreve um tema (JSON). Não grava nada: a tela confere e mostra no editor.
+#[tauri::command]
+pub async fn gerar_tema_ia(estado: State<'_, Estado>, provedor_id: String, pedido: String, anterior: Option<String>, com_desenho: bool) -> Result<String, Erro> {
+    if pedido.trim().is_empty() {
+        return Err(Erro::TextoVazio);
+    }
+    let escolhido = estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor_id))?;
+    cliente::completar(&escolhido, tema::SISTEMA, &tema::montar_pedido(&pedido, anterior.as_deref(), com_desenho)).await
+}
+
+/// Modelos de imagem que a conta da pessoa tem nesse provedor (pode ser nenhum).
+#[tauri::command]
+pub async fn modelos_imagem_ia(estado: State<'_, Estado>, provedor_id: String) -> Result<Vec<String>, Erro> {
+    let escolhido = estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor_id))?;
+    if escolhido.provedor.tipo == ia::TipoProvedor::Claude || escolhido.provedor.local() {
+        return Ok(vec![]);
+    }
+    Ok(tema::modelos_de_imagem(&cliente::listar_todos_modelos(&escolhido).await?))
+}
+
+/// Gera a imagem de fundo do tema. Devolve um endereço de dados (PNG).
+#[tauri::command]
+pub async fn gerar_imagem_ia(estado: State<'_, Estado>, provedor_id: String, modelo: String, pedido: String) -> Result<String, Erro> {
+    let escolhido = estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor_id))?;
+    cliente::gerar_imagem(&escolhido, &modelo, &tema::pedido_de_imagem(&pedido)).await
 }

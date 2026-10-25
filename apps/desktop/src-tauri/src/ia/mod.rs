@@ -9,6 +9,7 @@ pub mod cliente;
 pub mod organizar;
 pub mod quebrar;
 pub mod revisar;
+pub mod tema;
 
 use std::collections::BTreeMap;
 

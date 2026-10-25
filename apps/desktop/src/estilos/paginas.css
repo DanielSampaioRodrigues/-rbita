@@ -560,3 +560,7 @@
 .mes-evento.tarefa[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 1px; }
 .mes-titulo { margin: 0 0 0 var(--espaco-2); }
 .mes-titulo::first-letter { text-transform: uppercase; }
+
+/* Criar tema com IA */
+.tema-ia { align-self: stretch; max-width: 60rem; }
+.tema-ia-fundo { height: 8rem; border: 1px solid var(--cor-borda); border-radius: var(--canto); }

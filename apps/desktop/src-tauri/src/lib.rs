@@ -137,6 +137,9 @@ pub fn run() {
             comandos::excluir_etiqueta,
             comandos::definir_etiquetas_item,
             comandos::ligar_itens,
+            comandos::gerar_tema_ia,
+            comandos::modelos_imagem_ia,
+            comandos::gerar_imagem_ia,
             comandos::definir_bandeja,
         ])
         .run(tauri::generate_context!())

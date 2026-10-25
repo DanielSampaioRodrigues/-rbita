@@ -87,6 +87,50 @@ pub async fn listar_modelos(e: &Escolhido) -> Result<Vec<String>, Erro> {
     Ok(modelos)
 }
 
+/// Todos os modelos do provedor, sem filtro (para achar os de imagem).
+pub async fn listar_todos_modelos(e: &Escolhido) -> Result<Vec<String>, Erro> {
+    let url = match e.provedor.tipo {
+        TipoProvedor::Claude => format!("{}/v1/models?limit=100", e.provedor.url),
+        TipoProvedor::Compativel => format!("{}/models", e.provedor.url),
+    };
+    let v = enviar(com_chave(cliente()?.get(url), e), e.provedor.local()).await?;
+    Ok(v["data"]
+        .as_array()
+        .map(|l| l.iter().filter_map(|m| m["id"].as_str().map(|s| s.trim_start_matches("models/").to_string())).collect())
+        .unwrap_or_default())
+}
+
+/// Gera uma imagem pelo formato "compatível com GPT" (/images/generations).
+/// Devolve a imagem como endereço de dados (data:image/png;base64,...).
+pub async fn gerar_imagem(e: &Escolhido, modelo: &str, pedido: &str) -> Result<String, Erro> {
+    if e.provedor.tipo != TipoProvedor::Compativel {
+        return Err(erro("sem_imagem", "Este provedor não gera imagens. Dá para criar o tema com desenho em SVG."));
+    }
+    let mut corpo = json!({ "model": modelo, "prompt": pedido, "n": 1 });
+    // Os modelos "gpt-image" sempre devolvem a imagem pronta e recusam este campo.
+    if !modelo.starts_with("gpt-image") {
+        corpo["response_format"] = json!("b64_json");
+    }
+    let pedido = cliente()?.post(format!("{}/images/generations", e.provedor.url)).json(&corpo);
+    let v = enviar(com_chave(pedido, e), e.provedor.local()).await?;
+    if let Some(b64) = v.pointer("/data/0/b64_json").and_then(Value::as_str) {
+        return Ok(format!("data:image/png;base64,{b64}"));
+    }
+    if let Some(url) = v.pointer("/data/0/url").and_then(Value::as_str) {
+        let bytes = cliente()?
+            .get(url)
+            .send()
+            .await
+            .map_err(|e2| traduzir_falha_de_rede(&e2, false))?
+            .bytes()
+            .await
+            .map_err(|e2| traduzir_falha_de_rede(&e2, false))?;
+        use base64::Engine;
+        return Ok(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)));
+    }
+    Err(erro("resposta", "A imagem não veio na resposta. Tente de novo."))
+}
+
 /// Um pedido de uma mensagem só, com instruções de sistema. Devolve o texto.
 pub async fn completar(e: &Escolhido, sistema: &str, mensagem: &str) -> Result<String, Erro> {
     let local = e.provedor.local();

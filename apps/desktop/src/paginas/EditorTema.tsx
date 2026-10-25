@@ -1,4 +1,5 @@
 import { ajustarPaleta, CHAVES_PALETA, conferirPaleta, variaveisDaPaleta, type Paleta, type Tema } from "@orbita/temas";
+import { CriarTemaIa } from "../ia/CriarTemaIa";
 import { Check, TriangleAlert, Wand2 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
@@ -71,6 +72,7 @@ export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; a
   return (
     <div className="pagina pagina-larga">
       <h1>{t.titulo}</h1>
+      <CriarTemaIa tema={tema} aoAplicar={setTema} />
       <div className="editor-tema">
         <div className="formulario">
           <Campo rotulo={t.nome} valor={tema.nome} aoMudar={(nome) => setTema((x) => ({ ...x, nome }))} autoFocus />

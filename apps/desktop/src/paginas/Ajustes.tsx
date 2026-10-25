@@ -48,7 +48,16 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
         aoCancelar={() => setEditandoTema(null)}
         aoSalvar={(tema) => {
           const outros = prefs.temasProprios.filter((x) => x.id !== tema.id);
-          mudar({ temasProprios: [...outros, tema], tema: tema.id });
+          // Imagem (foto ou gerada pela IA) fica como fundo escolhido, não dentro do tema:
+          // assim o arquivo de tema continua leve e sem fotos.
+          if (tema.fundoPadrao?.tipo === "imagem") {
+            const { fundoPadrao, ...semImagem } = tema;
+            mudar({ temasProprios: [...outros, semImagem], tema: tema.id, fundo: fundoPadrao });
+          } else {
+            // Só troca o fundo escolhido se o fundo do tema mudou no editor (por exemplo, pela IA).
+            const fundoMudou = JSON.stringify(tema.fundoPadrao) !== JSON.stringify(editandoTema?.fundoPadrao);
+            mudar({ temasProprios: [...outros, tema], tema: tema.id, ...(fundoMudou ? { fundo: null } : {}) });
+          }
           setEditandoTema(null);
         }}
       />
