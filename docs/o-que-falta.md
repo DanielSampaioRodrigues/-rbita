@@ -13,7 +13,7 @@
 - [x] **Conversa com a IA**: pedir mudanças na lista separada pela captura (0.19.0).
 - [x] **Auditoria automática de acessibilidade** (axe-core, WCAG 2.2 AA): sem problemas nos temas claro e escuro (0.19.0).
 - [x] **Primeira configuração leve** (etapa A, 0.21.0): sem inventar senha; Windows Hello, PIN ou abrir direto, e as 6 palavras como recuperação. Senha opcional.
-- [ ] **Proteger com a conta Google ou Microsoft** (etapa B): chave de recuperação e backup criptografado no Drive ou OneDrive da pessoa, sem servidor do Órbita. Apple fica para a Onda 3.
+- [ ] **Proteger com a conta Google ou Microsoft** (etapa B): **programada**; falta Dan cadastrar o Órbita no Google e na Microsoft (`docs/configurar-contas.md`). Depois:: chave de recuperação e backup criptografado no Drive ou OneDrive da pessoa, sem servidor do Órbita. Apple fica para a Onda 3.
 - [ ] **Teste com leitor de tela de verdade** (NVDA), de preferência com quem usa. Só dá para fazer no Windows.
 - [ ] **Portão da Onda 1**: Dan usar no dia a dia por algumas semanas e aprovar (lista em `docs/revisao-onda-1.md`).
 

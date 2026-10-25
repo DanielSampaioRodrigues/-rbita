@@ -7,6 +7,7 @@ mod ditado;
 mod erro;
 mod hello;
 mod ia;
+mod nuvem;
 
 use std::sync::Arc;
 
@@ -80,6 +81,13 @@ pub fn run() {
             comandos::ver_palavras,
             comandos::definir_senha,
             comandos::abrir_com_palavras,
+            comandos::nuvem_disponivel,
+            comandos::nuvem_situacao,
+            comandos::nuvem_conectar,
+            comandos::nuvem_enviar,
+            comandos::nuvem_desconectar,
+            comandos::nuvem_buscar_para_recuperar,
+            comandos::nuvem_concluir_recuperacao,
             comandos::mudar_modo,
             comandos::bloquear,
             comandos::fazer_backup,

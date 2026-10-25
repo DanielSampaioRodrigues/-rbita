@@ -44,6 +44,9 @@ pub enum Erro {
     /// Falha do ditado (microfone, modelo de voz), já explicada.
     #[error("{0}")]
     Ditado(String),
+    /// Falha com a conta Google ou Microsoft, já explicada em linguagem simples.
+    #[error("{mensagem}")]
+    Nuvem { motivo: &'static str, mensagem: String },
     /// Falha da IA, já explicada em linguagem simples.
     #[error("{mensagem}")]
     Ia { motivo: &'static str, mensagem: String },
@@ -74,6 +77,7 @@ impl Erro {
             Erro::NaoEncontrado => "nao_encontrado",
             Erro::Arquivo(_) => "arquivo",
             Erro::Ia { .. } => "ia",
+            Erro::Nuvem { .. } => "nuvem",
             Erro::Ditado(_) => "ditado",
             Erro::Interno(_) => "interno",
         }
@@ -90,7 +94,7 @@ impl Serialize for Erro {
             Erro::PinErrado { tentativas_restantes } => st.serialize_field("tentativasRestantes", tentativas_restantes)?,
             Erro::PalavrasErradas { posicoes } => st.serialize_field("posicoes", posicoes)?,
             Erro::LimiteDeProjetos { limite } => st.serialize_field("limite", limite)?,
-            Erro::Ia { motivo, .. } => st.serialize_field("motivo", motivo)?,
+            Erro::Ia { motivo, .. } | Erro::Nuvem { motivo, .. } => st.serialize_field("motivo", motivo)?,
             _ => st.skip_field("extra")?,
         }
         st.end()

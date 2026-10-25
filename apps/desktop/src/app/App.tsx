@@ -56,6 +56,13 @@ export function App() {
     if (aberto) void recarregarRecursos();
   }, [aberto]);
 
+  // Conta Google ou Microsoft ligada: uma cópia por dia, quietinho. Falha fica anotada em Ajustes.
+  useEffect(() => {
+    if (!aberto) return;
+    const id = setTimeout(() => void api.nuvemEnviar(true).catch(() => undefined), 15_000);
+    return () => clearTimeout(id);
+  }, [aberto]);
+
   const irPara = useCallback((s: Secao) => {
     setSecao(s);
     setProjetoAberto(null);

@@ -83,6 +83,11 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Identificadores do Órbita no Google e na Microsoft (login com conta).
+          # Sem eles, a opção "Guardar na minha conta" não aparece.
+          ORBITA_GOOGLE_CLIENT_ID: ${{ secrets.ORBITA_GOOGLE_CLIENT_ID }}
+          ORBITA_GOOGLE_CLIENT_SECRET: ${{ secrets.ORBITA_GOOGLE_CLIENT_SECRET }}
+          ORBITA_MICROSOFT_CLIENT_ID: ${{ secrets.ORBITA_MICROSOFT_CLIENT_ID }}
 
       - name: Guardar instalador
         uses: actions/upload-artifact@v4

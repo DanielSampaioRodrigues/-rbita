@@ -18,6 +18,24 @@ export interface Situacao {
 /** Confirmar que é a pessoa antes de uma ação sensível (ver a chave, mudar como abre, criar senha). */
 export type Confirmacao = { tipo: "senha" | "palavras" | "pin"; valor: string } | { tipo: "aparelho" };
 
+export type ProvedorNuvem = "google" | "microsoft";
+
+/** Conta Google ou Microsoft ligada para guardar a recuperação. */
+export interface SituacaoNuvem {
+  provedor: ProvedorNuvem;
+  /** E-mail da conta. */
+  conta: string;
+  /** Último envio da chave e do backup. */
+  ultimo: number | null;
+  erro: string | null;
+}
+
+export interface EncontradoNaNuvem {
+  conta: string;
+  criadoEm: number;
+  versaoApp: string;
+}
+
 export interface Ideia {
   id: string;
   texto: string;
@@ -200,6 +218,7 @@ export type CodigoErro =
   | "nao_encontrado"
   | "arquivo"
   | "ia"
+  | "nuvem"
   | "ditado"
   | "interno";
 
@@ -403,6 +422,17 @@ interface Api {
   modelosImagemIa(provedorId: string): Promise<string[]>;
   /** Imagem de fundo gerada pela IA, como endereço de dados. */
   gerarImagemIa(provedorId: string, modelo: string, pedido: string): Promise<string>;
+  /** Quais contas esta versão sabe usar (depende do cadastro no Google e na Microsoft). */
+  nuvemDisponivel(): Promise<Record<ProvedorNuvem, boolean>>;
+  nuvemSituacao(): Promise<SituacaoNuvem | null>;
+  /** Abre o navegador para entrar na conta e já envia a chave e o backup. */
+  nuvemConectar(provedor: ProvedorNuvem): Promise<SituacaoNuvem>;
+  /** `soSePreciso`: só envia se o último envio tiver mais de 20 horas. */
+  nuvemEnviar(soSePreciso: boolean): Promise<SituacaoNuvem | null>;
+  nuvemDesconectar(apagar: boolean): Promise<void>;
+  /** Computador novo: entra na conta e busca os dados (ainda não restaura). */
+  nuvemBuscarParaRecuperar(provedor: ProvedorNuvem): Promise<EncontradoNaNuvem>;
+  nuvemConcluirRecuperacao(modo: ModoAbrir, pin?: string): Promise<ModoAbrir>;
   /** Fechar a janela deixa o Órbita na bandeja do sistema. */
   bandejaLigada(): Promise<boolean>;
   definirBandeja(ligar: boolean): Promise<void>;
@@ -510,6 +540,13 @@ const nativa: Api = {
   gerarTemaIa: (provedorId, pedido, anterior, comDesenho) => chamar("gerar_tema_ia", { provedorId, pedido, anterior, comDesenho }),
   modelosImagemIa: (provedorId) => chamar("modelos_imagem_ia", { provedorId }),
   gerarImagemIa: (provedorId, modelo, pedido) => chamar("gerar_imagem_ia", { provedorId, modelo, pedido }),
+  nuvemDisponivel: () => chamar("nuvem_disponivel"),
+  nuvemSituacao: () => chamar("nuvem_situacao"),
+  nuvemConectar: (provedor) => chamar("nuvem_conectar", { provedor }),
+  nuvemEnviar: (soSePreciso) => chamar("nuvem_enviar", { soSePreciso }),
+  nuvemDesconectar: (apagar) => chamar("nuvem_desconectar", { apagar }),
+  nuvemBuscarParaRecuperar: (provedor) => chamar("nuvem_buscar_para_recuperar", { provedor }),
+  nuvemConcluirRecuperacao: (modo, pin) => chamar("nuvem_concluir_recuperacao", { modo, pin: pin ?? null }),
   bandejaLigada: () => chamar("bandeja_ligada"),
   definirBandeja: (ligar) => chamar("definir_bandeja", { ligar }),
   ouvirProgressoDitado: (aoMudar) => listen<{ baixado: number; total: number }>("ditado-progresso", (e) => aoMudar(e.payload.baixado, e.payload.total)),
@@ -974,6 +1011,7 @@ function criarSimulacao(): Api {
     },
     ...comIa,
     ...simularDitado(params0.get("ditado")),
+    ...simularNuvem(params0.get("nuvem"), async (modo, pin) => Object.assign(s, { existe: true, modo, pin: pin ?? "", senha: "", aberto: true })),
     bandejaLigada: async () => bandeja,
     definirBandeja: async (ligar) => void (bandeja = ligar),
     // A IA de mentira não conhece os projetos: liga a tarefa ao primeiro ativo.
@@ -986,6 +1024,48 @@ function criarSimulacao(): Api {
       const o = await comIa.ajustarOrganizacaoIa(texto, lista, mudanca, sensivel);
       const ativo = (await comItens.listarProjetos()).find((p) => p.estado === "ativo");
       return { ...o, itens: o.itens.map((i) => (i.projetoId === "__primeiro_ativo__" ? { ...i, projetoId: ativo?.id ?? null } : i)) };
+    },
+  };
+}
+
+/**
+ * Conta de mentira. `?nuvem=1`: Google e Microsoft disponíveis; `?nuvem=ligada`: já ligada ao Google;
+ * `?nuvem=vazia`: a conta não tem nada guardado. Sem o parâmetro, a opção não aparece (como numa
+ * versão sem o cadastro no Google e na Microsoft).
+ */
+function simularNuvem(
+  modo: string | null,
+  aoRecuperar: (m: ModoAbrir, pin?: string) => Promise<unknown>,
+): Pick<Api, "nuvemDisponivel" | "nuvemSituacao" | "nuvemConectar" | "nuvemEnviar" | "nuvemDesconectar" | "nuvemBuscarParaRecuperar" | "nuvemConcluirRecuperacao"> {
+  const espera = (ms = 900) => new Promise((r) => setTimeout(r, ms));
+  let situacao: SituacaoNuvem | null =
+    modo === "ligada" ? { provedor: "google", conta: "dan@gmail.com", ultimo: Date.now() - 3_600_000, erro: null } : null;
+  return {
+    nuvemDisponivel: async () => ({ google: !!modo, microsoft: !!modo }),
+    nuvemSituacao: async () => situacao && { ...situacao },
+    nuvemConectar: async (provedor) => {
+      await espera(1600);
+      situacao = { provedor, conta: provedor === "google" ? "dan@gmail.com" : "dan@outlook.com", ultimo: Date.now(), erro: null };
+      return { ...situacao };
+    },
+    nuvemEnviar: async () => {
+      if (!situacao) return null;
+      await espera();
+      situacao = { ...situacao, ultimo: Date.now(), erro: null };
+      return { ...situacao };
+    },
+    nuvemDesconectar: async () => void (await espera(), (situacao = null)),
+    nuvemBuscarParaRecuperar: async (provedor) => {
+      await espera(1600);
+      const conta = provedor === "google" ? "dan@gmail.com" : "dan@outlook.com";
+      if (modo === "vazia") throw new ErroOrbita("nuvem", `Não encontrei um Órbita guardado na conta ${conta}. Confira se é a mesma conta que você ligou no outro computador.`);
+      return { conta, criadoEm: Date.now() - 86_400_000, versaoApp: "0.22.0" };
+    },
+    nuvemConcluirRecuperacao: async (m, pin) => {
+      await espera();
+      await aoRecuperar(m, pin);
+      situacao = { provedor: "google", conta: "dan@gmail.com", ultimo: Date.now(), erro: null };
+      return m;
     },
   };
 }

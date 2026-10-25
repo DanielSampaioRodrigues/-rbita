@@ -9,12 +9,13 @@ import { textos } from "../textos/pt-BR";
 import { useHelloDisponivel } from "../useHello";
 import { MolduraAcesso } from "./Moldura";
 import { avaliarPin } from "./validacao";
+import { EscolherRecuperacao, RecuperarDaNuvem, useContasDisponiveis } from "../nuvem/Nuvem";
 
 const t = textos.criar;
 const c = textos.comum;
 
 // Sem senha para inventar: as 6 palavras são a tranca forte (a senha é opcional, em Ajustes).
-type Passo = "boasVindas" | "restaurar" | "modo" | "pin" | "chave";
+type Passo = "boasVindas" | "restaurar" | "nuvem" | "modo" | "pin" | "recuperacao" | "chave";
 
 export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [passo, setPasso] = useState<Passo>("boasVindas");
@@ -28,16 +29,18 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Com conta Google ou Microsoft disponível, o último passo pergunta onde guardar a recuperação.
+  const contas = useContasDisponiveis();
   const avPin = avaliarPin(pin, pin2);
   const ordem: Passo[] = modo === "pin" ? ["modo", "pin", "chave"] : ["modo", "chave"];
-  const numero = (p: Passo) => c.passo(ordem.indexOf(p) + 1, ordem.length);
+  const numero = (p: Passo) => c.passo(ordem.indexOf(p === "recuperacao" ? "chave" : p) + 1, ordem.length);
 
   const criar = async () => {
     setOcupado(true);
     setErro(null);
     try {
       setPalavras(await api.criarCofre(null, modo, modo === "pin" ? pin : undefined));
-      setPasso("chave");
+      setPasso(contas.length > 0 ? "recuperacao" : "chave");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -53,8 +56,25 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
         <p className="texto-suave">{t.boasVindasPassos}</p>
         <Button className="botao principal" autoFocus onPress={() => setPasso("modo")}>{t.comecar}</Button>
         <div className="links">
+          {contas.length > 0 && <Button className="link" onPress={() => setPasso("nuvem")}>{textos.nuvem.jaUso}</Button>}
           <Button className="link" onPress={() => setPasso("restaurar")}>{textos.backup.tenhoBackup}</Button>
         </div>
+      </MolduraAcesso>
+    );
+  }
+
+  if (passo === "nuvem") {
+    return (
+      <MolduraAcesso>
+        <RecuperarDaNuvem contas={contas} aoVoltar={() => setPasso("boasVindas")} aoConcluir={aoConcluir} />
+      </MolduraAcesso>
+    );
+  }
+
+  if (passo === "recuperacao") {
+    return (
+      <MolduraAcesso passo={numero("recuperacao")}>
+        <EscolherRecuperacao contas={contas} aoEscolherPalavras={() => setPasso("chave")} aoConcluir={aoConcluir} />
       </MolduraAcesso>
     );
   }

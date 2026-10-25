@@ -15,6 +15,7 @@ use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
 use crate::ditado::{self, Ditado, EstadoDitado};
 use crate::ia::{self, cliente, organizar, quebrar, revisar, tema, EstadoIa, Provedor};
+use crate::nuvem::{self, ProvedorNuvem};
 
 const CONFIG_PALAVRAS: &str = "palavras_recuperacao";
 
@@ -33,11 +34,13 @@ const INTERVALO_AUTOMATICO_MS: i64 = 20 * 60 * 60 * 1000;
 pub struct Estado {
     cofre: Cofre,
     sessao: Mutex<Option<Sessao>>,
+    /// Computador novo: o que veio da conta, esperando a pessoa escolher como abrir.
+    recuperando: Mutex<Option<RecuperacaoNuvem>>,
 }
 
 impl Estado {
     pub fn new(cofre: Cofre) -> Self {
-        Self { cofre, sessao: Mutex::new(None) }
+        Self { cofre, sessao: Mutex::new(None), recuperando: Mutex::new(None) }
     }
 
     fn iniciar_sessao(&self, chave: Chave) -> Result<(), Erro> {
@@ -862,3 +865,195 @@ pub async fn ajustar_organizacao_ia(estado: State<'_, Estado>, texto: String, it
     }
     Ok(Organizacao { itens, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
 }
+
+// ---------- Conta Google ou Microsoft (recuperação guardada na conta da pessoa) ----------
+
+/// Guardado no banco criptografado, numa linha de configuração.
+const CONFIG_NUVEM: &str = "nuvem";
+/// Arquivo temporário do backup que veio da conta (computador novo).
+const RECUPERANDO_NUVEM: &str = "nuvem-recuperando.orbita-backup";
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ConfigNuvem {
+    provedor: ProvedorNuvem,
+    renovacao: String,
+    conta: String,
+    ultimo: Option<i64>,
+    erro: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SituacaoNuvem {
+    provedor: ProvedorNuvem,
+    conta: String,
+    ultimo: Option<i64>,
+    erro: Option<String>,
+}
+
+impl From<&ConfigNuvem> for SituacaoNuvem {
+    fn from(c: &ConfigNuvem) -> Self {
+        Self { provedor: c.provedor, conta: c.conta.clone(), ultimo: c.ultimo, erro: c.erro.clone() }
+    }
+}
+
+struct RecuperacaoNuvem {
+    provedor: ProvedorNuvem,
+    renovacao: String,
+    conta: String,
+    palavras: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Disponiveis {
+    google: bool,
+    microsoft: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EncontradoNaNuvem {
+    conta: String,
+    criado_em: i64,
+    versao_app: String,
+}
+
+fn ler_nuvem(s: &Sessao) -> Result<Option<ConfigNuvem>, Erro> {
+    Ok(banco::ler_config(&s.conn, CONFIG_NUVEM)?.and_then(|t| serde_json::from_str(&t).ok()))
+}
+
+fn gravar_nuvem(s: &Sessao, c: &ConfigNuvem) -> Result<(), Erro> {
+    banco::gravar_config(&s.conn, CONFIG_NUVEM, &serde_json::to_string(c).map_err(|e| Erro::Interno(e.to_string()))?)
+}
+
+fn abrir_navegador(app: &tauri::AppHandle) -> impl Fn(&str) -> Result<(), Erro> + '_ {
+    move |url: &str| {
+        use tauri_plugin_opener::OpenerExt;
+        app.opener().open_url(url, None::<&str>).map_err(|e| Erro::Interno(e.to_string()))
+    }
+}
+
+/// A chave (texto do arquivo de recuperação) e um backup novo, prontos para enviar.
+fn arquivos_para_enviar(estado: &Estado) -> Result<(Vec<u8>, Vec<u8>), Erro> {
+    estado.com_sessao(|s| {
+        let palavras = banco::ler_config(&s.conn, CONFIG_PALAVRAS)?.unwrap_or_default();
+        let lista: Vec<String> = palavras.split_whitespace().map(String::from).collect();
+        if lista.len() != palavras::QUANTIDADE {
+            return Err(Erro::Interno("chave de recuperação não encontrada no banco".into()));
+        }
+        let temporario = estado.cofre.pasta().join("nuvem-enviando.orbita-backup");
+        let feito = backup::criar(&estado.cofre, &s.conn, &s.chave, &temporario);
+        let lido = feito.and_then(|_| Ok(std::fs::read(&temporario)?));
+        let _ = std::fs::remove_file(&temporario);
+        Ok((palavras::texto_do_arquivo(&lista).into_bytes(), lido?))
+    })
+}
+
+/// Envia a chave e o backup. Guarda a renovação nova (Microsoft), a hora e o erro, se houver.
+async fn enviar_para_nuvem(estado: &Estado, mut config: ConfigNuvem) -> Result<SituacaoNuvem, Erro> {
+    let resultado = async {
+        let (chave, copia) = arquivos_para_enviar(estado)?;
+        let (acesso, nova) = nuvem::acesso(config.provedor, &config.renovacao).await?;
+        if let Some(n) = nova {
+            config.renovacao = n;
+        }
+        nuvem::enviar(config.provedor, &acesso, nuvem::ARQUIVO_CHAVE, chave).await?;
+        nuvem::enviar(config.provedor, &acesso, nuvem::ARQUIVO_BACKUP, copia).await
+    }
+    .await;
+    match &resultado {
+        Ok(()) => (config.ultimo, config.erro) = (Some(banco::agora_ms()), None),
+        Err(e) => config.erro = Some(e.to_string()),
+    }
+    estado.com_sessao(|s| gravar_nuvem(s, &config))?;
+    resultado.map(|_| SituacaoNuvem::from(&config))
+}
+
+/// Quais contas esta versão do Órbita sabe usar (dependem do cadastro no Google e na Microsoft).
+#[tauri::command]
+pub async fn nuvem_disponivel() -> Result<Disponiveis, Erro> {
+    Ok(Disponiveis { google: ProvedorNuvem::Google.credenciais().is_some(), microsoft: ProvedorNuvem::Microsoft.credenciais().is_some() })
+}
+
+#[tauri::command]
+pub async fn nuvem_situacao(estado: State<'_, Estado>) -> Result<Option<SituacaoNuvem>, Erro> {
+    estado.com_sessao(|s| Ok(ler_nuvem(s)?.as_ref().map(SituacaoNuvem::from)))
+}
+
+/// Liga a conta (login no navegador) e já envia a chave e o backup.
+#[tauri::command]
+pub async fn nuvem_conectar(app: tauri::AppHandle, estado: State<'_, Estado>, provedor: ProvedorNuvem) -> Result<SituacaoNuvem, Erro> {
+    estado.com_sessao(|_| Ok(()))?;
+    let conta = nuvem::entrar(abrir_navegador(&app), provedor).await?;
+    let config = ConfigNuvem { provedor, renovacao: conta.renovacao, conta: conta.email, ultimo: None, erro: None };
+    estado.com_sessao(|s| gravar_nuvem(s, &config))?;
+    enviar_para_nuvem(&estado, config).await
+}
+
+/// Envia agora, ou só se o último envio tiver mais de 20 horas (`so_se_preciso`).
+/// Sem conta ligada, não faz nada.
+#[tauri::command]
+pub async fn nuvem_enviar(estado: State<'_, Estado>, so_se_preciso: bool) -> Result<Option<SituacaoNuvem>, Erro> {
+    let Some(config) = estado.com_sessao(ler_nuvem)? else { return Ok(None) };
+    if so_se_preciso && config.ultimo.is_some_and(|u| banco::agora_ms() - u < INTERVALO_AUTOMATICO_MS) {
+        return Ok(Some(SituacaoNuvem::from(&config)));
+    }
+    enviar_para_nuvem(&estado, config).await.map(Some)
+}
+
+/// Desliga a conta. Com `apagar`, tira antes os arquivos da pasta do app.
+#[tauri::command]
+pub async fn nuvem_desconectar(estado: State<'_, Estado>, apagar: bool) -> Result<(), Erro> {
+    let Some(config) = estado.com_sessao(ler_nuvem)? else { return Ok(()) };
+    if apagar {
+        let (acesso, _) = nuvem::acesso(config.provedor, &config.renovacao).await?;
+        nuvem::apagar(config.provedor, &acesso, nuvem::ARQUIVO_CHAVE).await?;
+        nuvem::apagar(config.provedor, &acesso, nuvem::ARQUIVO_BACKUP).await?;
+    }
+    nuvem::revogar(config.provedor, &config.renovacao).await;
+    estado.com_sessao(|s| banco::apagar_config(&s.conn, CONFIG_NUVEM))
+}
+
+/// Computador novo: entra na conta e baixa a chave e o backup. Ainda não restaura:
+/// a pessoa escolhe antes como vai abrir o Órbita neste computador.
+#[tauri::command]
+pub async fn nuvem_buscar_para_recuperar(app: tauri::AppHandle, estado: State<'_, Estado>, provedor: ProvedorNuvem) -> Result<EncontradoNaNuvem, Erro> {
+    let conta = nuvem::entrar(abrir_navegador(&app), provedor).await?;
+    let (acesso, nova) = nuvem::acesso(provedor, &conta.renovacao).await?;
+    let renovacao = nova.unwrap_or(conta.renovacao);
+    let nada = || nuvem::erro("vazio", format!("Não encontrei um Órbita guardado na conta {}. Confira se é a mesma conta que você ligou no outro computador.", conta.email));
+    let chave = nuvem::baixar(provedor, &acesso, nuvem::ARQUIVO_CHAVE).await?.ok_or_else(nada)?;
+    let copia = nuvem::baixar(provedor, &acesso, nuvem::ARQUIVO_BACKUP).await?.ok_or_else(nada)?;
+    let lidas = palavras::ler_arquivo(&String::from_utf8_lossy(&chave)).map_err(|posicoes| Erro::PalavrasErradas { posicoes })?;
+    std::fs::create_dir_all(estado.cofre.pasta())?;
+    let caminho = estado.cofre.pasta().join(RECUPERANDO_NUVEM);
+    std::fs::write(&caminho, &copia)?;
+    let info = backup::informacao(&caminho)?;
+    *estado.recuperando.lock().unwrap() = Some(RecuperacaoNuvem { provedor, renovacao, conta: conta.email.clone(), palavras: lidas.join(" ") });
+    Ok(EncontradoNaNuvem { conta: conta.email, criado_em: info.criado_em, versao_app: info.versao_app })
+}
+
+/// Restaura o que veio da conta, com o jeito de abrir escolhido, e deixa a conta ligada.
+#[tauri::command]
+pub async fn nuvem_concluir_recuperacao(estado: State<'_, Estado>, modo: ModoAbrir, pin: Option<String>) -> Result<ModoAbrir, Erro> {
+    let caminho = estado.cofre.pasta().join(RECUPERANDO_NUVEM);
+    let rec = estado.recuperando.lock().unwrap().take().ok_or_else(|| nuvem::erro("vazio", "Entre na conta de novo para buscar seus dados."))?;
+    *estado.sessao.lock().unwrap() = None;
+    let resultado = backup::restaurar(&estado.cofre, &caminho, &backup::Segredo::Palavras(rec.palavras.clone()), Some((modo, pin.as_deref())));
+    let (chave, modo) = match resultado {
+        Ok(r) => r,
+        Err(e) => {
+            // Deixa tentar de novo (por exemplo, com um PIN válido) sem entrar na conta outra vez.
+            *estado.recuperando.lock().unwrap() = Some(rec);
+            return Err(e);
+        }
+    };
+    let _ = std::fs::remove_file(&caminho);
+    estado.iniciar_sessao(chave)?;
+    let config = ConfigNuvem { provedor: rec.provedor, renovacao: rec.renovacao, conta: rec.conta, ultimo: Some(banco::agora_ms()), erro: None };
+    estado.com_sessao(|s| gravar_nuvem(s, &config))?;
+    Ok(modo)
+}
+
