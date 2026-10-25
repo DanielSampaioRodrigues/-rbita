@@ -425,8 +425,8 @@ interface Api {
   /** Modelos de imagem que a conta tem nesse provedor (pode ser nenhum). */
   modelosImagemIa(provedorId: string): Promise<string[]>;
   /** Imagem de fundo gerada pela IA, como endereço de dados. */
-  /** `alta`: resolução maior, mais demorada e mais cara. */
-  gerarImagemIa(provedorId: string, modelo: string, pedido: string, alta: boolean): Promise<string>;
+  /** `alta`: resolução maior, mais demorada e mais cara. `vivas`: cores fortes em vez das suaves (padrão). */
+  gerarImagemIa(provedorId: string, modelo: string, pedido: string, alta: boolean, vivas: boolean): Promise<string>;
   /** Quais contas esta versão sabe usar (depende do cadastro no Google e na Microsoft). */
   nuvemDisponivel(): Promise<Record<ProvedorNuvem, boolean>>;
   nuvemSituacao(): Promise<SituacaoNuvem | null>;
@@ -545,7 +545,7 @@ const nativa: Api = {
   gerarTemaIa: (provedorId, pedido, anterior, comDesenho) => chamar("gerar_tema_ia", { provedorId, pedido, anterior, comDesenho }),
   modelosImagemIa: (provedorId) => chamar("modelos_imagem_ia", { provedorId }),
   desenharIconesIa: (provedorId, estilo, icones, referencia) => chamar("desenhar_icones_ia", { provedorId, estilo, icones, referencia }),
-  gerarImagemIa: (provedorId, modelo, pedido, alta) => chamar("gerar_imagem_ia", { provedorId, modelo, pedido, alta }),
+  gerarImagemIa: (provedorId, modelo, pedido, alta, vivas) => chamar("gerar_imagem_ia", { provedorId, modelo, pedido, alta, vivas }),
   nuvemDisponivel: () => chamar("nuvem_disponivel"),
   nuvemSituacao: () => chamar("nuvem_situacao"),
   nuvemConectar: (provedor) => chamar("nuvem_conectar", { provedor }),

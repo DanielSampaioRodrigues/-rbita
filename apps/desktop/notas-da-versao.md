@@ -1,4 +1,2 @@
-- **Listas de modelos mais curtas**: em todas as escolhas de modelo, aparecem só os da geração mais nova de cada empresa (por exemplo, a família GPT-5.6 em vez de dezenas de modelos antigos, de voz ou de busca). Um link "Ver todos os modelos" mostra a lista inteira, se você quiser.
-- **Resolução da imagem**: ao criar um fundo em imagem, escolha entre Normal e Alta. Alta fica mais nítida em telas grandes, mas demora mais e gasta mais créditos.
-- **Imagem com Gemini corrigida**: os modelos de imagem do Gemini davam "O provedor não encontrou esse modelo". Agora funcionam.
-- **Imagem com GPT**: o modelo "chatgpt-image-latest" também funciona, e o fundo sai deitado (no formato da tela). Se a OpenAI pedir a verificação da sua conta, o Órbita explica onde fazer.
+- **Liberar a trava de contraste**: em Ajustes > Tema e fundo, um interruptor novo (desligado por padrão). Ligado, o controle "Quanto o fundo aparece" vai até o fundo inteiro, sem nada por cima, e as cores do tema ficam como você escolher, mesmo com pouco contraste. Se o texto ficar difícil de ler, aperte Ctrl + Shift + B: o contraste volta na hora. A tela de entrada continua sempre legível.
+- **Cores da imagem**: ao criar um fundo em imagem com IA, escolha entre cores Suaves (calmas, como antes) ou Vivas (fiéis ao estilo que você pediu). Antes, a imagem sempre saía apagada.

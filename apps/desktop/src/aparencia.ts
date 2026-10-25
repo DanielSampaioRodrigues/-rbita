@@ -1,4 +1,4 @@
-import { aplicarVariaveis, lerHex, paletaFinal, variaveisDaPaleta, type Modo, type Paleta } from "@orbita/temas";
+import { ajustarPaleta, aplicarVariaveis, lerHex, paletaFinal, variaveisDaPaleta, type Modo, type Paleta } from "@orbita/temas";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { aplicarFundo } from "./fundo";
@@ -16,9 +16,22 @@ import {
 const consultaEscuro = () => window.matchMedia("(prefers-color-scheme: dark)");
 const consultaMovimento = () => window.matchMedia("(prefers-reduced-motion: reduce)");
 
-/** Paleta em uso agora (tema, modo e baixo estímulo). */
+// Tela de desbloqueio: sempre com a trava de contraste, mesmo que a pessoa a tenha liberado.
+// O app abre bloqueado, então começa com a trava.
+let travaForcada = true;
+export function forcarTrava(sim: boolean) {
+  travaForcada = sim;
+}
+
+/** A trava de contraste vale agora? Só sai se a pessoa liberou, fora do baixo estímulo (a saída rápida) e fora do desbloqueio. */
+export function comTrava(prefs: Preferencias): boolean {
+  return !prefs.semTrava || prefs.baixoEstimulo || travaForcada;
+}
+
+/** Paleta em uso agora (tema, modo e baixo estímulo). Com a trava, o contraste é corrigido se precisar. */
 export function paletaAtual(prefs: Preferencias): Paleta {
-  return paletaFinal(temaDasPreferencias(prefs), modoEfetivo(prefs), prefs.baixoEstimulo);
+  const paleta = paletaFinal(temaDasPreferencias(prefs), modoEfetivo(prefs), prefs.baixoEstimulo);
+  return comTrava(prefs) ? ajustarPaleta(paleta) : paleta;
 }
 
 export function modoEfetivo(prefs: Preferencias): Modo {
@@ -30,7 +43,7 @@ export function modoEfetivo(prefs: Preferencias): Modo {
 export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = document.documentElement): void {
   const modo = modoEfetivo(prefs);
   const tema = temaDasPreferencias(prefs);
-  const paleta = paletaFinal(tema, modo, prefs.baixoEstimulo);
+  const paleta = paletaAtual(prefs);
   aplicarVariaveis(raiz, {
     ...variaveisDaPaleta(paleta),
     "--cor-fundo-rgb": lerHex(paleta.fundo).join(" "),
@@ -54,6 +67,7 @@ export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = docume
     baixoEstimulo: prefs.baixoEstimulo,
     reduzirAnimacao: consultaMovimento().matches,
     visivel: prefs.fundoVisivel,
+    semTrava: !comTrava(prefs),
   });
   raiz.style.colorScheme = modo === "escuro" ? "dark" : "light";
 

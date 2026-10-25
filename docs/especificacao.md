@@ -30,7 +30,7 @@ Cada tela e cada função passam por estes sete princípios. Quando uma ideia no
 4. **Sem gamificação punitiva.** Recompensas, se houver, são opcionais e nunca tiram nada da pessoa.
 5. **Captura sem atrito.** Registrar uma ideia, um gasto ou um sintoma leva poucos segundos, por texto ou voz, de qualquer tela.
 6. **Retomar é tão importante quanto começar.** Todo projeto, leitura ou tarefa longa guarda onde parou e qual é o próximo passo.
-7. **Acessibilidade sensorial e cognitiva.** Fontes para dislexia, densidade ajustável, contraste garantido, atalhos de teclado para tudo e linguagem simples e literal, sem ironia nem metáforas ambíguas.
+7. **Acessibilidade sensorial e cognitiva.** Fontes para dislexia, densidade ajustável, contraste garantido por padrão (a pessoa pode liberar a trava para si, com saída rápida), atalhos de teclado para tudo e linguagem simples e literal, sem ironia nem metáforas ambíguas.
 
 **Textos da interface são literais.** Nomes como "estacionamento de ideias" e "hibernação" valem neste documento; na tela, os botões e títulos usam termos literais, como "Guardar para depois" e "Pausar projeto". Tudo que pode ser arrastado também pode ser movido pelo teclado.
 
@@ -232,6 +232,8 @@ A interface deve ir além da do Escuta: a pessoa monta o próprio ambiente, do m
 - **Ícones**: Lucide, de traço fino e uniforme.
 - **Preferências visuais fora do cofre**: fonte, tamanho, cores e baixo estímulo ficam num arquivo próprio, sem criptografia, porque a tela de senha precisa abrir já com a aparência da pessoa. Não são dados sensíveis.
 - **Liberdade com uma trava**: a pessoa pode mudar fundo, cores, fontes, cantos, sombras, ícones e a disposição da tela inicial. A única trava é a legibilidade: se uma escolha deixar o texto ilegível, o Órbita ajusta o painel e avisa o que mudou, sem bloquear a escolha.
+- **Trava de contraste liberável** (decisão de Dan, 0.26.0): as regras de contraste valem para quem faz o app, não para a escolha da pessoa sobre a própria tela, e há quem prefira cores mais vivas ou contraste mais baixo. Em Ajustes > Tema e fundo, "Liberar a trava de contraste" (desligado por padrão) faz o controle "Quanto o fundo aparece" ir até o fundo inteiro (sem cobertura), deixa salvar no editor cores que não passam (as marcações continuam como informação) e faz a IA e a importação de temas manterem as cores como vieram. Proteções: Ctrl + Shift + B (baixo estímulo) volta o contraste e deixa o fundo liso na hora, sem precisar ler a tela; a tela de entrada (bloqueada) sempre usa a trava; os temas guardados não são alterados, e a trava age só na hora de mostrar. Temas para a futura galeria da comunidade continuam precisando passar no teste.
+- **Cores da imagem** (IA): "Suaves" (padrão, calmo e com pouco contraste) ou "Vivas" (fiel ao estilo pedido).
 
 ## Privacidade e dados
 

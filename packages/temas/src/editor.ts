@@ -102,8 +102,11 @@ function lerFundo(bruto: unknown): Fundo | undefined {
   return undefined; // Fotos não viajam no arquivo de tema.
 }
 
-/** Lê um arquivo de tema de outra pessoa. Recusa o que estiver errado e corrige o contraste, se precisar. */
-export function lerArquivoTema(texto: string): { tema: Tema; ajustado: boolean } {
+/**
+ * Lê um arquivo de tema de outra pessoa. Recusa o que estiver errado e corrige o contraste, se precisar.
+ * `corrigir: false` (trava de contraste liberada pela pessoa): mantém as cores como vieram.
+ */
+export function lerArquivoTema(texto: string, { corrigir = true }: { corrigir?: boolean } = {}): { tema: Tema; ajustado: boolean } {
   let bruto: Record<string, unknown>;
   try {
     bruto = JSON.parse(texto);
@@ -114,8 +117,8 @@ export function lerArquivoTema(texto: string): { tema: Tema; ajustado: boolean }
   const nome = typeof bruto.nome === "string" && bruto.nome.trim() ? bruto.nome.trim().slice(0, 40) : "Tema importado";
   const claro = lerPaleta(bruto.claro, "claro");
   const escuro = lerPaleta(bruto.escuro, "escuro");
-  const claroOk = ajustarPaleta(claro);
-  const escuroOk = ajustarPaleta(escuro);
+  const claroOk = corrigir ? ajustarPaleta(claro) : claro;
+  const escuroOk = corrigir ? ajustarPaleta(escuro) : escuro;
   const ajustado = JSON.stringify([claro, escuro]) !== JSON.stringify([claroOk, escuroOk]);
   const cantos = typeof bruto.cantos === "number" ? Math.max(0, Math.min(2, bruto.cantos)) : 1;
   const ic = (typeof bruto.icones === "object" && bruto.icones !== null ? bruto.icones : {}) as Record<string, unknown>;
@@ -191,7 +194,7 @@ export function gravarArquivoTema(tema: Tema): string {
  * pelas mesmas conferências de um arquivo de outra pessoa: cores válidas,
  * contraste corrigido se precisar e SVG limpo.
  */
-export function temaDaIa(resposta: string): { tema: Tema; ajustado: boolean } {
+export function temaDaIa(resposta: string, opcoes: { corrigir?: boolean } = {}): { tema: Tema; ajustado: boolean } {
   const i = resposta.indexOf("{");
   const j = resposta.lastIndexOf("}");
   if (i < 0 || j <= i) throw new TemaInvalido("A IA não mandou um tema. Tente de novo, talvez descrevendo de outro jeito.");
@@ -205,6 +208,7 @@ export function temaDaIa(resposta: string): { tema: Tema; ajustado: boolean } {
   try {
     return lerArquivoTema(
       JSON.stringify({ ...bruto, formato: FORMATO_TEMA, fundo: svg ? { tipo: "svg", conteudo: svg, repetir: true } : bruto.fundo }),
+      opcoes,
     );
   } catch {
     throw new TemaInvalido("A IA mandou um tema incompleto (faltou alguma cor). Tente de novo.");

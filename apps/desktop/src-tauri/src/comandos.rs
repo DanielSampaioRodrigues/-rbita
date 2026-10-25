@@ -779,9 +779,9 @@ pub async fn modelos_imagem_ia(estado: State<'_, Estado>, provedor_id: String) -
 
 /// Gera a imagem de fundo do tema. Devolve um endereço de dados (PNG).
 #[tauri::command]
-pub async fn gerar_imagem_ia(estado: State<'_, Estado>, provedor_id: String, modelo: String, pedido: String, alta: bool) -> Result<String, Erro> {
+pub async fn gerar_imagem_ia(estado: State<'_, Estado>, provedor_id: String, modelo: String, pedido: String, alta: bool, vivas: bool) -> Result<String, Erro> {
     let escolhido = estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor_id))?;
-    cliente::gerar_imagem(&escolhido, &modelo, &tema::pedido_de_imagem(&pedido), alta).await
+    cliente::gerar_imagem(&escolhido, &modelo, &tema::pedido_de_imagem(&pedido, vivas), alta).await
 }
 
 #[tauri::command]

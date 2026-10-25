@@ -38,7 +38,7 @@ export async function aplicarFundo(
   raiz: HTMLElement,
   fundo: Fundo,
   paleta: Paleta,
-  opcoes: { baixoEstimulo: boolean; reduzirAnimacao: boolean; visivel?: number },
+  opcoes: { baixoEstimulo: boolean; reduzirAnimacao: boolean; visivel?: number; semTrava?: boolean },
 ): Promise<number> {
   const c = camadaDeFundo(fundo, paleta, opcoes);
   raiz.style.setProperty("--fundo-imagem", c.imagem);
@@ -53,8 +53,9 @@ export async function aplicarFundo(
   // Foto tem um piso, porque varia muito de um ponto para outro; desenho, não.
   const minimo = fundo.tipo === "imagem" ? 0.3 : 0;
   // "Quanto o fundo aparece" (0 a 100): vai do ponto mais legível ao mínimo de leitura (WCAG AA), nunca abaixo.
+  // Sem a trava (escolha da pessoa), vai até o fundo inteiro à mostra.
   const visivel = Math.min(100, Math.max(0, opcoes.visivel ?? 0)) / 100;
-  const chave = `${c.imagem.length}|${c.imagem.slice(-200)}|${c.escurecimento}|${paleta.fundo}|${paleta.texto}|${minimo}|${visivel}`;
+  const chave = `${c.imagem.length}|${c.imagem.slice(-200)}|${c.escurecimento}|${paleta.fundo}|${paleta.texto}|${minimo}|${visivel}|${opcoes.semTrava ? 1 : 0}`;
   let opacidade = cache.get(chave);
   if (opacidade === undefined) {
     // Enquanto mede, fica opaco (seguro).
@@ -67,7 +68,7 @@ export async function aplicarFundo(
     else {
       const escurecidas = escurecerAmostras(amostras, c.escurecimento);
       const rigida = opacidadeNecessaria(escurecidas, paleta, minimo, tolerancia);
-      const leve = visivel > 0 ? opacidadeNecessaria(escurecidas, paleta, 0, tolerancia, LIMITES_MINIMOS) : rigida;
+      const leve = opcoes.semTrava ? 0 : visivel > 0 ? opacidadeNecessaria(escurecidas, paleta, 0, tolerancia, LIMITES_MINIMOS) : rigida;
       opacidade = Math.round((rigida - visivel * Math.max(0, rigida - leve)) * 100) / 100;
     }
     cache.set(chave, opacidade);

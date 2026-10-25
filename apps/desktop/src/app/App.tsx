@@ -5,7 +5,7 @@ import { BloqueioAutomatico } from "./BloqueioAutomatico";
 import { CriarCofre } from "../acesso/CriarCofre";
 import { Desbloquear } from "../acesso/Desbloquear";
 import { MolduraAcesso } from "../acesso/Moldura";
-import { modoEfetivo } from "../aparencia";
+import { aplicarAparencia, forcarTrava, modoEfetivo } from "../aparencia";
 import { api, noApp, type Situacao } from "../api";
 import { acaoDoEvento, SO_ABERTO, type AcaoAtalho } from "../atalhos";
 import { Aviso } from "../componentes/Campo";
@@ -51,6 +51,11 @@ export function App() {
   useEffect(atualizar, [atualizar]);
 
   const aberto = situacao?.aberto ?? false;
+  // Bloqueado, a tela de entrada fica sempre legível (com a trava de contraste).
+  useEffect(() => {
+    forcarTrava(!aberto);
+    aplicarAparencia(prefs);
+  }, [aberto, prefs]);
   // Microfone e revisão nos campos dependem de dados que só abrem com o cofre.
   useEffect(() => {
     if (aberto) void recarregarRecursos();

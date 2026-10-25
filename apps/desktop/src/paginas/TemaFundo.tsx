@@ -160,7 +160,7 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
           e.target.value = "";
           if (!arquivo) return;
           try {
-            const { tema, ajustado } = lerArquivoTema(await arquivo.text());
+            const { tema, ajustado } = lerArquivoTema(await arquivo.text(), { corrigir: !prefs.semTrava });
             mudar({ temasProprios: [...prefs.temasProprios, tema], tema: tema.id });
             recado(ajustado ? t.importadoAjustado(tema.nome) : t.importado(tema.nome));
           } catch (err) {
@@ -244,16 +244,21 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
       {!prefs.baixoEstimulo && (fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
         <div className="formulario">
           <div className="campo">
-            <Controle rotulo={t.visivel} valor={prefs.fundoVisivel} min={0} max={100} passo={10} formatar={t.visivelValor} aoMudar={(fundoVisivel) => mudar({ fundoVisivel })} />
-            <p className="campo-ajuda">{prefs.fundoVisivel > 0 ? t.visivelAviso : t.visivelAjuda}</p>
+            <Controle rotulo={t.visivel} valor={prefs.fundoVisivel} min={0} max={100} passo={10} formatar={(v) => t.visivelValor(v, prefs.semTrava)} aoMudar={(fundoVisivel) => mudar({ fundoVisivel })} />
+            <p className="campo-ajuda">{prefs.fundoVisivel > 0 ? t.visivelAviso : prefs.semTrava ? t.visivelAjudaSemTrava : t.visivelAjuda}</p>
           </div>
         </div>
       )}
 
+      <div className="campo">
+        <Interruptor rotulo={t.semTrava} ligado={prefs.semTrava} aoMudar={(semTrava) => mudar({ semTrava })} />
+        <p className="campo-ajuda">{prefs.semTrava ? t.semTravaLigada : t.semTravaExplicacao}</p>
+      </div>
+
       {prefs.baixoEstimulo ? (
         <p className="campo-ajuda">{t.baixoEstimulo}</p>
       ) : (
-        opacidade < 1 && opacidade > 0 && <p className="campo-ajuda">{t.opacidade(Math.round(opacidade * 100))}</p>
+        opacidade < 1 && opacidade > 0 && !prefs.semTrava && <p className="campo-ajuda">{t.opacidade(Math.round(opacidade * 100))}</p>
       )}
       <Aviso>{erro}</Aviso>
     </section>

@@ -46,6 +46,8 @@ export interface Preferencias {
   fundo: Fundo | null;
   /** Quanto o fundo aparece por trás dos painéis: 0 = automático (mais legível), 100 = o máximo que ainda passa no mínimo de leitura. */
   fundoVisivel: number;
+  /** Trava de contraste liberada pela própria pessoa (o fundo pode aparecer inteiro e as cores ficam como ela quiser). */
+  semTrava: boolean;
   /** Temas criados no editor ou importados. */
   temasProprios: Tema[];
   /** Tela inicial montável: ordem dos blocos, escondidos e largos. */
@@ -69,6 +71,7 @@ export const PADRAO: Preferencias = {
   tema: "papel",
   fundo: null,
   fundoVisivel: 0,
+  semTrava: false,
   temasProprios: [],
   inicio: { ordem: [...BLOCOS_INICIO], ocultos: [], largos: ["energia", "hoje", "continuar", "novidades"] },
 };
@@ -102,6 +105,7 @@ export function validar(bruto: unknown): Preferencias {
     temasProprios,
     tema: [...TEMAS, ...temasProprios].some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,
     fundo: validarFundo(p.fundo),
+    semTrava: p.semTrava === true,
     fundoVisivel: typeof p.fundoVisivel === "number" && p.fundoVisivel >= 0 && p.fundoVisivel <= 100 ? Math.round(p.fundoVisivel) : PADRAO.fundoVisivel,
     inicio: validarInicio(p.inicio),
   };
@@ -158,13 +162,16 @@ function validarFundo(bruto: unknown): Fundo | null {
   }
 }
 
-/** Temas próprios passam pela mesma conferência de um arquivo importado (cores, contraste, SVG). */
+/**
+ * Temas próprios passam pela mesma conferência de um arquivo importado (cores, SVG). O contraste
+ * não é corrigido aqui, para não mudar o tema guardado: a trava age na hora de mostrar (aparencia.ts).
+ */
 function validarTemasProprios(bruto: unknown): Tema[] {
   if (!Array.isArray(bruto)) return [];
   const temas: Tema[] = [];
   for (const t of bruto.slice(0, 30)) {
     try {
-      const lido = lerArquivoTema(gravarArquivoTema(t as Tema)).tema;
+      const lido = lerArquivoTema(gravarArquivoTema(t as Tema), { corrigir: false }).tema;
       if (typeof (t as Tema).id === "string" && (t as Tema).id.startsWith("proprio-")) temas.push({ ...lido, id: (t as Tema).id });
     } catch {
       // Tema estragado fica de fora.

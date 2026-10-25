@@ -116,8 +116,15 @@ export const textos = {
     opacidade: (p: number) =>
       `Para o texto continuar legível, a área de conteúdo ficou com ${p}% de opacidade por cima do fundo.`,
     baixoEstimulo: "Com o baixo estímulo ligado, o fundo fica liso.",
+    semTrava: "Liberar a trava de contraste",
+    semTravaExplicacao:
+      "Normalmente o Órbita garante que o texto dá para ler: cobre um pouco o fundo e corrige cores fracas. Ligando, a decisão é sua: o fundo pode aparecer inteiro e as cores ficam como você escolher.",
+    semTravaLigada:
+      "Trava liberada. Se o texto ficar difícil de ler, aperte Ctrl + Shift + B (baixo estímulo): o fundo fica liso e o contraste volta na hora, sem precisar achar nada na tela. A tela de entrada continua sempre legível.",
     visivel: "Quanto o fundo aparece",
-    visivelValor: (v: number) => (v === 0 ? "Automático (mais legível)" : v === 100 ? "Máximo" : `${v}%`),
+    visivelValor: (v: number, semTrava: boolean) =>
+      v === 0 ? "Automático (mais legível)" : v === 100 ? (semTrava ? "Fundo inteiro" : "Máximo") : `${v}%`,
+    visivelAjudaSemTrava: "Começa no ponto mais legível. Sem a trava, arrastando até o fim, o fundo aparece inteiro, sem nada por cima.",
     visivelAjuda: "Começa no ponto mais legível. Arrastando, o fundo aparece mais, mas o texto nunca fica abaixo do mínimo de leitura.",
     visivelAviso: "O texto ficou com menos contraste. Se cansar a leitura, volte o controle para o começo.",
     erroImagem: "Não deu para abrir essa imagem. Tente PNG, JPG ou WebP.",
@@ -164,6 +171,7 @@ export const textos = {
     ajustar: "Ajustar sozinho",
     ajustarExplicacao: "Escurece ou clareia só as cores que não passam, mantendo o tom.",
     faltam: "Alguns pares estão sem contraste. Use \"Ajustar sozinho\" ou mude as cores marcadas.",
+    faltamSemTrava: "Alguns pares estão com pouco contraste. Com a trava liberada, você pode salvar assim mesmo.",
     salvar: "Salvar e usar",
     cancelar: "Cancelar",
     fechar: "Fechar",
@@ -922,6 +930,9 @@ export const textos = {
     soMaisNovos: "Mostrar só os mais novos",
     resolucao: "Resolução da imagem",
     resolucoes: { normal: "Normal", alta: "Alta" },
+    coresImagem: "Cores da imagem",
+    coresImagemOpcoes: { suaves: "Suaves", vivas: "Vivas" },
+    coresImagemAjuda: "Suaves: calma, com pouco contraste, boa para quem tem sensibilidade visual. Vivas: fiel ao estilo pedido, com cores fortes.",
     resolucaoAjuda: "Alta fica mais nítida em telas grandes, mas demora mais e gasta mais créditos. No Grok, quem decide é o próprio modelo.",
     modeloImagemAjuda: "Desenha só a imagem do fundo. As cores e os ícones continuam com o modelo escolhido acima.",
     semImagem: "A sua conta neste provedor não mostrou nenhum modelo de imagem. Dá para criar com desenho em SVG.",

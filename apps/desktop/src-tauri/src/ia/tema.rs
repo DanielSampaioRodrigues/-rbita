@@ -51,12 +51,20 @@ pub fn modelos_de_imagem(todos: &[String]) -> Vec<String> {
     m
 }
 
-pub fn pedido_de_imagem(descricao: &str) -> String {
+/// `vivas`: a pessoa pediu cores fortes; sem isso, o padrão é calmo (baixo estímulo).
+pub fn pedido_de_imagem(descricao: &str, vivas: bool) -> String {
     let d: String = descricao.trim().chars().take(MAXIMO_PEDIDO).collect();
-    format!(
-        "Papel de parede horizontal para o fundo de um aplicativo calmo, para pessoas com sensibilidade sensorial. \
+    if vivas {
+        format!(
+            "Papel de parede horizontal para o fundo de um aplicativo. Cores vivas e saturadas, com força e personalidade, \
+fiel ao estilo pedido. Sem texto, sem letras, sem pessoas em primeiro plano. Tema: {d}"
+        )
+    } else {
+        format!(
+            "Papel de parede horizontal para o fundo de um aplicativo calmo, para pessoas com sensibilidade sensorial. \
 Cores suaves, pouco contraste, poucos detalhes, sem texto, sem letras, sem pessoas em primeiro plano. Tema: {d}"
-    )
+        )
+    }
 }
 
 /// Desenhar ícones próprios (experimental). A IA recebe o estilo pedido, os ícones

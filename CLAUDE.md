@@ -29,7 +29,7 @@ Toda tela e função passam por estes sete princípios. Em conflito, vencem os p
 4. Sem gamificação punitiva.
 5. Captura sem atrito: registrar algo leva segundos, por texto ou voz, de qualquer tela.
 6. Retomar importa tanto quanto começar: cartão "onde parei" em projetos, leituras e tarefas longas.
-7. Acessibilidade sensorial e cognitiva: fontes para dislexia, densidade ajustável, contraste garantido, atalhos de teclado para tudo, linguagem simples e literal.
+7. Acessibilidade sensorial e cognitiva: fontes para dislexia, densidade ajustável, contraste garantido por padrão (a pessoa pode liberar a trava para si, com saída rápida pelo baixo estímulo), atalhos de teclado para tudo, linguagem simples e literal.
 
 ## Decisões técnicas
 

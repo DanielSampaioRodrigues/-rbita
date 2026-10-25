@@ -9,6 +9,7 @@ import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { textos } from "../textos/pt-BR";
+import { usePreferencias } from "../estado";
 
 const t = textos.editorTema;
 type Modo = "claro" | "escuro";
@@ -74,12 +75,13 @@ function Previa({ paleta, cantos, sombra, icones }: { paleta: Paleta; cantos: nu
 
 export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inicial: Tema; aoSalvar: (tema: Tema) => void; aoGuardar: (tema: Tema) => void; aoCancelar: () => void }) {
   const [tema, setTema] = useState<Tema>(inicial);
+  const { prefs } = usePreferencias();
   // O que a IA cria já vale no app e entra na lista de temas; aqui fica o último guardado.
   const [guardado, setGuardado] = useState<Tema | null>(null);
   const aplicarDaIa = (novo: Tema) => {
     setTema(novo);
     const passa = (["claro", "escuro"] as const).every((m) => conferirPaleta(novo[m]).every((r) => r.passa));
-    if (passa && novo.nome.trim()) {
+    if ((passa || prefs.semTrava) && novo.nome.trim()) {
       const final = { ...novo, nome: novo.nome.trim() };
       aoGuardar(final);
       setGuardado(final);
@@ -188,12 +190,12 @@ export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inici
           </section>
         </div>
       </div>
-      {!tudoPassa && <Aviso>{t.faltam}</Aviso>}
+      {!tudoPassa && <Aviso>{prefs.semTrava ? t.faltamSemTrava : t.faltam}</Aviso>}
       <div className="botoes">
         <Button className="botao" onPress={aoCancelar}>
           {!guardado ? t.cancelar : JSON.stringify(guardado) === JSON.stringify(tema) ? t.fechar : t.descartar}
         </Button>
-        <Button className="botao principal" isDisabled={!tudoPassa || !tema.nome.trim()} onPress={() => aoSalvar({ ...tema, nome: tema.nome.trim() })}>{t.salvar}</Button>
+        <Button className="botao principal" isDisabled={(!tudoPassa && !prefs.semTrava) || !tema.nome.trim()} onPress={() => aoSalvar({ ...tema, nome: tema.nome.trim() })}>{t.salvar}</Button>
       </div>
     </div>
   );

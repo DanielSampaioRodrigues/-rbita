@@ -11,10 +11,12 @@ import { textos } from "../textos/pt-BR";
 import { modeloDe } from "./provedores";
 import { EscolherIaDaFuncao } from "./AjustesIa";
 import { maisNovos } from "./modelos";
+import { usePreferencias } from "../estado";
 
 const t = textos.temaIa;
 type TipoFundo = "nenhum" | "svg" | "png";
 type Resolucao = "normal" | "alta";
+type Cores = "suaves" | "vivas";
 
 // O modelo de imagem escolhido fica guardado por provedor (é só o nome do modelo, nada pessoal).
 const chaveImagem = (id: string) => `orbita.modeloImagem.${id}`;
@@ -38,19 +40,29 @@ function guardarModeloImagem(id: string, modelo: string) {
  * Cada pedido manda junto o tema atual, para a IA ajustar em vez de recomeçar.
  */
 export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; aoAplicar: (t: Tema) => void; ia: EstadoIa | null; aoMudarIa: (e: EstadoIa) => void }) {
+  const semTrava = usePreferencias().prefs.semTrava;
   // A IA e o modelo da função "Personalização" (os mesmos de Ajustes).
   const provedorId = ia?.funcoes.personalizacao ?? null;
   const [modelosImagem, setModelosImagem] = useState<string[] | null>(null);
   const [modeloImagem, setModeloImagem] = useState<string | null>(null);
   const [atualizado, setAtualizado] = useState(false);
   const [todosImagem, setTodosImagem] = useState(false);
-  const [resolucao, setResolucao] = useState<Resolucao>(() => {
+  const lerGuardado = (chave: string) => {
     try {
-      return localStorage.getItem("orbita.resolucaoImagem") === "alta" ? "alta" : "normal";
+      return localStorage.getItem(chave);
     } catch {
-      return "normal";
+      return null;
     }
-  });
+  };
+  const guardar = (chave: string, valor: string) => {
+    try {
+      localStorage.setItem(chave, valor);
+    } catch {
+      // Vale só nesta sessão.
+    }
+  };
+  const [resolucao, setResolucao] = useState<Resolucao>(() => (lerGuardado("orbita.resolucaoImagem") === "alta" ? "alta" : "normal"));
+  const [cores, setCores] = useState<Cores>(() => (lerGuardado("orbita.coresImagem") === "vivas" ? "vivas" : "suaves"));
   const [fundo, setFundo] = useState<TipoFundo>("svg");
   const [pedido, setPedido] = useState("");
   const [historico, setHistorico] = useState<string[]>([]);
@@ -112,11 +124,11 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
       const anterior = historico.length ? gravarArquivoTema(tema) : null;
       const resposta = await api.gerarTemaIa(provedor.id, pedido, anterior, fundo === "svg");
       if (este !== pedidoAtual.current) return;
-      const { tema: novo, ajustado } = temaDaIa(resposta);
+      const { tema: novo, ajustado } = temaDaIa(resposta, { corrigir: !semTrava });
       let fundoNovo: Fundo | undefined = fundo === "svg" ? novo.fundoPadrao : undefined;
       if (fundo === "png" && modeloImagem) {
         setFase("imagem");
-        const imagem = await api.gerarImagemIa(provedor.id, modeloImagem, historico.concat(pedido).join(". "), resolucao === "alta");
+        const imagem = await api.gerarImagemIa(provedor.id, modeloImagem, historico.concat(pedido).join(". "), resolucao === "alta", cores === "vivas");
         if (este !== pedidoAtual.current) return;
         fundoNovo = { tipo: "imagem", dados: await reduzirImagem(imagem, resolucao === "alta" ? 2560 : 1920), desfoque: 0, escurecimento: 0 };
       }
@@ -160,16 +172,16 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
             rotulo={t.resolucao}
             valor={resolucao}
             opcoes={(["normal", "alta"] as const).map((r) => ({ valor: r, nome: t.resolucoes[r] }))}
-            aoMudar={(r) => {
-              setResolucao(r);
-              try {
-                localStorage.setItem("orbita.resolucaoImagem", r);
-              } catch {
-                // Vale só nesta sessão.
-              }
-            }}
+            aoMudar={(r) => (setResolucao(r), guardar("orbita.resolucaoImagem", r))}
           />
           <p className="campo-ajuda">{t.resolucaoAjuda}</p>
+          <Segmentado<Cores>
+            rotulo={t.coresImagem}
+            valor={cores}
+            opcoes={(["suaves", "vivas"] as const).map((c) => ({ valor: c, nome: t.coresImagemOpcoes[c] }))}
+            aoMudar={(c) => (setCores(c), guardar("orbita.coresImagem", c))}
+          />
+          <p className="campo-ajuda">{t.coresImagemAjuda}</p>
         </>
       )}
       {podeImagem && (

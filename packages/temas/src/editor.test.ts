@@ -31,6 +31,15 @@ describe("editor de tema", () => {
     expect(conferirPaleta(paletaFinal(tema, "claro", true)).filter((r) => r.frente === "destaque").every((r) => r.passa)).toBe(true);
   });
 
+  it("com a trava liberada pela pessoa, mantém as cores como vieram", () => {
+    const arquivo = JSON.parse(gravarArquivoTema(papel));
+    arquivo.claro.texto = "#dddddd";
+    const { tema, ajustado } = lerArquivoTema(JSON.stringify(arquivo), { corrigir: false });
+    expect(ajustado).toBe(false);
+    expect(tema.claro.texto).toBe("#dddddd");
+    expect(lerArquivoTema(JSON.stringify(arquivo)).tema.claro.texto).not.toBe("#dddddd");
+  });
+
   it("recusa arquivo estranho e limpa SVG e contraste de arquivo de terceiros", () => {
     expect(() => lerArquivoTema("oi")).toThrow(TemaInvalido);
     expect(() => lerArquivoTema(JSON.stringify({ formato: "orbita-tema", claro: {}, escuro: {} }))).toThrow(TemaInvalido);
