@@ -9,3 +9,4 @@ As decisões que mudam o produto também entram em `docs/especificacao.md`.
 - [0004 · Backup em arquivo único](0004-backup.md)
 - [0005 · Ideias, projetos e tarefas](0005-ideias-projetos-tarefas.md)
 - [0006 · Temas, fundos e contraste automático](0006-temas-fundos.md)
+- [0007 · IA: provedores, chaves e sugestão de passos](0007-ia-provedores.md)

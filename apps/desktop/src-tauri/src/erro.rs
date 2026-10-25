@@ -39,6 +39,9 @@ pub enum Erro {
     BackupInvalido(String),
     #[error("Não foi possível ler ou gravar um arquivo: {0}")]
     Arquivo(String),
+    /// Falha da IA, já explicada em linguagem simples.
+    #[error("{mensagem}")]
+    Ia { motivo: &'static str, mensagem: String },
     #[error("Erro interno: {0}")]
     Interno(String),
 }
@@ -64,6 +67,7 @@ impl Erro {
             Erro::TextoVazio => "texto_vazio",
             Erro::NaoEncontrado => "nao_encontrado",
             Erro::Arquivo(_) => "arquivo",
+            Erro::Ia { .. } => "ia",
             Erro::Interno(_) => "interno",
         }
     }
@@ -79,6 +83,7 @@ impl Serialize for Erro {
             Erro::PinErrado { tentativas_restantes } => st.serialize_field("tentativasRestantes", tentativas_restantes)?,
             Erro::PalavrasErradas { posicoes } => st.serialize_field("posicoes", posicoes)?,
             Erro::LimiteDeProjetos { limite } => st.serialize_field("limite", limite)?,
+            Erro::Ia { motivo, .. } => st.serialize_field("motivo", motivo)?,
             _ => st.skip_field("extra")?,
         }
         st.end()

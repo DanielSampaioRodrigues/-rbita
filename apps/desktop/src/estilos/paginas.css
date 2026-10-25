@@ -466,3 +466,17 @@
 .estado-pausado .linha-tempo-barra { background: var(--cor-borda-controle); }
 .estado-pausado .linha-tempo-barra.aberta { background: repeating-linear-gradient(90deg, var(--cor-borda-controle) 0 10px, transparent 10px 16px); border-color: var(--cor-borda-controle); }
 .linha-tempo-marco { position: absolute; top: 0.85rem; width: 0.8rem; height: 0.8rem; margin-left: -0.4rem; transform: rotate(45deg); background: var(--cor-atencao); border: 2px solid var(--cor-superficie); }
+
+/* IA: provedores em Ajustes */
+.lista-provedores { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
+.provedor { display: flex; align-items: center; gap: var(--espaco-3); padding: var(--espaco-2) var(--espaco-3); border: 1px solid var(--cor-borda); border-radius: var(--canto); flex-wrap: wrap; }
+.provedor > svg { color: var(--cor-texto-suave); flex: none; }
+.provedor-texto { display: grid; flex: 1; min-width: 12rem; }
+
+/* IA: escolha dos passos sugeridos */
+.lista-passos-ia { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
+.passo-ia { display: flex; align-items: center; gap: var(--espaco-2); }
+.passo-ia .caixa.estreita { flex: none; }
+.passo-ia-texto { flex: 1; min-width: 0; }
+.passo-ia-texto .entrada-texto { width: 100%; }
+.entrada-texto.desmarcado { color: var(--cor-texto-suave); text-decoration: line-through; }

@@ -578,3 +578,10 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .trilho-preenchido { position: absolute; left: 0; top: 50%; height: 6px; transform: translateY(-50%); border-radius: 3px; background: var(--cor-destaque); }
 .botao-deslizante { top: 50%; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--cor-superficie); border: 2px solid var(--cor-destaque); box-shadow: var(--sombra); }
 .botao-deslizante[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+
+/* Escolha (lista que abre) */
+.escolha-botao { justify-content: space-between; width: 100%; max-width: 28rem; text-align: left; }
+.escolha-valor { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.escolha-valor[data-placeholder] { color: var(--cor-texto-suave); }
+.escolha-popover { max-height: 18rem; overflow-y: auto; min-width: var(--trigger-width); }
+.menu-item[data-selected] { font-weight: 650; }

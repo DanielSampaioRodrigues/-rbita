@@ -150,6 +150,7 @@ export type CodigoErro =
   | "texto_vazio"
   | "nao_encontrado"
   | "arquivo"
+  | "ia"
   | "interno";
 
 export class ErroOrbita extends Error {
@@ -159,6 +160,8 @@ export class ErroOrbita extends Error {
     public tentativasRestantes?: number,
     public posicoes?: number[],
     public limite?: number,
+    /** Só para erros da IA: chave, limite, rede, local_fechado, sem_provedor... */
+    public motivo?: string,
   ) {
     super(mensagem);
   }
@@ -167,10 +170,41 @@ export class ErroOrbita extends Error {
 function comoErro(e: unknown): ErroOrbita {
   if (e instanceof ErroOrbita) return e;
   if (typeof e === "object" && e && "codigo" in e) {
-    const x = e as { codigo: CodigoErro; mensagem: string; tentativasRestantes?: number; posicoes?: number[]; limite?: number };
-    return new ErroOrbita(x.codigo, x.mensagem, x.tentativasRestantes, x.posicoes, x.limite);
+    const x = e as { codigo: CodigoErro; mensagem: string; tentativasRestantes?: number; posicoes?: number[]; limite?: number; motivo?: string };
+    return new ErroOrbita(x.codigo, x.mensagem, x.tentativasRestantes, x.posicoes, x.limite, x.motivo);
   }
   return new ErroOrbita("interno", String(e));
+}
+
+export type TipoProvedor = "claude" | "compativel";
+export type FuncaoIa = "quebrar" | "conversa" | "revisao";
+
+export interface Provedor {
+  /** Vazio ao criar. */
+  id: string;
+  tipo: TipoProvedor;
+  nome: string;
+  url: string;
+  modelo: string;
+}
+
+export interface ProvedorVisivel extends Provedor {
+  /** Só os quatro últimos caracteres da chave. */
+  finalChave: string | null;
+  /** Roda no próprio computador (Ollama). */
+  local: boolean;
+}
+
+export interface EstadoIa {
+  provedores: ProvedorVisivel[];
+  funcoes: Partial<Record<FuncaoIa, string>>;
+  bloquearSensivel: boolean;
+}
+
+export interface Sugestao {
+  passos: string[];
+  provedor: string;
+  local: boolean;
 }
 
 interface Api {
@@ -228,6 +262,17 @@ interface Api {
   restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }): Promise<ModoAbrir>;
   situacaoBackup(): Promise<SituacaoBackup>;
   definirBackupAutomatico(pasta: string | null): Promise<SituacaoBackup>;
+  estadoIa(): Promise<EstadoIa>;
+  /** `chave`: null mantém a atual; texto vazio apaga. */
+  salvarProvedorIa(provedor: Provedor, chave: string | null): Promise<EstadoIa>;
+  removerProvedorIa(id: string): Promise<EstadoIa>;
+  definirFuncaoIa(funcao: FuncaoIa, provedorId: string | null): Promise<EstadoIa>;
+  bloquearSensivelIa(bloquear: boolean): Promise<EstadoIa>;
+  /** Confere a chave e devolve os modelos disponíveis. Não gasta créditos. */
+  testarProvedorIa(provedor: Provedor, chave: string | null): Promise<string[]>;
+  memoriaDoComputador(): Promise<number | null>;
+  /** Sugestões de passos para um projeto ou uma etapa. Não grava nada. */
+  sugerirPassosIa(alvo: string): Promise<Sugestao>;
 }
 
 const chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
@@ -295,6 +340,14 @@ const nativa: Api = {
     chamar("restaurar_backup", { caminho, senha: senha ?? null, palavras: palavras ?? null }),
   situacaoBackup: () => chamar("situacao_backup"),
   definirBackupAutomatico: (pasta) => chamar("definir_backup_automatico", { pasta }),
+  estadoIa: () => chamar("estado_ia"),
+  salvarProvedorIa: (provedor, chave) => chamar("salvar_provedor_ia", { provedor, chave }),
+  removerProvedorIa: (id) => chamar("remover_provedor_ia", { id }),
+  definirFuncaoIa: (funcao, provedorId) => chamar("definir_funcao_ia", { funcao, provedorId }),
+  bloquearSensivelIa: (bloquear) => chamar("bloquear_sensivel_ia", { bloquear }),
+  testarProvedorIa: (provedor, chave) => chamar("testar_provedor_ia", { provedor, chave }),
+  memoriaDoComputador: () => chamar("memoria_do_computador"),
+  sugerirPassosIa: (alvo) => chamar("sugerir_passos_ia", { alvo }),
 };
 
 /** Parte da simulação que cuida de ideias, projetos e tarefas (mesmas regras da parte nativa). */
@@ -565,6 +618,8 @@ function criarSimulacao(): Api {
   const s = { existe: false, modo: null as ModoAbrir | null, senha: "", pin: "", erradas: 0, aberto: false };
   const backup: SituacaoBackup = { pasta: null, ultimo: null, erro: null };
   const comItens = simularItens();
+  const params0 = new URLSearchParams(globalThis.location?.search ?? "");
+  const comIa = simularIa(params0.get("ia") !== null, params0.get("ia") === "erro");
   const espera = () => new Promise((r) => setTimeout(r, 250));
   const falha = (codigo: CodigoErro, msg: string, extra?: number) => Promise.reject(new ErroOrbita(codigo, msg, extra));
   const conferir = async (texto: string) => {
@@ -652,6 +707,63 @@ function criarSimulacao(): Api {
       await espera();
       Object.assign(backup, { pasta, ultimo: pasta ? Date.now() : backup.ultimo, erro: null });
       return { ...backup };
+    },
+    ...comIa,
+  };
+}
+
+/** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
+function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa"> {
+  const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
+  const estado: EstadoIa = { provedores: [], funcoes: {}, bloquearSensivel: false };
+  if (comClaude) {
+    estado.provedores.push({ id: "p1", tipo: "claude", nome: "Claude", url: "https://api.anthropic.com", modelo: "claude-opus-5-5", finalChave: "x9Qa", local: false });
+    estado.funcoes = { quebrar: "p1", conversa: "p1", revisao: "p1" };
+  }
+  const copia = () => structuredClone(estado);
+  return {
+    estadoIa: async () => copia(),
+    salvarProvedorIa: async (p, chave) => {
+      await espera();
+      const local = /^http:\/\/(localhost|127\.0\.0\.1)/.test(p.url);
+      if (!p.id) {
+        const novo = { ...p, id: `p${Date.now()}`, finalChave: chave ? chave.slice(-4) : null, local };
+        if (estado.provedores.length === 0) estado.funcoes = { quebrar: novo.id, conversa: novo.id, revisao: novo.id };
+        estado.provedores.push(novo);
+      } else {
+        const i = estado.provedores.findIndex((x) => x.id === p.id);
+        const finalChave = chave === null ? estado.provedores[i].finalChave : chave ? chave.slice(-4) : null;
+        estado.provedores[i] = { ...p, finalChave, local };
+      }
+      return copia();
+    },
+    removerProvedorIa: async (id) => {
+      estado.provedores = estado.provedores.filter((p) => p.id !== id);
+      for (const f of Object.keys(estado.funcoes) as FuncaoIa[]) if (estado.funcoes[f] === id) delete estado.funcoes[f];
+      return copia();
+    },
+    definirFuncaoIa: async (funcao, id) => {
+      if (id) estado.funcoes[funcao] = id;
+      else delete estado.funcoes[funcao];
+      return copia();
+    },
+    bloquearSensivelIa: async (bloquear) => ((estado.bloquearSensivel = bloquear), copia()),
+    testarProvedorIa: async (p, chave) => {
+      await espera(700);
+      if (p.tipo === "claude" && chave === "errada") throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");
+      if (p.tipo === "claude") return ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
+      if (p.url.includes("localhost")) return ["gemma3:4b", "qwen3:8b"];
+      return ["modelo-a", "modelo-b"];
+    },
+    memoriaDoComputador: async () => 16,
+    sugerirPassosIa: async () => {
+      await espera(1200);
+      if (comErro) throw new ErroOrbita("ia", "O provedor recusou por limite de uso ou falta de créditos. Confira a sua conta ou tente mais tarde.", undefined, undefined, undefined, "limite");
+      return {
+        passos: ["Abrir o arquivo do artigo", "Ler só o resumo e a conclusão", "Anotar três ideias principais", "Escrever uma frase sobre cada ideia"],
+        provedor: "Claude",
+        local: false,
+      };
     },
   };
 }

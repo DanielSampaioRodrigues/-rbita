@@ -1,4 +1,4 @@
-import { Check, CornerDownRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, CornerDownRight, Pencil, Plus, Trash2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "react-aria-components";
 import { api, type Tarefa } from "../api";
@@ -23,10 +23,12 @@ interface Props {
   titulo: string;
   tarefas: Tarefa[];
   executar: (acao: () => Promise<unknown>) => void;
+  /** Com a IA ligada: sugerir passos para o projeto ou a etapa escolhida. */
+  aoSugerirPassos?: (alvo: { id: string; titulo: string }) => void;
 }
 
 /** As mesmas etapas e subtarefas, em árvore da esquerda para a direita. */
-export function MapaMental({ projetoId, titulo, tarefas, executar }: Props) {
+export function MapaMental({ projetoId, titulo, tarefas, executar, aoSugerirPassos }: Props) {
   const raiz = useMemo<No>(() => {
     const etapas = tarefas.filter((x) => x.paiId === projetoId);
     return {
@@ -142,6 +144,11 @@ export function MapaMental({ projetoId, titulo, tarefas, executar }: Props) {
         {atual.tarefa && (
           <Button className="botao" onPress={() => executar(() => api.mudarEstadoTarefa(atual.tarefa!.id, atual.tarefa!.estado === "feita" ? "a_fazer" : "feita"))}>
             <Check aria-hidden="true" size="1.1em" /> {atual.tarefa.estado === "feita" ? t.desfeito : t.feito}
+          </Button>
+        )}
+        {aoSugerirPassos && atual.nivel < 2 && (
+          <Button className="botao" onPress={() => aoSugerirPassos({ id: atual.id, titulo: atual.titulo })}>
+            <Sparkles aria-hidden="true" size="1.1em" /> {atual.nivel === 0 ? textos.ia.sugerirEtapas : textos.ia.sugerirPassos}
           </Button>
         )}
         {atual.nivel > 0 && (

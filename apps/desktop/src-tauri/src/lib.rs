@@ -4,6 +4,7 @@ mod cofre;
 mod comandos;
 mod erro;
 mod hello;
+mod ia;
 
 use std::sync::Arc;
 
@@ -88,6 +89,14 @@ pub fn run() {
             comandos::definir_datas_projeto,
             comandos::definir_prazo_tarefa,
             comandos::listar_prazos,
+            comandos::estado_ia,
+            comandos::salvar_provedor_ia,
+            comandos::remover_provedor_ia,
+            comandos::definir_funcao_ia,
+            comandos::bloquear_sensivel_ia,
+            comandos::testar_provedor_ia,
+            comandos::memoria_do_computador,
+            comandos::sugerir_passos_ia,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

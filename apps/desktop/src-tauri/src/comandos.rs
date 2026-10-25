@@ -13,6 +13,7 @@ use crate::banco::{self, energia, eventos, itens, rotinas};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
+use crate::ia::{self, cliente, quebrar, EstadoIa, Provedor};
 
 const CONFIG_PALAVRAS: &str = "palavras_recuperacao";
 
@@ -472,4 +473,72 @@ pub async fn definir_prazo_tarefa(estado: State<'_, Estado>, id: String, prazo: 
 #[tauri::command]
 pub async fn listar_prazos(estado: State<'_, Estado>, de: String, ate: String) -> Result<Vec<itens::Prazo>, Erro> {
     estado.com_sessao(|s| itens::listar_prazos(&s.conn, &de, &ate))
+}
+
+// ---------- IA (opcional) ----------
+
+#[tauri::command]
+pub async fn estado_ia(estado: State<'_, Estado>) -> Result<EstadoIa, Erro> {
+    estado.com_sessao(|s| ia::estado(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_provedor_ia(estado: State<'_, Estado>, provedor: Provedor, chave: Option<String>) -> Result<EstadoIa, Erro> {
+    let chave = chave.map(zeroize::Zeroizing::new);
+    estado.com_sessao(|s| ia::salvar_provedor(&s.conn, provedor, chave.as_deref().map(String::as_str)))
+}
+
+#[tauri::command]
+pub async fn remover_provedor_ia(estado: State<'_, Estado>, id: String) -> Result<EstadoIa, Erro> {
+    estado.com_sessao(|s| ia::remover_provedor(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn definir_funcao_ia(estado: State<'_, Estado>, funcao: String, provedor_id: Option<String>) -> Result<EstadoIa, Erro> {
+    estado.com_sessao(|s| ia::definir_funcao(&s.conn, &funcao, provedor_id.as_deref()))
+}
+
+#[tauri::command]
+pub async fn bloquear_sensivel_ia(estado: State<'_, Estado>, bloquear: bool) -> Result<EstadoIa, Erro> {
+    estado.com_sessao(|s| ia::definir_bloqueio_sensivel(&s.conn, bloquear))
+}
+
+/// Testa um provedor ainda não salvo (ou um salvo, se `chave` vier vazia e
+/// houver `id`). Devolve os modelos disponíveis.
+#[tauri::command]
+pub async fn testar_provedor_ia(estado: State<'_, Estado>, provedor: Provedor, chave: Option<String>) -> Result<Vec<String>, Erro> {
+    let chave = chave.map(zeroize::Zeroizing::new).filter(|c| !c.trim().is_empty());
+    let guardada = if chave.is_none() && !provedor.id.is_empty() {
+        estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor.id))?.chave
+    } else {
+        chave.map(|c| zeroize::Zeroizing::new(c.trim().to_string()))
+    };
+    let mut provedor = provedor;
+    provedor.url = provedor.url.trim().trim_end_matches('/').to_string();
+    cliente::listar_modelos(&ia::Escolhido { provedor, chave: guardada }).await
+}
+
+#[tauri::command]
+pub async fn memoria_do_computador() -> Result<Option<f64>, Erro> {
+    Ok(ia::memoria_gb())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Sugestao {
+    passos: Vec<String>,
+    provedor: String,
+    local: bool,
+}
+
+/// Pede à IA passos para um projeto ou uma etapa. Não grava nada.
+#[tauri::command]
+pub async fn sugerir_passos_ia(estado: State<'_, Estado>, alvo: String) -> Result<Sugestao, Erro> {
+    let (escolhido, pedido) = estado.com_sessao(|s| Ok((ia::provedor_da_funcao(&s.conn, "quebrar", false)?, quebrar::montar_pedido(&s.conn, &alvo)?)))?;
+    let resposta = cliente::completar(&escolhido, quebrar::SISTEMA, &pedido).await?;
+    let passos = quebrar::ler_passos(&resposta);
+    if passos.is_empty() {
+        return Err(Erro::Ia { motivo: "resposta", mensagem: "A IA não sugeriu nenhum passo. Tente de novo.".into() });
+    }
+    Ok(Sugestao { passos, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
 }

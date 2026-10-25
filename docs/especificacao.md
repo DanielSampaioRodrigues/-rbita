@@ -250,7 +250,15 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 
 - **Na Onda 1**, a opção local é o **Ollama**, programa gratuito que a pessoa instala à parte; o Órbita detecta e conversa com ele. Embutir o modelo no próprio Órbita fica para depois, se fizer falta.
 - GPT, Gemini, Grok, Sabiá e Ollama usam o mesmo formato de conexão; na prática são duas integrações: Claude e "compatível com GPT".
-- As chaves de API ficam no cofre do Windows, nunca no banco nem em texto aberto.
+- As chaves de API ficam dentro do banco criptografado do Órbita (só abrem com a senha, o PIN ou o Windows Hello), nunca em texto aberto, e nunca voltam para a tela. Vão junto no backup, que também é criptografado. (Antes: "no cofre do Windows"; mudou na etapa 14, ver `docs/decisoes/0007-ia-provedores.md`.)
+
+**Como ficou na Onda 1 (etapa 14).**
+- **Ajustes > Inteligência artificial (opcional)**: adicionar provedores (Claude, GPT, Gemini, Grok, Sabiá, Ollama ou outro compatível), colar a chave, **conferir** (o Órbita pede a lista de modelos, o que testa a chave sem gastar créditos) e escolher o modelo. Cada provedor mostra o modelo e os quatro últimos caracteres da chave.
+- **Provedor por função**: quebrar tarefas, conversa e revisão de texto. O primeiro provedor cadastrado vale para todas; dá para trocar ou escolher "não usar IA".
+- **Ollama**: sem chave; o Órbita lê a memória do computador e diz que tamanho de modelo deve rodar bem.
+- **Sugerir passos com IA**: no menu de cada etapa, no botão "Sugerir etapas com IA" do projeto e no mapa mental. Antes de enviar, a janela diz exatamente o que vai para o provedor. A sugestão chega como lista para marcar, editar, tirar ou completar; só o confirmado vira tarefa.
+- **Erros em linguagem simples**: chave recusada, limite ou créditos, modelo não encontrado, sem internet, Ollama fechado, demora.
+- **Bloqueio de dados sensíveis** em Ajustes, já conferido na parte nativa; passa a valer quando a conversa (etapa 15) e os módulos de saúde (Onda 2) existirem.
 
 - Peso aproximado: um modelo pequeno ocupa de 2 a 5 GB em disco e precisa de 8 GB de memória ou mais para rodar bem; a transcrição local ocupa algumas centenas de MB (valores a confirmar na construção).
 - Uso indicado: lançar itens a partir da conversa, organizar, resumir e revisar texto.

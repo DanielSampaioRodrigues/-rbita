@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 13 de 18, prazos, linha do tempo e mapa mental.
+Onda 1 (base e coração, Windows): etapa 14 de 18, IA opcional com provedores e sugestão de passos.

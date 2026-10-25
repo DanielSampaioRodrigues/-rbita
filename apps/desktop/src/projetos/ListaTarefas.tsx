@@ -14,10 +14,11 @@ interface Props {
   tarefas: Tarefa[];
   executar: (acao: () => Promise<unknown>) => void;
   aoDefinirPrazo: (tarefa: Tarefa) => void;
+  aoSugerirPassos?: (tarefa: Tarefa) => void;
 }
 
 /** Etapas com subtarefas, marcadas com caixa de seleção. */
-export function ListaTarefas({ projetoId, tarefas, executar, aoDefinirPrazo }: Props) {
+export function ListaTarefas({ projetoId, tarefas, executar, aoDefinirPrazo, aoSugerirPassos }: Props) {
   const etapas = tarefas.filter((x) => x.paiId === projetoId);
   return (
     <div className="lista-tarefas largura-leitura">
@@ -27,7 +28,7 @@ export function ListaTarefas({ projetoId, tarefas, executar, aoDefinirPrazo }: P
       ) : (
         <ul className="tarefas">
           {etapas.map((e) => (
-            <ItemTarefa key={e.id} tarefa={e} irmas={etapas} todas={tarefas} executar={executar} aoDefinirPrazo={aoDefinirPrazo} />
+            <ItemTarefa key={e.id} tarefa={e} irmas={etapas} todas={tarefas} executar={executar} aoDefinirPrazo={aoDefinirPrazo} aoSugerirPassos={aoSugerirPassos} />
           ))}
         </ul>
       )}
@@ -35,7 +36,7 @@ export function ListaTarefas({ projetoId, tarefas, executar, aoDefinirPrazo }: P
   );
 }
 
-function ItemTarefa({ tarefa, irmas, todas, executar, aoDefinirPrazo }: { tarefa: Tarefa; irmas: Tarefa[]; todas: Tarefa[]; executar: Props["executar"]; aoDefinirPrazo: Props["aoDefinirPrazo"] }) {
+function ItemTarefa({ tarefa, irmas, todas, executar, aoDefinirPrazo, aoSugerirPassos }: { tarefa: Tarefa; irmas: Tarefa[]; todas: Tarefa[]; executar: Props["executar"]; aoDefinirPrazo: Props["aoDefinirPrazo"]; aoSugerirPassos?: Props["aoSugerirPassos"] }) {
   const [abrindoSub, setAbrindoSub] = useState(false);
   const filhas = todas.filter((x) => x.paiId === tarefa.id);
   const eEtapa = !todas.some((x) => x.id === tarefa.paiId);
@@ -61,7 +62,7 @@ function ItemTarefa({ tarefa, irmas, todas, executar, aoDefinirPrazo }: { tarefa
             <Plus aria-hidden="true" size="1.1em" />
           </Button>
         )}
-        <MenuTarefa tarefa={tarefa} irmas={irmas} executar={executar} aoDefinirPrazo={aoDefinirPrazo} />
+        <MenuTarefa tarefa={tarefa} irmas={irmas} executar={executar} aoDefinirPrazo={aoDefinirPrazo} aoSugerirPassos={aoSugerirPassos} />
       </div>
       {(filhas.length > 0 || abrindoSub) && (
         <ul className="tarefas subtarefas">

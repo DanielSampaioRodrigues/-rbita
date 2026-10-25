@@ -69,6 +69,7 @@ export const textos = {
       "Editor de tema com prévia e conferência de contraste, e temas em arquivo para trocar com outras pessoas.",
       "Tela inicial montável: arraste, alargue ou esconda os blocos (botão Organizar).",
       "Prazos em projetos e tarefas, que aparecem na agenda; linha do tempo dos projetos e mapa mental das tarefas.",
+      "IA opcional, com a sua chave (Claude, GPT, Gemini, Grok, Sabiá) ou no seu computador (Ollama): sugere passos pequenos para uma tarefa, e você escolhe quais entram.",
     ],
     dicaAtalhos: "Tudo no Órbita pode ser feito pelo teclado. Aperte F1 para ver os atalhos.",
   },
@@ -589,6 +590,74 @@ export const textos = {
     instrucoesArrastar:
       "Para mover uma tarefa com o teclado: aperte Espaço para pegar, use as setas para escolher a coluna e Espaço de novo para soltar. Esc cancela.",
     movida: (t: string, c: string) => `"${t}" foi para ${c}.`,
+  },
+  ia: {
+    titulo: "Inteligência artificial (opcional)",
+    explicacao:
+      "Nada no Órbita depende da IA. Se quiser usar, escolha um provedor e cole a chave da sua conta: o custo fica com você. A IA só sugere; nada é gravado sem você confirmar.",
+    nenhum: "Nenhum provedor ainda.",
+    adicionar: "Adicionar provedor",
+    editar: "Editar",
+    remover: "Remover",
+    removerTitulo: (n: string) => `Remover ${n}?`,
+    removerTexto: "A chave guardada também é apagada. As funções que usavam este provedor ficam sem IA até você escolher outro.",
+    linhaProvedor: (modelo: string, final: string | null, local: boolean) =>
+      local ? `${modelo} · no seu computador` : final ? `${modelo} · chave terminando em ${final}` : `${modelo} · sem chave`,
+    funcoesTitulo: "Qual provedor usar em cada função",
+    funcoes: { quebrar: "Quebrar tarefas em passos", conversa: "Conversa", revisao: "Revisão de texto" },
+    naoUsar: "Não usar IA",
+    emBreve: "chega numa próxima versão",
+    sensivel: "Não enviar dados de saúde e terapia para fora do computador",
+    sensivelAjuda:
+      "Saúde e cuidado psicológico chegam na Onda 2. Mesmo com esta opção desligada, o Órbita sempre avisa antes de enviar esses dados. Ligada, só uma IA local (Ollama) recebe.",
+    novoTitulo: "Adicionar provedor de IA",
+    editarTitulo: (n: string) => `Editar ${n}`,
+    qual: "Provedor",
+    nome: "Nome que aparece no Órbita",
+    endereco: "Endereço da API",
+    enderecoAjuda: "Precisa começar com https://. Só o Ollama, que roda no seu computador, usa http://localhost.",
+    chave: "Chave da API",
+    chaveAjuda: (onde: string) => `Crie a chave no site do provedor (${onde}) e cole aqui. Ela fica guardada dentro dos seus dados criptografados.`,
+    chaveAjudaOutro: "Cole a chave da API. Ela fica guardada dentro dos seus dados criptografados.",
+    chaveManter: "Deixe vazio para manter a chave que já está guardada.",
+    ollamaAjuda:
+      "O Ollama é um programa gratuito que roda modelos de IA no seu computador, sem chave e sem os dados saírem daqui. Instale pelo site ollama.com, baixe um modelo por lá e deixe o Ollama aberto.",
+    memoria: (gb: number) =>
+      gb < 8
+        ? `Seu computador tem ${gb} GB de memória. Uma IA local deve ficar lenta aqui; um provedor com chave tende a funcionar melhor.`
+        : gb < 16
+          ? `Seu computador tem ${gb} GB de memória. Modelos pequenos, de 1 a 4 bilhões de parâmetros (o nome costuma terminar em 1b, 3b ou 4b), devem rodar bem.`
+          : `Seu computador tem ${gb} GB de memória. Modelos de até 8 bilhões de parâmetros (terminados em 8b ou menos) devem rodar bem.`,
+    conferir: "Conferir e ver os modelos",
+    conferindo: "Conferindo...",
+    conferido: (n: number) => (n === 1 ? "Tudo certo. Há 1 modelo disponível." : `Tudo certo. Há ${n} modelos disponíveis.`),
+    semModelos: "A conexão funcionou, mas o provedor não mostrou nenhum modelo. Escreva o nome do modelo abaixo.",
+    modelo: "Modelo",
+    modeloEscrito: "Nome do modelo",
+    modeloAjuda: "Modelos maiores costumam responder melhor e custar mais. Dá para trocar depois.",
+    precisaConferir: "Confira a conexão antes de salvar, para escolher o modelo.",
+    // Sugestão de passos
+    sugerirPassos: "Sugerir passos com IA",
+    sugerirEtapas: "Sugerir etapas com IA",
+    passosTitulo: (alvo: string, projeto: boolean) => (projeto ? `Etapas para: ${alvo}` : `Passos para: ${alvo}`),
+    oQueVai: (provedor: string, local: boolean, projeto: boolean) =>
+      local
+        ? `A sugestão é feita no seu computador, com ${provedor}. Nada sai daqui.`
+        : projeto
+          ? `Para sugerir, o Órbita envia a ${provedor} o nome do projeto, o próximo passo anotado no "onde parei" e as etapas que já existem. Nada mais.`
+          : `Para sugerir, o Órbita envia a ${provedor} o nome do projeto, o desta etapa e os passos que já existem dentro dela. Nada mais.`,
+    pedindo: (p: string) => `Pedindo sugestões a ${p}...`,
+    pedindoLocal: "Pode levar até um minuto na primeira vez, enquanto o modelo carrega.",
+    escolhaPassos: "Marque os passos que quer adicionar. Dá para mudar o texto de cada um.",
+    passo: (n: number) => `Passo ${n}`,
+    incluir: (t: string) => `Incluir: ${t}`,
+    tirar: (n: number) => `Tirar o passo ${n}`,
+    maisUm: "Escrever mais um passo",
+    adicionarPassos: (n: number) => (n === 1 ? "Adicionar 1 passo" : `Adicionar ${n} passos`),
+    descartar: "Descartar",
+    tentarDeNovo: "Pedir de novo",
+    adicionados: (n: number) => (n === 1 ? "1 passo adicionado." : `${n} passos adicionados.`),
+    irAjustes: "Ir para Ajustes",
   },
   atalhos: {
     titulo: "Atalhos de teclado",

@@ -23,6 +23,7 @@ import type { Tema } from "@orbita/temas";
 import { LimiteProjetos } from "./LimiteProjetos";
 import { ANTECEDENCIAS } from "../preferencias";
 import { Seguranca } from "./Seguranca";
+import { AjustesIa } from "../ia/AjustesIa";
 
 const t = textos.ajustes;
 const chaves = <T extends string>(o: Record<T, unknown>) => Object.keys(o) as T[];
@@ -153,6 +154,7 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
           <LimiteProjetos />
           <Seguranca modo={modo} aoMudar={aoMudarSeguranca} />
           <Backup aoRestaurar={aoRestaurar} />
+          <AjustesIa />
       </div>
 
 

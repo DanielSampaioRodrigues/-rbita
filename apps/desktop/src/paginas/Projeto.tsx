@@ -1,7 +1,8 @@
-import { ArrowLeft, CheckCircle2, Pause, Pencil, Play, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Pause, Pencil, Play, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
-import { api, type EstadoProjeto, type Projeto as TipoProjeto, type Tarefa } from "../api";
+import { api, type EstadoProjeto, type ProvedorVisivel, type Projeto as TipoProjeto, type Tarefa } from "../api";
+import { JanelaPassos } from "../ia/JanelaPassos";
 import { useRecado } from "../app/Recado";
 import { Aviso } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
@@ -36,6 +37,8 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
   const [janela, setJanela] = useState<"pausar" | "anotar" | "renomear" | "excluir" | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [prazoDe, setPrazoDe] = useState<Tarefa | null>(null);
+  const [passosDe, setPassosDe] = useState<{ id: string; titulo: string; projeto: boolean } | null>(null);
+  const [provedorIa, setProvedorIa] = useState<ProvedorVisivel | null>(null);
   const mudancas = useMudancas();
   const comLimite = useComLimite();
   const recado = useRecado();
@@ -46,6 +49,12 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
       (e) => setErro(String(e?.message ?? e)),
     );
   }, [id, mudancas]);
+
+  // A IA só aparece se a pessoa escolheu um provedor para "quebrar".
+  useEffect(() => {
+    api.estadoIa().then((e) => setProvedorIa(e.provedores.find((p) => p.id === e.funcoes.quebrar) ?? null), () => setProvedorIa(null));
+  }, [mudancas]);
+  const sugerir = provedorIa ? (alvo: { id: string; titulo: string }) => setPassosDe({ id: alvo.id, titulo: alvo.titulo, projeto: alvo.id === id }) : undefined;
 
   const executar = async (acao: () => Promise<unknown>) => {
     setErro(null);
@@ -146,12 +155,27 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
             <ToggleButton id="mapa" className="segmentado-opcao">{t.mapa}</ToggleButton>
           </ToggleButtonGroup>
         </div>
-        {visao === "lista" && <ListaTarefas projetoId={id} tarefas={tarefas} executar={executar} aoDefinirPrazo={setPrazoDe} />}
-        {visao === "quadro" && <QuadroTarefas projetoId={id} tarefas={tarefas} executar={executar} aoMover={recado} aoDefinirPrazo={setPrazoDe} />}
-        {visao === "mapa" && <MapaMental projetoId={id} titulo={projeto.titulo} tarefas={tarefas} executar={executar} />}
+        {sugerir && visao !== "mapa" && (
+          <div className="botoes">
+            <Button className="botao com-icone" onPress={() => sugerir({ id, titulo: projeto.titulo })}>
+              <Sparkles aria-hidden="true" size="1em" /> {textos.ia.sugerirEtapas}
+            </Button>
+          </div>
+        )}
+        {visao === "lista" && <ListaTarefas projetoId={id} tarefas={tarefas} executar={executar} aoDefinirPrazo={setPrazoDe} aoSugerirPassos={sugerir} />}
+        {visao === "quadro" && <QuadroTarefas projetoId={id} tarefas={tarefas} executar={executar} aoMover={recado} aoDefinirPrazo={setPrazoDe} aoSugerirPassos={sugerir} />}
+        {visao === "mapa" && <MapaMental projetoId={id} titulo={projeto.titulo} tarefas={tarefas} executar={executar} aoSugerirPassos={sugerir} />}
       </section>
 
       <JanelaPrazo tarefa={prazoDe} aoFechar={() => setPrazoDe(null)} />
+      {provedorIa && (
+        <JanelaPassos
+          alvo={passosDe}
+          provedor={provedorIa}
+          aoFechar={() => setPassosDe(null)}
+          aoAdicionar={(n) => (setPassosDe(null), avisarMudanca(), recado(textos.ia.adicionados(n)))}
+        />
+      )}
       <JanelaOndeParei
         projeto={janela === "pausar" || janela === "anotar" ? projeto : null}
         modo={janela === "pausar" ? "pausar" : "editar"}

@@ -189,9 +189,16 @@ pub fn apagar_config(conn: &Connection, chave: &str) -> Result<(), Erro> {
 }
 
 #[cfg(test)]
-mod testes {
+pub(crate) mod testes {
     use super::*;
     use crate::cofre::cripto::nova_chave;
+
+    /// Banco novo numa pasta temporária, para os testes de outros módulos.
+    pub(crate) fn banco_de_teste() -> (tempfile::TempDir, Connection) {
+        let pasta = tempfile::tempdir().unwrap();
+        let conn = abrir(&pasta.path().join("orbita.db"), &nova_chave()).unwrap();
+        (pasta, conn)
+    }
 
     #[test]
     fn arquivo_fica_ilegivel_sem_a_chave() {

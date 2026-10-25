@@ -12,10 +12,11 @@ interface Props {
   executar: (acao: () => Promise<unknown>) => void;
   aoMover: (texto: string) => void;
   aoDefinirPrazo: (tarefa: Tarefa) => void;
+  aoSugerirPassos?: (tarefa: Tarefa) => void;
 }
 
 /** Quadro em três colunas. Arrastar com mouse, caneta ou teclado; ou usar o menu de cada tarefa. */
-export function QuadroTarefas({ projetoId, tarefas, executar, aoMover, aoDefinirPrazo }: Props) {
+export function QuadroTarefas({ projetoId, tarefas, executar, aoMover, aoDefinirPrazo, aoSugerirPassos }: Props) {
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor));
   const titulo = (id: unknown) => tarefas.find((x) => x.id === id)?.titulo ?? "";
   const coluna = (id: unknown) => t.colunas[id as EstadoTarefa] ?? "";
@@ -44,14 +45,14 @@ export function QuadroTarefas({ projetoId, tarefas, executar, aoMover, aoDefinir
       <p className="texto-suave pequeno">{t.arrastar}</p>
       <div className="quadro">
         {ESTADOS.map((e) => (
-          <Coluna key={e} estado={e} tarefas={tarefas.filter((x) => x.estado === e)} todas={tarefas} projetoId={projetoId} executar={executar} aoMover={aoMover} aoDefinirPrazo={aoDefinirPrazo} />
+          <Coluna key={e} estado={e} tarefas={tarefas.filter((x) => x.estado === e)} todas={tarefas} projetoId={projetoId} executar={executar} aoMover={aoMover} aoDefinirPrazo={aoDefinirPrazo} aoSugerirPassos={aoSugerirPassos} />
         ))}
       </div>
     </DndContext>
   );
 }
 
-function Coluna({ estado, tarefas, todas, projetoId, executar, aoMover, aoDefinirPrazo }: { estado: EstadoTarefa; tarefas: Tarefa[]; todas: Tarefa[] } & Omit<Props, "tarefas">) {
+function Coluna({ estado, tarefas, todas, projetoId, executar, aoMover, aoDefinirPrazo, aoSugerirPassos }: { estado: EstadoTarefa; tarefas: Tarefa[]; todas: Tarefa[] } & Omit<Props, "tarefas">) {
   const { setNodeRef, isOver } = useDroppable({ id: estado });
   return (
     <section ref={setNodeRef} className={isOver ? "quadro-coluna sobre" : "quadro-coluna"} aria-labelledby={`coluna-${estado}`}>
@@ -64,7 +65,7 @@ function Coluna({ estado, tarefas, todas, projetoId, executar, aoMover, aoDefini
           const irmas = todas.filter((x) => x.paiId === tarefa.paiId);
           return (
             <li key={tarefa.id}>
-              <CartaoTarefa tarefa={tarefa} etapa={etapa?.titulo} irmas={irmas} executar={executar} aoMover={aoMover} aoDefinirPrazo={aoDefinirPrazo} />
+              <CartaoTarefa tarefa={tarefa} etapa={etapa?.titulo} irmas={irmas} executar={executar} aoMover={aoMover} aoDefinirPrazo={aoDefinirPrazo} aoSugerirPassos={etapa ? undefined : aoSugerirPassos} />
             </li>
           );
         })}
@@ -73,7 +74,7 @@ function Coluna({ estado, tarefas, todas, projetoId, executar, aoMover, aoDefini
   );
 }
 
-function CartaoTarefa({ tarefa, etapa, irmas, executar, aoMover, aoDefinirPrazo }: { tarefa: Tarefa; etapa?: string; irmas: Tarefa[]; executar: Props["executar"]; aoMover: Props["aoMover"]; aoDefinirPrazo: Props["aoDefinirPrazo"] }) {
+function CartaoTarefa({ tarefa, etapa, irmas, executar, aoMover, aoDefinirPrazo, aoSugerirPassos }: { tarefa: Tarefa; etapa?: string; irmas: Tarefa[]; executar: Props["executar"]; aoMover: Props["aoMover"]; aoDefinirPrazo: Props["aoDefinirPrazo"]; aoSugerirPassos?: Props["aoSugerirPassos"] }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: tarefa.id });
   const estilo = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   return (
@@ -88,7 +89,7 @@ function CartaoTarefa({ tarefa, etapa, irmas, executar, aoMover, aoDefinirPrazo 
           </span>
         )}
       </div>
-      <MenuTarefa tarefa={tarefa} irmas={irmas} executar={executar} aoMover={aoMover} aoDefinirPrazo={aoDefinirPrazo} />
+      <MenuTarefa tarefa={tarefa} irmas={irmas} executar={executar} aoMover={aoMover} aoDefinirPrazo={aoDefinirPrazo} aoSugerirPassos={aoSugerirPassos} />
     </div>
   );
 }
