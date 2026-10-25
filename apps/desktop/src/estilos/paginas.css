@@ -549,3 +549,14 @@
 .lista-ligadas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
 .lista-ligadas li { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-3); padding: var(--espaco-2) var(--espaco-3); border: 1px solid var(--cor-borda); border-radius: var(--canto); flex-wrap: wrap; }
 .pagina > .quadro-ideias, .pagina > .mural, .pagina > .barra-ideias { align-self: stretch; }
+
+/* Tarefas: linha do tempo e calendário dentro do projeto */
+.linha-tempo-fim-projeto { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--cor-atencao); }
+.linha-tempo-data { position: absolute; top: 1.7rem; margin-left: 0.6rem; font-size: 0.75rem; color: var(--cor-texto-suave); white-space: nowrap; }
+.linha-tempo-linha.feita .linha-tempo-nome, .feita-texto { text-decoration: line-through; color: var(--cor-texto-suave); }
+.mes-dia.estatico { cursor: default; }
+.mes-evento.tarefa { width: 100%; text-align: left; background: transparent; border-top: none; border-right: none; border-bottom: none; color: var(--cor-texto); font: inherit; font-size: 0.8rem; cursor: pointer; }
+.mes-evento.tarefa[data-hovered] { background: var(--cor-superficie-alternativa); }
+.mes-evento.tarefa[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 1px; }
+.mes-titulo { margin: 0 0 0 var(--espaco-2); }
+.mes-titulo::first-letter { text-transform: uppercase; }

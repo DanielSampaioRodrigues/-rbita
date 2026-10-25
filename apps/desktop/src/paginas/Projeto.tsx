@@ -12,19 +12,21 @@ import { CartaoOndeParei, JanelaOndeParei } from "../projetos/OndeParei";
 import { ListaTarefas } from "../projetos/ListaTarefas";
 import { QuadroTarefas } from "../projetos/QuadroTarefas";
 import { MapaMental } from "../projetos/MapaMental";
+import { CalendarioTarefas, LinhaTarefas } from "../projetos/TempoTarefas";
 import { JanelaPrazo } from "../projetos/prazos";
 import { CampoData } from "../componentes/CampoData";
 import { textos } from "../textos/pt-BR";
 import { EditarTexto } from "./Ideias";
 
 const t = textos.projeto;
-type Visao = "lista" | "quadro" | "mapa";
+type Visao = "lista" | "quadro" | "mapa" | "linha" | "calendario";
+const VISOES: Visao[] = ["lista", "quadro", "mapa", "linha", "calendario"];
 const CHAVE_VISAO = "orbita.visao-tarefas";
 
 function visaoSalva(): Visao {
   try {
     const v = localStorage.getItem(CHAVE_VISAO);
-    return v === "quadro" || v === "mapa" ? v : "lista";
+    return VISOES.includes(v as Visao) ? (v as Visao) : "lista";
   } catch {
     return "lista";
   }
@@ -153,6 +155,8 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
             <ToggleButton id="lista" className="segmentado-opcao">{t.lista}</ToggleButton>
             <ToggleButton id="quadro" className="segmentado-opcao">{t.quadro}</ToggleButton>
             <ToggleButton id="mapa" className="segmentado-opcao">{t.mapa}</ToggleButton>
+            <ToggleButton id="linha" className="segmentado-opcao">{t.linhaTempo}</ToggleButton>
+            <ToggleButton id="calendario" className="segmentado-opcao">{t.calendario}</ToggleButton>
           </ToggleButtonGroup>
         </div>
         {sugerir && visao !== "mapa" && (
@@ -164,6 +168,8 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
         )}
         {visao === "lista" && <ListaTarefas projetoId={id} tarefas={tarefas} executar={executar} aoDefinirPrazo={setPrazoDe} aoSugerirPassos={sugerir} />}
         {visao === "quadro" && <QuadroTarefas projetoId={id} tarefas={tarefas} executar={executar} aoMover={recado} aoDefinirPrazo={setPrazoDe} aoSugerirPassos={sugerir} />}
+        {visao === "linha" && <LinhaTarefas projeto={projeto} tarefas={tarefas} aoDefinirPrazo={setPrazoDe} />}
+        {visao === "calendario" && <CalendarioTarefas projeto={projeto} tarefas={tarefas} aoDefinirPrazo={setPrazoDe} />}
         {visao === "mapa" && <MapaMental projetoId={id} titulo={projeto.titulo} tarefas={tarefas} executar={executar} aoSugerirPassos={sugerir} />}
       </section>
 
