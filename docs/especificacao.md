@@ -32,6 +32,8 @@ Cada tela e cada função passam por estes sete princípios. Quando uma ideia no
 6. **Retomar é tão importante quanto começar.** Todo projeto, leitura ou tarefa longa guarda onde parou e qual é o próximo passo.
 7. **Acessibilidade sensorial e cognitiva.** Fontes para dislexia, densidade ajustável, contraste garantido, atalhos de teclado para tudo e linguagem simples e literal, sem ironia nem metáforas ambíguas.
 
+**Textos da interface são literais.** Nomes como "estacionamento de ideias" e "hibernação" valem neste documento; na tela, os botões e títulos usam termos literais, como "Guardar para depois" e "Pausar projeto". Tudo que pode ser arrastado também pode ser movido pelo teclado.
+
 ## Módulos
 
 São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kanban, mapa mental, linha do tempo ou calendário, e os módulos se conectam entre si (um remédio do módulo de saúde aparece na agenda; uma leitura acadêmica vira projeto).
@@ -159,13 +161,14 @@ A interface deve ir além da do Escuta: a pessoa monta o próprio ambiente, do m
 - **Botão de baixo estímulo**: tudo neutro, sem animação e sem cor forte, com um clique e de volta com outro.
 - **Importar e exportar temas** num arquivo único, para a comunidade compartilhar.
 - Densidade, tamanho de fonte e espaçamento ajustáveis; modo claro e escuro.
+- **Fontes**: Atkinson Hyperlegible, Lexend e OpenDyslexic, à escolha. O espaçamento entre letras e linhas ganha destaque, porque tem evidência um pouco melhor que a troca de fonte.
 
 ## Privacidade e dados
 
 Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela quiser. Isso pesa especialmente em saúde, dinheiro e cuidado psicológico.
 
 - **Local-first**: o programa funciona inteiro sem internet e sem conta.
-- **Criptografia** do banco de dados, com senha ou PIN definido pela pessoa.
+- **Criptografia** do banco de dados, com senha definida pela pessoa. Na primeira abertura o programa gera uma **chave de recuperação** para imprimir ou guardar: sem a senha e sem essa chave, ninguém recupera os dados. Opção "lembrar neste computador", que guarda a chave no cofre do Windows. PIN curto não é aceito como única proteção do arquivo.
 - **Trava extra opcional** para os módulos de saúde e de cuidado psicológico.
 - **Backup** em arquivo único criptografado, que a pessoa guarda onde quiser (pendrive, Drive, iCloud).
 - **Exportação** dos dados em formatos abertos (por exemplo, CSV e Markdown), para ninguém ficar preso ao programa.
@@ -188,6 +191,10 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 
 **Sobre a IA local.** É um download opcional, separado do instalador, para o programa continuar leve. Ao ativar, o Órbita avalia o computador e recomenda o modelo que cabe nele.
 
+- **Na Onda 1**, a opção local é o **Ollama**, programa gratuito que a pessoa instala à parte; o Órbita detecta e conversa com ele. Embutir o modelo no próprio Órbita fica para depois, se fizer falta.
+- GPT, Gemini, Grok, Sabiá e Ollama usam o mesmo formato de conexão; na prática são duas integrações: Claude e "compatível com GPT".
+- As chaves de API ficam no cofre do Windows, nunca no banco nem em texto aberto.
+
 - Peso aproximado: um modelo pequeno ocupa de 2 a 5 GB em disco e precisa de 8 GB de memória ou mais para rodar bem; a transcrição local ocupa algumas centenas de MB (valores a confirmar na construção).
 - Uso indicado: lançar itens a partir da conversa, organizar, resumir e revisar texto.
 - Limite: é mais lento e menos capaz que Claude, GPT ou Gemini em conversas longas ou complexas.
@@ -200,13 +207,27 @@ Uma base de código única gera todas as versões. O Windows vem primeiro; Mac, 
 | Camada | Proposta | Por quê |
 | --- | --- | --- |
 | Aplicativo | Tauri 2 | Uma base para Windows, Mac, Android e iOS; instalador leve |
-| Interface | Web (TypeScript + framework de componentes) | Facilita temas, layout montável e SVG |
-| Banco de dados | SQLite local criptografado | Funciona sem internet; arquivo único fácil de fazer backup |
-| Transcrição de voz | Modelo local | Áudio não sai do aparelho |
+| Interface | React + TypeScript + Vite; React Aria (componentes acessíveis) e dnd-kit (arrastar com teclado) | Excalidraw e React Flow são em React; acessibilidade por teclado pronta; temas em variáveis CSS, independentes do React |
+| Banco de dados | SQLite local criptografado (SQLCipher, pela parte nativa em Rust) | Funciona sem internet; arquivo único fácil de fazer backup |
+| Transcrição de voz | Modelo local (Whisper, baixado à parte) | Áudio não sai do aparelho |
+| Instalador | GitHub Actions monta o instalador do Windows a cada etapa | Dan testa sem instalar ferramentas de programação |
 | Repositório | GitHub privado | Histórico, backup e decisão sobre código aberto no lançamento |
 | Construção | Claude Code | Repositório, testes e commits; concepção e design ficam no chat |
 
 **Estrutura de dados.** Todos os módulos compartilham alguns tipos básicos: item (ideia, projeto, tarefa, leitura), evento (agenda), registro (energia, sintoma, gasto, sessão) e anexo (imagem, arquivo, link). Cada tipo tem etiquetas e ligações com outros itens. É isso que permite ver os mesmos dados em várias visualizações e conectar os módulos.
+
+**Preparado para sincronizar.** Desde a Onda 1, todo registro tem identificador único, data de alteração e exclusão marcada (em vez de apagar de fato). Isso deixa a sincronização da Onda 3 possível sem refazer o banco.
+
+**Estrutura de pastas.**
+
+```
+apps/desktop/        o app (interface em src/, parte nativa em src-tauri/)
+packages/nucleo/     modelo de dados comum
+packages/temas/      motor de temas e fundos, limpeza de SVG, contraste
+packages/leitor/     motor de leitura EPUB/PDF, em TypeScript puro, sem React (Onda 2)
+packages/caderno/    caderno infinito (Onda 2)
+docs/                especificação e registro de decisões
+```
 
 **Pacotes compartilhados.** O motor de leitura (e, se possível, o motor de temas e o caderno) fica em pacotes separados dentro do repositório, para poder ser reaproveitado no leitor da Arcano 3 e no Escuta sem depender do Órbita inteiro.
 
@@ -217,12 +238,14 @@ Uma base de código única gera todas as versões. O Windows vem primeiro; Mac, 
 A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas primeiras entregam o programa completo no Windows; Mac e mobile só entram depois dos testes. Cada onda só começa quando a anterior passa pelo seu portão.
 
 1. **Onda 1 · Base e coração (Windows)**
-   - Base: banco criptografado, motor de temas e fundos (com SVG), as cinco visualizações.
+   - Base: banco criptografado, **backup básico** (salvar e restaurar), motor de temas e fundos (com SVG), as cinco visualizações.
    - Módulos: Ideias e projetos, Tempo e rotina, Energia; IA, conversa e ditado.
+   - **Marco "mínimo usável"** no meio da onda (captura, projetos, lista e kanban): Dan começa a usar no dia a dia antes do fim.
+   - Mapa mental e linha do tempo ficam no fim da onda e podem passar para a Onda 2 se atrasarem o uso diário.
    - Portão: Dan usa no dia a dia por algumas semanas e aprova.
 2. **Onda 2 · Vida prática (Windows)**
    - Módulos: Dinheiro, Saúde, Cuidado psicológico e psiquiátrico.
-   - Vida acadêmica, Hobbies, Caderno infinito, Leitura; backup e exportação.
+   - Vida acadêmica, Hobbies, Caderno infinito, Leitura; exportação em formatos abertos.
    - Portão: grupo de teste neurodivergente usa e aprova.
 3. **Onda 3 · Mac e mobile**
    - Versões Mac, Android, iOS e iPad a partir do mesmo código.
@@ -242,6 +265,8 @@ A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas pr
 
 ## Decisões em aberto
 
+Já decidido (25/10/2026): interface em React; backup básico na Onda 1; senha com chave de recuperação; IA local via Ollama na Onda 1.
+
 Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto e no Prelo; a IA entra com escolha de provedor; o nome é Órbita.
 
 - [ ] Consultar o nome Órbita no INPI.
@@ -251,3 +276,5 @@ Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto
 - [ ] Grupo de teste diverso (autistas, TDAH, dislexia, altas habilidades) a partir da Onda 2.
 - [ ] Lojas de aplicativo ou versão web instalável para o mobile. Atenção: a integração com Apple Saúde e Health Connect só funciona em app nativo de loja; a versão web não acessa esses dados.
 - [ ] Onde hospedar os instaladores e a página de doação.
+- [ ] Tecnologia da Arcano 3 e do Escuta, para definir como reaproveitar o motor de leitura (até lá, ele é feito sem depender de framework).
+- [ ] Assinatura digital do instalador do Windows (até lá, o Windows mostra um aviso ao instalar).

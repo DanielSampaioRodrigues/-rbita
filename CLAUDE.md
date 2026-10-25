@@ -34,7 +34,8 @@ Toda tela e função passam por estes sete princípios. Em conflito, vencem os p
 ## Decisões técnicas
 
 - **App:** Tauri 2 (Windows primeiro; Mac, Android e iOS do mesmo código).
-- **Interface:** TypeScript com framework de componentes web (propor e justificar a escolha no plano da Onda 1).
+- **Interface:** React + TypeScript + Vite, com React Aria e dnd-kit para acessibilidade por teclado. Temas em variáveis CSS. Monorepo com pnpm (`apps/desktop`, `packages/*`).
+- **Instalador:** o GitHub Actions monta o instalador do Windows; Dan baixa e testa. Não há como rodar o Windows aqui.
 - **Dados:** local-first, SQLite criptografado, funciona sem internet e sem conta. Backup em arquivo único criptografado; exportação em formatos abertos.
 - **Modelo de dados comum:** item, evento, registro e anexo, com etiquetas e ligações entre si.
 - **Pacotes compartilhados:** o motor de leitura (EPUB/PDF) fica em pacote separado, reaproveitável no leitor da Arcano 3 e no Escuta. Tentar o mesmo para o motor de temas e o caderno.
