@@ -132,7 +132,21 @@ pub fn novo_id() -> String {
 }
 
 /// Abre (ou cria) o banco com a chave dos dados e aplica as migrações pendentes.
+/// Liga o SQLCipher uma única vez, antes de qualquer conexão.
+///
+/// Na primeira inicialização, o SQLCipher marca o SQLite como pronto um instante
+/// antes de registrar a função `sqlcipher_export` (usada no backup). Uma conexão
+/// aberta por outra linha de execução nesse instante fica sem a função. Abrindo
+/// uma conexão descartável sob `Once`, as outras esperam a inicialização terminar.
+pub fn preparar_sqlite() {
+    static UMA_VEZ: std::sync::Once = std::sync::Once::new();
+    UMA_VEZ.call_once(|| {
+        let _ = Connection::open_in_memory();
+    });
+}
+
 pub fn abrir(caminho: &Path, chave: &Chave) -> Result<Connection, Erro> {
+    preparar_sqlite();
     let conn = Connection::open(caminho)?;
     // Chave crua de 32 bytes (sem a derivação própria do SQLCipher, que seria redundante).
     let comando = zeroize::Zeroizing::new(format!("PRAGMA key = \"x'{}'\";", hex::encode(chave.as_ref())));
