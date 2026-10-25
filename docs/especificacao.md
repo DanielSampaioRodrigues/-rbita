@@ -76,7 +76,7 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - **Rotinas com imagem**: cada passo pode ter uma foto ou desenho próprio, que substitui o ícone e aparece grande no modo Começar.
 - **Conversa com a IA na captura**: depois de "Separar com IA", a pessoa pede mudanças em linguagem livre e a IA refaz a lista, sempre para conferir de novo antes de guardar. Vão só os itens marcados; os pedidos ficam listados.
 - **Quadro de ideias com arrastar**: soltar em outra coluna troca a etiqueta daquela coluna pela nova; "Sem etiqueta" tira todas. Nos dois quadros (ideias e tarefas), as setas do teclado pulam de coluna em coluna; Enter abre a ideia.
-- **Ícones do tema**: o tema define traço (fino, médio, grosso) e pontas (redondas ou retas) dos ícones. Desenhar ícones próprios fica para a galeria da comunidade (Onda 4).
+- **Ícones do tema**: o tema define traço (fino, médio, grosso) e pontas (redondas ou retas) dos ícones. A criação de tema com IA também propõe e ajusta esse estilo ("ícones mais grossos"). Desenhar ícones próprios fica para a galeria da comunidade (Onda 4).
 - **Acessibilidade**: auditoria automática (axe-core, regras WCAG 2.2 AA) em todas as telas, nos temas claro e escuro, sem problemas. O mapa mental virou uma árvore de verdade para leitores de tela. O teste com NVDA, de preferência com quem usa leitor de tela, continua pendente.
 
 ### 2. Tempo e rotina

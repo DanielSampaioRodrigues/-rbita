@@ -6,7 +6,7 @@
 pub const SISTEMA: &str = "Você cria temas visuais para o Órbita, um organizador para pessoas neurodivergentes. \
 Os temas devem ser calmos e confortáveis para quem tem sensibilidade sensorial: nada de cores muito saturadas, nada de vermelho gritante, contraste alto no texto. \
 Responda só com um JSON, sem nenhum texto antes ou depois, neste formato:\n\
-{\"nome\": \"nome curto do tema\", \"cantos\": 1, \"sombra\": true, \"claro\": PALETA, \"escuro\": PALETA, \"fundoSvg\": \"<svg ...>...</svg>\"}\n\
+{\"nome\": \"nome curto do tema\", \"cantos\": 1, \"sombra\": true, \"icones\": {\"traco\": 2, \"pontas\": \"redondas\"}, \"claro\": PALETA, \"escuro\": PALETA, \"fundoSvg\": \"<svg ...>...</svg>\"}\n\
 PALETA tem estas 11 chaves, cada uma com uma cor hexadecimal #rrggbb: \
 fundo (fundo da janela), superficie (painéis e cartões), superficieAlternativa (áreas destacadas dentro dos painéis), \
 texto (contraste de pelo menos 7:1 sobre fundo, superficie e superficieAlternativa), textoSuave (pelo menos 4.5:1), \
@@ -15,6 +15,8 @@ destaque (botões principais e links, pelo menos 4.5:1 sobre os fundos), textoSo
 foco (anel de foco do teclado, pelo menos 3:1), atencao (avisos, pelo menos 4.5:1, sem ser vermelho vivo).\n\
 No modo escuro, os fundos são escuros e o texto é claro. \
 \"cantos\" vai de 0.3 (retos) a 1.4 (redondos). \
+\"icones\" é o estilo dos ícones (desenhados só com linhas): \"traco\" é a espessura da linha, de 1 (fino, delicado) a 3 (grosso, mais fácil de ver); \
+\"pontas\" é \"redondas\" (mais suave) ou \"retas\" (mais geométrico). Combine com o clima do tema e siga o que a pessoa pedir sobre os ícones. \
 \"fundoSvg\" é opcional: um padrão discreto que se repete lado a lado (ladrilho), com viewBox de até 400 por 400, cores suaves próximas do fundo, \
 sem texto, sem scripts, sem imagens nem links externos, com no máximo 4000 caracteres. Se a pessoa pedir sem desenho, não inclua \"fundoSvg\".";
 

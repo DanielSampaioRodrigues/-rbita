@@ -1053,6 +1053,7 @@ function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" |
         nome: anterior ? "Floresta à noite (ajustado)" : "Floresta à noite",
         cantos: 1.4,
         sombra: true,
+        icones: { traco: /fin|delicad/i.test(pedido) ? 1.5 : /gross|forte/i.test(pedido) ? 2.5 : 2, pontas: /ret|geom/i.test(pedido) ? "retas" : "redondas" },
         claro: { fundo: escuro ? "#e7ece6" : "#eef2ec", superficie: "#f8faf6", superficieAlternativa: "#e3eadf", texto: "#1d2a21", textoSuave: "#4b5a4f",
           borda: "#d2dccf", bordaControle: "#6f7f72", destaque: verde.claro, textoSobreDestaque: "#ffffff", foco: "#2c5d8f", atencao: "#8a4b22" },
         escuro: { fundo: "#141b17", superficie: "#1c2520", superficieAlternativa: "#25302a", texto: "#e8efe9", textoSuave: "#b3c0b6",
