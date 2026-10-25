@@ -201,6 +201,25 @@ export interface EstadoIa {
   bloquearSensivel: boolean;
 }
 
+export type TipoItemProposto = "ideia" | "tarefa" | "compromisso";
+
+export interface ItemProposto {
+  tipo: TipoItemProposto;
+  texto: string;
+  /** Só tarefa; null se a IA citou um projeto que não existe. */
+  projetoId: string | null;
+  /** Só compromisso: "AAAA-MM-DD", "HH:MM" (sem hora = dia inteiro) e duração. */
+  data: string | null;
+  hora: string | null;
+  duracaoMin: number | null;
+}
+
+export interface Organizacao {
+  itens: ItemProposto[];
+  provedor: string;
+  local: boolean;
+}
+
 export interface Sugestao {
   passos: string[];
   provedor: string;
@@ -273,6 +292,8 @@ interface Api {
   memoriaDoComputador(): Promise<number | null>;
   /** Sugestões de passos para um projeto ou uma etapa. Não grava nada. */
   sugerirPassosIa(alvo: string): Promise<Sugestao>;
+  /** Separa um texto em ideias, tarefas e compromissos. Não grava nada. */
+  organizarTextoIa(texto: string, sensivel: boolean): Promise<Organizacao>;
 }
 
 const chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
@@ -348,6 +369,7 @@ const nativa: Api = {
   testarProvedorIa: (provedor, chave) => chamar("testar_provedor_ia", { provedor, chave }),
   memoriaDoComputador: () => chamar("memoria_do_computador"),
   sugerirPassosIa: (alvo) => chamar("sugerir_passos_ia", { alvo }),
+  organizarTextoIa: (texto, sensivel) => chamar("organizar_texto_ia", { texto, sensivel }),
 };
 
 /** Parte da simulação que cuida de ideias, projetos e tarefas (mesmas regras da parte nativa). */
@@ -709,11 +731,17 @@ function criarSimulacao(): Api {
       return { ...backup };
     },
     ...comIa,
+    // A IA de mentira não conhece os projetos: liga a tarefa ao primeiro ativo.
+    organizarTextoIa: async (texto, sensivel) => {
+      const o = await comIa.organizarTextoIa(texto, sensivel);
+      const ativo = (await comItens.listarProjetos()).find((p) => p.estado === "ativo");
+      return { ...o, itens: o.itens.map((i) => (i.projetoId === "__primeiro_ativo__" ? { ...i, projetoId: ativo?.id ?? null } : i)) };
+    },
   };
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa"> {
+function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, bloquearSensivel: false };
   if (comClaude) {
@@ -756,6 +784,25 @@ function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" |
       return ["modelo-a", "modelo-b"];
     },
     memoriaDoComputador: async () => 16,
+    organizarTextoIa: async (_texto, sensivel) => {
+      await espera(1200);
+      if (comErro) throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");
+      if (sensivel && estado.bloquearSensivel)
+        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do computador.", undefined, undefined, undefined, "sensivel_bloqueado");
+      const quinta = new Date();
+      quinta.setDate(quinta.getDate() + ((4 - quinta.getDay() + 7) % 7 || 7));
+      const data = quinta.toLocaleDateString("sv-SE");
+      return {
+        itens: [
+          { tipo: "compromisso", texto: "Consulta com a psiquiatra", projetoId: null, data, hora: "15:00", duracaoMin: null },
+          { tipo: "ideia", texto: "Pagar a conta de luz", projetoId: null, data: null, hora: null, duracaoMin: null },
+          { tipo: "tarefa", texto: "Ler o artigo da Grandin", projetoId: "__primeiro_ativo__", data: null, hora: null, duracaoMin: null },
+          { tipo: "ideia", texto: "Livro sobre faróis e pessoas que moram neles", projetoId: null, data: null, hora: null, duracaoMin: null },
+        ],
+        provedor: "Claude",
+        local: false,
+      };
+    },
     sugerirPassosIa: async () => {
       await espera(1200);
       if (comErro) throw new ErroOrbita("ia", "O provedor recusou por limite de uso ou falta de créditos. Confira a sua conta ou tente mais tarde.", undefined, undefined, undefined, "limite");

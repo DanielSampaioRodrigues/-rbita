@@ -70,6 +70,7 @@ export const textos = {
       "Tela inicial montável: arraste, alargue ou esconda os blocos (botão Organizar).",
       "Prazos em projetos e tarefas, que aparecem na agenda; linha do tempo dos projetos e mapa mental das tarefas.",
       "IA opcional, com a sua chave (Claude, GPT, Gemini, Grok, Sabiá) ou no seu computador (Ollama): sugere passos pequenos para uma tarefa, e você escolhe quais entram.",
+      "Capturar > Separar com IA: escreva tudo de uma vez e a IA separa em ideias, tarefas e compromissos, para você conferir antes de guardar.",
     ],
     dicaAtalhos: "Tudo no Órbita pode ser feito pelo teclado. Aperte F1 para ver os atalhos.",
   },
@@ -658,6 +659,33 @@ export const textos = {
     tentarDeNovo: "Pedir de novo",
     adicionados: (n: number) => (n === 1 ? "1 passo adicionado." : `${n} passos adicionados.`),
     irAjustes: "Ir para Ajustes",
+    // Separar um texto em itens (Capturar)
+    separar: "Separar com IA",
+    vaiPara: (p: string, local: boolean) =>
+      local
+        ? `Separar com IA: a separação é feita no seu computador, com ${p}.`
+        : `Separar com IA: o texto vai para ${p}, junto com a data de hoje e os nomes dos seus projetos ativos. Você confere tudo antes de guardar.`,
+    sensivelAviso: (p: string) =>
+      `O texto parece falar de saúde ou terapia. Se separar com IA, ele vai para ${p}, fora do seu computador.`,
+    sensivelBloqueado:
+      "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do computador. Dá para guardar como ideia, ou escolher uma IA local para a conversa em Ajustes.",
+    enviarMesmoAssim: "Enviar mesmo assim",
+    guardarComoIdeia: "Guardar como ideia, sem IA",
+    separando: (p: string) => `Separando com ${p}...`,
+    conferirTitulo: "Confira antes de guardar",
+    conferirAjuda: "Marque o que quer guardar. Dá para mudar o texto, o tipo, o projeto e o dia.",
+    tipos: { ideia: "Ideia", tarefa: "Tarefa", compromisso: "Compromisso" },
+    tipoDe: (n: number) => `Tipo do item ${n}`,
+    item: (n: number) => `Item ${n}`,
+    projetoDe: "Projeto",
+    escolhaProjeto: "Escolha o projeto",
+    dia: "Dia",
+    hora: "Hora (vazia = dia inteiro)",
+    guardarItens: (n: number) => (n === 1 ? "Guardar 1 item" : `Guardar ${n} itens`),
+    itensGuardados: (n: number) => (n === 1 ? "1 item guardado." : `${n} itens guardados.`),
+    voltarTexto: "Voltar ao texto",
+    faltaProjeto: "Escolha o projeto de cada tarefa marcada, ou mude o tipo para ideia.",
+    faltaDia: "Escolha o dia de cada compromisso marcado.",
   },
   atalhos: {
     titulo: "Atalhos de teclado",

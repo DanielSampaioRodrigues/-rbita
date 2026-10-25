@@ -6,6 +6,7 @@
 //! A IA só propõe; quem grava é a interface, depois que a pessoa confirma.
 
 pub mod cliente;
+pub mod organizar;
 pub mod quebrar;
 
 use std::collections::BTreeMap;

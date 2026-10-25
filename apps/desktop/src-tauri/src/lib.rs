@@ -97,6 +97,7 @@ pub fn run() {
             comandos::testar_provedor_ia,
             comandos::memoria_do_computador,
             comandos::sugerir_passos_ia,
+            comandos::organizar_texto_ia,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

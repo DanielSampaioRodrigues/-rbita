@@ -480,3 +480,10 @@
 .passo-ia-texto { flex: 1; min-width: 0; }
 .passo-ia-texto .entrada-texto { width: 100%; }
 .entrada-texto.desmarcado { color: var(--cor-texto-suave); text-decoration: line-through; }
+
+/* IA: conferir o que foi separado na captura */
+.lista-itens-ia { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-3); }
+.item-ia { display: grid; gap: var(--espaco-2); padding: var(--espaco-3); border: 1px solid var(--cor-borda); border-radius: var(--canto); }
+.item-ia.desmarcado { border-style: dashed; }
+.item-ia-detalhes { display: grid; gap: var(--espaco-3); padding-left: calc(1.25rem + var(--espaco-2)); }
+.item-ia-detalhes .campo-rotulo { font-size: 0.9rem; }

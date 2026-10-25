@@ -13,7 +13,7 @@ use crate::banco::{self, energia, eventos, itens, rotinas};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
-use crate::ia::{self, cliente, quebrar, EstadoIa, Provedor};
+use crate::ia::{self, cliente, organizar, quebrar, EstadoIa, Provedor};
 
 const CONFIG_PALAVRAS: &str = "palavras_recuperacao";
 
@@ -541,4 +541,27 @@ pub async fn sugerir_passos_ia(estado: State<'_, Estado>, alvo: String) -> Resul
         return Err(Erro::Ia { motivo: "resposta", mensagem: "A IA não sugeriu nenhum passo. Tente de novo.".into() });
     }
     Ok(Sugestao { passos, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Organizacao {
+    itens: Vec<organizar::ItemProposto>,
+    provedor: String,
+    local: bool,
+}
+
+/// Separa um texto solto em ideias, tarefas e compromissos. Não grava nada.
+/// `sensivel`: a interface achou sinais de saúde ou terapia no texto.
+#[tauri::command]
+pub async fn organizar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel: bool) -> Result<Organizacao, Erro> {
+    let (escolhido, pedido, projetos) = estado.com_sessao(|s| {
+        Ok((ia::provedor_da_funcao(&s.conn, "conversa", sensivel)?, organizar::pedido_de_agora(&s.conn, &texto)?, organizar::projetos_ativos(&s.conn)?))
+    })?;
+    let resposta = cliente::completar(&escolhido, organizar::SISTEMA, &pedido).await?;
+    let itens = organizar::ler_itens(&resposta, &projetos);
+    if itens.is_empty() {
+        return Err(Erro::Ia { motivo: "resposta", mensagem: "A IA não conseguiu separar o texto. Tente de novo, ou guarde como ideia.".into() });
+    }
+    Ok(Organizacao { itens, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
 }

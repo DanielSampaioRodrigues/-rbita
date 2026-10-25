@@ -13,7 +13,7 @@ const t = textos.agenda;
 type TipoRepeticao = "nao" | Repeticao["frequencia"];
 
 const hora = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-const juntar = (data: string, h: string) => {
+export const juntar = (data: string, h: string) => {
   const [a, m, d] = data.split("-").map(Number);
   const [hh, mm] = (h || "00:00").split(":").map(Number);
   return new Date(a, m - 1, d, hh, mm).getTime();

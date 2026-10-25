@@ -260,6 +260,12 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 - **Erros em linguagem simples**: chave recusada, limite ou créditos, modelo não encontrado, sem internet, Ollama fechado, demora.
 - **Bloqueio de dados sensíveis** em Ajustes, já conferido na parte nativa; passa a valer quando a conversa (etapa 15) e os módulos de saúde (Onda 2) existirem.
 
+**Como ficou na Onda 1 (etapa 15).**
+- A "janela de conversa" virou o botão **Separar com IA** dentro de **Capturar** (Ctrl + Alt + Espaço, de qualquer tela). Assim a captura continua igual para quem não usa IA, e quem usa escreve tudo de uma vez no mesmo lugar. Uma conversa de várias mensagens fica para depois, se fizer falta.
+- A IA separa o texto em **ideias, tarefas de projetos ativos e compromissos** (com dia e, se a pessoa disse, hora). Vão junto só a data de hoje e os nomes dos projetos ativos.
+- **Confira antes de guardar**: cada item pode ser desmarcado, editado, trocado de tipo, de projeto ou de dia. Tarefa sem projeto ou compromisso sem dia não deixam guardar até a pessoa decidir. A parte nativa confere tudo o que a IA devolve: data ou hora inválida, tipo desconhecido ou compromisso sem dia viram ideia, para nada se perder.
+- **Aviso de dado sensível**: se o texto parece falar de saúde ou terapia e o provedor é de fora do computador, o Órbita avisa antes de enviar e oferece guardar como ideia, sem IA. Com o bloqueio ligado em Ajustes, não envia. A detecção é por palavras e, na dúvida, avisa.
+
 - Peso aproximado: um modelo pequeno ocupa de 2 a 5 GB em disco e precisa de 8 GB de memória ou mais para rodar bem; a transcrição local ocupa algumas centenas de MB (valores a confirmar na construção).
 - Uso indicado: lançar itens a partir da conversa, organizar, resumir e revisar texto.
 - Limite: é mais lento e menos capaz que Claude, GPT ou Gemini em conversas longas ou complexas.
