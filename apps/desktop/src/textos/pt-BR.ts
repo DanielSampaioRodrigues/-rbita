@@ -358,7 +358,11 @@ export const textos = {
     todas: "Todas",
     visualizacao: "Visualização",
     visoes: { lista: "Lista", mural: "Mural", quadro: "Quadro", mapa: "Mapa" },
-    quadroExplicacao: "Uma coluna por etiqueta. Para mudar uma ideia de coluna, abra e troque a etiqueta.",
+    quadroExplicacao: "Uma coluna por etiqueta. Arraste uma ideia para outra coluna para trocar a etiqueta. Uma ideia com duas etiquetas aparece nas duas.",
+    instrucoesArrastar:
+      "Enter abre a ideia. Para mudar de coluna com o teclado: aperte Espaço para pegar, use as setas para escolher a coluna e Espaço de novo para soltar. Esc cancela.",
+    movidaPara: (ideia: string, coluna: string) => `"${ideia}" agora está em ${coluna}.`,
+    semEtiquetaAgora: (ideia: string) => `"${ideia}" ficou sem etiqueta.`,
     nenhumaEncontrada: "Nenhuma ideia com esse filtro.",
     limparFiltro: "Limpar o filtro",
     contagem: (n: number, total: number) => (n === total ? (total === 1 ? "1 ideia" : `${total} ideias`) : `${n} de ${total} ideias`),

@@ -1,7 +1,12 @@
+import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { ChevronRight, Link2, StickyNote } from "lucide-react";
+import { useRef, type ReactNode } from "react";
 import { textoSimples } from "../componentes/textoSimples";
 import { Button } from "react-aria-components";
-import type { Etiqueta, Ideia } from "../api";
+import { api, type Etiqueta, type Ideia } from "../api";
+import { useRecado } from "../app/Recado";
+import { pularEntreColunas } from "../componentes/tecladoColunas";
+import { avisarMudanca } from "../dados";
 import { formatoData } from "../projetos/OndeParei";
 import { textos } from "../textos/pt-BR";
 import { ChipEtiqueta } from "./etiquetas";
@@ -71,37 +76,112 @@ export function MuralIdeias({ ideias, etiquetas, aoAbrir }: Props) {
   );
 }
 
-/** Grupos por etiqueta (e "Sem etiqueta"). Uma ideia pode estar em mais de um. */
-function grupos(ideias: Ideia[], etiquetas: Etiqueta[]) {
+/** Grupos por etiqueta (e "Sem etiqueta"). Uma ideia pode estar em mais de um.
+ * `todos`: mostra também os vazios (no quadro, para poder soltar neles). */
+function grupos(ideias: Ideia[], etiquetas: Etiqueta[], todos = false) {
   const lista = etiquetas
     .map((e) => ({ id: e.id, etiqueta: e as Etiqueta | null, ideias: ideias.filter((i) => i.etiquetas.includes(e.id)) }))
-    .filter((g) => g.ideias.length > 0);
+    .filter((g) => todos || g.ideias.length > 0);
   const sem = ideias.filter((i) => !i.etiquetas.some((id) => etiquetas.some((e) => e.id === id)));
-  if (sem.length) lista.push({ id: "sem", etiqueta: null, ideias: sem });
+  if (sem.length || todos) lista.push({ id: "sem", etiqueta: null, ideias: sem });
   return lista;
 }
 
+const SEM = "sem";
+
 export function QuadroIdeias({ ideias, etiquetas, aoAbrir }: Props) {
+  const sensores = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    // Enter fica para abrir a ideia; Espaço pega e solta.
+    useSensor(KeyboardSensor, { keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] }, coordinateGetter: pularEntreColunas }),
+  );
+  const recado = useRecado();
+  // Depois de arrastar com o mouse, o clique que vem junto não deve abrir a ideia.
+  const arrastou = useRef(false);
+  const colunas = grupos(ideias, etiquetas, true);
+  const nomeColuna = (id: unknown) => (id === SEM ? t.semEtiqueta : etiquetas.find((e) => e.id === id)?.nome ?? "");
+  const ideiaDe = (id: unknown) => ideias.find((i) => i.id === String(id).split("|")[1]);
+
+  const soltar = async ({ active, over }: DragEndEvent) => {
+    setTimeout(() => (arrastou.current = false), 150);
+    const ideia = ideiaDe(active.id);
+    const origem = String(active.id).split("|")[0];
+    const destino = over?.id as string | undefined;
+    if (!ideia || !destino || destino === origem) return;
+    // Trocar de coluna = trocar a etiqueta de origem pela de destino. "Sem etiqueta" tira todas.
+    const novas = destino === SEM ? [] : [...new Set([...ideia.etiquetas.filter((e) => e !== origem), destino])];
+    try {
+      await api.definirEtiquetasItem(ideia.id, novas);
+      avisarMudanca();
+      recado(destino === SEM ? t.semEtiquetaAgora(ideia.texto) : t.movidaPara(ideia.texto, nomeColuna(destino)));
+    } catch (e) {
+      recado(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
-    <>
+    <DndContext
+      sensors={sensores}
+      onDragStart={() => (arrastou.current = true)}
+      onDragEnd={soltar}
+      onDragCancel={() => (arrastou.current = false)}
+      accessibility={{
+        screenReaderInstructions: { draggable: t.instrucoesArrastar },
+        announcements: {
+          onDragStart: ({ active }) => `Pegou "${ideiaDe(active.id)?.texto ?? ""}".`,
+          onDragOver: ({ active, over }) => (over ? `"${ideiaDe(active.id)?.texto ?? ""}" sobre ${nomeColuna(over.id)}.` : "Fora das colunas."),
+          onDragEnd: ({ active, over }) => (over ? `"${ideiaDe(active.id)?.texto ?? ""}" solta em ${nomeColuna(over.id)}.` : "Voltou ao lugar."),
+          onDragCancel: () => "Movimento cancelado.",
+        },
+      }}
+    >
       <p className="texto-suave pequeno">{t.quadroExplicacao}</p>
       <div className="quadro quadro-ideias">
-        {grupos(ideias, etiquetas).map((g) => (
-          <section key={g.id} className="quadro-coluna" aria-label={g.etiqueta?.nome ?? t.semEtiqueta}>
-            <h3>{g.etiqueta ? <ChipEtiqueta etiqueta={g.etiqueta} /> : t.semEtiqueta} <span className="texto-suave">({g.ideias.length})</span></h3>
-            <ul className="quadro-cartoes">
-              {g.ideias.map((i) => (
-                <li key={i.id}>
-                  <Button className="quadro-cartao ideia-cartao-quadro" onPress={() => aoAbrir(i)} aria-label={t.abrir(i.texto)}>
-                    <span className="quebra">{i.texto}</span>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
+        {colunas.map((g) => (
+          <ColunaIdeias key={g.id} id={g.id} titulo={g.etiqueta ? <ChipEtiqueta etiqueta={g.etiqueta} /> : t.semEtiqueta} nome={g.etiqueta?.nome ?? t.semEtiqueta}>
+            {g.ideias.map((i) => (
+              <li key={i.id}>
+                <CartaoIdeia coluna={g.id} ideia={i} aoAbrir={() => !arrastou.current && aoAbrir(i)} />
+              </li>
+            ))}
+          </ColunaIdeias>
         ))}
       </div>
-    </>
+    </DndContext>
+  );
+}
+
+function ColunaIdeias({ id, titulo, nome, children }: { id: string; titulo: ReactNode; nome: string; children: ReactNode[] }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <section ref={setNodeRef} className={isOver ? "quadro-coluna sobre" : "quadro-coluna"} aria-label={nome}>
+      <h3>{titulo} <span className="texto-suave">({children.length})</span></h3>
+      <ul className="quadro-cartoes">{children}</ul>
+    </section>
+  );
+}
+
+function CartaoIdeia({ coluna, ideia, aoAbrir }: { coluna: string; ideia: Ideia; aoAbrir: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `${coluna}|${ideia.id}` });
+  const estilo = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
+  return (
+    <div className={isDragging ? "quadro-cartao ideia-cartao-quadro arrastando" : "quadro-cartao ideia-cartao-quadro"} style={estilo}>
+      <div
+        ref={setNodeRef}
+        className="quadro-cartao-alca"
+        {...attributes}
+        {...listeners}
+        aria-roledescription="ideia arrastável"
+        aria-label={t.abrir(ideia.texto)}
+        onClick={aoAbrir}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !isDragging) return aoAbrir();
+          listeners?.onKeyDown?.(e);
+        }}
+      >
+        <span className="quebra">{ideia.texto}</span>
+      </div>
+    </div>
   );
 }
 

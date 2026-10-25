@@ -1,5 +1,6 @@
 import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { api, type EstadoTarefa, type Tarefa } from "../api";
+import { pularEntreColunas } from "../componentes/tecladoColunas";
 import { textos } from "../textos/pt-BR";
 import { ESTADOS, EtiquetaPeso, EtiquetasTarefa, MenuTarefa } from "./acoesTarefa";
 import { EtiquetaPrazo } from "./prazos";
@@ -17,7 +18,7 @@ interface Props {
 
 /** Quadro em três colunas. Arrastar com mouse, caneta ou teclado; ou usar o menu de cada tarefa. */
 export function QuadroTarefas({ projetoId, tarefas, executar, aoMover, aoDefinirPrazo, aoSugerirPassos }: Props) {
-  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor));
+  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: pularEntreColunas }));
   const titulo = (id: unknown) => tarefas.find((x) => x.id === id)?.titulo ?? "";
   const coluna = (id: unknown) => t.colunas[id as EstadoTarefa] ?? "";
 
