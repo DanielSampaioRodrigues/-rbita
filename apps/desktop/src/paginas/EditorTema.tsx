@@ -127,7 +127,8 @@ export function EditorTema({ inicial, aoSalvar, aoCancelar }: { inicial: Tema; a
           <Previa paleta={paleta} cantos={tema.cantos ?? 1} sombra={tema.sombra !== false} icones={icones} />
           <section className="cartao compacto" aria-labelledby="contraste-editor">
             <h2 id="contraste-editor">{t.contraste}</h2>
-            <ul className="lista-contraste">
+            {/* Rola sozinha quando é comprida: precisa receber foco para rolar pelo teclado. */}
+            <ul className="lista-contraste" tabIndex={0} aria-labelledby="contraste-editor">
               {resultados.map((r) => (
                 <li key={`${r.frente}-${r.fundo}`} className={r.passa ? "" : "falha"}>
                   {r.passa ? <Check aria-hidden="true" size="1em" /> : <TriangleAlert aria-hidden="true" size="1em" />}

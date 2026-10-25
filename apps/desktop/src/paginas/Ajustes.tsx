@@ -72,7 +72,8 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
       <div className="ajustes-grade">
         <section className="cartao previa" aria-label={t.previa}>
           <p className="previa-rotulo">{t.previa}</p>
-          <h3>{t.previaTitulo}</h3>
+          {/* Exemplo de título, não um título da página (fica fora da ordem dos títulos). */}
+          <p className="previa-titulo">{t.previaTitulo}</p>
           <p>{t.previaTexto}</p>
           <Button className="botao principal">{t.previaBotao}</Button>
         </section>

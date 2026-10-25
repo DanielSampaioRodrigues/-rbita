@@ -30,6 +30,7 @@
   color: var(--cor-texto-suave);
 }
 
+.previa-titulo { margin: 0; font-size: 1.05rem; font-weight: 650; line-height: 1.25; }
 .previa .botao { align-self: flex-start; margin-top: var(--espaco-2); }
 
 .largura-leitura { max-width: var(--largura-leitura); width: 100%; }
@@ -85,7 +86,7 @@
 }
 
 .quadro-coluna.sobre { border-color: var(--cor-destaque); box-shadow: inset 0 0 0 1px var(--cor-destaque); }
-.quadro-coluna h3 { font-size: 0.95rem; }
+.quadro-coluna h3, .quadro-coluna-titulo { font-size: 0.95rem; }
 .quadro-cartoes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
 
 .quadro-cartao {

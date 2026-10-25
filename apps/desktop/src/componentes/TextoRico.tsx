@@ -9,7 +9,8 @@ export function TextoRico({ markdown, className }: { markdown: string; className
     content: markdown,
     contentType: "markdown",
     editable: false,
-    editorProps: { attributes: { class: `texto-rico ${className ?? ""}` } },
+    // Só para ler: sem papel de caixa de texto (o leitor de tela lê como texto comum).
+    editorProps: { attributes: { class: `texto-rico ${className ?? ""}`, role: "document" } },
   });
   useEffect(() => {
     if (editor && editor.getMarkdown() !== markdown) editor.commands.setContent(markdown, { contentType: "markdown", emitUpdate: false });

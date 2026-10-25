@@ -53,7 +53,7 @@ export function MapaMental({ projetoId, titulo, tarefas, executar, aoSugerirPass
   const [renomeando, setRenomeando] = useState<No | null>(null);
   const [excluindo, setExcluindo] = useState<No | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const botoes = useRef(new Map<string, HTMLButtonElement>());
+  const botoes = useRef(new Map<string, HTMLElement>());
 
   // Se o item escolhido sumiu (excluído), vale o principal; se ainda vai aparecer (acabou de ser criado), espera.
   const atual = ordem.find((n) => n.id === selecionado) ?? raiz;
@@ -109,21 +109,24 @@ export function MapaMental({ projetoId, titulo, tarefas, executar, aoSugerirPass
   const desenhar = (n: No) => {
     const feito = n.tarefa?.estado === "feita";
     return (
-      <li key={n.id} className={`mapa-ramo nivel-${n.nivel}`}>
-        <button
-          type="button"
+      <li key={n.id} className={`mapa-ramo nivel-${n.nivel}`} role="none">
+        {/* Árvore de verdade (treeitem/group) para o leitor de tela entrar no modo de setas sozinho. */}
+        <div
+          role="treeitem"
+          aria-level={n.nivel + 1}
+          aria-selected={n.id === atual.id}
+          aria-expanded={n.filhos.length > 0 ? true : undefined}
           ref={(el) => void (el ? botoes.current.set(n.id, el) : botoes.current.delete(n.id))}
           className={["mapa-no", `nivel-${n.nivel}`, n.id === atual.id && "selecionado", feito && "feito"].filter(Boolean).join(" ")}
           tabIndex={n.id === atual.id ? 0 : -1}
-          aria-current={n.id === atual.id || undefined}
           onClick={() => escolher(n.id)}
         >
           {feito && <Check aria-hidden="true" size="1em" />}
           <span className="quebra">{n.titulo}</span>
           {n.tarefa?.prazo && <EtiquetaPrazo prazo={n.tarefa.prazo} />}
           {feito && <span className="visualmente-oculto">({textos.projeto.estadosTarefa.feita})</span>}
-        </button>
-        {n.filhos.length > 0 && <ul className="mapa-filhos">{n.filhos.map(desenhar)}</ul>}
+        </div>
+        {n.filhos.length > 0 && <ul className="mapa-filhos" role="group">{n.filhos.map(desenhar)}</ul>}
       </li>
     );
   };
@@ -158,8 +161,8 @@ export function MapaMental({ projetoId, titulo, tarefas, executar, aoSugerirPass
         )}
       </div>
       {aviso && <p className="aviso" role="status">{aviso}</p>}
-      <div className="mapa" onKeyDown={aoTeclar} role="tree" aria-label={t.titulo}>
-        <ul className="mapa-raiz">{desenhar(raiz)}</ul>
+      <div className="mapa" onKeyDown={aoTeclar}>
+        <ul className="mapa-raiz" role="tree" aria-label={t.titulo}>{desenhar(raiz)}</ul>
       </div>
 
       <Janela titulo={t.novoItem} aberta={!!criando} aoFechar={() => setCriando(null)}>

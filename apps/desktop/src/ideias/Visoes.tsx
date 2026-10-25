@@ -155,7 +155,7 @@ function ColunaIdeias({ id, titulo, nome, children }: { id: string; titulo: Reac
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
     <section ref={setNodeRef} className={isOver ? "quadro-coluna sobre" : "quadro-coluna"} aria-label={nome}>
-      <h3>{titulo} <span className="texto-suave">({children.length})</span></h3>
+      <h2 className="quadro-coluna-titulo">{titulo} <span className="texto-suave">({children.length})</span></h2>
       <ul className="quadro-cartoes">{children}</ul>
     </section>
   );
