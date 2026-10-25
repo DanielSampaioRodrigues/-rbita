@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { contraste, lerHex, MINIMO } from "./contraste";
 import { nomeVariavel, paletaFinal } from "./aplicar";
-import { papel } from "./papel";
+import { TEMAS } from "./prontos";
 import type { Paleta, Tema } from "./tipos";
 
 describe("contraste", () => {
@@ -41,7 +41,7 @@ function verificarPaleta(p: Paleta) {
   return falhas;
 }
 
-const temas: Tema[] = [papel];
+const temas: Tema[] = TEMAS;
 
 describe.each(temas)("tema $nome", (tema) => {
   for (const modo of ["claro", "escuro"] as const) {

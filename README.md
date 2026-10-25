@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 10 de 18, energia e modo baixa energia.
+Onda 1 (base e coração, Windows): etapa 11 de 18, temas e fundos com contraste automático.

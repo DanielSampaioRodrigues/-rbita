@@ -19,9 +19,18 @@
   --espaco-6: calc(2rem * var(--densidade));
   --espaco-7: calc(3rem * var(--densidade));
 
-  --canto-pequeno: 0.4rem;
-  --canto: 0.7rem;
-  --canto-grande: 1rem;
+  --multiplicador-cantos: 1;
+  --canto-pequeno: calc(0.4rem * var(--multiplicador-cantos));
+  --canto: calc(0.7rem * var(--multiplicador-cantos));
+  --canto-grande: calc(1rem * var(--multiplicador-cantos));
+
+  /* Fundo (aplicado pelo app) e opacidade dos painéis calculada para manter o contraste. */
+  --fundo-imagem: none;
+  --fundo-tamanho: auto;
+  --fundo-repetir: no-repeat;
+  --fundo-desfoque: 0px;
+  --fundo-escurecimento: 0;
+  --opacidade-paineis: 1;
   --sombra: 0 1px 2px rgb(0 0 0 / 0.05), 0 2px 8px rgb(0 0 0 / 0.04);
   --transicao: 120ms ease-out;
   --largura-leitura: 44rem;
@@ -30,6 +39,8 @@
 :root[data-modo="escuro"] {
   --sombra: 0 1px 2px rgb(0 0 0 / 0.3);
 }
+
+:root[data-sem-sombra="true"] { --sombra: none; }
 
 /* Baixo estímulo e "reduzir animações" do Windows: nada se mexe. */
 :root[data-baixo-estimulo="true"] {
@@ -53,6 +64,29 @@
 html {
   font-size: var(--tamanho-base);
   background: var(--cor-fundo);
+}
+
+/* Camada do fundo, atrás de tudo: imagem ou desenho, com desfoque e véu escuro. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::before {
+  inset: calc(-2 * var(--fundo-desfoque));
+  background-image: var(--fundo-imagem);
+  background-size: var(--fundo-tamanho);
+  background-repeat: var(--fundo-repetir);
+  background-position: center;
+  filter: blur(var(--fundo-desfoque));
+}
+
+body::after {
+  inset: 0;
+  background: rgb(0 0 0 / var(--fundo-escurecimento));
 }
 
 html, body, #raiz { height: 100%; margin: 0; }

@@ -20,9 +20,23 @@ export interface Paleta {
   atencao: string;
 }
 
+/** Fundo da janela. Imagens e SVG vêm da pessoa; padrões são desenhados pelo próprio Órbita. */
+export type Fundo =
+  | { tipo: "cor" }
+  | { tipo: "gradiente"; nome: string }
+  | { tipo: "padrao"; nome: string }
+  | { tipo: "imagem"; dados: string; desfoque: number; escurecimento: number }
+  | { tipo: "svg"; conteudo: string; repetir: boolean; animar: boolean };
+
 export interface Tema {
   id: string;
   nome: string;
+  /** Multiplica o arredondamento dos cantos (1 = padrão). */
+  cantos?: number;
+  /** false tira as sombras. */
+  sombra?: boolean;
+  /** Fundo sugerido pelo tema; a pessoa pode trocar. */
+  fundoPadrao?: Fundo;
   claro: Paleta;
   escuro: Paleta;
   /** Versão sem cor de destaque, usada no modo de baixo estímulo. */

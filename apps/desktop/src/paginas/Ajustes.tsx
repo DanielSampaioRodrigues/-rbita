@@ -17,6 +17,7 @@ import {
 import type { ModoAbrir } from "../api";
 import { textos } from "../textos/pt-BR";
 import { Backup } from "./Backup";
+import { TemaFundo } from "./TemaFundo";
 import { LimiteProjetos } from "./LimiteProjetos";
 import { ANTECEDENCIAS } from "../preferencias";
 import { Seguranca } from "./Seguranca";
@@ -46,6 +47,8 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
           <p>{t.previaTexto}</p>
           <Button className="botao principal">{t.previaBotao}</Button>
         </section>
+
+          <TemaFundo />
 
           <section className="cartao">
             <h2>{t.leitura}</h2>

@@ -33,6 +33,12 @@ describe("preferências", () => {
     expect(validar({ avisos: { ligado: false, minutos: 7 } }).avisos).toEqual({ ligado: false, minutos: 10, notificacao: true });
   });
 
+  it("aceita tema e fundo válidos e descarta os estranhos", () => {
+    expect(validar({ tema: "floresta", fundo: { tipo: "padrao", nome: "folhas" } })).toMatchObject({ tema: "floresta", fundo: { tipo: "padrao", nome: "folhas" } });
+    expect(validar({ tema: "inexistente", fundo: { tipo: "imagem", dados: "javascript:x" } })).toMatchObject({ tema: "papel", fundo: null });
+    expect(validar({ fundo: { tipo: "svg", conteudo: "<svg/>" } }).fundo).toEqual({ tipo: "svg", conteudo: "<svg/>", repetir: true, animar: false });
+  });
+
   it("não quebra com texto corrompido", () => {
     const m = new Memoria();
     m.setItem("orbita.preferencias.v1", "{isto não é json");

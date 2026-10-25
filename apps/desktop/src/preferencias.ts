@@ -1,3 +1,5 @@
+import { TEMAS, type Fundo } from "@orbita/temas";
+
 // Preferências visuais. Ficam fora do cofre criptografado de propósito:
 // a tela de senha precisa abrir já com a fonte e o contraste da pessoa.
 
@@ -34,6 +36,10 @@ export interface Preferencias {
   avisos: { ligado: boolean; minutos: number; notificacao: boolean };
   /** Modo baixa energia: o app mostra só o essencial. */
   baixaEnergia: boolean;
+  /** Id de um tema pronto. */
+  tema: string;
+  /** null = o fundo sugerido pelo tema. */
+  fundo: Fundo | null;
 }
 
 export const PADRAO: Preferencias = {
@@ -46,6 +52,8 @@ export const PADRAO: Preferencias = {
   baixoEstimulo: false,
   avisos: { ligado: true, minutos: 10, notificacao: true },
   baixaEnergia: false,
+  tema: "papel",
+  fundo: null,
 };
 
 export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
@@ -69,6 +77,8 @@ export function validar(bruto: unknown): Preferencias {
     baixoEstimulo: typeof p.baixoEstimulo === "boolean" ? p.baixoEstimulo : PADRAO.baixoEstimulo,
     avisos: validarAvisos(p.avisos),
     baixaEnergia: typeof p.baixaEnergia === "boolean" ? p.baixaEnergia : PADRAO.baixaEnergia,
+    tema: TEMAS.some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,
+    fundo: validarFundo(p.fundo),
   };
 }
 
@@ -96,4 +106,29 @@ function validarAvisos(bruto: unknown): Preferencias["avisos"] {
     minutos: ANTECEDENCIAS.includes(a.minutos as never) ? (a.minutos as number) : PADRAO.avisos.minutos,
     notificacao: typeof a.notificacao === "boolean" ? a.notificacao : PADRAO.avisos.notificacao,
   };
+}
+
+/** Confere a forma do fundo salvo; qualquer coisa estranha volta ao fundo do tema. */
+function validarFundo(bruto: unknown): Fundo | null {
+  if (typeof bruto !== "object" || bruto === null) return null;
+  const f = bruto as Record<string, unknown>;
+  const num = (v: unknown, padrao: number) => (typeof v === "number" && Number.isFinite(v) ? v : padrao);
+  switch (f.tipo) {
+    case "cor":
+      return { tipo: "cor" };
+    case "gradiente":
+    case "padrao":
+      return typeof f.nome === "string" ? { tipo: f.tipo, nome: f.nome } : null;
+    case "imagem":
+      return typeof f.dados === "string" && f.dados.startsWith("data:image/")
+        ? { tipo: "imagem", dados: f.dados, desfoque: num(f.desfoque, 0), escurecimento: num(f.escurecimento, 0) }
+        : null;
+    case "svg":
+      // O conteúdo já foi limpo ao importar; só confere o tipo.
+      return typeof f.conteudo === "string" && f.conteudo.startsWith("<svg")
+        ? { tipo: "svg", conteudo: f.conteudo, repetir: f.repetir !== false, animar: f.animar === true }
+        : null;
+    default:
+      return null;
+  }
 }

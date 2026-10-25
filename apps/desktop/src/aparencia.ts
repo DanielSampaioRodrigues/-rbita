@@ -1,6 +1,7 @@
-import { aplicarVariaveis, paletaFinal, papel, variaveisDaPaleta, type Modo } from "@orbita/temas";
+import { aplicarVariaveis, lerHex, paletaFinal, temaPorId, variaveisDaPaleta, type Modo, type Paleta } from "@orbita/temas";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { aplicarFundo } from "./fundo";
 import {
   DENSIDADES,
   ESPACO_LETRAS,
@@ -11,6 +12,12 @@ import {
 } from "./preferencias";
 
 const consultaEscuro = () => window.matchMedia("(prefers-color-scheme: dark)");
+const consultaMovimento = () => window.matchMedia("(prefers-reduced-motion: reduce)");
+
+/** Paleta em uso agora (tema, modo e baixo estímulo). */
+export function paletaAtual(prefs: Preferencias): Paleta {
+  return paletaFinal(temaPorId(prefs.tema), modoEfetivo(prefs), prefs.baixoEstimulo);
+}
 
 export function modoEfetivo(prefs: Preferencias): Modo {
   if (prefs.modoCor !== "sistema") return prefs.modoCor;
@@ -20,8 +27,12 @@ export function modoEfetivo(prefs: Preferencias): Modo {
 /** Leva as preferências para a tela: cores, fonte, tamanhos e espaços. */
 export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = document.documentElement): void {
   const modo = modoEfetivo(prefs);
+  const tema = temaPorId(prefs.tema);
+  const paleta = paletaFinal(tema, modo, prefs.baixoEstimulo);
   aplicarVariaveis(raiz, {
-    ...variaveisDaPaleta(paletaFinal(papel, modo, prefs.baixoEstimulo)),
+    ...variaveisDaPaleta(paleta),
+    "--cor-fundo-rgb": lerHex(paleta.fundo).join(" "),
+    "--multiplicador-cantos": String(tema.cantos ?? 1),
     "--fonte-texto": FONTES[prefs.fonte].css,
     "--tamanho-base": `${TAMANHOS[prefs.tamanho]}px`,
     "--densidade": String(DENSIDADES[prefs.densidade]),
@@ -30,6 +41,11 @@ export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = docume
   });
   raiz.dataset.modo = modo;
   raiz.dataset.baixoEstimulo = String(prefs.baixoEstimulo);
+  raiz.dataset.semSombra = String(tema.sombra === false);
+  void aplicarFundo(raiz, prefs.fundo ?? tema.fundoPadrao ?? { tipo: "cor" }, paleta, {
+    baixoEstimulo: prefs.baixoEstimulo,
+    reduzirAnimacao: consultaMovimento().matches,
+  });
   raiz.style.colorScheme = modo === "escuro" ? "dark" : "light";
 
   // A barra de título do Windows acompanha o modo escolhido no app.

@@ -187,6 +187,14 @@ A interface deve ir além da do Escuta: a pessoa monta o próprio ambiente, do m
 - **Botão de baixo estímulo**: tudo neutro, sem animação e sem cor forte, com um clique e de volta com outro.
 - **Importar e exportar temas** num arquivo único, para a comunidade compartilhar.
 - Densidade, tamanho de fonte e espaçamento ajustáveis; modo claro e escuro.
+
+**Como ficou na Onda 1 (etapa 11).**
+- **Seis temas prontos**, cada um em claro e escuro: Papel, Cinza calmo e Mínimo (neutros); Biblioteca, Espaço e Floresta (temáticos, com fundo sugerido). Cada tema define cores, arredondamento dos cantos e sombras. A fonte continua sendo escolha da pessoa, por acessibilidade.
+- **Fundos**: o do tema, cor lisa, três gradientes feitos com as cores do tema, seis padrões desenhados (pontos, linhas, grade, papel, estrelas, folhas), **foto da pessoa** (reduzida para no máximo 1920 px, com desfoque e escurecimento ajustáveis) e **SVG da pessoa**.
+- **SVG**: limpeza de segurança com DOMPurify (sem scripts, eventos, foreignObject, iframes, links externos nem CSS que busque algo de fora). Se o SVG usa `currentColor`, ganha a cor do tema. Fica **parado por padrão**; "permitir animação" só vale se o Windows não estiver com "reduzir animações".
+- **Contraste automático**: o Órbita lê até 48 × 48 pontos do fundo e calcula a menor opacidade da área de conteúdo que mantém texto ≥ 7:1 e texto suave e destaque ≥ 4,5:1 em 98% dos pontos (mínimo de 60% para fotos e SVG). Mostra em Ajustes o valor aplicado. A barra lateral e os cartões ficam sempre opacos.
+- **Baixo estímulo** leva o fundo ao liso, além de tirar a cor de destaque e as animações.
+- Os temas e o cálculo de contraste ficam no pacote `@orbita/temas`, sem React, para poderem ir ao Escuta.
 - **Fontes**: Atkinson Hyperlegible Next (padrão), Lexend e OpenDyslexic, à escolha, todas embutidas no app. O espaçamento entre letras e linhas ganha destaque, porque tem evidência um pouco melhor que a troca de fonte.
 - **Ícones**: Lucide, de traço fino e uniforme.
 - **Preferências visuais fora do cofre**: fonte, tamanho, cores e baixo estímulo ficam num arquivo próprio, sem criptografia, porque a tela de senha precisa abrir já com a aparência da pessoa. Não são dados sensíveis.

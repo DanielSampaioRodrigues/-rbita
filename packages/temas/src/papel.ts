@@ -4,6 +4,7 @@ import type { Tema } from "./tipos";
 export const papel: Tema = {
   id: "papel",
   nome: "Papel",
+  cantos: 1,
   claro: {
     fundo: "#f4f1ea",
     superficie: "#fbfaf6",
