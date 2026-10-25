@@ -231,6 +231,10 @@ docs/                especificação e registro de decisões
 
 **Pacotes compartilhados.** O motor de leitura (e, se possível, o motor de temas e o caderno) fica em pacotes separados dentro do repositório, para poder ser reaproveitado no leitor da Arcano 3 e no Escuta sem depender do Órbita inteiro.
 
+- **Escuta**: Electron, interface em React escrita em JavaScript (não TypeScript), empacotada com Vite, cofre cifrado por senha. Como o Electron usa o mesmo navegador por dentro (Chromium) que o Órbita no Windows, o motor de leitura escrito em TypeScript puro roda lá sem adaptação. O pacote é entregue já convertido em JavaScript, com as descrições de tipos à parte, para o Escuta usar sem precisar de TypeScript. O motor de temas, por usar variáveis CSS, também serve ao Escuta.
+- **Arcano 3**: o sistema atual é só de automação e o site está no início; não pesa nas decisões agora.
+- **Identificador do app**: `br.com.arcano3.orbita`.
+
 **Distribuição.** No Windows e no Mac, instalador próprio com botão de atualização. No mobile, as lojas exigem conta de desenvolvedor: a Apple cobra cerca de US$ 99 por ano e a Google, uma taxa única de US$ 25 (valores a confirmar). Uma versão web instalável é a alternativa sem custo.
 
 ## Ondas de construção
@@ -276,5 +280,5 @@ Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto
 - [ ] Grupo de teste diverso (autistas, TDAH, dislexia, altas habilidades) a partir da Onda 2.
 - [ ] Lojas de aplicativo ou versão web instalável para o mobile. Atenção: a integração com Apple Saúde e Health Connect só funciona em app nativo de loja; a versão web não acessa esses dados.
 - [ ] Onde hospedar os instaladores e a página de doação.
-- [ ] Tecnologia da Arcano 3 e do Escuta, para definir como reaproveitar o motor de leitura (até lá, ele é feito sem depender de framework).
+- [ ] Como o Escuta vai receber o motor de leitura (dependência direta do repositório no GitHub ou pacote privado), decidido na Onda 2.
 - [ ] Assinatura digital do instalador do Windows (até lá, o Windows mostra um aviso ao instalar).
