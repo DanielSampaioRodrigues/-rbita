@@ -80,10 +80,11 @@
 
 .conteudo { overflow-y: auto; position: relative; }
 
-:root[data-fundo="desenhado"] .conteudo,
-:root[data-fundo="desenhado"] .acesso,
-:root[data-fundo="desenhado"] .baixa-energia {
-  backdrop-filter: blur(6px);
+/* Só fotos ganham um desfoque leve atrás do texto; desenhos ficam nítidos. */
+:root[data-fundo="foto"] .conteudo,
+:root[data-fundo="foto"] .acesso,
+:root[data-fundo="foto"] .baixa-energia {
+  backdrop-filter: blur(3px);
 }
 
 /* Janela estreita: a barra lateral fica só com os ícones. */

@@ -53,6 +53,7 @@ export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = docume
   void aplicarFundo(raiz, prefs.fundo ?? tema.fundoPadrao ?? { tipo: "cor" }, paleta, {
     baixoEstimulo: prefs.baixoEstimulo,
     reduzirAnimacao: consultaMovimento().matches,
+    visivel: prefs.fundoVisivel,
   });
   raiz.style.colorScheme = modo === "escuro" ? "dark" : "light";
 

@@ -59,7 +59,7 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
     const intervalo = setInterval(ler, 400);
     const parar = setTimeout(() => clearInterval(intervalo), 3000);
     return () => (clearInterval(intervalo), clearTimeout(parar));
-  }, [prefs.fundo, prefs.tema, modo]);
+  }, [prefs.fundo, prefs.tema, prefs.fundoVisivel, modo]);
 
   const miniatura = (f: Fundo) => {
     const c = camadaDeFundo(f, paleta, { baixoEstimulo: false, reduzirAnimacao: true });
@@ -228,6 +228,15 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
           <div className="campo">
             <Interruptor rotulo={t.animar} ligado={fundo.animar} aoMudar={(animar) => mudar({ fundo: { ...fundo, animar } })} />
             <p className="campo-ajuda">{t.animarExplicacao}</p>
+          </div>
+        </div>
+      )}
+
+      {!prefs.baixoEstimulo && (fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
+        <div className="formulario">
+          <div className="campo">
+            <Controle rotulo={t.visivel} valor={prefs.fundoVisivel} min={0} max={100} passo={10} formatar={t.visivelValor} aoMudar={(fundoVisivel) => mudar({ fundoVisivel })} />
+            <p className="campo-ajuda">{prefs.fundoVisivel > 0 ? t.visivelAviso : t.visivelAjuda}</p>
           </div>
         </div>
       )}

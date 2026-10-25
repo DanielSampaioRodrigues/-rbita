@@ -141,18 +141,36 @@ export function tamanhoDoLadrilho(svg: string): string {
  * cima da imagem) que mantém texto ≥ 7:1, texto suave e destaque ≥ 4,5:1 em
  * 98% dos pontos amostrados do fundo.
  */
-export function opacidadeNecessaria(amostras: Rgb[], paleta: Paleta, minimo = 0): number {
+/** Contrastes que os painéis precisam garantir sobre o fundo. */
+export interface Limites {
+  texto: number;
+  suave: number;
+  destaque: number;
+  /** Mesmo nos pontos tolerados, o texto nunca fica abaixo disto. */
+  piso: number;
+}
+
+/** O padrão do Órbita: texto 7:1, secundário e destaque 4,5:1. */
+export const LIMITES_RIGIDOS: Limites = { texto: 7, suave: 4.5, destaque: 4.5, piso: 3 };
+/** O mínimo de leitura (WCAG AA), usado quando a pessoa pede um fundo mais visível. */
+export const LIMITES_MINIMOS: Limites = { texto: 4.5, suave: 3, destaque: 3, piso: 2 };
+
+export function opacidadeNecessaria(amostras: Rgb[], paleta: Paleta, minimo = 0, tolerancia = 0.02, limites: Limites = LIMITES_RIGIDOS): number {
   if (amostras.length === 0) return 1;
   const painel = lerHex(paleta.fundo);
-  const toleradas = Math.floor(amostras.length * 0.02);
+  const toleradas = Math.floor(amostras.length * tolerancia);
   for (let o = minimo; o <= 1.0001; o += 0.02) {
     let falhas = 0;
+    let ruins = false;
     for (const a of amostras) {
       const cor = hex(misturar(a, painel, o));
-      if (contraste(paleta.texto, cor) < 7 || contraste(paleta.textoSuave, cor) < 4.5 || contraste(paleta.destaque, cor) < 4.5) falhas++;
-      if (falhas > toleradas) break;
+      const texto = contraste(paleta.texto, cor);
+      if (texto < limites.texto || contraste(paleta.textoSuave, cor) < limites.suave || contraste(paleta.destaque, cor) < limites.destaque) falhas++;
+      // Mesmo nos pontos tolerados (as linhas de um desenho), o texto nunca some.
+      if (texto < limites.piso) ruins = true;
+      if (falhas > toleradas || ruins) break;
     }
-    if (falhas <= toleradas) return Math.min(1, Math.round(o * 100) / 100);
+    if (falhas <= toleradas && !ruins) return Math.min(1, Math.round(o * 100) / 100);
   }
   return 1;
 }

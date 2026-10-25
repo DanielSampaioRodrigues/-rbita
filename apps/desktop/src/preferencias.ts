@@ -44,6 +44,8 @@ export interface Preferencias {
   tema: string;
   /** null = o fundo sugerido pelo tema. */
   fundo: Fundo | null;
+  /** Quanto o fundo aparece por trás dos painéis: 0 = automático (mais legível), 100 = o máximo que ainda passa no mínimo de leitura. */
+  fundoVisivel: number;
   /** Temas criados no editor ou importados. */
   temasProprios: Tema[];
   /** Tela inicial montável: ordem dos blocos, escondidos e largos. */
@@ -66,6 +68,7 @@ export const PADRAO: Preferencias = {
   procurarAtualizacao: true,
   tema: "papel",
   fundo: null,
+  fundoVisivel: 0,
   temasProprios: [],
   inicio: { ordem: [...BLOCOS_INICIO], ocultos: [], largos: ["energia", "hoje", "continuar", "novidades"] },
 };
@@ -99,6 +102,7 @@ export function validar(bruto: unknown): Preferencias {
     temasProprios,
     tema: [...TEMAS, ...temasProprios].some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,
     fundo: validarFundo(p.fundo),
+    fundoVisivel: typeof p.fundoVisivel === "number" && p.fundoVisivel >= 0 && p.fundoVisivel <= 100 ? Math.round(p.fundoVisivel) : PADRAO.fundoVisivel,
     inicio: validarInicio(p.inicio),
   };
 }

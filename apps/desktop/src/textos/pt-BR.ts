@@ -116,6 +116,10 @@ export const textos = {
     opacidade: (p: number) =>
       `Para o texto continuar legível, a área de conteúdo ficou com ${p}% de opacidade por cima do fundo.`,
     baixoEstimulo: "Com o baixo estímulo ligado, o fundo fica liso.",
+    visivel: "Quanto o fundo aparece",
+    visivelValor: (v: number) => (v === 0 ? "Automático (mais legível)" : v === 100 ? "Máximo" : `${v}%`),
+    visivelAjuda: "Começa no ponto mais legível. Arrastando, o fundo aparece mais, mas o texto nunca fica abaixo do mínimo de leitura.",
+    visivelAviso: "O texto ficou com menos contraste. Se cansar a leitura, volte o controle para o começo.",
     erroImagem: "Não deu para abrir essa imagem. Tente PNG, JPG ou WebP.",
     criarAPartir: "Criar um tema a partir deste",
     editar: "Editar este tema",
