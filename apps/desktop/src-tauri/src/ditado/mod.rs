@@ -221,7 +221,10 @@ impl Ditado {
 
 fn carregar(caminho: &Path) -> Result<WhisperContext, Erro> {
     let texto = caminho.to_str().ok_or_else(|| erro("Caminho do modelo inválido."))?;
-    WhisperContext::new_with_params(texto, WhisperContextParameters::default())
+    // "Flash attention" acelera a transcrição no processador.
+    let mut parametros = WhisperContextParameters::default();
+    parametros.flash_attn(true);
+    WhisperContext::new_with_params(texto, parametros)
         .map_err(|_| erro("Não consegui abrir o modelo de voz. Tente remover e baixar de novo em Ajustes."))
 }
 
@@ -235,6 +238,17 @@ pub fn volume(audio: &[f32]) -> f32 {
 }
 
 pub const VOLUME_MINIMO: f32 = 0.002;
+
+/// Tamanho da janela de áudio do whisper para uma fala curta. A janela cheia
+/// (1500) vale 30 s: 50 por segundo. Folga de 2 s e mínimo de 512, porque
+/// janelas muito pequenas pioram o reconhecimento. None = fala de 25 s ou mais.
+pub fn janela_de_audio(amostras: usize) -> Option<i32> {
+    let segundos = amostras as f32 / TAXA_WHISPER as f32;
+    if segundos >= 25.0 {
+        return None;
+    }
+    Some((((segundos + 2.0) * 50.0).ceil() as i32).clamp(512, 1500))
+}
 
 /// Transcreve áudio mono de 16 kHz em português. Demora: rodar fora da tela.
 pub fn transcrever(ctx: &WhisperContext, audio: &[f32]) -> Result<String, Erro> {
@@ -256,6 +270,16 @@ pub fn transcrever(ctx: &WhisperContext, audio: &[f32]) -> Result<String, Erro> 
     p.set_print_realtime(false);
     p.set_print_timestamps(false);
     p.set_no_context(true);
+    // Mais rápido: sem marcar tempos (o Órbita não usa) e sem refazer a
+    // decodificação com outras "temperaturas" quando o modelo hesita.
+    p.set_no_timestamps(true);
+    p.set_temperature_inc(0.0);
+    // O whisper sempre trabalha numa janela de 30 s. Para falas curtas, uma
+    // janela do tamanho da fala (com folga) corta boa parte do tempo.
+    if let Some(ctx_audio) = janela_de_audio(audio.len()) {
+        p.set_audio_ctx(ctx_audio);
+        p.set_single_segment(true);
+    }
     estado.full(p, audio).map_err(|_| erro("A transcrição falhou. Tente de novo."))?;
     let texto: String = estado.as_iter().map(|s| s.to_string()).collect::<Vec<_>>().join(" ");
     let texto = limpar_transcricao(&texto);
@@ -307,6 +331,14 @@ mod testes {
         assert_eq!(reamostrar(&[1.0, 2.0], 16_000, 16_000), vec![1.0, 2.0]);
         let dobro = reamostrar(&[0.0, 1.0], 8_000, 16_000);
         assert_eq!(dobro, vec![0.0, 0.5, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn janela_acompanha_o_tamanho_da_fala() {
+        assert_eq!(janela_de_audio(16_000 * 3), Some(512));
+        assert_eq!(janela_de_audio(16_000 * 10), Some(600));
+        assert_eq!(janela_de_audio(16_000 * 24), Some(1300));
+        assert_eq!(janela_de_audio(16_000 * 40), None);
     }
 
     #[test]

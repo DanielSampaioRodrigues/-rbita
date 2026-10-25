@@ -32,7 +32,7 @@ export function useDitar(valor: string, aoMudar: (v: string) => void, ativo: boo
   const [fase, setFase] = useState<Fase>("parado");
   const [erro, setErro] = useState<string | null>(null);
   /** Valor antes do último ditado (para desfazer) e depois (para saber se a pessoa mexeu). */
-  const [ultimo, setUltimo] = useState<{ antes: string; depois: string } | null>(null);
+  const [ultimo, setUltimo] = useState<{ antes: string; depois: string; segundos: number } | null>(null);
   const [revisando, setRevisando] = useState<string | null>(null);
   const valorAtual = useRef(valor);
   valorAtual.current = valor;
@@ -73,12 +73,13 @@ export function useDitar(valor: string, aoMudar: (v: string) => void, ativo: boo
 
   const parar = async () => {
     setFase("transcrevendo");
+    const inicio = performance.now();
     try {
       const texto = await api.ditadoParar();
       const antes = valorAtual.current;
       const depois = juntarDitado(antes, texto);
       aoMudar(depois);
-      setUltimo({ antes, depois });
+      setUltimo({ antes, depois, segundos: (performance.now() - inicio) / 1000 });
     } catch (e) {
       setErro(e instanceof ErroOrbita ? e.message : String(e));
     } finally {
@@ -135,6 +136,7 @@ export function useDitar(valor: string, aoMudar: (v: string) => void, ativo: boo
       {erro && <Aviso>{erro}</Aviso>}
       {ultimo && fase === "parado" && (
         <div className="botoes ditado-acoes">
+          <span className="ditado-situacao">{t.levou(ultimo.segundos)}</span>
           {recursos.revisor && (
             <Button className="botao pequeno" onPress={() => setRevisando(valorAtual.current)}>{t.revisar}</Button>
           )}

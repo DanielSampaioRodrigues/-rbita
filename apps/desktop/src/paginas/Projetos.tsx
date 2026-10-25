@@ -39,7 +39,7 @@ export function Projetos({ aoAbrir, aoMudarLimite }: { aoAbrir: (id: string) => 
   return (
     <div className="pagina">
       <h1>{t.titulo}</h1>
-      <p className="pagina-intro">{t.intro}</p>
+      <p className="pagina-intro">{t.intro} {t.dicaVisoes}</p>
       <div className="botoes">
         <Button className="botao principal" onPress={() => setCriando(true)}>
           <Plus aria-hidden="true" size="1.1em" /> {t.novo}

@@ -141,6 +141,24 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
         </Button>
       </div>
       <p className="pagina-intro">{organizando ? t.organizarExplicacao : t.construcao}</p>
+      {organizando && ocultos.length > 0 && (
+        <section className="grupo esticado" aria-labelledby="escondidos">
+          <h2 id="escondidos">{t.escondidos}</h2>
+          <div className="botoes">
+            {ocultos.map((b) => (
+              <Button key={b} className="botao" onPress={() => mudarInicio({ ocultos: ocultos.filter((x) => x !== b) })}>
+                <Plus aria-hidden="true" size="1.1em" /> {t.mostrar(t.blocos[b as Bloco])}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
+      {!organizando && ocultos.length > 0 && (
+        <p className="texto-suave pequeno esticado">
+          {t.escondidosFora(ocultos.length)}{" "}
+          <Button className="link" onPress={() => setOrganizando(true)}>{t.verEscondidos}</Button>
+        </p>
+      )}
 
       <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={soltar}>
         <SortableContext items={visiveis} strategy={rectSortingStrategy} disabled={!organizando}>
@@ -165,18 +183,6 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
         </SortableContext>
       </DndContext>
 
-      {organizando && ocultos.length > 0 && (
-        <section className="grupo esticado" aria-labelledby="escondidos">
-          <h2 id="escondidos">{t.escondidos}</h2>
-          <div className="botoes">
-            {ocultos.map((b) => (
-              <Button key={b} className="botao" onPress={() => mudarInicio({ ocultos: ocultos.filter((x) => x !== b) })}>
-                <Plus aria-hidden="true" size="1.1em" /> {t.mostrar(t.blocos[b as Bloco])}
-              </Button>
-            ))}
-          </div>
-        </section>
-      )}
 
       {!organizando && <p className="dica">{t.dicaAtalhos}</p>}
     </div>

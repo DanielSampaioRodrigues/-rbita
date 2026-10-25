@@ -43,6 +43,15 @@ jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 45
+    # Ditado: o whisper.cpp é compilado para processadores comuns (AVX2, de 2013
+    # em diante), e não para o processador da máquina do GitHub, que pode ter
+    # instruções que o computador da pessoa não tem.
+    env:
+      GGML_NATIVE: "OFF"
+      GGML_AVX: "ON"
+      GGML_AVX2: "ON"
+      GGML_FMA: "ON"
+      GGML_F16C: "ON"
     steps:
       - uses: actions/checkout@v5
 

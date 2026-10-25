@@ -272,6 +272,7 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 - Silêncio não vira texto: se o áudio não tem som suficiente, o Órbita diz que não ouviu e lembra da permissão de microfone do Windows (o whisper costuma "inventar" frases quando recebe silêncio).
 - Depois de ditar: **Desfazer o ditado** e, se houver IA escolhida para a revisão, **Revisar com IA**, que mostra **como está e revisado** lado a lado; a pessoa escolhe. Texto que parece de saúde ou terapia passa pelo mesmo aviso da etapa 15.
 - Por enquanto o ditado grava só no Windows; Mac e celular entram na Onda 3.
+- **Velocidade** (0.16.1, depois do teste de Dan): falas curtas usam uma janela de áudio do tamanho da fala em vez dos 30 s fixos do whisper, sem marcas de tempo e sem refazer a decodificação; o whisper.cpp é compilado para processadores comuns (AVX2). Depois de ditar, o Órbita mostra quanto tempo levou.
 
 **Como ficou na Onda 1 (etapa 17, fechamento).**
 - **Bandeja do sistema**, opcional (Ajustes > Janela e bloqueio): fechar a janela só a esconde; o ícone perto do relógio abre, captura e sai. Na primeira vez, uma notificação explica onde o Órbita ficou. Sem a bandeja, fechar fecha, como antes.

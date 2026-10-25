@@ -34,7 +34,9 @@ export const textos = {
     verProjetos: "Ver projetos",
     organizar: "Organizar a tela inicial",
     pronto: "Pronto",
-    organizarExplicacao: "Arraste os blocos pela alça ou use os botões. Dá para esconder o que não usa.",
+    organizarExplicacao: "Arraste os blocos pela alça ou use os botões. Dá para esconder o que não usa; os escondidos ficam logo abaixo, para mostrar de novo.",
+    escondidosFora: (n: number) => (n === 1 ? "1 bloco escondido." : `${n} blocos escondidos.`),
+    verEscondidos: "Mostrar de novo",
     blocos: {
       capturar: "Capturar",
       energia: "Energia",
@@ -72,6 +74,7 @@ export const textos = {
       "IA opcional, com a sua chave (Claude, GPT, Gemini, Grok, Sabiá) ou no seu computador (Ollama): sugere passos pequenos para uma tarefa, e você escolhe quais entram.",
       "Capturar > Separar com IA: escreva tudo de uma vez e a IA separa em ideias, tarefas e compromissos, para você conferir antes de guardar.",
       "Ditado: fale em vez de digitar, com a transcrição feita no seu computador (instale em Ajustes > Ditado). Depois, dá para revisar o texto com IA e ver antes e depois.",
+      "Ditado mais rápido em falas curtas, e o tempo de cada transcrição aparece embaixo do campo. Blocos escondidos no Início agora aparecem logo no alto.",
       "Janela e bloqueio (Ajustes): deixar o Órbita na bandeja ao fechar a janela e bloquear sozinho depois de um tempo sem uso. As duas opções começam desligadas.",
     ],
     dicaAtalhos: "Tudo no Órbita pode ser feito pelo teclado. Aperte F1 para ver os atalhos.",
@@ -345,6 +348,7 @@ export const textos = {
   projetos: {
     titulo: "Projetos",
     intro: "Poucos projetos ativos de cada vez. Pausar é válido: o Órbita guarda onde você parou.",
+    dicaVisoes: "Abra um projeto para ver as tarefas dele em lista, quadro ou mapa mental.",
     novo: "Novo projeto",
     novoTitulo: "Novo projeto",
     nomeDoProjeto: "Nome do projeto",
@@ -716,6 +720,7 @@ export const textos = {
     gravando: "Gravando. Fale e aperte o microfone (ou Ctrl + Shift + M) de novo para parar. Esc cancela.",
     transcrevendo: "Transcrevendo no seu computador...",
     desfazer: "Desfazer o ditado",
+    levou: (s: number) => `Transcrito em ${s < 10 ? s.toFixed(1).replace(".", ",") : Math.round(s)} s.`,
     revisar: "Revisar com IA",
     // Revisão
     revisaoTitulo: "Revisão do texto",
