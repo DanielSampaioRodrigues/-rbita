@@ -9,7 +9,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
-use super::{agora_ms, gravar_config, ler_config, novo_id};
+use super::{agora_ms, etiquetas, gravar_config, ler_config, novo_id};
 use crate::erro::Erro;
 
 const CONFIG_LIMITE: &str = "limite_projetos_ativos";
@@ -21,6 +21,12 @@ pub struct Ideia {
     pub id: String,
     pub texto: String,
     pub criado_em: i64,
+    /// Texto mais longo, opcional.
+    pub nota: String,
+    /// Ids das etiquetas.
+    pub etiquetas: Vec<String>,
+    /// Ids das outras ideias ligadas a esta.
+    pub ligadas: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -98,23 +104,44 @@ fn texto_limpo(texto: &str) -> Result<String, Erro> {
 
 pub fn listar_ideias(conn: &Connection) -> Result<Vec<Ideia>, Erro> {
     let mut c = conn.prepare(
-        "SELECT id, conteudo, criado_em FROM item
+        "SELECT id, conteudo, criado_em, coalesce(json_extract(dados, '$.nota'), '') FROM item
          WHERE tipo = 'ideia' AND estado = 'guardada' AND excluido_em IS NULL
          ORDER BY criado_em DESC, id DESC",
     )?;
-    let ideias = c
-        .query_map([], |r| Ok(Ideia { id: r.get(0)?, texto: r.get(1)?, criado_em: r.get(2)? }))?
+    let mut ideias = c
+        .query_map([], |r| {
+            Ok(Ideia { id: r.get(0)?, texto: r.get(1)?, criado_em: r.get(2)?, nota: r.get(3)?, etiquetas: vec![], ligadas: vec![] })
+        })?
         .collect::<Result<Vec<_>, _>>()?;
+    let guardadas: Vec<String> = ideias.iter().map(|i| i.id.clone()).collect();
+    for i in &mut ideias {
+        i.etiquetas = etiquetas::do_item(conn, &i.id)?;
+        // Só as ligações com outras ideias guardadas (não com o projeto em que uma virou).
+        i.ligadas = etiquetas::ligados(conn, &i.id)?.into_iter().filter(|o| guardadas.contains(o)).collect();
+    }
     Ok(ideias)
 }
 
 pub fn criar_ideia(conn: &Connection, texto: &str) -> Result<Ideia, Erro> {
-    let ideia = Ideia { id: novo_id(), texto: texto_limpo(texto)?, criado_em: agora_ms() };
+    let ideia = Ideia { id: novo_id(), texto: texto_limpo(texto)?, criado_em: agora_ms(), nota: String::new(), etiquetas: vec![], ligadas: vec![] };
     conn.execute(
         "INSERT INTO item (id, tipo, conteudo, estado, criado_em, alterado_em) VALUES (?1, 'ideia', ?2, 'guardada', ?3, ?3)",
         params![ideia.id, ideia.texto, ideia.criado_em],
     )?;
     Ok(ideia)
+}
+
+/// A nota mais longa da ideia (vazia apaga).
+pub fn salvar_nota_ideia(conn: &Connection, id: &str, nota: &str) -> Result<(), Erro> {
+    let nota: String = nota.trim().chars().take(20_000).collect();
+    let n = conn.execute(
+        "UPDATE item SET dados = json_set(dados, '$.nota', ?2), alterado_em = ?3 WHERE id = ?1 AND tipo = 'ideia' AND excluido_em IS NULL",
+        params![id, nota, agora_ms()],
+    )?;
+    if n == 0 {
+        return Err(Erro::NaoEncontrado);
+    }
+    Ok(())
 }
 
 pub fn editar_ideia(conn: &Connection, id: &str, texto: &str) -> Result<(), Erro> {

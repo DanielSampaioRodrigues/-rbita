@@ -360,7 +360,10 @@ mod testes {
         let origem = ambiente();
         let (chave, _) = origem.cofre.criar(SENHA, ModoAbrir::Pin, Some("2468")).unwrap();
         let conn = banco::abrir(&origem.cofre.caminho_banco(), &chave).unwrap();
-        itens::criar_ideia(&conn, "Livro sobre faróis").unwrap();
+        let ideia = itens::criar_ideia(&conn, "Livro sobre faróis").unwrap();
+        itens::salvar_nota_ideia(&conn, &ideia.id, "Um farol por capítulo").unwrap();
+        let arte = crate::banco::etiquetas::criar(&conn, "Arte", "rosa").unwrap();
+        crate::banco::etiquetas::definir_do_item(&conn, &ideia.id, &[arte.id]).unwrap();
         let projeto = itens::criar_projeto(&conn, "TCC", true).unwrap();
         itens::definir_datas_projeto(&conn, &projeto.id, Some("2026-10-01"), Some("2026-12-15")).unwrap();
         let etapa = itens::criar_tarefa(&conn, &projeto.id, "Revisão de literatura").unwrap();
@@ -401,7 +404,8 @@ mod testes {
         let novo = ambiente();
         let (chave, _) = restaurar(&novo.cofre, &copia, &Segredo::Senha(SENHA.into())).unwrap();
         let conn = banco::abrir(&novo.cofre.caminho_banco(), &chave).unwrap();
-        assert_eq!(itens::listar_ideias(&conn).unwrap()[0].texto, "Livro sobre faróis");
+        let i = &itens::listar_ideias(&conn).unwrap()[0];
+        assert_eq!((i.texto.as_str(), i.nota.as_str(), i.etiquetas.len()), ("Livro sobre faróis", "Um farol por capítulo", 1));
         let p = itens::listar_projetos(&conn).unwrap().into_iter().find(|p| p.titulo == "TCC").unwrap();
         assert_eq!((p.inicio.as_deref(), p.prazo.as_deref()), (Some("2026-10-01"), Some("2026-12-15")));
         let tarefas = itens::listar_tarefas(&conn, &p.id).unwrap();

@@ -17,6 +17,22 @@ export interface Ideia {
   id: string;
   texto: string;
   criadoEm: number;
+  /** Texto mais longo, opcional. */
+  nota: string;
+  /** Ids das etiquetas. */
+  etiquetas: string[];
+  /** Ids das outras ideias ligadas a esta. */
+  ligadas: string[];
+}
+
+/** Cores das etiquetas (sempre mostradas junto do nome). */
+export const CORES_ETIQUETA = ["musgo", "mar", "ceu", "lavanda", "rosa", "terra", "areia", "cinza"] as const;
+export type CorEtiqueta = (typeof CORES_ETIQUETA)[number];
+
+export interface Etiqueta {
+  id: string;
+  nome: string;
+  cor: CorEtiqueta;
 }
 
 export interface OndeParei {
@@ -255,6 +271,15 @@ interface Api {
   listarIdeias(): Promise<Ideia[]>;
   criarIdeia(texto: string): Promise<Ideia>;
   editarIdeia(id: string, texto: string): Promise<void>;
+  salvarNotaIdeia(id: string, nota: string): Promise<void>;
+  listarEtiquetas(): Promise<Etiqueta[]>;
+  /** Se já existe uma com o mesmo nome, devolve a existente. */
+  criarEtiqueta(nome: string, cor: CorEtiqueta): Promise<Etiqueta>;
+  editarEtiqueta(id: string, nome: string, cor: CorEtiqueta): Promise<void>;
+  excluirEtiqueta(id: string): Promise<void>;
+  /** Deixa o item exatamente com estas etiquetas. */
+  definirEtiquetasItem(id: string, etiquetas: string[]): Promise<void>;
+  ligarItens(a: string, b: string, ligar: boolean): Promise<void>;
   ideiaParaProjeto(id: string, ativo: boolean): Promise<Projeto>;
   excluirItem(id: string): Promise<void>;
   listarProjetos(): Promise<Projeto[]>;
@@ -348,6 +373,13 @@ const nativa: Api = {
   listarIdeias: () => chamar("listar_ideias"),
   criarIdeia: (texto) => chamar("criar_ideia", { texto }),
   editarIdeia: (id, texto) => chamar("editar_ideia", { id, texto }),
+  salvarNotaIdeia: (id, nota) => chamar("salvar_nota_ideia", { id, nota }),
+  listarEtiquetas: () => chamar("listar_etiquetas"),
+  criarEtiqueta: (nome, cor) => chamar("criar_etiqueta", { nome, cor }),
+  editarEtiqueta: (id, nome, cor) => chamar("editar_etiqueta", { id, nome, cor }),
+  excluirEtiqueta: (id) => chamar("excluir_etiqueta", { id }),
+  definirEtiquetasItem: (id, etiquetas) => chamar("definir_etiquetas_item", { id, etiquetas }),
+  ligarItens: (a, b, ligar) => chamar("ligar_itens", { a, b, ligar }),
   ideiaParaProjeto: (id, ativo) => chamar("ideia_para_projeto", { id, ativo }),
   excluirItem: (id) => chamar("excluir_item", { id }),
   listarProjetos: () => chamar("listar_projetos"),
@@ -410,7 +442,9 @@ const nativa: Api = {
 
 /** Parte da simulação que cuida de ideias, projetos e tarefas (mesmas regras da parte nativa). */
 function simularItens() {
-  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null };
+  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null; nota?: string; etiquetas?: string[] };
+  let etiquetas: Etiqueta[] = [];
+  let ligacoes: [string, string][] = [];
   const itens: Item[] = [];
   let limite = 3;
   const agora = () => Date.now();
@@ -452,8 +486,20 @@ function simularItens() {
   };
   // Exemplo para as telas não começarem vazias.
   if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
-    novo({ tipo: "ideia", texto: "Podcast sobre neurodivergência e trabalho", estado: "guardada" });
-    novo({ tipo: "ideia", texto: "Aprender encadernação japonesa", estado: "guardada" });
+    etiquetas = [
+      { id: "e1", nome: "Arte", cor: "rosa" },
+      { id: "e2", nome: "Escrita", cor: "mar" },
+      { id: "e3", nome: "Trabalho", cor: "musgo" },
+    ];
+    const pod = novo({ tipo: "ideia", texto: "Podcast sobre neurodivergência e trabalho", estado: "guardada" });
+    pod.etiquetas = ["e2", "e3"];
+    pod.nota = "Convidar pessoas autistas que trabalham com tecnologia, arte e educação.\nEpisódios curtos, com transcrição.";
+    const enc = novo({ tipo: "ideia", texto: "Aprender encadernação japonesa", estado: "guardada" });
+    enc.etiquetas = ["e1"];
+    const farol = novo({ tipo: "ideia", texto: "Livro de contos sobre faróis", estado: "guardada" });
+    farol.etiquetas = ["e1", "e2"];
+    novo({ tipo: "ideia", texto: "Organizar a caixa de cabos", estado: "guardada" });
+    ligacoes = [[pod.id, farol.id]];
     const dia = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString("sv-SE"); };
     const tcc = novo({ tipo: "projeto", texto: "TCC: atenção e interesses especiais", estado: "ativo", inicio: dia(-40), prazo: dia(50),
       ondeParei: { texto: "Fichando o artigo da Grandin", proximoPasso: "Abrir o PDF na página 12 e terminar o fichamento", links: ["https://scholar.google.com"], atualizadoEm: agora() - 3_600_000 } });
@@ -469,12 +515,34 @@ function simularItens() {
   return {
     listarIdeias: async () =>
       itens.filter((i) => i.tipo === "ideia" && i.estado === "guardada").sort((a, b) => b.criadoEm - a.criadoEm)
-        .map((i) => ({ id: i.id, texto: i.texto, criadoEm: i.criadoEm })),
+        .map((i) => ({
+          id: i.id, texto: i.texto, criadoEm: i.criadoEm, nota: i.nota ?? "",
+          etiquetas: (i.etiquetas ?? []).filter((e) => etiquetas.some((x) => x.id === e)),
+          ligadas: ligacoes.flatMap(([a, b]) => (a === i.id ? [b] : b === i.id ? [a] : []))
+            .filter((o) => itens.some((x) => x.id === o && x.tipo === "ideia" && x.estado === "guardada")),
+        })),
     criarIdeia: async (texto: string) => {
       const i = novo({ tipo: "ideia", texto: vazio(texto), estado: "guardada" });
-      return { id: i.id, texto: i.texto, criadoEm: i.criadoEm };
+      return { id: i.id, texto: i.texto, criadoEm: i.criadoEm, nota: "", etiquetas: [], ligadas: [] };
     },
     editarIdeia: async (id: string, texto: string) => void (achar(id).texto = vazio(texto)),
+    salvarNotaIdeia: async (id: string, nota: string) => void (achar(id).nota = nota.trim()),
+    listarEtiquetas: async () => [...etiquetas].sort((a, b) => a.nome.localeCompare(b.nome)),
+    criarEtiqueta: async (nome: string, cor: CorEtiqueta) => {
+      const n = vazio(nome);
+      const ja = etiquetas.find((e) => e.nome.toLowerCase() === n.toLowerCase());
+      if (ja) return ja;
+      const e = { id: `e${Date.now()}`, nome: n, cor };
+      etiquetas.push(e);
+      return e;
+    },
+    editarEtiqueta: async (id: string, nome: string, cor: CorEtiqueta) => void Object.assign(etiquetas.find((e) => e.id === id)!, { nome: vazio(nome), cor }),
+    excluirEtiqueta: async (id: string) => void (etiquetas = etiquetas.filter((e) => e.id !== id)),
+    definirEtiquetasItem: async (id: string, lista: string[]) => void (achar(id).etiquetas = [...lista]),
+    ligarItens: async (a: string, b: string, ligar: boolean) => {
+      ligacoes = ligacoes.filter(([x, y]) => !((x === a && y === b) || (x === b && y === a)));
+      if (ligar && a !== b) ligacoes.push([a, b]);
+    },
     ideiaParaProjeto: async (id: string, ativo: boolean) => {
       const ideia = achar(id);
       const p = await criarProjeto(ideia.texto, ativo);

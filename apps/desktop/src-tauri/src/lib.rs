@@ -130,6 +130,13 @@ pub fn run() {
             comandos::ditado_parar,
             comandos::ditado_descartar,
             comandos::bandeja_ligada,
+            comandos::salvar_nota_ideia,
+            comandos::listar_etiquetas,
+            comandos::criar_etiqueta,
+            comandos::editar_etiqueta,
+            comandos::excluir_etiqueta,
+            comandos::definir_etiquetas_item,
+            comandos::ligar_itens,
             comandos::definir_bandeja,
         ])
         .run(tauri::generate_context!())

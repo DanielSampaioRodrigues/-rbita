@@ -5,6 +5,7 @@
 //! criação e alteração e exclusão marcada, para a sincronização futura.
 
 pub mod energia;
+pub mod etiquetas;
 pub mod eventos;
 pub mod itens;
 pub mod rotinas;

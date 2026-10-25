@@ -9,7 +9,7 @@ use serde::Serialize;
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, energia, eventos, itens, rotinas};
+use crate::banco::{self, energia, etiquetas, eventos, itens, rotinas};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -654,4 +654,41 @@ pub async fn bandeja_ligada(bandeja: State<'_, crate::bandeja::Bandeja>) -> Resu
 #[tauri::command]
 pub async fn definir_bandeja(app: tauri::AppHandle, ligar: bool) -> Result<(), Erro> {
     crate::bandeja::definir(&app, ligar)
+}
+
+// ---------- Ideias: nota, etiquetas e ligações ----------
+
+#[tauri::command]
+pub async fn salvar_nota_ideia(estado: State<'_, Estado>, id: String, nota: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::salvar_nota_ideia(&s.conn, &id, &nota))
+}
+
+#[tauri::command]
+pub async fn listar_etiquetas(estado: State<'_, Estado>) -> Result<Vec<etiquetas::Etiqueta>, Erro> {
+    estado.com_sessao(|s| etiquetas::listar(&s.conn))
+}
+
+#[tauri::command]
+pub async fn criar_etiqueta(estado: State<'_, Estado>, nome: String, cor: String) -> Result<etiquetas::Etiqueta, Erro> {
+    estado.com_sessao(|s| etiquetas::criar(&s.conn, &nome, &cor))
+}
+
+#[tauri::command]
+pub async fn editar_etiqueta(estado: State<'_, Estado>, id: String, nome: String, cor: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| etiquetas::editar(&s.conn, &id, &nome, &cor))
+}
+
+#[tauri::command]
+pub async fn excluir_etiqueta(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| etiquetas::excluir(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn definir_etiquetas_item(estado: State<'_, Estado>, id: String, etiquetas: Vec<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| etiquetas::definir_do_item(&s.conn, &id, &etiquetas))
+}
+
+#[tauri::command]
+pub async fn ligar_itens(estado: State<'_, Estado>, a: String, b: String, ligar: bool) -> Result<(), Erro> {
+    estado.com_sessao(|s| etiquetas::ligar(&s.conn, &a, &b, ligar))
 }
