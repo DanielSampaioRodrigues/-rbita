@@ -58,6 +58,8 @@ export interface Projeto {
   tarefasFeitas: number;
   tarefasTotal: number;
   alteradoEm: number;
+  /** Ids das etiquetas. */
+  etiquetas: string[];
 }
 
 export interface Repeticao {
@@ -86,6 +88,8 @@ export interface Passo {
   titulo: string;
   icone: string;
   minutos: number | null;
+  /** Id do anexo de imagem do passo (foto ou desenho). Só leitura. */
+  imagem?: string | null;
 }
 
 export interface Rotina {
@@ -105,6 +109,26 @@ export interface Tarefa {
   peso: Peso | null;
   /** "AAAA-MM-DD" */
   prazo: string | null;
+  /** Ids das etiquetas. */
+  etiquetas: string[];
+}
+
+/** Outro item ligado a este (ideia, projeto ou tarefa). */
+export interface ItemResumo {
+  id: string;
+  tipo: "ideia" | "projeto" | "tarefa";
+  titulo: string;
+  estado: string | null;
+}
+
+export interface Anexo {
+  id: string;
+  tipo: "imagem" | "arquivo" | "link";
+  nome: string;
+  /** Só links: o endereço. */
+  endereco: string;
+  tamanho: number;
+  criadoEm: number;
 }
 
 export interface Prazo {
@@ -284,6 +308,18 @@ interface Api {
   /** Deixa o item exatamente com estas etiquetas. */
   definirEtiquetasItem(id: string, etiquetas: string[]): Promise<void>;
   ligarItens(a: string, b: string, ligar: boolean): Promise<void>;
+  /** Ideias, projetos e tarefas ligados a este, nos dois sentidos. */
+  itensLigados(id: string): Promise<ItemResumo[]>;
+  listarAnexos(item: string): Promise<Anexo[]>;
+  /** Guarda uma cópia do arquivo dentro do cofre (até 20 MB). */
+  anexarArquivo(item: string, caminho: string): Promise<Anexo>;
+  anexarLink(item: string, nome: string, endereco: string): Promise<Anexo>;
+  /** A imagem como endereço de dados, para mostrar na tela. */
+  imagemAnexo(id: string): Promise<string>;
+  /** Link no navegador; arquivo no programa padrão do computador. */
+  abrirAnexo(id: string): Promise<void>;
+  salvarAnexo(id: string, caminho: string): Promise<void>;
+  excluirAnexo(id: string): Promise<void>;
   ideiaParaProjeto(id: string, ativo: boolean): Promise<Projeto>;
   excluirItem(id: string): Promise<void>;
   listarProjetos(): Promise<Projeto[]>;
@@ -333,6 +369,9 @@ interface Api {
   sugerirPassosIa(alvo: string): Promise<Sugestao>;
   /** Separa um texto em ideias, tarefas e compromissos. Não grava nada. */
   organizarTextoIa(texto: string, sensivel: boolean): Promise<Organizacao>;
+  /** Conversa: refaz a lista separada com a mudança pedida. Não grava nada. */
+  /** `itens`: a lista atual em JSON, no formato que a IA usa (com o nome do projeto). */
+  ajustarOrganizacaoIa(texto: string, itens: string, mudanca: string, sensivel: boolean): Promise<Organizacao>;
   /** Revisa ortografia e pontuação. Não grava nada. */
   revisarTextoIa(texto: string, sensivel: boolean, modo?: ModoReescrita, instrucao?: string): Promise<string>;
   ditadoEstado(): Promise<EstadoDitado>;
@@ -390,6 +429,14 @@ const nativa: Api = {
   excluirEtiqueta: (id) => chamar("excluir_etiqueta", { id }),
   definirEtiquetasItem: (id, etiquetas) => chamar("definir_etiquetas_item", { id, etiquetas }),
   ligarItens: (a, b, ligar) => chamar("ligar_itens", { a, b, ligar }),
+  itensLigados: (id) => chamar("itens_ligados", { id }),
+  listarAnexos: (item) => chamar("listar_anexos", { item }),
+  anexarArquivo: (item, caminho) => chamar("anexar_arquivo", { item, caminho }),
+  anexarLink: (item, nome, endereco) => chamar("anexar_link", { item, nome, endereco }),
+  imagemAnexo: (id) => chamar("imagem_anexo", { id }),
+  abrirAnexo: (id) => chamar("abrir_anexo", { id }),
+  salvarAnexo: (id, caminho) => chamar("salvar_anexo", { id, caminho }),
+  excluirAnexo: (id) => chamar("excluir_anexo", { id }),
   ideiaParaProjeto: (id, ativo) => chamar("ideia_para_projeto", { id, ativo }),
   excluirItem: (id) => chamar("excluir_item", { id }),
   listarProjetos: () => chamar("listar_projetos"),
@@ -437,6 +484,7 @@ const nativa: Api = {
   memoriaDoComputador: () => chamar("memoria_do_computador"),
   sugerirPassosIa: (alvo) => chamar("sugerir_passos_ia", { alvo }),
   organizarTextoIa: (texto, sensivel) => chamar("organizar_texto_ia", { texto, sensivel }),
+  ajustarOrganizacaoIa: (texto, itens, mudanca, sensivel) => chamar("ajustar_organizacao_ia", { texto, itens, mudanca, sensivel }),
   revisarTextoIa: (texto, sensivel, modo, instrucao) => chamar("revisar_texto_ia", { texto, sensivel, modo: modo ?? null, instrucao: instrucao ?? null }),
   ditadoEstado: () => chamar("ditado_estado"),
   ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
@@ -478,8 +526,9 @@ function simularItens() {
     const t = tarefasDe(p.id);
     return { id: p.id, titulo: p.texto, estado: p.estado as EstadoProjeto, ondeParei: p.ondeParei, pausadoEm: p.pausadoEm,
       inicio: p.inicio ?? null, prazo: p.prazo ?? null, criadoEm: p.criadoEm,
-      tarefasFeitas: t.filter((x) => x.estado === "feita").length, tarefasTotal: t.length, alteradoEm: p.alteradoEm };
+      tarefasFeitas: t.filter((x) => x.estado === "feita").length, tarefasTotal: t.length, alteradoEm: p.alteradoEm, etiquetas: vivas(p) };
   };
+  const vivas = (i: Item) => (i.etiquetas ?? []).filter((e) => etiquetas.some((x) => x.id === e));
   const achar = (id: string) => {
     const i = itens.find((x) => x.id === id);
     if (!i) throw new ErroOrbita("nao_encontrado", "Não encontrei esse item.");
@@ -522,6 +571,8 @@ function simularItens() {
     novo({ tipo: "tarefa", texto: "Escrever a introdução", estado: "a_fazer", paiId: tcc.id, ordem: 2, prazo: dia(3) });
     novo({ tipo: "tarefa", texto: "Marcar reunião com a orientadora", estado: "feita", paiId: tcc.id, ordem: 3 });
     novo({ tipo: "projeto", texto: "Reformar a estante", estado: "ativo", inicio: dia(-5), prazo: dia(20) });
+    ligacoes.push([tcc.id, pod.id]);
+    tcc.etiquetas = ["e3"];
     novo({ tipo: "projeto", texto: "Curso de ilustração", estado: "pausado", pausadoEm: agora() - 86_400_000 * 9,
       ondeParei: { texto: "Terminei o módulo 3", proximoPasso: "Assistir a aula sobre luz e sombra", links: [], atualizadoEm: agora() - 86_400_000 * 9 } });
   }
@@ -530,7 +581,7 @@ function simularItens() {
       itens.filter((i) => i.tipo === "ideia" && i.estado === "guardada").sort((a, b) => b.criadoEm - a.criadoEm)
         .map((i) => ({
           id: i.id, texto: i.texto, criadoEm: i.criadoEm, nota: i.nota ?? "",
-          etiquetas: (i.etiquetas ?? []).filter((e) => etiquetas.some((x) => x.id === e)),
+          etiquetas: vivas(i),
           ligadas: ligacoes.flatMap(([a, b]) => (a === i.id ? [b] : b === i.id ? [a] : []))
             .filter((o) => itens.some((x) => x.id === o && x.tipo === "ideia" && x.estado === "guardada")),
         })),
@@ -556,6 +607,11 @@ function simularItens() {
       ligacoes = ligacoes.filter(([x, y]) => !((x === a && y === b) || (x === b && y === a)));
       if (ligar && a !== b) ligacoes.push([a, b]);
     },
+    itensLigados: async (id: string) =>
+      ligacoes.flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : []))
+        .map((o) => itens.find((x) => x.id === o))
+        .filter((x): x is Item => !!x && (x.tipo !== "ideia" || x.estado === "guardada"))
+        .map((x) => ({ id: x.id, tipo: x.tipo, titulo: x.texto, estado: x.estado })),
     ideiaParaProjeto: async (id: string, ativo: boolean) => {
       const ideia = achar(id);
       const p = await criarProjeto(ideia.texto, ativo);
@@ -588,12 +644,12 @@ function simularItens() {
     definirLimiteProjetos: async (n: number) => void (limite = n),
     listarTarefas: async (pid: string) =>
       tarefasDe(pid).sort((a, b) => a.ordem - b.ordem)
-        .map((t) => ({ id: t.id, paiId: t.paiId!, titulo: t.texto, estado: t.estado as EstadoTarefa, ordem: t.ordem, peso: t.peso ?? null, prazo: t.prazo ?? null })),
+        .map((t) => ({ id: t.id, paiId: t.paiId!, titulo: t.texto, estado: t.estado as EstadoTarefa, ordem: t.ordem, peso: t.peso ?? null, prazo: t.prazo ?? null, etiquetas: vivas(t) })),
     criarTarefa: async (paiId: string, titulo: string) => {
       const ordem = Math.max(0, ...itens.filter((i) => i.paiId === paiId).map((i) => i.ordem)) + 1;
       const t = novo({ tipo: "tarefa", texto: vazio(titulo), estado: "a_fazer", paiId, ordem });
       projetoDa(paiId).alteradoEm = agora();
-      return { id: t.id, paiId, titulo: t.texto, estado: "a_fazer" as EstadoTarefa, ordem, peso: null, prazo: null };
+      return { id: t.id, paiId, titulo: t.texto, estado: "a_fazer" as EstadoTarefa, ordem, peso: null, prazo: null, etiquetas: [] };
     },
     mudarEstadoTarefa: async (id: string, estado: EstadoTarefa) => {
       const t = achar(id);
@@ -727,6 +783,45 @@ function simularRotinas(itens: ReturnType<typeof simularItens>) {
   };
 }
 
+/** Anexos de mentira: guardados só na memória da página. */
+function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLink" | "imagemAnexo" | "abrirAnexo" | "salvarAnexo" | "excluirAnexo"> {
+  const anexos: (Anexo & { item: string })[] = [];
+  const desenho = (cor: string) =>
+    `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320"><rect width="480" height="320" fill="${cor}"/><circle cx="360" cy="90" r="40" fill="#f3efe6" opacity="0.8"/><path d="M0 260 L120 150 L230 250 L320 180 L480 280 L480 320 L0 320 Z" fill="#2f4a3a"/></svg>`)}`;
+  const imagens = new Map<string, string>();
+  const tipoDe = (nome: string): Anexo["tipo"] => (/\.(png|jpe?g|gif|webp|svg)$/i.test(nome) ? "imagem" : "arquivo");
+  return {
+    listarAnexos: async (item) => anexos.filter((a) => a.item === item).map(({ item: _, ...a }) => a),
+    anexarArquivo: async (item, caminho) => {
+      const nome = caminho.split(/[\\/]/).pop() || "arquivo";
+      const a = { id: crypto.randomUUID(), tipo: tipoDe(nome), nome, endereco: "", tamanho: 184_320, criadoEm: Date.now(), item };
+      if (a.tipo === "imagem") imagens.set(a.id, desenho(["#7a9c8a", "#8a7fa8", "#b08a6a"][anexos.length % 3]));
+      anexos.push(a);
+      return a;
+    },
+    anexarLink: async (item, nome, endereco) => {
+      let e = endereco.trim();
+      if (!e) throw new ErroOrbita("texto_vazio", "Escreva o endereço do link.");
+      if (!/^[a-z][a-z0-9+.-]*:/i.test(e)) e = `https://${e}`;
+      if (!/^https?:\/\//i.test(e)) throw new ErroOrbita("arquivo", "Só dá para anexar links da internet (http ou https).");
+      const a = { id: crypto.randomUUID(), tipo: "link" as const, nome: nome.trim() || e, endereco: e, tamanho: 0, criadoEm: Date.now(), item };
+      anexos.push(a);
+      return a;
+    },
+    imagemAnexo: async (id) => imagens.get(id) ?? Promise.reject(new ErroOrbita("nao_encontrado", "Não encontrei esse item.")),
+    abrirAnexo: async (id) => {
+      const a = anexos.find((x) => x.id === id);
+      if (a?.tipo === "link") globalThis.open?.(a.endereco, "_blank", "noopener");
+    },
+    salvarAnexo: async () => {},
+    excluirAnexo: async (id) => {
+      const i = anexos.findIndex((x) => x.id === id);
+      if (i >= 0) anexos.splice(i, 1);
+      imagens.delete(id);
+    },
+  };
+}
+
 function simularEnergia() {
   const registros: RegistroEnergia[] = [];
   let basicos = ["Tomar o remédio", "Comer alguma coisa", "Beber água"];
@@ -832,6 +927,7 @@ function criarSimulacao(): Api {
     ...simularAgenda(),
     ...simularRotinas(comItens),
     ...simularEnergia(),
+    ...simularAnexos(),
     fazerBackup: async () => {
       await espera();
     },
@@ -855,6 +951,11 @@ function criarSimulacao(): Api {
     // A IA de mentira não conhece os projetos: liga a tarefa ao primeiro ativo.
     organizarTextoIa: async (texto, sensivel) => {
       const o = await comIa.organizarTextoIa(texto, sensivel);
+      const ativo = (await comItens.listarProjetos()).find((p) => p.estado === "ativo");
+      return { ...o, itens: o.itens.map((i) => (i.projetoId === "__primeiro_ativo__" ? { ...i, projetoId: ativo?.id ?? null } : i)) };
+    },
+    ajustarOrganizacaoIa: async (texto, lista, mudanca, sensivel) => {
+      const o = await comIa.ajustarOrganizacaoIa(texto, lista, mudanca, sensivel);
       const ativo = (await comItens.listarProjetos()).find((p) => p.estado === "ativo");
       return { ...o, itens: o.itens.map((i) => (i.projetoId === "__primeiro_ativo__" ? { ...i, projetoId: ativo?.id ?? null } : i)) };
     },
@@ -898,7 +999,7 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
+function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, bloquearSensivel: false };
   if (comClaude) {
@@ -991,6 +1092,20 @@ ${JSON.stringify(tema)}`;
         local: false,
       };
     },
+    // Entende só dois pedidos: uma hora nova ("às 16h") e tirar o último item.
+    ajustarOrganizacaoIa: async (_texto, lista, mudanca) => {
+      await espera(1000);
+      if (comErro) throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");
+      type Bruto = { tipo: TipoItemProposto; texto: string; projeto?: string; data?: string; hora?: string; duracaoMin?: number };
+      let itens: ItemProposto[] = (JSON.parse(lista).itens as Bruto[]).map((b) => ({
+        tipo: b.tipo, texto: b.texto, projetoId: b.tipo === "tarefa" ? "__primeiro_ativo__" : null,
+        data: b.data ?? null, hora: b.hora ?? null, duracaoMin: b.duracaoMin ?? null,
+      }));
+      const hora = mudanca.match(/(\d{1,2})\s*h/);
+      if (hora) itens = itens.map((i) => (i.tipo === "compromisso" ? { ...i, hora: `${hora[1].padStart(2, "0")}:00` } : i));
+      if (/tir|remov|apag/i.test(mudanca)) itens = itens.slice(0, -1);
+      return { itens, provedor: "Claude", local: false };
+    },
     sugerirPassosIa: async () => {
       await espera(1200);
       if (comErro) throw new ErroOrbita("ia", "O provedor recusou por limite de uso ou falta de créditos. Confira a sua conta ou tente mais tarde.", undefined, undefined, undefined, "limite");
@@ -1047,6 +1162,19 @@ export async function escolherPasta(): Promise<string | null> {
   if (!noApp) return "C:\\Users\\Dan\\Google Drive\\Órbita";
   const caminho = await open({ multiple: false, directory: true });
   return typeof caminho === "string" ? caminho : null;
+}
+
+/** Escolhe um arquivo para anexar. Devolve null se a pessoa cancelar. */
+export async function escolherArquivoParaAnexar(): Promise<string | null> {
+  if (!noApp) return "C:\\Users\\Dan\\Imagens\\esboço-da-capa.png";
+  const caminho = await open({ multiple: false, directory: false });
+  return typeof caminho === "string" ? caminho : null;
+}
+
+/** Pergunta onde salvar a cópia de um anexo. */
+export async function escolherOndeSalvarAnexo(nome: string): Promise<string | null> {
+  if (!noApp) return nome;
+  return save({ defaultPath: nome });
 }
 
 /** Exporta um tema para arquivo. No navegador (prévia), baixa o arquivo. */

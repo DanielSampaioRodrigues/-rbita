@@ -564,3 +564,24 @@
 /* Criar tema com IA */
 .tema-ia { align-self: stretch; max-width: 60rem; }
 .tema-ia-fundo { height: 8rem; border: 1px solid var(--cor-borda); border-radius: var(--canto); }
+
+/* Etiquetas, ligações e anexos (projetos, tarefas e ideias) */
+.relacoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--espaco-4) var(--espaco-5); align-items: start; max-width: 60rem; }
+.relacoes > .relacao:last-child { grid-column: 1 / -1; }
+.relacao .lista-ligadas li { flex-wrap: nowrap; }
+.relacao { display: grid; gap: var(--espaco-2); align-content: start; justify-items: start; }
+.relacao > * { max-width: 100%; }
+.relacao .lista-ligadas, .relacao .lista-anexos, .relacao .campo { justify-self: stretch; }
+.relacao-titulo { font-size: 1rem; margin: 0; }
+.etiquetas-linha { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--espaco-2) var(--espaco-3); }
+.lista-anexos { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
+.anexo { display: flex; align-items: center; gap: var(--espaco-3); padding: var(--espaco-2); border: 1px solid var(--cor-borda); border-radius: var(--canto); }
+.anexo-nome { flex: 1; min-width: 0; display: grid; overflow-wrap: anywhere; }
+.anexo-acoes { display: flex; gap: var(--espaco-1); }
+.anexo-icone { display: grid; place-items: center; width: 3rem; height: 3rem; flex: none; border-radius: var(--canto-pequeno); background: var(--cor-superficie-alternativa); color: var(--cor-texto-suave); }
+.anexo-miniatura { flex: none; padding: 0; border: 1px solid var(--cor-borda); border-radius: var(--canto-pequeno); background: none; cursor: zoom-in; overflow: hidden; line-height: 0; }
+.anexo-imagem { display: block; width: 3rem; height: 3rem; object-fit: cover; }
+.imagem-carregando { display: block; background: var(--cor-superficie-alternativa); }
+.anexo-grande { display: block; max-width: 100%; max-height: 65vh; margin-inline: auto; border-radius: var(--canto-pequeno); }
+.secao-relacoes { display: grid; gap: var(--espaco-3); }
+.secao-relacoes > h2 { margin: 0; }

@@ -172,6 +172,7 @@
 }
 
 .janela.pequena { width: min(30rem, 100%); }
+.janela.larga { width: min(60rem, 100%); }
 
 .janela-dialogo {
   display: flex;

@@ -1,7 +1,7 @@
 import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { api, type EstadoTarefa, type Tarefa } from "../api";
 import { textos } from "../textos/pt-BR";
-import { ESTADOS, EtiquetaPeso, MenuTarefa } from "./acoesTarefa";
+import { ESTADOS, EtiquetaPeso, EtiquetasTarefa, MenuTarefa } from "./acoesTarefa";
 import { EtiquetaPrazo } from "./prazos";
 
 const t = textos.projeto;
@@ -82,10 +82,11 @@ function CartaoTarefa({ tarefa, etapa, irmas, executar, aoMover, aoDefinirPrazo,
       <div ref={setNodeRef} className="quadro-cartao-alca" {...listeners} {...attributes} aria-roledescription="tarefa arrastável">
         <span className="quebra">{tarefa.titulo}</span>
         {etapa && <span className="texto-suave pequeno quebra">{t.deEtapa(etapa)}</span>}
-        {(tarefa.peso || tarefa.prazo) && (
+        {(tarefa.peso || tarefa.prazo || tarefa.etiquetas.length > 0) && (
           <span className="etiquetas">
             <EtiquetaPrazo prazo={tarefa.prazo} />
             <EtiquetaPeso peso={tarefa.peso} />
+            <EtiquetasTarefa ids={tarefa.etiquetas} />
           </span>
         )}
       </div>

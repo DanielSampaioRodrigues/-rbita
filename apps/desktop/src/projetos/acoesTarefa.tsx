@@ -1,7 +1,12 @@
 import { MoreHorizontal } from "lucide-react";
+import { createContext, useContext } from "react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
-import { api, type EstadoTarefa, type Peso, type Tarefa } from "../api";
+import { api, type EstadoTarefa, type Etiqueta, type Peso, type Tarefa } from "../api";
+import { ChipEtiqueta } from "../ideias/etiquetas";
 import { textos } from "../textos/pt-BR";
+
+/** Dado pela página do projeto a todas as visões: etiquetas existentes e a janela de detalhes. */
+export const ContextoTarefas = createContext<{ etiquetas: Etiqueta[]; aoDetalhes?: (tarefa: Tarefa) => void }>({ etiquetas: [] });
 
 const t = textos.projeto;
 export const ESTADOS: EstadoTarefa[] = ["a_fazer", "fazendo", "feita"];
@@ -24,6 +29,7 @@ export function MenuTarefa({
   /** Só nas etapas, e só com a IA ligada para "quebrar". */
   aoSugerirPassos?: (tarefa: Tarefa) => void;
 }) {
+  const { aoDetalhes } = useContext(ContextoTarefas);
   const pos = irmas.findIndex((i) => i.id === tarefa.id);
   const acoes: { id: string; nome: string; fazer: () => Promise<unknown> }[] = [
     ...ESTADOS.filter((e) => e !== tarefa.estado).map((e) => ({
@@ -41,6 +47,7 @@ export function MenuTarefa({
     ...(tarefa.peso ? [{ id: "sem-peso", nome: textos.energia.tirarPeso, fazer: () => api.definirPesoTarefa(tarefa.id, null) }] : []),
     ...(aoSugerirPassos ? [{ id: "ia", nome: textos.ia.sugerirPassos, fazer: async () => aoSugerirPassos(tarefa) }] : []),
     ...(aoDefinirPrazo ? [{ id: "prazo", nome: t.definirPrazo, fazer: async () => aoDefinirPrazo(tarefa) }] : []),
+    ...(aoDetalhes ? [{ id: "detalhes", nome: textos.relacoes.titulo, fazer: async () => aoDetalhes(tarefa) }] : []),
     { id: "excluir", nome: t.excluirTarefa, fazer: () => api.excluirItem(tarefa.id) },
   ];
   return (
@@ -63,4 +70,18 @@ export function MenuTarefa({
 export function EtiquetaPeso({ peso }: { peso: Peso | null }) {
   if (!peso) return null;
   return <span className={`etiqueta-estado peso peso-${peso}`}>{textos.energia.pesos[peso]}</span>;
+}
+
+/** Etiquetas da tarefa, pelo nome (só aparecem quando há). */
+export function EtiquetasTarefa({ ids }: { ids: string[] }) {
+  const { etiquetas } = useContext(ContextoTarefas);
+  const visiveis = etiquetas.filter((e) => ids.includes(e.id));
+  if (visiveis.length === 0) return null;
+  return (
+    <>
+      {visiveis.map((e) => (
+        <ChipEtiqueta key={e.id} etiqueta={e} />
+      ))}
+    </>
+  );
 }

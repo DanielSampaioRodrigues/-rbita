@@ -1,7 +1,7 @@
 import { ArrowLeft, CheckCircle2, Pause, Pencil, Play, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
-import { api, type EstadoProjeto, type ProvedorVisivel, type Projeto as TipoProjeto, type Tarefa } from "../api";
+import { api, type Etiqueta, type EstadoProjeto, type ProvedorVisivel, type Projeto as TipoProjeto, type Tarefa } from "../api";
 import { JanelaPassos } from "../ia/JanelaPassos";
 import { useRecado } from "../app/Recado";
 import { Aviso } from "../componentes/Campo";
@@ -14,6 +14,8 @@ import { QuadroTarefas } from "../projetos/QuadroTarefas";
 import { MapaMental } from "../projetos/MapaMental";
 import { CalendarioTarefas, LinhaTarefas } from "../projetos/TempoTarefas";
 import { JanelaPrazo } from "../projetos/prazos";
+import { ContextoTarefas } from "../projetos/acoesTarefa";
+import { Relacoes } from "../relacoes/Relacoes";
 import { CampoData } from "../componentes/CampoData";
 import { textos } from "../textos/pt-BR";
 import { EditarTexto } from "./Ideias";
@@ -41,6 +43,8 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
   const [prazoDe, setPrazoDe] = useState<Tarefa | null>(null);
   const [passosDe, setPassosDe] = useState<{ id: string; titulo: string; projeto: boolean } | null>(null);
   const [provedorIa, setProvedorIa] = useState<ProvedorVisivel | null>(null);
+  const [etiquetas, setEtiquetas] = useState<Etiqueta[]>([]);
+  const [detalhesDe, setDetalhesDe] = useState<string | null>(null);
   const mudancas = useMudancas();
   const comLimite = useComLimite();
   const recado = useRecado();
@@ -51,6 +55,10 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
       (e) => setErro(String(e?.message ?? e)),
     );
   }, [id, mudancas]);
+
+  useEffect(() => {
+    api.listarEtiquetas().then(setEtiquetas, () => setEtiquetas([]));
+  }, [mudancas]);
 
   // A IA só aparece se a pessoa escolheu um provedor para "quebrar".
   useEffect(() => {
@@ -81,6 +89,7 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
   };
 
   if (!projeto) return <div className="pagina"><Aviso>{erro}</Aviso></div>;
+  const tarefaDetalhes = tarefas.find((x) => x.id === detalhesDe) ?? null;
 
   return (
     <div className="pagina">
@@ -141,38 +150,55 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
         <CartaoOndeParei projeto={projeto} aoEditar={() => setJanela("anotar")} />
       </div>
 
-      <section className="secao-tarefas" aria-labelledby="titulo-tarefas">
-        <div className="linha-ajuste">
-          <h2 id="titulo-tarefas">{t.tarefas}</h2>
-          <ToggleButtonGroup
-            aria-label={t.visualizacao}
-            selectionMode="single"
-            disallowEmptySelection
-            selectedKeys={[visao]}
-            onSelectionChange={(k) => trocarVisao([...k][0] as Visao)}
-            className="segmentado"
-          >
-            <ToggleButton id="lista" className="segmentado-opcao">{t.lista}</ToggleButton>
-            <ToggleButton id="quadro" className="segmentado-opcao">{t.quadro}</ToggleButton>
-            <ToggleButton id="mapa" className="segmentado-opcao">{t.mapa}</ToggleButton>
-            <ToggleButton id="linha" className="segmentado-opcao">{t.linhaTempo}</ToggleButton>
-            <ToggleButton id="calendario" className="segmentado-opcao">{t.calendario}</ToggleButton>
-          </ToggleButtonGroup>
-        </div>
-        {sugerir && visao !== "mapa" && (
-          <div className="botoes">
-            <Button className="botao com-icone" onPress={() => sugerir({ id, titulo: projeto.titulo })}>
-              <Sparkles aria-hidden="true" size="1em" /> {textos.ia.sugerirEtapas}
-            </Button>
-          </div>
-        )}
-        {visao === "lista" && <ListaTarefas projetoId={id} tarefas={tarefas} executar={executar} aoDefinirPrazo={setPrazoDe} aoSugerirPassos={sugerir} />}
-        {visao === "quadro" && <QuadroTarefas projetoId={id} tarefas={tarefas} executar={executar} aoMover={recado} aoDefinirPrazo={setPrazoDe} aoSugerirPassos={sugerir} />}
-        {visao === "linha" && <LinhaTarefas projeto={projeto} tarefas={tarefas} aoDefinirPrazo={setPrazoDe} />}
-        {visao === "calendario" && <CalendarioTarefas projeto={projeto} tarefas={tarefas} aoDefinirPrazo={setPrazoDe} />}
-        {visao === "mapa" && <MapaMental projetoId={id} titulo={projeto.titulo} tarefas={tarefas} executar={executar} aoSugerirPassos={sugerir} />}
+      <section className="secao-relacoes" aria-labelledby="titulo-relacoes">
+        <h2 id="titulo-relacoes">{textos.relacoes.titulo}</h2>
+        <Relacoes id={id} etiquetas={projeto.etiquetas} />
       </section>
 
+      <ContextoTarefas.Provider value={{ etiquetas, aoDetalhes: (x) => setDetalhesDe(x.id) }}>
+        <section className="secao-tarefas" aria-labelledby="titulo-tarefas">
+          <div className="linha-ajuste">
+            <h2 id="titulo-tarefas">{t.tarefas}</h2>
+            <ToggleButtonGroup
+              aria-label={t.visualizacao}
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={[visao]}
+              onSelectionChange={(k) => trocarVisao([...k][0] as Visao)}
+              className="segmentado"
+            >
+              <ToggleButton id="lista" className="segmentado-opcao">{t.lista}</ToggleButton>
+              <ToggleButton id="quadro" className="segmentado-opcao">{t.quadro}</ToggleButton>
+              <ToggleButton id="mapa" className="segmentado-opcao">{t.mapa}</ToggleButton>
+              <ToggleButton id="linha" className="segmentado-opcao">{t.linhaTempo}</ToggleButton>
+              <ToggleButton id="calendario" className="segmentado-opcao">{t.calendario}</ToggleButton>
+            </ToggleButtonGroup>
+          </div>
+          {sugerir && visao !== "mapa" && (
+            <div className="botoes">
+              <Button className="botao com-icone" onPress={() => sugerir({ id, titulo: projeto.titulo })}>
+                <Sparkles aria-hidden="true" size="1em" /> {textos.ia.sugerirEtapas}
+              </Button>
+            </div>
+          )}
+          {visao === "lista" && <ListaTarefas projetoId={id} tarefas={tarefas} executar={executar} aoDefinirPrazo={setPrazoDe} aoSugerirPassos={sugerir} />}
+          {visao === "quadro" && <QuadroTarefas projetoId={id} tarefas={tarefas} executar={executar} aoMover={recado} aoDefinirPrazo={setPrazoDe} aoSugerirPassos={sugerir} />}
+          {visao === "linha" && <LinhaTarefas projeto={projeto} tarefas={tarefas} aoDefinirPrazo={setPrazoDe} />}
+          {visao === "calendario" && <CalendarioTarefas projeto={projeto} tarefas={tarefas} aoDefinirPrazo={setPrazoDe} />}
+          {visao === "mapa" && <MapaMental projetoId={id} titulo={projeto.titulo} tarefas={tarefas} executar={executar} aoSugerirPassos={sugerir} />}
+        </section>
+      </ContextoTarefas.Provider>
+
+      <Janela titulo={tarefaDetalhes ? `${textos.relacoes.tituloCurto}: ${tarefaDetalhes.titulo}` : ""} aberta={tarefaDetalhes !== null} aoFechar={() => setDetalhesDe(null)}>
+        {tarefaDetalhes && (
+          <div className="formulario">
+            <Relacoes id={tarefaDetalhes.id} etiquetas={tarefaDetalhes.etiquetas} />
+            <div className="janela-acoes">
+              <Button className="botao principal" onPress={() => setDetalhesDe(null)}>{textos.atalhos.fechar}</Button>
+            </div>
+          </div>
+        )}
+      </Janela>
       <JanelaPrazo tarefa={prazoDe} aoFechar={() => setPrazoDe(null)} />
       {provedorIa && (
         <JanelaPassos

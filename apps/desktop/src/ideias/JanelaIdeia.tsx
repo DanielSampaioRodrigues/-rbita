@@ -2,7 +2,8 @@ import { FolderPlus, Trash2, X } from "lucide-react";
 import { CampoRico } from "../componentes/CampoRico";
 import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";
-import { api, type Etiqueta, type Ideia } from "../api";
+import { api, type Etiqueta, type Ideia, type ItemResumo } from "../api";
+import { AnexosDoItem } from "../relacoes/Relacoes";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Escolha } from "../componentes/Escolha";
 import { Janela } from "../componentes/Janela";
@@ -40,6 +41,8 @@ export function JanelaIdeia({
   const [ligadas, setLigadas] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  // Projetos e tarefas ligados a esta ideia (a ligação se desfaz na página do projeto).
+  const [outrosLigados, setOutrosLigados] = useState<ItemResumo[]>([]);
 
   useEffect(() => {
     if (!ideia) return;
@@ -48,6 +51,7 @@ export function JanelaIdeia({
     setMarcadas(ideia.etiquetas);
     setLigadas(ideia.ligadas);
     setErro(null);
+    api.itensLigados(ideia.id).then((l) => setOutrosLigados(l.filter((x) => x.tipo !== "ideia")), () => setOutrosLigados([]));
   }, [ideia]);
 
   if (!ideia) return <Janela titulo={t.ideiaTitulo} aberta={false} aoFechar={aoFechar}>{null}</Janela>;
@@ -96,6 +100,11 @@ export function JanelaIdeia({
               ))}
             </ul>
           )}
+          {outrosLigados.length > 0 && (
+            <p className="texto-suave pequeno">
+              {textos.relacoes.ligacoes}: {outrosLigados.map((x) => `${textos.relacoes.tipos[x.tipo]} "${x.titulo}"`).join(", ")}
+            </p>
+          )}
           {outras.some((o) => !ligadas.includes(o.id)) && (
             <Escolha
               rotulo={t.ligarA}
@@ -106,6 +115,8 @@ export function JanelaIdeia({
             />
           )}
         </fieldset>
+
+        <AnexosDoItem id={ideia.id} />
 
         <Aviso>{erro}</Aviso>
         <div className="janela-acoes">

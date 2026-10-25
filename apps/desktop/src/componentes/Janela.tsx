@@ -8,13 +8,15 @@ interface Props {
   aoFechar: () => void;
   children: ReactNode;
   pequena?: boolean;
+  /** Para imagens grandes. */
+  larga?: boolean;
 }
 
 /** Janela de diálogo: Esc ou clique fora fecham; o foco fica preso dentro. */
-export function Janela({ titulo, aberta, aoFechar, children, pequena }: Props) {
+export function Janela({ titulo, aberta, aoFechar, children, pequena, larga }: Props) {
   return (
     <ModalOverlay className="sobreposicao" isOpen={aberta} onOpenChange={(v) => !v && aoFechar()} isDismissable>
-      <Modal className={pequena ? "janela pequena" : "janela"}>
+      <Modal className={pequena ? "janela pequena" : larga ? "janela larga" : "janela"}>
         <Dialog className="janela-dialogo">
           <Heading slot="title">{titulo}</Heading>
           {children}
