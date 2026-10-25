@@ -1,6 +1,6 @@
 # 0010 · Recuperação guardada na conta Google ou Microsoft
 
-25/10/2026 · aprovado por Dan (etapa B de "Menos burocracia"). Falta o cadastro do Órbita no Google e na Microsoft (`docs/configurar-contas.md`).
+25/10/2026 · aprovado por Dan (etapa B de "Menos burocracia"). **Google cadastrado e ligado na 0.22.0.** Microsoft pendente: conta pessoal não registra app sem diretório (tentar Azure for Students pelo pacote de estudante do GitHub). Todas as plataformas e contas: tabela na especificação, "Contas para guardar a recuperação".
 
 **O que é.** Opcional. O Órbita guarda, numa pasta do app na conta da própria pessoa, dois arquivos: a chave de recuperação (as 6 palavras) e um backup, que já é criptografado. Num computador novo, a pessoa entra com a conta, escolhe como abrir (Windows Hello, PIN ou direto) e os dados voltam.
 

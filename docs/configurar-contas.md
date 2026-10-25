@@ -51,7 +51,9 @@ O Google e a Microsoft pedem uma página de apresentação e uma política de pr
 
 ---
 
-## Parte 3: Microsoft (uns 10 minutos)
+## Parte 3: Microsoft (uns 10 minutos), **pendente**
+
+> 25/10/2026: a Microsoft não deixa conta pessoal (`@outlook.com`) registrar app sem um "diretório". Para ter um sem cartão de crédito: ativar o **Azure for Students** pelo pacote de estudante do GitHub (education.github.com/pack, oferta Microsoft Azure). Com o portal do Azure aberto, o caminho abaixo funciona (menu **Microsoft Entra ID > Registros de aplicativo**).
 
 1. Abra **entra.microsoft.com** e entre com a sua conta Microsoft (Outlook, Hotmail ou do Windows).
    - Se ele pedir para criar uma assinatura do Azure ou um cartão de crédito, **pare** e me mande um print. Tem outro caminho.

@@ -13,7 +13,9 @@
 - [x] **Conversa com a IA**: pedir mudanças na lista separada pela captura (0.19.0).
 - [x] **Auditoria automática de acessibilidade** (axe-core, WCAG 2.2 AA): sem problemas nos temas claro e escuro (0.19.0).
 - [x] **Primeira configuração leve** (etapa A, 0.21.0): sem inventar senha; Windows Hello, PIN ou abrir direto, e as 6 palavras como recuperação. Senha opcional.
-- [ ] **Proteger com a conta Google ou Microsoft** (etapa B): **programada**; falta Dan cadastrar o Órbita no Google e na Microsoft (`docs/configurar-contas.md`). Depois:: chave de recuperação e backup criptografado no Drive ou OneDrive da pessoa, sem servidor do Órbita. Apple fica para a Onda 3.
+- [x] **Guardar a recuperação na conta Google** (etapa B, 0.22.0).
+- [ ] **Conta Microsoft (OneDrive) no Windows**: o código está pronto; falta registrar o app na Microsoft. Conta pessoal não registra sem diretório: tentar o Azure for Students pelo pacote de estudante do GitHub, ou uma conta do Azure. Depois, guardar o ID em `ORBITA_MICROSOFT_CLIENT_ID` nos segredos do GitHub (passo a passo em `docs/configurar-contas.md`, parte 3).
+- [ ] **Avaliar Dropbox e Nextcloud/WebDAV** como contas extras para a recuperação (tabela na especificação).
 - [ ] **Teste com leitor de tela de verdade** (NVDA), de preferência com quem usa. Só dá para fazer no Windows.
 - [ ] **Portão da Onda 1**: Dan usar no dia a dia por algumas semanas e aprovar (lista em `docs/revisao-onda-1.md`).
 
@@ -38,6 +40,7 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [ ] Versões Mac, Android, iOS e iPad do mesmo código.
 - [ ] **Sincronização opcional** criptografada de ponta a ponta (decidir onde: pasta da pessoa na nuvem ou servidor pequeno).
 - [ ] Ditado no Mac e no celular (hoje o microfone só grava no Windows).
+- [ ] **"Guardar na minha conta" em todas as plataformas**: Google, Microsoft e Apple (iCloud, só no Mac e no iPhone/iPad) no Mac, Android, iPhone e iPad, cada uma com seu cadastro no provedor (tabela em `docs/especificacao.md`, "Contas para guardar a recuperação").
 - [ ] IA no celular só por chave (sem IA local).
 - [ ] Apple Saúde e Health Connect (sono, frequência cardíaca, passos, ciclo), só leitura.
 - [ ] Futuro: app no relógio (captura, confirmar remédio, avisos por vibração).

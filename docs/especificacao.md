@@ -246,9 +246,24 @@ Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela qui
   - com a sincronização (Onda 3), um aparelho já aberto poderá criar uma senha nova para o outro.
 - **Menos burocracia, com conta da própria pessoa** (decisão de Dan, 25/10/2026; ainda não feito). Senha, 6 palavras e arquivo assustam, levam a anotar em papel e deixam sem saída quem perde tudo. Mudanças planejadas:
   - **Etapa A (primeira configuração leve), feita na versão 0.21.0:** a pessoa não inventa senha. Escolhe como abrir no dia a dia (Windows Hello recomendado, PIN ou abrir direto) e guarda a recuperação. As 6 palavras são a tranca forte (cerca de 66 bits, mais forte que a maioria das senhas inventadas). A senha vira opcional, em Ajustes, para quem prefere. Onde hoje se pede a senha (PIN errado 5 vezes, Windows Hello falhando, backup), valem as 6 palavras ou a senha, se houver. Cofres já criados não mudam.
-  - **Etapa B (proteger com a conta Google ou Microsoft), programada; liga quando o Órbita for cadastrado no Google e na Microsoft** (`docs/configurar-contas.md`, decisão 0010): a chave de recuperação e uma cópia criptografada do backup ficam numa pasta escondida do app, no Google Drive ou no OneDrive **da própria pessoa**. Perdeu o computador: instala o Órbita, entra com a conta e tudo volta. O Google e a Microsoft guardam, mas não leem o conteúdo, e o Órbita não tem servidor nem conta própria. O limite é dito na tela: a segurança passa a ser a da conta da pessoa (com verificação em duas etapas), e quem perder a conta perde essa forma de recuperar. As 6 palavras continuam como alternativa.
+  - **Etapa B (proteger com a conta Google ou Microsoft): Google feito na versão 0.22.0; Microsoft com o código pronto, esperando o registro do app** (`docs/configurar-contas.md`, decisão 0010; plano por plataforma logo abaixo): a chave de recuperação e uma cópia criptografada do backup ficam numa pasta escondida do app, no Google Drive ou no OneDrive **da própria pessoa**. Perdeu o computador: instala o Órbita, entra com a conta e tudo volta. O Google e a Microsoft guardam, mas não leem o conteúdo, e o Órbita não tem servidor nem conta própria. O limite é dito na tela: a segurança passa a ser a da conta da pessoa (com verificação em duas etapas), e quem perder a conta perde essa forma de recuperar. As 6 palavras continuam como alternativa.
   - **Apple:** "Entrar com Apple" com iCloud chega com as versões de Mac e iPhone (Onda 3), porque exige a conta de desenvolvedor da Apple. No Windows, quem usa Apple pode escolher a conta Microsoft ou guardar o backup na pasta do iCloud Drive para Windows.
   - Na Onda 3, a mesma base vira a sincronização entre computador e celular.
+
+### Contas para guardar a recuperação: plano por plataforma
+
+Decisão de Dan (25/10/2026): a opção "Guardar na minha conta" precisa existir em **todas as plataformas** do Órbita e com **todas as contas** que fizerem sentido. Cada combinação pede um cadastro próprio no provedor e um jeito próprio de voltar do login para o app.
+
+| Conta | Windows | Mac | Android | iPhone e iPad | Situação |
+|---|---|---|---|---|---|
+| Google (Drive) | Feito (0.22.0) | Onda 3 | Onda 3 | Onda 3 | Cadastro feito no Google Cloud (cliente "App para computador"). Mac usa o mesmo tipo; Android e iOS pedem clientes próprios. |
+| Microsoft (OneDrive) | **Pendente** | Onda 3 | Onda 3 | Onda 3 | Código pronto desde a 0.22.0. Falta o registro do app: conta pessoal não registra sem diretório; tentar pelo Azure for Students (pacote de estudante do GitHub) ou conta do Azure. |
+| Apple (iCloud) | Não dá (a Apple não oferece iCloud a programas de Windows) | Onda 3 | Não dá | Onda 3 | Exige conta de desenvolvedor da Apple (cerca de US$ 99 por ano) e CloudKit. No Windows e no Android, quem usa Apple escolhe outra conta ou a pasta do iCloud Drive para Windows. |
+| Dropbox | A avaliar | A avaliar | A avaliar | A avaliar | Tem pasta do app, como Google e Microsoft. Cadastro gratuito. |
+| Nextcloud ou WebDAV | A avaliar | A avaliar | A avaliar | A avaliar | Para quem tem servidor próprio. Sem cadastro: a pessoa informa o endereço. |
+| Proton Drive | Esperar | Esperar | Esperar | Esperar | Ainda sem acesso aberto para apps de fora. Rever quando houver. |
+
+Regras para todas: só a pasta do app (nunca o resto da conta), login no navegador ou no sistema com PKCE, nada passa por servidor do Órbita, o limite honesto aparece na tela e as 6 palavras continuam como alternativa sem conta. Na Onda 3, a mesma base vira a sincronização entre aparelhos.
 - **Trava extra opcional** para os módulos de saúde e de cuidado psicológico.
 - **Backup** em arquivo único criptografado (`.orbita-backup`), que a pessoa guarda onde quiser (pendrive, Drive, iCloud). Abre com a senha ou com as 6 palavras, em qualquer computador; PIN e Windows Hello não viajam no backup.
   - **Na hora**, por Ajustes, ou **automático** (opcional, desligado por padrão): ao fechar ou bloquear, uma vez por dia, numa pasta escolhida, guardando os últimos 7. Se o automático falhar, Ajustes mostra o motivo.
