@@ -106,6 +106,13 @@ pub async fn gerar_imagem(e: &Escolhido, modelo: &str, pedido: &str) -> Result<S
     if e.provedor.tipo != TipoProvedor::Compativel {
         return Err(erro("sem_imagem", "Este provedor não gera imagens. Dá para criar o tema com desenho em SVG."));
     }
+    // Os modelos de imagem do Gemini ("gemini-...-image") não existem no formato compatível:
+    // só respondem pelo formato próprio do Google. Os "imagen" funcionam no compatível.
+    if let Some(nativo) = e.provedor.url.trim_end_matches('/').strip_suffix("/openai") {
+        if !modelo.starts_with("imagen") {
+            return gerar_imagem_gemini(e, nativo, modelo, pedido).await;
+        }
+    }
     let mut corpo = json!({ "model": modelo, "prompt": pedido, "n": 1 });
     // Os modelos "gpt-image" sempre devolvem a imagem pronta e recusam este campo.
     if !modelo.starts_with("gpt-image") {
@@ -129,6 +136,31 @@ pub async fn gerar_imagem(e: &Escolhido, modelo: &str, pedido: &str) -> Result<S
         return Ok(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)));
     }
     Err(erro("resposta", "A imagem não veio na resposta. Tente de novo."))
+}
+
+/// Imagem pelos modelos "gemini-...-image", no formato próprio do Google (generateContent).
+async fn gerar_imagem_gemini(e: &Escolhido, base: &str, modelo: &str, pedido: &str) -> Result<String, Erro> {
+    let corpo = json!({
+        "contents": [{ "parts": [{ "text": pedido }] }],
+        "generationConfig": { "responseModalities": ["TEXT", "IMAGE"] },
+    });
+    let mut requisicao = cliente()?.post(format!("{base}/models/{modelo}:generateContent")).json(&corpo);
+    if let Some(c) = &e.chave {
+        requisicao = requisicao.header("x-goog-api-key", c.as_str());
+    }
+    let v = enviar(requisicao, false).await?;
+    let partes = v.pointer("/candidates/0/content/parts").and_then(Value::as_array).cloned().unwrap_or_default();
+    for parte in partes {
+        let dados = parte.get("inlineData").or_else(|| parte.get("inline_data"));
+        if let Some(b64) = dados.and_then(|d| d["data"].as_str()) {
+            let tipo = dados.and_then(|d| d["mimeType"].as_str().or(d["mime_type"].as_str())).unwrap_or("image/png");
+            return Ok(format!("data:{tipo};base64,{b64}"));
+        }
+    }
+    if v.pointer("/promptFeedback/blockReason").is_some() || v.pointer("/candidates/0/finishReason").and_then(Value::as_str) == Some("SAFETY") {
+        return Err(erro("recusa", "O modelo preferiu não desenhar esta imagem. Tente descrever o tema de outro jeito."));
+    }
+    Err(erro("resposta", "A imagem não veio na resposta. Tente de novo ou escolha outro modelo de imagem."))
 }
 
 /// Um pedido de uma mensagem só, com instruções de sistema. Devolve o texto.
@@ -243,6 +275,27 @@ mod testes {
         let (url, _rx) = servidor(401, r#"{"error":{"message":"invalid x-api-key"}}"#);
         let e = tauri::async_runtime::block_on(listar_modelos(&escolhido(TipoProvedor::Claude, url))).unwrap_err();
         assert!(matches!(e, Erro::Ia { motivo: "chave", .. }));
+    }
+
+    #[test]
+    fn imagem_do_gemini_usa_o_formato_do_google() {
+        let (url, rx) = servidor(200, r#"{"candidates":[{"content":{"parts":[{"text":"Aqui"},{"inlineData":{"mimeType":"image/jpeg","data":"QUJD"}}]}}]}"#);
+        let e = escolhido(TipoProvedor::Compativel, format!("{url}/v1beta/openai/"));
+        let imagem = tauri::async_runtime::block_on(gerar_imagem(&e, "gemini-3-pro-image-preview", "floresta")).unwrap();
+        assert_eq!(imagem, "data:image/jpeg;base64,QUJD");
+        let pedido = rx.recv().unwrap().to_lowercase();
+        assert!(pedido.starts_with("post /v1beta/models/gemini-3-pro-image-preview:generatecontent"));
+        assert!(pedido.contains("x-goog-api-key: chave-secreta") && !pedido.contains("authorization"));
+        assert!(pedido.contains(r#""responsemodalities":["text","image"]"#));
+    }
+
+    #[test]
+    fn imagen_do_gemini_segue_no_formato_compativel() {
+        let (url, rx) = servidor(200, r#"{"data":[{"b64_json":"QUJD"}]}"#);
+        let e = escolhido(TipoProvedor::Compativel, format!("{url}/v1beta/openai"));
+        let imagem = tauri::async_runtime::block_on(gerar_imagem(&e, "imagen-4.0-generate-001", "floresta")).unwrap();
+        assert_eq!(imagem, "data:image/png;base64,QUJD");
+        assert!(rx.recv().unwrap().to_lowercase().starts_with("post /v1beta/openai/images/generations"));
     }
 
     #[test]

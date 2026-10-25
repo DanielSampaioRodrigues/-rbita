@@ -1,4 +1,1 @@
-- **Escolher o modelo de imagem**: em "Criar com IA", ao pedir fundo em imagem (PNG), aparece o campo "Modelo de imagem", com os modelos de imagem da sua conta. As cores e os ícones continuam com o modelo de texto escolhido acima.
-- **Procurar modelos de imagem novos**: um botão consulta de novo a sua conta, para quando a empresa lançar um modelo novo.
-- **Tema criado pela IA vale na hora**: ao apertar "Criar o tema", ele já é aplicado no app inteiro e entra na sua lista de temas. Mudanças feitas à mão depois continuam pedindo "Salvar e usar".
-- **Criar um tema novo do zero**: botão novo em Ajustes > Tema e fundo, que começa com cores neutras, sem fundo e com os ícones padrão.
+- **Imagem com Gemini corrigida**: os modelos de imagem do Gemini (os que terminam em "image") davam "O provedor não encontrou esse modelo". Agora o Órbita fala com eles do jeito que o Google pede, e a imagem de fundo sai.
