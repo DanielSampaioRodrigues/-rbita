@@ -81,6 +81,11 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 - Planejamento por energia: tarefas marcadas como leves, médias ou pesadas.
 - **Modo baixa energia**, que mostra só o essencial: remédio, comer, uma tarefa.
 
+**Como ficou na Onda 1 (etapa 10).**
+- **Registro rápido** no Início e na página Energia: cinco níveis com o nome escrito (muito baixa, baixa, média, boa, muito boa) e um desenho de barras. Um clique registra; pode registrar várias vezes no dia. Histórico dos últimos 14 dias em barras (média do dia), sem julgamento.
+- **Peso das tarefas**: leve, média ou pesada, no menu de cada tarefa. "Tarefas para agora" mostra as tarefas dos projetos ativos, as leves primeiro.
+- **Modo baixa energia** (Ctrl + Shift + E): a tela inteira vira "Só o essencial", com os **básicos do dia** (padrão: tomar o remédio, comer alguma coisa, beber água; editáveis), **uma tarefa** leve (com "mostrar outra"), a agenda de hoje e o registro de energia. Frase fixa: "Hoje é dia de fazer só o essencial. Está tudo bem." Quando o módulo Saúde chegar (Onda 2), o remédio virá da medicação cadastrada.
+
 ### 4. Dinheiro
 
 - Contas recorrentes com aviso antecipado.

@@ -9,7 +9,7 @@ use serde::Serialize;
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, eventos, itens, rotinas};
+use crate::banco::{self, energia, eventos, itens, rotinas};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -406,4 +406,41 @@ pub async fn criar_rotina(estado: State<'_, Estado>, titulo: String) -> Result<r
 #[tauri::command]
 pub async fn salvar_passo(estado: State<'_, Estado>, rotina_id: String, passo: rotinas::Passo) -> Result<rotinas::Passo, Erro> {
     estado.com_sessao(|s| rotinas::salvar_passo(&s.conn, &rotina_id, passo))
+}
+
+// ---------- Energia ----------
+
+#[tauri::command]
+pub async fn registrar_energia(estado: State<'_, Estado>, nivel: u8, nota: String) -> Result<energia::RegistroEnergia, Erro> {
+    estado.com_sessao(|s| energia::registrar(&s.conn, nivel, &nota))
+}
+
+#[tauri::command]
+pub async fn listar_energia(estado: State<'_, Estado>, de: i64, ate: i64) -> Result<Vec<energia::RegistroEnergia>, Erro> {
+    estado.com_sessao(|s| energia::listar(&s.conn, de, ate))
+}
+
+#[tauri::command]
+pub async fn basicos_do_dia(estado: State<'_, Estado>, data: String) -> Result<Vec<energia::Basico>, Erro> {
+    estado.com_sessao(|s| energia::basicos_do_dia(&s.conn, &data))
+}
+
+#[tauri::command]
+pub async fn definir_basicos(estado: State<'_, Estado>, lista: Vec<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| energia::definir_basicos(&s.conn, lista))
+}
+
+#[tauri::command]
+pub async fn marcar_basico(estado: State<'_, Estado>, data: String, texto: String, feito: bool) -> Result<(), Erro> {
+    estado.com_sessao(|s| energia::marcar_basico(&s.conn, &data, &texto, feito))
+}
+
+#[tauri::command]
+pub async fn tarefas_sugeridas(estado: State<'_, Estado>) -> Result<Vec<energia::TarefaSugerida>, Erro> {
+    estado.com_sessao(|s| energia::tarefas_sugeridas(&s.conn))
+}
+
+#[tauri::command]
+pub async fn definir_peso_tarefa(estado: State<'_, Estado>, id: String, peso: Option<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::definir_peso(&s.conn, &id, peso.as_deref()))
 }

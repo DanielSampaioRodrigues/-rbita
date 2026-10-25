@@ -66,6 +66,8 @@ pub struct Tarefa {
     pub titulo: String,
     pub estado: String,
     pub ordem: f64,
+    /// leve, media ou pesada (para planejar pela energia).
+    pub peso: Option<String>,
 }
 
 const ESTADOS_PROJETO: &[&str] = &["ativo", "pausado", "concluido"];
@@ -273,14 +275,14 @@ pub fn excluir(conn: &Connection, id: &str) -> Result<(), Erro> {
 /// Todas as tarefas de um projeto (etapas e subtarefas), na ordem.
 pub fn listar_tarefas(conn: &Connection, projeto_id: &str) -> Result<Vec<Tarefa>, Erro> {
     let mut c = conn.prepare(
-        "SELECT id, pai_id, titulo, estado, ordem FROM item
+        "SELECT id, pai_id, titulo, estado, ordem, json_extract(dados, '$.peso') FROM item
          WHERE tipo = 'tarefa' AND excluido_em IS NULL
            AND (pai_id = ?1 OR pai_id IN (SELECT id FROM item WHERE pai_id = ?1 AND tipo = 'tarefa' AND excluido_em IS NULL))
          ORDER BY ordem, criado_em",
     )?;
     let tarefas = c
         .query_map([projeto_id], |r| {
-            Ok(Tarefa { id: r.get(0)?, pai_id: r.get(1)?, titulo: r.get(2)?, estado: r.get(3)?, ordem: r.get(4)? })
+            Ok(Tarefa { id: r.get(0)?, pai_id: r.get(1)?, titulo: r.get(2)?, estado: r.get(3)?, ordem: r.get(4)?, peso: r.get(5)? })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(tarefas)
@@ -313,7 +315,7 @@ pub fn criar_tarefa(conn: &Connection, pai_id: &str, titulo: &str) -> Result<Tar
         [pai_id],
         |r| r.get(0),
     )?;
-    let tarefa = Tarefa { id: novo_id(), pai_id: pai_id.to_string(), titulo, estado: "a_fazer".into(), ordem };
+    let tarefa = Tarefa { id: novo_id(), pai_id: pai_id.to_string(), titulo, estado: "a_fazer".into(), ordem, peso: None };
     let agora = agora_ms();
     conn.execute(
         "INSERT INTO item (id, tipo, titulo, estado, pai_id, ordem, criado_em, alterado_em) VALUES (?1, 'tarefa', ?2, 'a_fazer', ?3, ?4, ?5, ?5)",
@@ -333,6 +335,23 @@ pub fn mudar_estado_tarefa(conn: &Connection, id: &str, estado: &str) -> Result<
         .ok_or(Erro::NaoEncontrado)?;
     conn.execute("UPDATE item SET estado = ?2, alterado_em = ?3 WHERE id = ?1", params![id, estado, agora_ms()])?;
     tocar(conn, &projeto_da_tarefa(conn, &pai)?)
+}
+
+/// Peso da tarefa para planejar pela energia: leve, media, pesada ou nenhum.
+pub fn definir_peso(conn: &Connection, id: &str, peso: Option<&str>) -> Result<(), Erro> {
+    if let Some(p) = peso {
+        if !["leve", "media", "pesada"].contains(&p) {
+            return Err(Erro::Interno(format!("peso desconhecido: {p}")));
+        }
+    }
+    let mudou = conn.execute(
+        "UPDATE item SET dados = json_set(dados, '$.peso', ?2), alterado_em = ?3 WHERE id = ?1 AND tipo = 'tarefa'",
+        params![id, peso, agora_ms()],
+    )?;
+    if mudou == 0 {
+        return Err(Erro::NaoEncontrado);
+    }
+    Ok(())
 }
 
 /// Muda um item (tarefa ou passo de rotina) de posição entre os irmãos:

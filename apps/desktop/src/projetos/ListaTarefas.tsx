@@ -4,7 +4,7 @@ import { Button, Checkbox, Form } from "react-aria-components";
 import { api, type Tarefa } from "../api";
 import { Campo } from "../componentes/Campo";
 import { textos } from "../textos/pt-BR";
-import { MenuTarefa } from "./acoesTarefa";
+import { EtiquetaPeso, MenuTarefa } from "./acoesTarefa";
 
 const t = textos.projeto;
 
@@ -51,6 +51,7 @@ function ItemTarefa({ tarefa, irmas, todas, executar }: { tarefa: Tarefa; irmas:
           </span>
           <span className={tarefa.estado === "feita" ? "tarefa-titulo feita quebra" : "tarefa-titulo quebra"}>{tarefa.titulo}</span>
         </Checkbox>
+        <EtiquetaPeso peso={tarefa.peso} />
         {tarefa.estado === "fazendo" && <span className="etiqueta-estado estado-fazendo">{t.estadosTarefa.fazendo}</span>}
         {eEtapa && (
           <Button className="botao-icone" aria-label={`${t.adicionarSubtarefa}: ${tarefa.titulo}`} onPress={() => setAbrindoSub((v) => !v)}>

@@ -12,6 +12,8 @@ import { Agenda } from "../agenda/Agenda";
 import { PaginaFoco, ProvedorFoco } from "../foco/Foco";
 import { Ajustes } from "../paginas/Ajustes";
 import { Rotinas } from "../rotinas/Rotinas";
+import { BaixaEnergia } from "../energia/BaixaEnergia";
+import { PaginaEnergia } from "../energia/Energia";
 import { AvisosDeTransicao } from "./Avisos";
 import { Ideias } from "../paginas/Ideias";
 import { Inicio } from "../paginas/Inicio";
@@ -96,6 +98,8 @@ export function App() {
       irAgenda: () => irPara("agenda"),
       irRotinas: () => irPara("rotinas"),
       irFoco: () => irPara("foco"),
+      irEnergia: () => irPara("energia"),
+      alternarBaixaEnergia: () => mudar({ baixaEnergia: !prefs.baixaEnergia }),
       irAjustes: () => irPara("ajustes"),
       alternarBaixoEstimulo: () => mudar({ baixoEstimulo: !prefs.baixoEstimulo }),
       alternarClaroEscuro: () => mudar({ modoCor: modoEfetivo(prefs) === "escuro" ? "claro" : "escuro" }),
@@ -132,6 +136,8 @@ export function App() {
     else if (secao === "agenda") pagina = <Agenda />;
     else if (secao === "rotinas") pagina = <Rotinas />;
     else if (secao === "foco") pagina = <PaginaFoco />;
+    else if (secao === "energia")
+      pagina = <PaginaEnergia aoLigarBaixa={() => mudar({ baixaEnergia: true })} aoAbrirProjeto={abrirProjeto} />;
     else if (secao === "projetos")
       pagina = projetoAberto ? (
         <Projeto key={projetoAberto} id={projetoAberto} aoVoltar={() => setProjetoAberto(null)} />
@@ -139,14 +145,21 @@ export function App() {
         <Projetos aoAbrir={abrirProjeto} aoMudarLimite={() => irPara("ajustes")} />
       );
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
-    else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} />;
+    else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
     tela = (
       <ProvedorLimite>
         <ProvedorFoco>
-          <Moldura secao={secao} aoEscolherSecao={irPara} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
-            <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
-            {pagina}
-          </Moldura>
+          {prefs.baixaEnergia ? (
+            <>
+              <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
+              <BaixaEnergia aoSair={() => mudar({ baixaEnergia: false })} aoCapturar={pedirCaptura} />
+            </>
+          ) : (
+            <Moldura secao={secao} aoEscolherSecao={irPara} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
+              <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
+              {pagina}
+            </Moldura>
+          )}
           <Captura aberta={capturando} aoFechar={() => setCapturando(false)} />
         </ProvedorFoco>
       </ProvedorLimite>

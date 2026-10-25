@@ -32,6 +32,8 @@ export interface Preferencias {
   modoCor: ModoCor;
   baixoEstimulo: boolean;
   avisos: { ligado: boolean; minutos: number; notificacao: boolean };
+  /** Modo baixa energia: o app mostra só o essencial. */
+  baixaEnergia: boolean;
 }
 
 export const PADRAO: Preferencias = {
@@ -43,6 +45,7 @@ export const PADRAO: Preferencias = {
   modoCor: "sistema",
   baixoEstimulo: false,
   avisos: { ligado: true, minutos: 10, notificacao: true },
+  baixaEnergia: false,
 };
 
 export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
@@ -65,6 +68,7 @@ export function validar(bruto: unknown): Preferencias {
     modoCor: dentro(p.modoCor, ["sistema", "claro", "escuro"] as const) ? p.modoCor : PADRAO.modoCor,
     baixoEstimulo: typeof p.baixoEstimulo === "boolean" ? p.baixoEstimulo : PADRAO.baixoEstimulo,
     avisos: validarAvisos(p.avisos),
+    baixaEnergia: typeof p.baixaEnergia === "boolean" ? p.baixaEnergia : PADRAO.baixaEnergia,
   };
 }
 

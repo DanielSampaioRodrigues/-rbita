@@ -1,6 +1,6 @@
 import { MoreHorizontal } from "lucide-react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
-import { api, type EstadoTarefa, type Tarefa } from "../api";
+import { api, type EstadoTarefa, type Peso, type Tarefa } from "../api";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.projeto;
@@ -29,6 +29,10 @@ export function MenuTarefa({
     ...(pos >= 0 && pos < irmas.length - 1
       ? [{ id: "descer", nome: t.descer, fazer: () => api.moverTarefa(tarefa.id, irmas[pos + 2]?.id ?? null) }]
       : []),
+    ...(["leve", "media", "pesada"] as Peso[])
+      .filter((p) => p !== tarefa.peso)
+      .map((p) => ({ id: `peso-${p}`, nome: textos.energia.marcarPeso(textos.energia.pesos[p]), fazer: () => api.definirPesoTarefa(tarefa.id, p) })),
+    ...(tarefa.peso ? [{ id: "sem-peso", nome: textos.energia.tirarPeso, fazer: () => api.definirPesoTarefa(tarefa.id, null) }] : []),
     { id: "excluir", nome: t.excluirTarefa, fazer: () => api.excluirItem(tarefa.id) },
   ];
   return (
@@ -45,4 +49,10 @@ export function MenuTarefa({
       </Popover>
     </MenuTrigger>
   );
+}
+
+/** Etiqueta com o peso da tarefa (só aparece quando há peso). */
+export function EtiquetaPeso({ peso }: { peso: Peso | null }) {
+  if (!peso) return null;
+  return <span className={`etiqueta-estado peso peso-${peso}`}>{textos.energia.pesos[peso]}</span>;
 }

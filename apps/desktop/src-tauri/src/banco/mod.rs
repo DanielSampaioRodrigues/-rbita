@@ -4,6 +4,7 @@
 //! etiquetas e ligações. Todo registro tem identificador único, datas de
 //! criação e alteração e exclusão marcada, para a sincronização futura.
 
+pub mod energia;
 pub mod eventos;
 pub mod itens;
 pub mod rotinas;

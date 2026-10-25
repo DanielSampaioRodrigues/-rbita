@@ -1,4 +1,5 @@
-import { Lightbulb, PenLine } from "lucide-react";
+import { BatteryLow, Lightbulb, PenLine } from "lucide-react";
+import { RegistroRapido } from "../energia/Energia";
 import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";
 import { expandir, inicioDoDia, somarDias, type Ocorrencia } from "../agenda/datas";
@@ -14,10 +15,11 @@ interface Props {
   aoCapturar: () => void;
   aoAbrirProjeto: (id: string) => void;
   aoIr: (secao: "ideias" | "projetos" | "agenda") => void;
+  aoLigarBaixa: () => void;
 }
 
 /** Retomar importa tanto quanto começar: o Início abre com os projetos ativos e o próximo passo de cada um. */
-export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr }: Props) {
+export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props) {
   const [ativos, setAtivos] = useState<Projeto[]>([]);
   const [ideias, setIdeias] = useState(0);
   const [hoje, setHoje] = useState<Ocorrencia[]>([]);
@@ -38,6 +40,15 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr }: Props) {
       <Button className="botao principal" onPress={aoCapturar}>
         <PenLine aria-hidden="true" size="1.1em" /> {t.capturar}
       </Button>
+
+      <section className="cartao largura-leitura esticado">
+        <RegistroRapido />
+        <div className="links">
+          <Button className="link com-icone" onPress={aoLigarBaixa}>
+            <BatteryLow aria-hidden="true" size="1.1em" /> {textos.energia.ligarBaixa}
+          </Button>
+        </div>
+      </section>
 
       <section className="grupo largura-leitura" aria-labelledby="hoje">
         <h2 id="hoje">{t.hoje}</h2>

@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 9 de 18, rotinas, foco e avisos de transição.
+Onda 1 (base e coração, Windows): etapa 10 de 18, energia e modo baixa energia.

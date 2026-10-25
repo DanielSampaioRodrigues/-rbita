@@ -73,12 +73,36 @@ export interface Rotina {
   passos: Passo[];
 }
 
+export type Peso = "leve" | "media" | "pesada";
+
 export interface Tarefa {
   id: string;
   paiId: string;
   titulo: string;
   estado: EstadoTarefa;
   ordem: number;
+  peso: Peso | null;
+}
+
+export interface RegistroEnergia {
+  id: string;
+  /** De 1 (muito baixa) a 5 (muito boa). */
+  nivel: number;
+  momento: number;
+  nota: string;
+}
+
+export interface Basico {
+  texto: string;
+  feito: boolean;
+}
+
+export interface TarefaSugerida {
+  id: string;
+  titulo: string;
+  peso: Peso | null;
+  projetoId: string;
+  projeto: string;
 }
 
 export interface SituacaoBackup {
@@ -174,6 +198,13 @@ interface Api {
   listarRotinas(): Promise<Rotina[]>;
   criarRotina(titulo: string): Promise<Rotina>;
   salvarPasso(rotinaId: string, passo: Passo): Promise<Passo>;
+  registrarEnergia(nivel: number, nota: string): Promise<RegistroEnergia>;
+  listarEnergia(de: number, ate: number): Promise<RegistroEnergia[]>;
+  basicosDoDia(data: string): Promise<Basico[]>;
+  definirBasicos(lista: string[]): Promise<void>;
+  marcarBasico(data: string, texto: string, feito: boolean): Promise<void>;
+  tarefasSugeridas(): Promise<TarefaSugerida[]>;
+  definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   fazerBackup(caminho: string): Promise<void>;
   infoBackup(caminho: string): Promise<InfoBackup>;
   restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }): Promise<ModoAbrir>;
@@ -230,6 +261,13 @@ const nativa: Api = {
   listarRotinas: () => chamar("listar_rotinas"),
   criarRotina: (titulo) => chamar("criar_rotina", { titulo }),
   salvarPasso: (rotinaId, passo) => chamar("salvar_passo", { rotinaId, passo }),
+  registrarEnergia: (nivel, nota) => chamar("registrar_energia", { nivel, nota }),
+  listarEnergia: (de, ate) => chamar("listar_energia", { de, ate }),
+  basicosDoDia: (data) => chamar("basicos_do_dia", { data }),
+  definirBasicos: (lista) => chamar("definir_basicos", { lista }),
+  marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
+  tarefasSugeridas: () => chamar("tarefas_sugeridas"),
+  definirPesoTarefa: (id, peso) => chamar("definir_peso_tarefa", { id, peso }),
   fazerBackup: (caminho) => chamar("fazer_backup", { caminho }),
   infoBackup: (caminho) => chamar("info_backup", { caminho }),
   restaurarBackup: (caminho, { senha, palavras }) =>
@@ -240,7 +278,7 @@ const nativa: Api = {
 
 /** Parte da simulação que cuida de ideias, projetos e tarefas (mesmas regras da parte nativa). */
 function simularItens() {
-  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null };
+  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null };
   const itens: Item[] = [];
   let limite = 3;
   const agora = () => Date.now();
@@ -287,7 +325,7 @@ function simularItens() {
       ondeParei: { texto: "Fichando o artigo da Grandin", proximoPasso: "Abrir o PDF na página 12 e terminar o fichamento", links: ["https://scholar.google.com"], atualizadoEm: agora() - 3_600_000 } });
     const e1 = novo({ tipo: "tarefa", texto: "Revisão de literatura", estado: "fazendo", paiId: tcc.id, ordem: 1 });
     novo({ tipo: "tarefa", texto: "Fichar 5 artigos", estado: "feita", paiId: e1.id, ordem: 1 });
-    novo({ tipo: "tarefa", texto: "Organizar as citações", estado: "a_fazer", paiId: e1.id, ordem: 2 });
+    novo({ tipo: "tarefa", texto: "Organizar as citações", estado: "a_fazer", paiId: e1.id, ordem: 2, peso: "leve" });
     novo({ tipo: "tarefa", texto: "Escrever a introdução", estado: "a_fazer", paiId: tcc.id, ordem: 2 });
     novo({ tipo: "tarefa", texto: "Marcar reunião com a orientadora", estado: "feita", paiId: tcc.id, ordem: 3 });
     novo({ tipo: "projeto", texto: "Reformar a estante", estado: "ativo" });
@@ -335,17 +373,27 @@ function simularItens() {
     definirLimiteProjetos: async (n: number) => void (limite = n),
     listarTarefas: async (pid: string) =>
       tarefasDe(pid).sort((a, b) => a.ordem - b.ordem)
-        .map((t) => ({ id: t.id, paiId: t.paiId!, titulo: t.texto, estado: t.estado as EstadoTarefa, ordem: t.ordem })),
+        .map((t) => ({ id: t.id, paiId: t.paiId!, titulo: t.texto, estado: t.estado as EstadoTarefa, ordem: t.ordem, peso: t.peso ?? null })),
     criarTarefa: async (paiId: string, titulo: string) => {
       const ordem = Math.max(0, ...itens.filter((i) => i.paiId === paiId).map((i) => i.ordem)) + 1;
       const t = novo({ tipo: "tarefa", texto: vazio(titulo), estado: "a_fazer", paiId, ordem });
       projetoDa(paiId).alteradoEm = agora();
-      return { id: t.id, paiId, titulo: t.texto, estado: "a_fazer" as EstadoTarefa, ordem };
+      return { id: t.id, paiId, titulo: t.texto, estado: "a_fazer" as EstadoTarefa, ordem, peso: null };
     },
     mudarEstadoTarefa: async (id: string, estado: EstadoTarefa) => {
       const t = achar(id);
       t.estado = estado;
       projetoDa(t.paiId!).alteradoEm = agora();
+    },
+    definirPesoTarefa: async (id: string, peso: Peso | null) => void (achar(id).peso = peso),
+    tarefasSugeridas: async () => {
+      const ordem = (p: Peso | null | undefined) => (p === "leve" ? 0 : p === "media" ? 2 : p === "pesada" ? 3 : 1);
+      return itens
+        .filter((t) => t.tipo === "tarefa" && t.estado !== "feita" && !itens.some((f) => f.paiId === t.id))
+        .map((t) => ({ t, p: projetoDa(t.paiId!) }))
+        .filter(({ p }) => p.estado === "ativo")
+        .sort((a, b) => ordem(a.t.peso) - ordem(b.t.peso))
+        .map(({ t, p }) => ({ id: t.id, titulo: t.texto, peso: t.peso ?? null, projetoId: p.id, projeto: p.texto }));
     },
     moverTarefa: async (id: string, antesDe: string | null) => {
       const t = achar(id);
@@ -450,6 +498,30 @@ function simularRotinas(itens: ReturnType<typeof simularItens>) {
   };
 }
 
+function simularEnergia() {
+  const registros: RegistroEnergia[] = [];
+  let basicos = ["Tomar o remédio", "Comer alguma coisa", "Beber água"];
+  const feitos = new Set<string>();
+  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+    const dia = 86_400_000;
+    [3, 2, 4, 3, 1, 2, 3, 4, 4, 2, 3, 3, 2].forEach((nivel, i) =>
+      registros.push({ id: `en${i}`, nivel, momento: Date.now() - (13 - i) * dia - 3_600_000, nota: "" }),
+    );
+  }
+  return {
+    registrarEnergia: async (nivel: number, nota: string) => {
+      const r = { id: crypto.randomUUID(), nivel, momento: Date.now(), nota };
+      registros.push(r);
+      return r;
+    },
+    listarEnergia: async (de: number, ate: number) => registros.filter((r) => r.momento >= de && r.momento < ate),
+    basicosDoDia: async (data: string) => basicos.map((texto) => ({ texto, feito: feitos.has(`${data}|${texto}`) })),
+    definirBasicos: async (lista: string[]) => void (basicos = lista.map((b) => b.trim()).filter(Boolean)),
+    marcarBasico: async (data: string, texto: string, feito: boolean) =>
+      void (feito ? feitos.add(`${data}|${texto}`) : feitos.delete(`${data}|${texto}`)),
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["janela", "cometa", "farol", "bambu", "orvalho", "tijolo"];
@@ -527,6 +599,7 @@ function criarSimulacao(): Api {
     ...comItens,
     ...simularAgenda(),
     ...simularRotinas(comItens),
+    ...simularEnergia(),
     fazerBackup: async () => {
       await espera();
     },

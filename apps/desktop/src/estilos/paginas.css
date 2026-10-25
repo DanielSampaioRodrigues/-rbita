@@ -276,3 +276,46 @@
 }
 
 .aviso-transicao p { flex: 1; color: var(--cor-texto); }
+
+/* Energia */
+.niveis-energia { display: flex; flex-wrap: wrap; gap: var(--espaco-2); }
+
+.nivel-energia {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--espaco-1);
+  min-width: 6.5rem;
+  padding: var(--espaco-2) var(--espaco-3);
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  cursor: pointer;
+}
+
+.nivel-energia[data-hovered] { background: var(--cor-superficie-alternativa); }
+.nivel-energia[data-selected] { border-color: var(--cor-destaque); box-shadow: inset 0 0 0 1px var(--cor-destaque); font-weight: 650; }
+.nivel-barras { display: inline-flex; align-items: flex-end; gap: 2px; height: 1rem; }
+.nivel-barras .barra { width: 5px; border-radius: 1px; background: var(--cor-borda); }
+.nivel-barras .barra:nth-child(1) { height: 30%; }
+.nivel-barras .barra:nth-child(2) { height: 45%; }
+.nivel-barras .barra:nth-child(3) { height: 60%; }
+.nivel-barras .barra:nth-child(4) { height: 80%; }
+.nivel-barras .barra:nth-child(5) { height: 100%; }
+.nivel-barras .barra.cheia { background: var(--cor-destaque); }
+
+.grafico-energia { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: var(--espaco-1); }
+.grafico-energia li { display: grid; gap: var(--espaco-1); justify-items: center; }
+.grafico-coluna { display: flex; align-items: flex-end; width: 100%; max-width: 1.6rem; height: 6rem; border-radius: var(--canto-pequeno); background: var(--cor-superficie-alternativa); }
+.grafico-barra { width: 100%; border-radius: var(--canto-pequeno) var(--canto-pequeno) 0 0; background: var(--cor-destaque); }
+.grafico-dia { font-size: 0.7rem; color: var(--cor-texto-suave); text-align: center; line-height: 1.2; }
+
+.sem-marcador { list-style: none; padding-left: 0; }
+.etiqueta-estado.peso { margin-left: var(--espaco-2); }
+.peso-leve { border-color: var(--cor-destaque); color: var(--cor-destaque); }
+
+/* Modo baixa energia */
+.baixa-energia { min-height: 100%; display: flex; flex-direction: column; }
+.baixa-energia-conteudo { width: min(40rem, 100%); margin: 0 auto; padding: var(--espaco-4) var(--espaco-5) var(--espaco-7); display: grid; gap: var(--espaco-5); }

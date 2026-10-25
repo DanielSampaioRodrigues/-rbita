@@ -77,6 +77,13 @@ pub fn run() {
             comandos::listar_rotinas,
             comandos::criar_rotina,
             comandos::salvar_passo,
+            comandos::registrar_energia,
+            comandos::listar_energia,
+            comandos::basicos_do_dia,
+            comandos::definir_basicos,
+            comandos::marcar_basico,
+            comandos::tarefas_sugeridas,
+            comandos::definir_peso_tarefa,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");
