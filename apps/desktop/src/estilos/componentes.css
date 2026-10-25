@@ -442,3 +442,5 @@
 .nota-data { color: var(--cor-texto-suave); font-size: 0.85rem; }
 
 .cartao > .botao { align-self: flex-start; }
+
+.quebra { overflow-wrap: anywhere; }

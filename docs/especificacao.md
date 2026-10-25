@@ -181,7 +181,9 @@ Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela qui
   - as telas de recuperação são calmas, um passo por vez, sem tempo limite;
   - com a sincronização (Onda 3), um aparelho já aberto poderá criar uma senha nova para o outro.
 - **Trava extra opcional** para os módulos de saúde e de cuidado psicológico.
-- **Backup** em arquivo único criptografado, que a pessoa guarda onde quiser (pendrive, Drive, iCloud).
+- **Backup** em arquivo único criptografado (`.orbita-backup`), que a pessoa guarda onde quiser (pendrive, Drive, iCloud). Abre com a senha ou com as 6 palavras, em qualquer computador; PIN e Windows Hello não viajam no backup.
+  - **Na hora**, por Ajustes, ou **automático** (opcional, desligado por padrão): ao fechar ou bloquear, uma vez por dia, numa pasta escolhida, guardando os últimos 7. Se o automático falhar, Ajustes mostra o motivo.
+  - **Restaurar** confere a senha e o arquivo inteiro antes de mexer em qualquer coisa. Os dados atuais vão para uma pasta de segurança (`anteriores`), nunca são apagados. Na primeira tela há "Já tenho um backup do Órbita", para computador novo.
 - **Exportação** dos dados em formatos abertos (por exemplo, CSV e Markdown), para ninguém ficar preso ao programa.
 - **Sincronização entre aparelhos** só numa onda futura e sempre opcional, com criptografia de ponta a ponta.
 - **IA opcional**: nenhuma função depende de IA. Se a pessoa ativar, ela sabe exatamente o que é enviado e para onde.

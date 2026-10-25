@@ -2,6 +2,8 @@
   display: grid;
   grid-template-columns: auto 1fr;
   height: 100%;
+  /* Só a área de conteúdo rola; a página inteira nunca se move. */
+  overflow: hidden;
 }
 
 .lateral {
@@ -13,6 +15,7 @@
   border-right: 1px solid var(--cor-borda);
   background: var(--cor-superficie);
   overflow-y: auto;
+  position: relative;
 }
 
 .lateral-marca {
@@ -67,7 +70,8 @@
 
 .lateral-versao { padding: 0 var(--espaco-3); font-size: 0.8rem; color: var(--cor-texto-suave); }
 
-.conteudo { overflow-y: auto; }
+/* "position: relative" prende as peças invisíveis dos controles dentro da área que rola. */
+.conteudo { overflow-y: auto; position: relative; }
 
 /* Janela estreita: a barra lateral fica só com os ícones. */
 @media (max-width: 760px) {

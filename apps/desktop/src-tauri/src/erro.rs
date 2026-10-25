@@ -29,6 +29,8 @@ pub enum Erro {
     HelloCancelado,
     #[error("O Windows Hello não está disponível neste computador. Use a senha.")]
     HelloIndisponivel,
+    #[error("Não deu para usar este backup: {0}.")]
+    BackupInvalido(String),
     #[error("Não foi possível ler ou gravar um arquivo: {0}")]
     Arquivo(String),
     #[error("Erro interno: {0}")]
@@ -51,6 +53,7 @@ impl Erro {
             Erro::AparelhoSemChave => "aparelho_sem_chave",
             Erro::HelloCancelado => "hello_cancelado",
             Erro::HelloIndisponivel => "hello_indisponivel",
+            Erro::BackupInvalido(_) => "backup_invalido",
             Erro::Arquivo(_) => "arquivo",
             Erro::Interno(_) => "interno",
         }

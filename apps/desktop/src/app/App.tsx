@@ -81,7 +81,7 @@ export function App() {
         {secao === "inicio" ? (
           <Inicio aoIrAjustes={() => setSecao("ajustes")} />
         ) : (
-          <Ajustes modo={situacao.modo} aoMudarSeguranca={atualizar} />
+          <Ajustes modo={situacao.modo} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />
         )}
       </Moldura>
     );

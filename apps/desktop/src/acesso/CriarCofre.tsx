@@ -4,6 +4,7 @@ import { api, type ModoAbrir } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { ChaveRecuperacao } from "../componentes/ChaveRecuperacao";
 import { EscolhaModo } from "../componentes/EscolhaModo";
+import { RestaurarBackup } from "../componentes/RestaurarBackup";
 import { textos } from "../textos/pt-BR";
 import { useHelloDisponivel } from "../useHello";
 import { MolduraAcesso } from "./Moldura";
@@ -12,7 +13,7 @@ import { avaliarPin, avaliarSenha } from "./validacao";
 const t = textos.criar;
 const c = textos.comum;
 
-type Passo = "boasVindas" | "senha" | "modo" | "pin" | "chave";
+type Passo = "boasVindas" | "restaurar" | "senha" | "modo" | "pin" | "chave";
 
 export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [passo, setPasso] = useState<Passo>("boasVindas");
@@ -53,6 +54,18 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
         <p>{t.boasVindasTexto}</p>
         <p className="texto-suave">{t.boasVindasPassos}</p>
         <Button className="botao principal" autoFocus onPress={() => setPasso("senha")}>{t.comecar}</Button>
+        <div className="links">
+          <Button className="link" onPress={() => setPasso("restaurar")}>{textos.backup.tenhoBackup}</Button>
+        </div>
+      </MolduraAcesso>
+    );
+  }
+
+  if (passo === "restaurar") {
+    return (
+      <MolduraAcesso>
+        <h1>{textos.backup.restaurarTitulo}</h1>
+        <RestaurarBackup substitui={false} aoVoltar={() => setPasso("boasVindas")} aoConcluir={aoConcluir} />
       </MolduraAcesso>
     );
   }

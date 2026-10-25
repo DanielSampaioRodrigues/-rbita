@@ -18,6 +18,17 @@ export interface Nota {
   criadoEm: number;
 }
 
+export interface SituacaoBackup {
+  pasta: string | null;
+  ultimo: number | null;
+  erro: string | null;
+}
+
+export interface InfoBackup {
+  criadoEm: number;
+  versaoApp: string;
+}
+
 export type CodigoErro =
   | "senha_errada"
   | "pin_errado"
@@ -32,6 +43,7 @@ export type CodigoErro =
   | "aparelho_sem_chave"
   | "hello_cancelado"
   | "hello_indisponivel"
+  | "backup_invalido"
   | "arquivo"
   | "interno";
 
@@ -74,6 +86,11 @@ interface Api {
   listarNotas(): Promise<Nota[]>;
   criarNota(texto: string): Promise<Nota>;
   excluirNota(id: string): Promise<void>;
+  fazerBackup(caminho: string): Promise<void>;
+  infoBackup(caminho: string): Promise<InfoBackup>;
+  restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }): Promise<ModoAbrir>;
+  situacaoBackup(): Promise<SituacaoBackup>;
+  definirBackupAutomatico(pasta: string | null): Promise<SituacaoBackup>;
 }
 
 const chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
@@ -103,6 +120,12 @@ const nativa: Api = {
   listarNotas: () => chamar("listar_notas"),
   criarNota: (texto) => chamar("criar_nota", { texto }),
   excluirNota: (id) => chamar("excluir_nota", { id }),
+  fazerBackup: (caminho) => chamar("fazer_backup", { caminho }),
+  infoBackup: (caminho) => chamar("info_backup", { caminho }),
+  restaurarBackup: (caminho, { senha, palavras }) =>
+    chamar("restaurar_backup", { caminho, senha: senha ?? null, palavras: palavras ?? null }),
+  situacaoBackup: () => chamar("situacao_backup"),
+  definirBackupAutomatico: (pasta) => chamar("definir_backup_automatico", { pasta }),
 };
 
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
@@ -110,6 +133,7 @@ function criarSimulacao(): Api {
   const PALAVRAS = ["janela", "cometa", "farol", "bambu", "orvalho", "tijolo"];
   const s = { existe: false, modo: null as ModoAbrir | null, senha: "", pin: "", erradas: 0, aberto: false };
   const notas: Nota[] = [];
+  const backup: SituacaoBackup = { pasta: null, ultimo: null, erro: null };
   const espera = () => new Promise((r) => setTimeout(r, 250));
   const falha = (codigo: CodigoErro, msg: string, extra?: number) => Promise.reject(new ErroOrbita(codigo, msg, extra));
   const conferir = async (texto: string) => {
@@ -188,6 +212,22 @@ function criarSimulacao(): Api {
       const i = notas.findIndex((n) => n.id === id);
       if (i >= 0) notas.splice(i, 1);
     },
+    fazerBackup: async () => {
+      await espera();
+    },
+    infoBackup: async () => ({ criadoEm: Date.now() - 86_400_000, versaoApp: "0.5.0" }),
+    restaurarBackup: async (_c, { senha, palavras }) => {
+      if (palavras) await conferir(palavras);
+      else if (senha !== "gato azul na janela") return falha("senha_errada", "A senha não confere.");
+      Object.assign(s, { existe: true, modo: "senha", senha: "gato azul na janela", aberto: true });
+      return "senha";
+    },
+    situacaoBackup: async () => ({ ...backup }),
+    definirBackupAutomatico: async (pasta) => {
+      await espera();
+      Object.assign(backup, { pasta, ultimo: pasta ? Date.now() : backup.ultimo, erro: null });
+      return { ...backup };
+    },
   };
 }
 
@@ -212,4 +252,27 @@ export async function escolherArquivoRecuperacao(): Promise<string | null> {
   const caminho = await open({ multiple: false, directory: false, filters: [{ name: "Texto", extensions: ["txt"] }] });
   if (!caminho || Array.isArray(caminho)) return null;
   return api.lerArquivoRecuperacao(caminho);
+}
+
+const hoje = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD
+
+/** Pergunta onde salvar um backup. Devolve null se a pessoa cancelar. */
+export async function escolherOndeSalvarBackup(): Promise<string | null> {
+  if (!noApp) return "simulacao.orbita-backup";
+  return save({
+    defaultPath: `orbita-backup-${hoje()}.orbita-backup`,
+    filters: [{ name: "Backup do Órbita", extensions: ["orbita-backup"] }],
+  });
+}
+
+export async function escolherBackup(): Promise<string | null> {
+  if (!noApp) return "simulacao.orbita-backup";
+  const caminho = await open({ multiple: false, directory: false, filters: [{ name: "Backup do Órbita", extensions: ["orbita-backup"] }] });
+  return typeof caminho === "string" ? caminho : null;
+}
+
+export async function escolherPasta(): Promise<string | null> {
+  if (!noApp) return "C:\\Users\\Dan\\Google Drive\\Órbita";
+  const caminho = await open({ multiple: false, directory: true });
+  return typeof caminho === "string" ? caminho : null;
 }

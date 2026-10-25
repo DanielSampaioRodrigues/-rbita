@@ -16,12 +16,19 @@ import {
 } from "../preferencias";
 import type { ModoAbrir } from "../api";
 import { textos } from "../textos/pt-BR";
+import { Backup } from "./Backup";
 import { Seguranca } from "./Seguranca";
 
 const t = textos.ajustes;
 const chaves = <T extends string>(o: Record<T, unknown>) => Object.keys(o) as T[];
 
-export function Ajustes({ modo, aoMudarSeguranca }: { modo: ModoAbrir | null; aoMudarSeguranca: () => void }) {
+interface Props {
+  modo: ModoAbrir | null;
+  aoMudarSeguranca: () => void;
+  aoRestaurar: () => void;
+}
+
+export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
   const { prefs, mudar, voltarAoPadrao } = usePreferencias();
   const [confirmando, setConfirmando] = useState(false);
 
@@ -94,6 +101,7 @@ export function Ajustes({ modo, aoMudarSeguranca }: { modo: ModoAbrir | null; ao
           </section>
 
           <Seguranca modo={modo} aoMudar={aoMudarSeguranca} />
+          <Backup aoRestaurar={aoRestaurar} />
       </div>
 
 

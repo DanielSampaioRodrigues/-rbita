@@ -158,6 +158,11 @@ pub fn gravar_config(conn: &Connection, chave: &str, valor: &str) -> Result<(), 
     Ok(())
 }
 
+pub fn apagar_config(conn: &Connection, chave: &str) -> Result<(), Erro> {
+    conn.execute("DELETE FROM config WHERE chave = ?1", params![chave])?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod testes {
     use super::*;

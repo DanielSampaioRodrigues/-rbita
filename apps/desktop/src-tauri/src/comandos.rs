@@ -8,6 +8,7 @@ use rusqlite::Connection;
 use serde::Serialize;
 use tauri::{State, WebviewWindow};
 
+use crate::backup;
 use crate::banco::{self, notas::Nota};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
@@ -17,10 +18,15 @@ const CONFIG_PALAVRAS: &str = "palavras_recuperacao";
 
 struct Sessao {
     conn: Connection,
-    /// Guardada para as próximas etapas (backup); apagada da memória ao bloquear.
-    #[allow(dead_code)]
+    /// Usada pelo backup; apagada da memória ao bloquear.
     chave: Chave,
 }
+
+const CONFIG_BACKUP_PASTA: &str = "backup_auto_pasta";
+const CONFIG_BACKUP_ULTIMO: &str = "backup_auto_ultimo";
+const CONFIG_BACKUP_ERRO: &str = "backup_auto_erro";
+/// Um backup automático por dia, no máximo.
+const INTERVALO_AUTOMATICO_MS: i64 = 20 * 60 * 60 * 1000;
 
 pub struct Estado {
     cofre: Cofre,
@@ -41,6 +47,27 @@ impl Estado {
     fn com_sessao<T>(&self, f: impl FnOnce(&Sessao) -> Result<T, Erro>) -> Result<T, Erro> {
         let guarda = self.sessao.lock().unwrap();
         f(guarda.as_ref().ok_or(Erro::Bloqueado)?)
+    }
+
+    /// Faz o backup automático se estiver ligado e o último tiver mais de 20 horas.
+    /// Chamado ao bloquear e ao fechar. Erros ficam guardados para a tela mostrar.
+    pub fn backup_automatico_se_preciso(&self, forcar: bool) {
+        let _ = self.com_sessao(|s| {
+            let Some(pasta) = banco::ler_config(&s.conn, CONFIG_BACKUP_PASTA)? else { return Ok(()) };
+            let ultimo: i64 = banco::ler_config(&s.conn, CONFIG_BACKUP_ULTIMO)?.and_then(|v| v.parse().ok()).unwrap_or(0);
+            let agora = banco::agora_ms();
+            if !forcar && agora - ultimo < INTERVALO_AUTOMATICO_MS {
+                return Ok(());
+            }
+            match backup::automatico(&self.cofre, &s.conn, &s.chave, std::path::Path::new(&pasta)) {
+                Ok(_) => {
+                    banco::gravar_config(&s.conn, CONFIG_BACKUP_ULTIMO, &agora.to_string())?;
+                    banco::apagar_config(&s.conn, CONFIG_BACKUP_ERRO)?;
+                }
+                Err(e) => banco::gravar_config(&s.conn, CONFIG_BACKUP_ERRO, &e.to_string())?,
+            }
+            Ok(())
+        });
     }
 }
 
@@ -174,8 +201,80 @@ pub async fn mudar_modo(estado: State<'_, Estado>, senha: String, modo: ModoAbri
 
 #[tauri::command]
 pub async fn bloquear(estado: State<'_, Estado>) -> Result<(), Erro> {
+    estado.backup_automatico_se_preciso(false);
     *estado.sessao.lock().unwrap() = None;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn fazer_backup(estado: State<'_, Estado>, caminho: PathBuf) -> Result<(), Erro> {
+    estado.com_sessao(|s| backup::criar(&estado.cofre, &s.conn, &s.chave, &caminho))
+}
+
+#[tauri::command]
+pub async fn info_backup(caminho: PathBuf) -> Result<backup::Informacao, Erro> {
+    backup::informacao(&caminho)
+}
+
+/// Restaura um backup, com a senha ou as palavras dele. Serve também num computador novo.
+#[tauri::command]
+pub async fn restaurar_backup(
+    estado: State<'_, Estado>,
+    caminho: PathBuf,
+    senha: Option<String>,
+    palavras: Option<String>,
+) -> Result<ModoAbrir, Erro> {
+    let segredo = match (senha, palavras) {
+        (Some(s), _) => backup::Segredo::Senha(s),
+        (None, Some(p)) => backup::Segredo::Palavras(p),
+        (None, None) => return Err(Erro::SenhaErrada),
+    };
+    // Confere a senha antes de fechar qualquer coisa.
+    let (cabecalho, _) = backup::ler(&caminho)?;
+    match &segredo {
+        backup::Segredo::Senha(s) => cabecalho.envelopes.abrir_com_senha(s).map(|_| ())?,
+        backup::Segredo::Palavras(p) => cabecalho.envelopes.abrir_com_palavras(p).map(|_| ())?,
+    }
+    // O banco atual precisa estar fechado para ser movido para a pasta de segurança.
+    *estado.sessao.lock().unwrap() = None;
+    let (chave, modo) = backup::restaurar(&estado.cofre, &caminho, &segredo)?;
+    estado.iniciar_sessao(chave)?;
+    Ok(modo)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SituacaoBackup {
+    pasta: Option<String>,
+    ultimo: Option<i64>,
+    erro: Option<String>,
+}
+
+#[tauri::command]
+pub async fn situacao_backup(estado: State<'_, Estado>) -> Result<SituacaoBackup, Erro> {
+    estado.com_sessao(|s| {
+        Ok(SituacaoBackup {
+            pasta: banco::ler_config(&s.conn, CONFIG_BACKUP_PASTA)?,
+            ultimo: banco::ler_config(&s.conn, CONFIG_BACKUP_ULTIMO)?.and_then(|v| v.parse().ok()),
+            erro: banco::ler_config(&s.conn, CONFIG_BACKUP_ERRO)?,
+        })
+    })
+}
+
+/// Liga (com a pasta escolhida) ou desliga o backup automático. Ao ligar, já faz o primeiro.
+#[tauri::command]
+pub async fn definir_backup_automatico(estado: State<'_, Estado>, pasta: Option<String>) -> Result<SituacaoBackup, Erro> {
+    estado.com_sessao(|s| match &pasta {
+        Some(p) => banco::gravar_config(&s.conn, CONFIG_BACKUP_PASTA, p),
+        None => {
+            banco::apagar_config(&s.conn, CONFIG_BACKUP_PASTA)?;
+            banco::apagar_config(&s.conn, CONFIG_BACKUP_ERRO)
+        }
+    })?;
+    if pasta.is_some() {
+        estado.backup_automatico_se_preciso(true);
+    }
+    situacao_backup(estado).await
 }
 
 #[tauri::command]

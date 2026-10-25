@@ -52,6 +52,26 @@ struct ArquivoCofre {
     aparelho: Option<EnvelopeAparelho>,
 }
 
+/// Envelopes que viajam no backup.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EnvelopesPortateis {
+    pub id: String,
+    pub senha: Envelope,
+    pub recuperacao: Envelope,
+}
+
+impl EnvelopesPortateis {
+    pub fn abrir_com_senha(&self, senha: &str) -> Result<Chave, Erro> {
+        abrir_envelope_por_segredo(&self.senha, &bytes_da_senha(senha), "senha", &self.id, None)?.ok_or(Erro::SenhaErrada)
+    }
+
+    pub fn abrir_com_palavras(&self, texto: &str) -> Result<Chave, Erro> {
+        let lidas = palavras::ler(texto).map_err(|posicoes| Erro::PalavrasErradas { posicoes })?;
+        abrir_envelope_por_segredo(&self.recuperacao, palavras::juntar(&lidas).as_bytes(), "recuperacao", &self.id, None)?
+            .ok_or(Erro::ChaveDeRecuperacaoErrada)
+    }
+}
+
 /// O que a tela de entrada precisa saber antes de abrir.
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -106,6 +126,10 @@ fn abrir_envelope_por_segredo(env: &Envelope, segredo: &[u8], tipo: &str, id: &s
 impl Cofre {
     pub fn new(pasta: impl Into<PathBuf>, guarda: Arc<dyn GuardaDoAparelho>) -> Self {
         Self { pasta: pasta.into(), guarda }
+    }
+
+    pub fn pasta(&self) -> &std::path::Path {
+        &self.pasta
     }
 
     pub fn caminho_banco(&self) -> PathBuf {
@@ -289,6 +313,31 @@ impl Cofre {
             a.tentativas_erradas = 0;
         }
         self.gravar(&c)
+    }
+
+    /// Envelopes que valem em qualquer computador (senha e recuperação), para o backup.
+    pub fn envelopes_portateis(&self) -> Result<EnvelopesPortateis, Erro> {
+        let c = self.ler()?;
+        Ok(EnvelopesPortateis { id: c.id, senha: c.senha, recuperacao: c.recuperacao })
+    }
+
+    /// Instala o cofre de um backup restaurado. Windows Hello e abrir direto
+    /// continuam como estavam; o PIN precisa ser criado de novo (volta para senha).
+    pub fn instalar_restauracao(&self, portateis: EnvelopesPortateis, chave: &Chave, modo_anterior: Option<ModoAbrir>) -> Result<ModoAbrir, Erro> {
+        let modo = match modo_anterior {
+            Some(m @ (ModoAbrir::Hello | ModoAbrir::Direto)) => m,
+            _ => ModoAbrir::Senha,
+        };
+        let arquivo = ArquivoCofre {
+            versao: 1,
+            aparelho: self.envelope_do_aparelho(chave, &portateis.id, modo, None)?,
+            modo,
+            senha: portateis.senha,
+            recuperacao: portateis.recuperacao,
+            id: portateis.id,
+        };
+        self.gravar(&arquivo)?;
+        Ok(modo)
     }
 
     /// Muda o jeito de abrir neste computador.

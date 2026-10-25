@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 3b de 18, Windows Hello como jeito de abrir.
+Onda 1 (base e coração, Windows): etapa 4 de 18, backup e restauração.
