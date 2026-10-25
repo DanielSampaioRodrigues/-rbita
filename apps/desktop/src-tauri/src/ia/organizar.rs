@@ -83,6 +83,14 @@ pub fn pedido_de_agora(conn: &Connection, texto: &str) -> Result<String, Erro> {
     Ok(montar_pedido(agora.date_naive(), agora.time(), &projetos_ativos(conn)?, &texto))
 }
 
+/// Conversa: a pessoa pede uma mudança na lista que a IA já separou. Vai o
+/// pedido original (com a data e os projetos), a lista atual e o que mudar.
+pub fn montar_ajuste(pedido_original: &str, itens_atuais: &str, mudanca: &str) -> String {
+    let mudanca: String = mudanca.trim().chars().take(1000).collect();
+    let itens: String = itens_atuais.chars().take(MAXIMO_DE_CARACTERES).collect();
+    format!("{pedido_original}\n\nVocê já separou assim:\n{itens}\n\nA pessoa pediu esta mudança: {mudanca}\nDevolva a lista inteira, já com a mudança, no mesmo formato JSON.")
+}
+
 fn normalizar(s: &str) -> String {
     s.trim().to_lowercase()
 }
@@ -140,6 +148,12 @@ mod testes {
         assert!(m.starts_with("Hoje é domingo, 2026-10-25 (horário atual 14:30)."));
         assert!(m.contains("- TCC: atenção") && m.ends_with("pagar a luz"));
         assert!(montar_pedido(hoje, NaiveTime::MIN, &[], "x").contains("não use o tipo \"tarefa\""));
+    }
+
+    #[test]
+    fn ajuste_leva_a_lista_atual_e_o_pedido() {
+        let m = montar_ajuste("Hoje é domingo...\nTexto da pessoa:\nconsulta quinta", r#"{"itens":[{"tipo":"compromisso"}]}"#, "a consulta é às 16h");
+        assert!(m.contains("consulta quinta") && m.contains(r#""tipo":"compromisso""#) && m.contains("às 16h"));
     }
 
     #[test]

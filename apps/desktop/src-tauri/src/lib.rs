@@ -124,6 +124,7 @@ pub fn run() {
             comandos::memoria_do_computador,
             comandos::sugerir_passos_ia,
             comandos::organizar_texto_ia,
+            comandos::ajustar_organizacao_ia,
             comandos::revisar_texto_ia,
             comandos::ditado_estado,
             comandos::ditado_baixar,

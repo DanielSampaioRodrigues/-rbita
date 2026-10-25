@@ -804,3 +804,20 @@ pub async fn salvar_anexo(estado: State<'_, Estado>, id: String, caminho: String
 pub async fn excluir_anexo(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| anexos::excluir(&s.conn, &id))
 }
+
+/// Conversa sobre a lista separada: a IA refaz a lista com a mudança pedida.
+#[tauri::command]
+pub async fn ajustar_organizacao_ia(estado: State<'_, Estado>, texto: String, itens: String, mudanca: String, sensivel: bool) -> Result<Organizacao, Erro> {
+    if mudanca.trim().is_empty() {
+        return Err(Erro::TextoVazio);
+    }
+    let (escolhido, pedido, projetos) = estado.com_sessao(|s| {
+        Ok((ia::provedor_da_funcao(&s.conn, "conversa", sensivel)?, organizar::pedido_de_agora(&s.conn, &texto)?, organizar::projetos_ativos(&s.conn)?))
+    })?;
+    let resposta = cliente::completar(&escolhido, organizar::SISTEMA, &organizar::montar_ajuste(&pedido, &itens, &mudanca)).await?;
+    let itens = organizar::ler_itens(&resposta, &projetos);
+    if itens.is_empty() {
+        return Err(Erro::Ia { motivo: "resposta", mensagem: "A IA não conseguiu refazer a lista. Tente explicar a mudança de outro jeito.".into() });
+    }
+    Ok(Organizacao { itens, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
+}
