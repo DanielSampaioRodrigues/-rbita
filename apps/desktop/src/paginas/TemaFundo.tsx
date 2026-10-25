@@ -273,6 +273,12 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
         <Interruptor rotulo={t.semTrava} ligado={prefs.semTrava} aoMudar={(semTrava) => mudar(semTrava ? { semTrava } : { semTrava, fundoNatural: false })} />
         <p className="campo-ajuda">{prefs.semTrava ? t.semTravaLigada : t.semTravaExplicacao}</p>
       </div>
+      {prefs.semTrava && (
+        <div className="campo">
+          <Interruptor rotulo={t.contorno} ligado={prefs.contornoLetras} aoMudar={(contornoLetras) => mudar({ contornoLetras })} />
+          <p className="campo-ajuda">{t.contornoExplicacao}</p>
+        </div>
+      )}
 
       {prefs.baixoEstimulo ? (
         <p className="campo-ajuda">{t.baixoEstimulo}</p>

@@ -23,6 +23,14 @@ describe("editor de tema", () => {
     expect(conferirPaleta(ajustarPaleta(ruim)).every((r) => r.passa)).toBe(true);
   });
 
+  it("quando os fundos brigam entre si, ajusta também o fundo da janela", () => {
+    const briga = { ...papel.claro, fundo: "#45620e", superficie: "#e0e010", texto: "#000000", textoSuave: "#373a36" };
+    const ajustada = ajustarPaleta(briga);
+    expect(conferirPaleta(ajustada).every((r) => r.passa)).toBe(true);
+    expect(ajustada.superficie).toBe("#e0e010");
+    expect(ajustada.fundo).not.toBe("#45620e");
+  });
+
   it("exporta e importa o mesmo tema", () => {
     const { tema, ajustado } = lerArquivoTema(gravarArquivoTema(papel));
     expect(ajustado).toBe(false);

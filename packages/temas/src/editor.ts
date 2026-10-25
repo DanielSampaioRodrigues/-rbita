@@ -61,8 +61,7 @@ export function ajustarCor(cor: string, contra: string[], minimo: number): strin
   return contra.every((f) => contraste("#000000", f) >= contraste("#ffffff", f)) ? "#000000" : "#ffffff";
 }
 
-/** Corrige a paleta inteira mexendo só nas cores de frente (texto, destaque...). */
-export function ajustarPaleta(p: Paleta): Paleta {
+function ajustarFrentes(p: Paleta): Paleta {
   const nova = { ...p };
   for (const frente of new Set(PARES.map((x) => x.frente))) {
     const pares = PARES.filter((x) => x.frente === frente);
@@ -70,6 +69,21 @@ export function ajustarPaleta(p: Paleta): Paleta {
     nova[frente] = ajustarCor(nova[frente], pares.map((x) => nova[x.fundo]), minimo);
   }
   return nova;
+}
+
+/**
+ * Corrige a paleta inteira. Primeiro mexe só nas cores de frente (texto, destaque...).
+ * Se os fundos brigam entre si (um pede letra clara e outro, escura), nenhuma cor de texto
+ * serve para todos: aí o texto segue os painéis (onde fica a maior parte do conteúdo) e o
+ * fundo da janela e as áreas destacadas mudam de claridade, mantendo o tom.
+ */
+export function ajustarPaleta(p: Paleta): Paleta {
+  const nova = ajustarFrentes(p);
+  if (conferirPaleta(nova).every((r) => r.passa)) return nova;
+  const fundos = { ...p };
+  fundos.texto = ajustarCor(p.texto, [p.superficie], 7);
+  for (const fundo of ["fundo", "superficieAlternativa"] as const) fundos[fundo] = ajustarCor(p[fundo], [fundos.texto], 7);
+  return ajustarFrentes(fundos);
 }
 
 // ---------- Arquivo de tema ----------

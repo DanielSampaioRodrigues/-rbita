@@ -60,6 +60,7 @@ export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = docume
   });
   raiz.dataset.modo = modo;
   raiz.dataset.baixoEstimulo = String(prefs.baixoEstimulo);
+  raiz.dataset.contorno = String(!comTrava(prefs) && prefs.contornoLetras);
   raiz.dataset.semSombra = String(tema.sombra === false);
   // Ícones: família, preenchimento e desenhos próprios vêm do tema; o efeito vai para o CSS.
   definirEstiloIcones(tema.icones);

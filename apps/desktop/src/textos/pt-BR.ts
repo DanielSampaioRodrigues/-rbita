@@ -120,6 +120,8 @@ export const textos = {
     vidroValor: (v: number) => (v === 0 ? "Opacas" : v === 100 ? "Vidro" : `${v}%`),
     vidroAjuda: "As caixas e a barra lateral ficam transparentes, com o fundo desfocado por trás, como vidro. Com a trava de contraste, param no ponto em que o texto ainda dá para ler.",
     vidroAjudaSemTrava: "As caixas e a barra lateral ficam transparentes, com o fundo desfocado por trás, como vidro. Sem a trava, chegam a quase nada por cima do fundo.",
+    contorno: "Contorno nas letras",
+    contornoExplicacao: "Com a trava liberada, as letras ganham uma sombra da cor do fundo da janela em volta, os textos fora das caixas ganham uma faixa atrás (como marca-texto) e as caixas de vidro ficam com pelo menos 60% de cor. Desligue para ver o fundo sem nada disso.",
     natural: "Mostrar o fundo com as cores originais",
     naturalExplicacao:
       "Tira todo o filtro: nada por cima do fundo, sem desfoque e sem escurecimento. As caixas seguem o controle de vidro acima. Ligar isto também libera a trava de contraste.",
@@ -176,7 +178,7 @@ export const textos = {
     par: (frente: string, fundo: string) => `${frente} sobre ${fundo}`,
     minimo: (m: number) => `mínimo ${m}:1`,
     ajustar: "Ajustar sozinho",
-    ajustarExplicacao: "Escurece ou clareia só as cores que não passam, mantendo o tom.",
+    ajustarExplicacao: "Escurece ou clareia só as cores que não passam, mantendo o tom. Se o fundo da janela e os painéis pedirem letras opostas (um claro e outro escuro), o fundo da janela também muda de claridade.",
     faltam: "Alguns pares estão sem contraste. Use \"Ajustar sozinho\" ou mude as cores marcadas.",
     falta_nome: "Dê um nome ao tema para salvar.",
     semContrasteTitulo: "Algumas cores estão com pouco contraste",

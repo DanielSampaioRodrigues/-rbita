@@ -155,3 +155,26 @@ svg.icone { filter: var(--filtro-icone, none); }
   background: rgb(var(--cor-superficie-rgb) / var(--opacidade-cartoes));
   backdrop-filter: blur(12px);
 }
+
+/* Contorno nas letras (trava liberada): sombra da cor do fundo da janela em volta do texto,
+   para ler por cima de desenhos e fotos. Vai em cada elemento, porque botões não herdam a sombra.
+   Botões cheios e campos já têm o próprio fundo. */
+:root[data-contorno="true"] :is(.conteudo, .lateral),
+:root[data-contorno="true"] :is(.conteudo, .lateral) * {
+  --halo: rgb(var(--cor-fundo-rgb));
+  text-shadow: 0 0 1px var(--halo), 0 0 1px var(--halo), 0 0 2px var(--halo), 0 0 3px var(--halo), 0 0 6px var(--halo), 0 0 12px var(--halo);
+}
+:root[data-contorno="true"] :is(.botao.principal, .botao.principal *, .segmentado-opcao[data-selected], .segmentado-opcao[data-selected] *, input, textarea, kbd) { text-shadow: none; }
+
+/* Caixas de vidro com contorno ligado: pelo menos 60% de cor, para o texto de dentro aparecer. */
+:root[data-contorno="true"][data-vidro="true"] :is(.cartao, .lateral) {
+  background: rgb(var(--cor-superficie-rgb) / max(var(--opacidade-cartoes), 0.6));
+}
+
+/* Textos soltos (fora das caixas): uma faixa translúcida da cor do fundo atrás, como marca-texto. */
+:root[data-contorno="true"] .conteudo :is(h1, h2, h3, p, .link):not(.cartao *, .cartao, .janela *, .botao *) {
+  width: fit-content;
+  background: rgb(var(--cor-fundo-rgb) / 0.72);
+  box-shadow: 0 0 0 0.3em rgb(var(--cor-fundo-rgb) / 0.72);
+  border-radius: var(--canto-pequeno);
+}
