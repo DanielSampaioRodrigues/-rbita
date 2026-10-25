@@ -18,6 +18,8 @@ import type { ModoAbrir } from "../api";
 import { textos } from "../textos/pt-BR";
 import { Backup } from "./Backup";
 import { TemaFundo } from "./TemaFundo";
+import { EditorTema } from "./EditorTema";
+import type { Tema } from "@orbita/temas";
 import { LimiteProjetos } from "./LimiteProjetos";
 import { ANTECEDENCIAS } from "../preferencias";
 import { Seguranca } from "./Seguranca";
@@ -34,6 +36,21 @@ interface Props {
 export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
   const { prefs, mudar, voltarAoPadrao } = usePreferencias();
   const [confirmando, setConfirmando] = useState(false);
+  const [editandoTema, setEditandoTema] = useState<Tema | null>(null);
+
+  if (editandoTema) {
+    return (
+      <EditorTema
+        inicial={editandoTema}
+        aoCancelar={() => setEditandoTema(null)}
+        aoSalvar={(tema) => {
+          const outros = prefs.temasProprios.filter((x) => x.id !== tema.id);
+          mudar({ temasProprios: [...outros, tema], tema: tema.id });
+          setEditandoTema(null);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="pagina">
@@ -48,7 +65,7 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
           <Button className="botao principal">{t.previaBotao}</Button>
         </section>
 
-          <TemaFundo />
+          <TemaFundo aoEditarTema={setEditandoTema} />
 
           <section className="cartao">
             <h2>{t.leitura}</h2>

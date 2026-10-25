@@ -195,6 +195,11 @@ A interface deve ir além da do Escuta: a pessoa monta o próprio ambiente, do m
 - **Contraste automático**: o Órbita lê até 48 × 48 pontos do fundo e calcula a menor opacidade da área de conteúdo que mantém texto ≥ 7:1 e texto suave e destaque ≥ 4,5:1 em 98% dos pontos (mínimo de 60% para fotos e SVG). Mostra em Ajustes o valor aplicado. A barra lateral e os cartões ficam sempre opacos.
 - **Baixo estímulo** leva o fundo ao liso, além de tirar a cor de destaque e as animações.
 - Os temas e o cálculo de contraste ficam no pacote `@orbita/temas`, sem React, para poderem ir ao Escuta.
+
+**Como ficou na Onda 1 (etapa 12).**
+- **Editor de tema**: "criar um tema a partir deste" (ou editar um tema próprio). Cada uma das 11 cores, em claro e escuro, com seletor e código hexadecimal; arredondamento dos cantos (retos, suaves, médios, redondos) e sombras. **Prévia ao vivo** e lista de **contraste par a par** (texto, texto secundário, destaque, avisos, contornos e foco sobre fundo, painéis e áreas destacadas; texto sobre o destaque). As cores que não passam ficam marcadas; **"Ajustar sozinho"** escurece ou clareia só essas. Só salva quando tudo passa.
+- **Arquivo de tema** `.orbita-tema` (JSON legível) para exportar e importar. Na importação: confere cada cor, **corrige o contraste se precisar** (e avisa), limpa de novo qualquer SVG e não aceita fotos.
+- **Tela inicial montável**: "Organizar a tela inicial" mostra os blocos (Capturar, Energia, Hoje, Continuar de onde parei, Ideias guardadas, O que mudou) com alça para arrastar, botões de subir, descer, largo/estreito e esconder; os escondidos voltam com "Mostrar". Em telas largas, duas colunas.
 - **Fontes**: Atkinson Hyperlegible Next (padrão), Lexend e OpenDyslexic, à escolha, todas embutidas no app. O espaçamento entre letras e linhas ganha destaque, porque tem evidência um pouco melhor que a troca de fonte.
 - **Ícones**: Lucide, de traço fino e uniforme.
 - **Preferências visuais fora do cofre**: fonte, tamanho, cores e baixo estímulo ficam num arquivo próprio, sem criptografia, porque a tela de senha precisa abrir já com a aparência da pessoa. Não são dados sensíveis.

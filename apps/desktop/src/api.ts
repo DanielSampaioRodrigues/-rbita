@@ -664,3 +664,19 @@ export async function escolherPasta(): Promise<string | null> {
   const caminho = await open({ multiple: false, directory: true });
   return typeof caminho === "string" ? caminho : null;
 }
+
+/** Exporta um tema para arquivo. No navegador (prévia), baixa o arquivo. */
+export async function exportarTema(nome: string, conteudo: string): Promise<boolean> {
+  const arquivo = `${nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-")}.orbita-tema`;
+  if (!noApp) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([conteudo], { type: "application/json" }));
+    a.download = arquivo;
+    a.click();
+    return true;
+  }
+  const caminho = await save({ defaultPath: arquivo, filters: [{ name: "Tema do Órbita", extensions: ["orbita-tema"] }] });
+  if (!caminho) return false;
+  await chamar("gravar_arquivo_tema", { caminho, conteudo });
+  return true;
+}

@@ -1,5 +1,9 @@
-import { GRADIENTES, limparSvg, PADROES, paletaFinal, SvgInvalido, TEMAS, camadaDeFundo, type Fundo } from "@orbita/temas";
-import { ImagePlus, Shapes } from "lucide-react";
+import { GRADIENTES, gravarArquivoTema, lerArquivoTema, limparSvg, PADROES, paletaFinal, SvgInvalido, TEMAS, camadaDeFundo, type Fundo, type Tema } from "@orbita/temas";
+import { Download, ImagePlus, Palette, Shapes, Trash2, Upload } from "lucide-react";
+import { Button } from "react-aria-components";
+import { exportarTema } from "../api";
+import { useRecado } from "../app/Recado";
+import { temaDasPreferencias } from "../preferencias";
 import { useEffect, useRef, useState } from "react";
 import { Label, Radio, RadioGroup, Slider, SliderOutput, SliderThumb, SliderTrack } from "react-aria-components";
 import { modoEfetivo, paletaAtual } from "../aparencia";
@@ -34,8 +38,12 @@ function Controle({ rotulo, valor, min, max, passo, formatar, aoMudar }: { rotul
   );
 }
 
-export function TemaFundo() {
+export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void }) {
   const { prefs, mudar } = usePreferencias();
+  const recado = useRecado();
+  const entradaTema = useRef<HTMLInputElement>(null);
+  const temaAtual = temaDasPreferencias(prefs);
+  const proprio = temaAtual.id.startsWith("proprio-");
   const [erro, setErro] = useState<string | null>(null);
   const [opacidade, setOpacidade] = useState(1);
   const entradaImagem = useRef<HTMLInputElement>(null);
@@ -74,7 +82,7 @@ export function TemaFundo() {
   };
 
   const opcoes: { chave: string; nome: string; estilo?: React.CSSProperties; icone?: React.ReactNode }[] = [
-    { chave: "tema", nome: t.fundoDoTema, estilo: miniatura(TEMAS.find((x) => x.id === prefs.tema)?.fundoPadrao ?? { tipo: "cor" }) },
+    { chave: "tema", nome: t.fundoDoTema, estilo: miniatura(temaAtual.fundoPadrao ?? { tipo: "cor" }) },
     { chave: "cor", nome: t.cor, estilo: miniatura({ tipo: "cor" }) },
     ...Object.entries(GRADIENTES).map(([nome, g]) => ({ chave: `gradiente:${nome}`, nome: g.nome, estilo: miniatura({ tipo: "gradiente", nome }) })),
     ...Object.entries(PADROES).map(([nome, pd]) => ({ chave: `padrao:${nome}`, nome: pd.nome, estilo: miniatura({ tipo: "padrao", nome }) })),
@@ -99,7 +107,7 @@ export function TemaFundo() {
       <RadioGroup className="campo" value={prefs.tema} onChange={(tema) => mudar({ tema })}>
         <Label className="campo-rotulo">{t.tema}</Label>
         <div className="grade-temas">
-          {TEMAS.map((tema) => {
+          {[...TEMAS, ...prefs.temasProprios].map((tema) => {
             const p = paletaFinal(tema, modo, false);
             return (
               <Radio key={tema.id} value={tema.id} className="opcao-tema">
@@ -116,6 +124,41 @@ export function TemaFundo() {
           })}
         </div>
       </RadioGroup>
+
+      <div className="botoes">
+        <Button className="botao" onPress={() => aoEditarTema(proprio ? temaAtual : { ...temaAtual, id: `proprio-${Date.now().toString(36)}`, nome: `${temaAtual.nome} (meu)`, fundoPadrao: prefs.fundo?.tipo === "imagem" ? temaAtual.fundoPadrao : (prefs.fundo ?? temaAtual.fundoPadrao) })}>
+          <Palette aria-hidden="true" size="1.1em" /> {proprio ? t.editar : t.criarAPartir}
+        </Button>
+        <Button className="botao" onPress={async () => { if (await exportarTema(temaAtual.nome, gravarArquivoTema(temaAtual))) recado(t.exportado); }}>
+          <Download aria-hidden="true" size="1.1em" /> {t.exportar}
+        </Button>
+        <Button className="botao" onPress={() => entradaTema.current?.click()}>
+          <Upload aria-hidden="true" size="1.1em" /> {t.importar}
+        </Button>
+        {proprio && (
+          <Button className="botao" onPress={() => mudar({ tema: "papel", temasProprios: prefs.temasProprios.filter((x) => x.id !== temaAtual.id) })}>
+            <Trash2 aria-hidden="true" size="1.1em" /> {t.excluir}
+          </Button>
+        )}
+      </div>
+      <input
+        ref={entradaTema}
+        type="file"
+        accept=".orbita-tema,application/json"
+        hidden
+        onChange={async (e) => {
+          const arquivo = e.target.files?.[0];
+          e.target.value = "";
+          if (!arquivo) return;
+          try {
+            const { tema, ajustado } = lerArquivoTema(await arquivo.text());
+            mudar({ temasProprios: [...prefs.temasProprios, tema], tema: tema.id });
+            recado(ajustado ? t.importadoAjustado(tema.nome) : t.importado(tema.nome));
+          } catch (err) {
+            setErro(err instanceof Error ? err.message : String(err));
+          }
+        }}
+      />
 
       <RadioGroup className="campo" value={chaveDe(fundo)} onChange={escolher}>
         <Label className="campo-rotulo">{t.fundo}</Label>

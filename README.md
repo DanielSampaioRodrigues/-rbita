@@ -25,4 +25,4 @@ Windows primeiro. Mac, Android, iOS e iPad a partir do mesmo código, depois dos
 
 ## Status
 
-Onda 1 (base e coração, Windows): etapa 11 de 18, temas e fundos com contraste automático.
+Onda 1 (base e coração, Windows): etapa 12 de 18, editor de tema e tela inicial montável.

@@ -444,3 +444,15 @@ pub async fn tarefas_sugeridas(estado: State<'_, Estado>) -> Result<Vec<energia:
 pub async fn definir_peso_tarefa(estado: State<'_, Estado>, id: String, peso: Option<String>) -> Result<(), Erro> {
     estado.com_sessao(|s| itens::definir_peso(&s.conn, &id, peso.as_deref()))
 }
+
+// ---------- Arquivos de tema ----------
+
+/** Grava um tema exportado. Só aceita a extensão .orbita-tema. */
+#[tauri::command]
+pub async fn gravar_arquivo_tema(caminho: PathBuf, conteudo: String) -> Result<(), Erro> {
+    if caminho.extension().and_then(|e| e.to_str()) != Some("orbita-tema") {
+        return Err(Erro::Arquivo("o arquivo de tema precisa terminar em .orbita-tema".into()));
+    }
+    std::fs::write(&caminho, conteudo)?;
+    Ok(())
+}

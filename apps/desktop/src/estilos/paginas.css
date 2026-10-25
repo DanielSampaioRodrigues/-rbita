@@ -319,3 +319,70 @@
 /* Modo baixa energia */
 .baixa-energia { min-height: 100%; display: flex; flex-direction: column; }
 .baixa-energia-conteudo { width: min(40rem, 100%); margin: 0 auto; padding: var(--espaco-4) var(--espaco-5) var(--espaco-7); display: grid; gap: var(--espaco-5); }
+
+/* Editor de tema */
+.editor-tema { align-self: stretch; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--espaco-6); align-items: start; }
+.editor-lado { display: grid; gap: var(--espaco-4); position: sticky; top: var(--espaco-4); }
+.grupo-cores { border: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
+
+.campo-cor {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr 7rem;
+  gap: var(--espaco-3);
+  align-items: center;
+  padding: var(--espaco-1) var(--espaco-2);
+  border-radius: var(--canto);
+}
+
+.campo-cor.falha { background: var(--cor-superficie-alternativa); box-shadow: inset 3px 0 0 var(--cor-atencao); }
+.campo-cor input[type="color"] { width: 2.4rem; height: 2.4rem; padding: 0; border: 1px solid var(--cor-borda-controle); border-radius: var(--canto-pequeno); background: none; cursor: pointer; }
+.campo-cor-rotulo { display: inline-flex; gap: var(--espaco-2); align-items: center; font-size: 0.9rem; }
+.campo-cor-rotulo svg { color: var(--cor-atencao); }
+.campo-cor-hex { min-height: 2.2rem; padding: var(--espaco-1) var(--espaco-2); font-variant-numeric: tabular-nums; }
+
+.previa-tema {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  min-height: 12rem;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto-grande);
+  overflow: hidden;
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+}
+
+.previa-tema-lateral { display: grid; align-content: start; gap: 4px; padding: var(--espaco-3) var(--espaco-2); background: var(--cor-superficie); border-right: 1px solid var(--cor-borda); font-size: 0.85rem; }
+.previa-tema-item { padding: 4px 8px; border-radius: var(--canto-pequeno); color: var(--cor-texto-suave); }
+.previa-tema-item.ativo { background: var(--cor-superficie-alternativa); color: var(--cor-texto); font-weight: 650; box-shadow: inset 3px 0 0 var(--cor-destaque); }
+.previa-tema-conteudo { padding: var(--espaco-3); }
+.previa-tema .botao { pointer-events: none; }
+
+.lista-contraste { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 0.85rem; max-height: 18rem; overflow-y: auto; }
+.lista-contraste li { display: grid; grid-template-columns: 1.2em 1fr auto; gap: var(--espaco-2); align-items: center; padding: 2px var(--espaco-1); }
+.lista-contraste li svg { color: var(--cor-destaque); }
+.lista-contraste li.falha { background: var(--cor-superficie-alternativa); }
+.lista-contraste li.falha svg { color: var(--cor-atencao); }
+
+@media (max-width: 1000px) {
+  .editor-tema { grid-template-columns: 1fr; }
+  .editor-lado { position: static; }
+}
+
+/* Tela inicial montável */
+.pagina-inicio { max-width: 70rem; }
+.inicio-grade { align-self: stretch; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--espaco-5); align-items: start; }
+.bloco-inicio { min-width: 0; display: grid; gap: var(--espaco-2); }
+.bloco-inicio.largo { grid-column: 1 / -1; }
+.bloco-inicio.organizando { padding: var(--espaco-2); border: 2px dashed var(--cor-borda-controle); border-radius: var(--canto-grande); }
+.bloco-inicio.organizando .bloco-conteudo { opacity: 0.75; }
+.bloco-inicio.arrastando { position: relative; z-index: 5; background: var(--cor-fundo); box-shadow: 0 8px 24px rgb(0 0 0 / 0.16); }
+.bloco-barra { display: flex; align-items: center; gap: var(--espaco-1); }
+.bloco-nome { flex: 1; font-weight: 650; font-size: 0.9rem; }
+.alca { cursor: grab; border: none; background: transparent; color: var(--cor-texto-suave); display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: var(--canto); }
+.alca:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.bloco-centro { display: grid; place-items: start; }
+.botao.principal.grande { min-height: 3.25rem; font-size: 1.05rem; }
+
+@media (max-width: 1000px) {
+  .inicio-grade { grid-template-columns: 1fr; }
+}

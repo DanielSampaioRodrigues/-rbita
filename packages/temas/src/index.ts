@@ -5,3 +5,4 @@ export { papel } from "./papel";
 export * from "./prontos";
 export * from "./fundos";
 export * from "./svg";
+export * from "./editor";

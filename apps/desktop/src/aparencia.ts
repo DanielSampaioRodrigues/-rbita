@@ -1,4 +1,4 @@
-import { aplicarVariaveis, lerHex, paletaFinal, temaPorId, variaveisDaPaleta, type Modo, type Paleta } from "@orbita/temas";
+import { aplicarVariaveis, lerHex, paletaFinal, variaveisDaPaleta, type Modo, type Paleta } from "@orbita/temas";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { aplicarFundo } from "./fundo";
@@ -8,6 +8,7 @@ import {
   ESPACO_LINHAS,
   FONTES,
   TAMANHOS,
+  temaDasPreferencias,
   type Preferencias,
 } from "./preferencias";
 
@@ -16,7 +17,7 @@ const consultaMovimento = () => window.matchMedia("(prefers-reduced-motion: redu
 
 /** Paleta em uso agora (tema, modo e baixo estímulo). */
 export function paletaAtual(prefs: Preferencias): Paleta {
-  return paletaFinal(temaPorId(prefs.tema), modoEfetivo(prefs), prefs.baixoEstimulo);
+  return paletaFinal(temaDasPreferencias(prefs), modoEfetivo(prefs), prefs.baixoEstimulo);
 }
 
 export function modoEfetivo(prefs: Preferencias): Modo {
@@ -27,7 +28,7 @@ export function modoEfetivo(prefs: Preferencias): Modo {
 /** Leva as preferências para a tela: cores, fonte, tamanhos e espaços. */
 export function aplicarAparencia(prefs: Preferencias, raiz: HTMLElement = document.documentElement): void {
   const modo = modoEfetivo(prefs);
-  const tema = temaPorId(prefs.tema);
+  const tema = temaDasPreferencias(prefs);
   const paleta = paletaFinal(tema, modo, prefs.baixoEstimulo);
   aplicarVariaveis(raiz, {
     ...variaveisDaPaleta(paleta),

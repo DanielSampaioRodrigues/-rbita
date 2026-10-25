@@ -39,6 +39,13 @@ describe("preferências", () => {
     expect(validar({ fundo: { tipo: "svg", conteudo: "<svg/>" } }).fundo).toEqual({ tipo: "svg", conteudo: "<svg/>", repetir: true, animar: false });
   });
 
+  it("tela inicial guarda ordem válida e acrescenta blocos que faltam", () => {
+    const r = validar({ inicio: { ordem: ["hoje", "xyz", "hoje", "capturar"], ocultos: ["novidades", "nada"], largos: [] } });
+    expect(r.inicio.ordem.slice(0, 2)).toEqual(["hoje", "capturar"]);
+    expect(r.inicio.ordem).toHaveLength(6);
+    expect(r.inicio.ocultos).toEqual(["novidades"]);
+  });
+
   it("não quebra com texto corrompido", () => {
     const m = new Memoria();
     m.setItem("orbita.preferencias.v1", "{isto não é json");

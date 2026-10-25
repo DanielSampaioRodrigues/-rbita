@@ -1,4 +1,4 @@
-import { TEMAS, type Fundo } from "@orbita/temas";
+import { gravarArquivoTema, lerArquivoTema, TEMAS, type Fundo, type Tema } from "@orbita/temas";
 
 // Preferências visuais. Ficam fora do cofre criptografado de propósito:
 // a tela de senha precisa abrir já com a fonte e o contraste da pessoa.
@@ -40,7 +40,13 @@ export interface Preferencias {
   tema: string;
   /** null = o fundo sugerido pelo tema. */
   fundo: Fundo | null;
+  /** Temas criados no editor ou importados. */
+  temasProprios: Tema[];
+  /** Tela inicial montável: ordem dos blocos, escondidos e largos. */
+  inicio: { ordem: string[]; ocultos: string[]; largos: string[] };
 }
+
+export const BLOCOS_INICIO = ["capturar", "energia", "hoje", "continuar", "ideias", "novidades"] as const;
 
 export const PADRAO: Preferencias = {
   fonte: "atkinson",
@@ -54,6 +60,8 @@ export const PADRAO: Preferencias = {
   baixaEnergia: false,
   tema: "papel",
   fundo: null,
+  temasProprios: [],
+  inicio: { ordem: [...BLOCOS_INICIO], ocultos: [], largos: ["energia", "hoje", "continuar", "novidades"] },
 };
 
 export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
@@ -66,6 +74,7 @@ const dentro = <T extends string>(valor: unknown, opcoes: Record<T, unknown> | r
 /** Aceita só valores conhecidos; o que vier estranho volta ao padrão. */
 export function validar(bruto: unknown): Preferencias {
   const p = (typeof bruto === "object" && bruto !== null ? bruto : {}) as Record<string, unknown>;
+  const temasProprios = validarTemasProprios(p.temasProprios);
   const tamanho = Number.isInteger(p.tamanho) && (p.tamanho as number) >= 0 && (p.tamanho as number) < TAMANHOS.length;
   return {
     fonte: dentro(p.fonte, FONTES) ? p.fonte : PADRAO.fonte,
@@ -77,8 +86,10 @@ export function validar(bruto: unknown): Preferencias {
     baixoEstimulo: typeof p.baixoEstimulo === "boolean" ? p.baixoEstimulo : PADRAO.baixoEstimulo,
     avisos: validarAvisos(p.avisos),
     baixaEnergia: typeof p.baixaEnergia === "boolean" ? p.baixaEnergia : PADRAO.baixaEnergia,
-    tema: TEMAS.some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,
+    temasProprios,
+    tema: [...TEMAS, ...temasProprios].some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,
     fundo: validarFundo(p.fundo),
+    inicio: validarInicio(p.inicio),
   };
 }
 
@@ -131,4 +142,33 @@ function validarFundo(bruto: unknown): Fundo | null {
     default:
       return null;
   }
+}
+
+/** Temas próprios passam pela mesma conferência de um arquivo importado (cores, contraste, SVG). */
+function validarTemasProprios(bruto: unknown): Tema[] {
+  if (!Array.isArray(bruto)) return [];
+  const temas: Tema[] = [];
+  for (const t of bruto.slice(0, 30)) {
+    try {
+      const lido = lerArquivoTema(gravarArquivoTema(t as Tema)).tema;
+      if (typeof (t as Tema).id === "string" && (t as Tema).id.startsWith("proprio-")) temas.push({ ...lido, id: (t as Tema).id });
+    } catch {
+      // Tema estragado fica de fora.
+    }
+  }
+  return temas;
+}
+
+function validarInicio(bruto: unknown): Preferencias["inicio"] {
+  const b = (typeof bruto === "object" && bruto !== null ? bruto : {}) as Record<string, unknown>;
+  const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => (BLOCOS_INICIO as readonly string[]).includes(x as string)) : []);
+  const ordem = [...new Set(lista(b.ordem))];
+  // Blocos novos (de versões futuras) entram no fim.
+  for (const bloco of BLOCOS_INICIO) if (!ordem.includes(bloco)) ordem.push(bloco);
+  return { ordem, ocultos: lista(b.ocultos), largos: Array.isArray(b.largos) ? lista(b.largos) : [...PADRAO.inicio.largos] };
+}
+
+/** Tema em uso: um pronto ou um próprio. */
+export function temaDasPreferencias(p: Preferencias): Tema {
+  return p.temasProprios.find((t) => t.id === p.tema) ?? TEMAS.find((t) => t.id === p.tema) ?? TEMAS[0];
 }
