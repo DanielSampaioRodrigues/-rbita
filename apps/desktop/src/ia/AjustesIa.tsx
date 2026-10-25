@@ -8,6 +8,7 @@ import { Confirmar } from "../componentes/Janela";
 import { textos } from "../textos/pt-BR";
 import { JanelaProvedor } from "./JanelaProvedor";
 import { recarregarRecursos } from "../ditado/recursos";
+import { maisNovos } from "./modelos";
 
 const t = textos.ia;
 const FUNCOES: FuncaoIa[] = ["quebrar", "conversa", "revisao", "personalizacao"];
@@ -32,6 +33,7 @@ export function EscolherIaDaFuncao({ funcao, estado, aoMudar, legenda }: { funca
   const provedor = estado.provedores.find((p) => p.id === estado.funcoes[funcao]) ?? null;
   const modelo = estado.modelos[funcao] ?? null;
   const [lista, setLista] = useState<string[] | null | "erro">(null);
+  const [todos, setTodos] = useState(false);
 
   useEffect(() => {
     if (!provedor) return;
@@ -41,10 +43,13 @@ export function EscolherIaDaFuncao({ funcao, estado, aoMudar, legenda }: { funca
     return () => void (vivo = false);
   }, [provedor]);
 
+  const completa = Array.isArray(lista) ? lista : [];
+  // No computador (Ollama) a lista é o que a pessoa instalou: fica inteira.
+  const curta = provedor?.local ? completa : maisNovos(completa, [modelo]);
   const opcoesModelo = provedor
     ? [
         { valor: PADRAO, nome: t.modeloPadrao(provedor.modelo) },
-        ...[...new Set([...(Array.isArray(lista) ? lista : []), ...(modelo ? [modelo] : [])])]
+        ...[...new Set([...(todos ? completa : curta), ...(modelo ? [modelo] : [])])]
           .filter((m) => m !== provedor.modelo)
           .map((m) => ({ valor: m, nome: m })),
       ]
@@ -70,6 +75,11 @@ export function EscolherIaDaFuncao({ funcao, estado, aoMudar, legenda }: { funca
           />
         )}
       </div>
+      {provedor && curta.length < completa.length && (
+        <Button className="link" onPress={() => setTodos((x) => !x)}>
+          {todos ? t.soMaisNovos : t.verTodos(completa.length)}
+        </Button>
+      )}
     </fieldset>
   );
 }

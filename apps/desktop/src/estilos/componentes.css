@@ -293,6 +293,8 @@
 .links { display: flex; flex-wrap: wrap; gap: var(--espaco-2) var(--espaco-5); }
 
 .link {
+  justify-self: start;
+  align-self: flex-start;
   padding: var(--espaco-1) 0;
   border: none;
   background: none;

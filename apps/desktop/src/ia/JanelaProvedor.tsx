@@ -6,6 +6,7 @@ import { Escolha } from "../componentes/Escolha";
 import { Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
 import { textos } from "../textos/pt-BR";
+import { maisNovos } from "./modelos";
 import { MODELOS_PROVEDOR, modeloDe, type IdModelo } from "./provedores";
 
 const t = textos.ia;
@@ -71,7 +72,7 @@ export function JanelaProvedor({
     try {
       const lista = await api.testarProvedorIa(provedor(), chaveParaEnviar());
       setModelos(lista);
-      const preferido = lista.find((m) => m === escolhido.modeloSugerido) ?? (lista.includes(modelo) ? modelo : lista[0]) ?? "";
+      const preferido = lista.find((m) => m === escolhido.modeloSugerido) ?? (lista.includes(modelo) ? modelo : maisNovos(lista)[0]) ?? "";
       setModelo(preferido);
       setAviso({ tipo: "ok", texto: lista.length ? t.conferido(lista.length) : t.semModelos });
     } catch (e) {
@@ -136,7 +137,7 @@ export function JanelaProvedor({
         </div>
         {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
         {modelos && modelos.length > 0 && (
-          <Escolha rotulo={t.modelo} valor={modelo || null} opcoes={modelos.map((m) => ({ valor: m, nome: m }))} aoMudar={setModelo} descricao={t.modeloAjuda} />
+          <Escolha rotulo={t.modelo} valor={modelo || null} opcoes={maisNovos(modelos, [modelo, escolhido.modeloSugerido].filter((m): m is string => !!m && modelos.includes(m))).map((m) => ({ valor: m, nome: m }))} aoMudar={setModelo} descricao={t.modeloAjuda} />
         )}
         {modelos && modelos.length === 0 && <Campo semDitado rotulo={t.modeloEscrito} valor={modelo} aoMudar={setModelo} />}
         <div className="janela-acoes">

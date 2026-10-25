@@ -86,13 +86,13 @@ export async function prepararFoto(arquivo: File): Promise<string> {
   }
 }
 
-/** O mesmo, a partir de um endereço de imagem (por exemplo, a que a IA gerou). */
-export async function reduzirImagem(endereco: string): Promise<string> {
+/** O mesmo, a partir de um endereço de imagem (por exemplo, a que a IA gerou). `maximo`: maior lado, em pixels. */
+export async function reduzirImagem(endereco: string, maximo = 1920): Promise<string> {
   {
     const img = new Image();
     img.src = endereco;
     await img.decode();
-    const escala = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight));
+    const escala = Math.min(1, maximo / Math.max(img.naturalWidth, img.naturalHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(img.naturalWidth * escala);
     canvas.height = Math.round(img.naturalHeight * escala);

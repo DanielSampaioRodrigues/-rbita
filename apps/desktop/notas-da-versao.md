@@ -1,1 +1,4 @@
-- **Imagem com Gemini corrigida**: os modelos de imagem do Gemini (os que terminam em "image") davam "O provedor não encontrou esse modelo". Agora o Órbita fala com eles do jeito que o Google pede, e a imagem de fundo sai.
+- **Listas de modelos mais curtas**: em todas as escolhas de modelo, aparecem só os da geração mais nova de cada empresa (por exemplo, a família GPT-5.6 em vez de dezenas de modelos antigos, de voz ou de busca). Um link "Ver todos os modelos" mostra a lista inteira, se você quiser.
+- **Resolução da imagem**: ao criar um fundo em imagem, escolha entre Normal e Alta. Alta fica mais nítida em telas grandes, mas demora mais e gasta mais créditos.
+- **Imagem com Gemini corrigida**: os modelos de imagem do Gemini davam "O provedor não encontrou esse modelo". Agora funcionam.
+- **Imagem com GPT**: o modelo "chatgpt-image-latest" também funciona, e o fundo sai deitado (no formato da tela). Se a OpenAI pedir a verificação da sua conta, o Órbita explica onde fazer.

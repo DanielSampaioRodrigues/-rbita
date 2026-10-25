@@ -46,16 +46,23 @@ fn traduzir_falha_de_rede(e: &reqwest::Error, local: bool) -> Erro {
 /// Converte a situação HTTP numa explicação simples. O texto do provedor
 /// fica só para o caso que não reconhecemos.
 fn traduzir_situacao(situacao: u16, corpo: &str) -> Erro {
+    let detalhe = serde_json::from_str::<Value>(corpo)
+        .ok()
+        .and_then(|v| v.pointer("/error/message").and_then(Value::as_str).map(str::to_string))
+        .unwrap_or_default();
+    // A OpenAI só libera os modelos de imagem para organizações verificadas.
+    if situacao == 403 && detalhe.to_lowercase().contains("verif") {
+        return erro(
+            "verificar",
+            "A OpenAI só libera este modelo de imagem para contas verificadas. Verifique a sua organização em platform.openai.com (Settings > Organization > General) e tente de novo depois de alguns minutos.",
+        );
+    }
     match situacao {
         401 | 403 => erro("chave", "O provedor não aceitou a chave. Confira se ela foi colada inteira."),
         402 | 429 => erro("limite", "O provedor recusou por limite de uso ou falta de créditos. Confira a sua conta ou tente mais tarde."),
         404 => erro("modelo", "O provedor não encontrou esse modelo. Escolha outro na lista."),
         500..=599 => erro("servidor", "O provedor está com problema agora. Tente de novo daqui a pouco."),
         _ => {
-            let detalhe = serde_json::from_str::<Value>(corpo)
-                .ok()
-                .and_then(|v| v.pointer("/error/message").and_then(Value::as_str).map(str::to_string))
-                .unwrap_or_default();
             Erro::Ia { motivo: "outro", mensagem: format!("O provedor recusou o pedido ({situacao}). {detalhe}").trim().to_string() }
         }
     }
@@ -102,7 +109,8 @@ pub async fn listar_todos_modelos(e: &Escolhido) -> Result<Vec<String>, Erro> {
 
 /// Gera uma imagem pelo formato "compatível com GPT" (/images/generations).
 /// Devolve a imagem como endereço de dados (data:image/png;base64,...).
-pub async fn gerar_imagem(e: &Escolhido, modelo: &str, pedido: &str) -> Result<String, Erro> {
+/// `alta`: resolução maior (mais demorada e mais cara). Cada empresa entende de um jeito.
+pub async fn gerar_imagem(e: &Escolhido, modelo: &str, pedido: &str, alta: bool) -> Result<String, Erro> {
     if e.provedor.tipo != TipoProvedor::Compativel {
         return Err(erro("sem_imagem", "Este provedor não gera imagens. Dá para criar o tema com desenho em SVG."));
     }
@@ -110,12 +118,20 @@ pub async fn gerar_imagem(e: &Escolhido, modelo: &str, pedido: &str) -> Result<S
     // só respondem pelo formato próprio do Google. Os "imagen" funcionam no compatível.
     if let Some(nativo) = e.provedor.url.trim_end_matches('/').strip_suffix("/openai") {
         if !modelo.starts_with("imagen") {
-            return gerar_imagem_gemini(e, nativo, modelo, pedido).await;
+            // Nem todo modelo aceita escolher o tamanho; se recusar, tenta de novo sem.
+            return match gerar_imagem_gemini(e, nativo, modelo, pedido, alta).await {
+                Err(Erro::Ia { motivo: "outro", .. }) if alta => gerar_imagem_gemini(e, nativo, modelo, pedido, false).await,
+                r => r,
+            };
         }
     }
     let mut corpo = json!({ "model": modelo, "prompt": pedido, "n": 1 });
-    // Os modelos "gpt-image" sempre devolvem a imagem pronta e recusam este campo.
-    if !modelo.starts_with("gpt-image") {
+    if modelo.contains("gpt-image") {
+        // "gpt-image" e "chatgpt-image" sempre devolvem a imagem pronta e recusam "response_format".
+        // Deitada, porque é fundo de janela.
+        corpo["size"] = json!("1536x1024");
+        corpo["quality"] = json!(if alta { "high" } else { "medium" });
+    } else {
         corpo["response_format"] = json!("b64_json");
     }
     let pedido = cliente()?.post(format!("{}/images/generations", e.provedor.url)).json(&corpo);
@@ -139,10 +155,14 @@ pub async fn gerar_imagem(e: &Escolhido, modelo: &str, pedido: &str) -> Result<S
 }
 
 /// Imagem pelos modelos "gemini-...-image", no formato próprio do Google (generateContent).
-async fn gerar_imagem_gemini(e: &Escolhido, base: &str, modelo: &str, pedido: &str) -> Result<String, Erro> {
+async fn gerar_imagem_gemini(e: &Escolhido, base: &str, modelo: &str, pedido: &str, alta: bool) -> Result<String, Erro> {
+    let mut config = json!({ "aspectRatio": "16:9" });
+    if alta {
+        config["imageSize"] = json!("2K");
+    }
     let corpo = json!({
         "contents": [{ "parts": [{ "text": pedido }] }],
-        "generationConfig": { "responseModalities": ["TEXT", "IMAGE"] },
+        "generationConfig": { "responseModalities": ["TEXT", "IMAGE"], "imageConfig": config },
     });
     let mut requisicao = cliente()?.post(format!("{base}/models/{modelo}:generateContent")).json(&corpo);
     if let Some(c) = &e.chave {
@@ -281,19 +301,33 @@ mod testes {
     fn imagem_do_gemini_usa_o_formato_do_google() {
         let (url, rx) = servidor(200, r#"{"candidates":[{"content":{"parts":[{"text":"Aqui"},{"inlineData":{"mimeType":"image/jpeg","data":"QUJD"}}]}}]}"#);
         let e = escolhido(TipoProvedor::Compativel, format!("{url}/v1beta/openai/"));
-        let imagem = tauri::async_runtime::block_on(gerar_imagem(&e, "gemini-3-pro-image-preview", "floresta")).unwrap();
+        let imagem = tauri::async_runtime::block_on(gerar_imagem(&e, "gemini-3-pro-image-preview", "floresta", true)).unwrap();
         assert_eq!(imagem, "data:image/jpeg;base64,QUJD");
         let pedido = rx.recv().unwrap().to_lowercase();
         assert!(pedido.starts_with("post /v1beta/models/gemini-3-pro-image-preview:generatecontent"));
         assert!(pedido.contains("x-goog-api-key: chave-secreta") && !pedido.contains("authorization"));
         assert!(pedido.contains(r#""responsemodalities":["text","image"]"#));
+        assert!(pedido.contains(r#""aspectratio":"16:9""#) && pedido.contains(r#""imagesize":"2k""#));
+    }
+
+    #[test]
+    fn imagem_da_openai_sem_response_format() {
+        for modelo in ["gpt-image-2", "chatgpt-image-latest"] {
+            let (url, rx) = servidor(200, r#"{"data":[{"b64_json":"QUJD"}]}"#);
+            let imagem = tauri::async_runtime::block_on(gerar_imagem(&escolhido(TipoProvedor::Compativel, format!("{url}/v1")), modelo, "x", false)).unwrap();
+            assert_eq!(imagem, "data:image/png;base64,QUJD");
+            let pedido = rx.recv().unwrap();
+            assert!(!pedido.contains("response_format") && pedido.contains(r#""size":"1536x1024""#) && pedido.contains(r#""quality":"medium""#));
+        }
+        let e = traduzir_situacao(403, r#"{"error":{"message":"Your organization must be verified to use the model `gpt-image-2`."}}"#);
+        assert!(matches!(e, Erro::Ia { motivo: "verificar", .. }));
     }
 
     #[test]
     fn imagen_do_gemini_segue_no_formato_compativel() {
         let (url, rx) = servidor(200, r#"{"data":[{"b64_json":"QUJD"}]}"#);
         let e = escolhido(TipoProvedor::Compativel, format!("{url}/v1beta/openai"));
-        let imagem = tauri::async_runtime::block_on(gerar_imagem(&e, "imagen-4.0-generate-001", "floresta")).unwrap();
+        let imagem = tauri::async_runtime::block_on(gerar_imagem(&e, "imagen-4.0-generate-001", "floresta", false)).unwrap();
         assert_eq!(imagem, "data:image/png;base64,QUJD");
         assert!(rx.recv().unwrap().to_lowercase().starts_with("post /v1beta/openai/images/generations"));
     }

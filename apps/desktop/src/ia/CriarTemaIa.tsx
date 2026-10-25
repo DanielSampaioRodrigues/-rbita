@@ -10,9 +10,11 @@ import { reduzirImagem } from "../fundo";
 import { textos } from "../textos/pt-BR";
 import { modeloDe } from "./provedores";
 import { EscolherIaDaFuncao } from "./AjustesIa";
+import { maisNovos } from "./modelos";
 
 const t = textos.temaIa;
 type TipoFundo = "nenhum" | "svg" | "png";
+type Resolucao = "normal" | "alta";
 
 // O modelo de imagem escolhido fica guardado por provedor (é só o nome do modelo, nada pessoal).
 const chaveImagem = (id: string) => `orbita.modeloImagem.${id}`;
@@ -41,6 +43,14 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
   const [modelosImagem, setModelosImagem] = useState<string[] | null>(null);
   const [modeloImagem, setModeloImagem] = useState<string | null>(null);
   const [atualizado, setAtualizado] = useState(false);
+  const [todosImagem, setTodosImagem] = useState(false);
+  const [resolucao, setResolucao] = useState<Resolucao>(() => {
+    try {
+      return localStorage.getItem("orbita.resolucaoImagem") === "alta" ? "alta" : "normal";
+    } catch {
+      return "normal";
+    }
+  });
   const [fundo, setFundo] = useState<TipoFundo>("svg");
   const [pedido, setPedido] = useState("");
   const [historico, setHistorico] = useState<string[]>([]);
@@ -58,7 +68,10 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
       (lista) => {
         setModelosImagem(lista);
         const guardado = lerModeloImagem(id);
-        setModeloImagem(guardado && lista.includes(guardado) ? guardado : (lista[0] ?? null));
+        // Sem escolha guardada, começa pelo mais novo da lista curta.
+        const curta = maisNovos(lista, [], true);
+        const sugerido = curta.find((m) => !/latest|mini|lite|fast/.test(m)) ?? curta[0] ?? null;
+        setModeloImagem(guardado && lista.includes(guardado) ? guardado : sugerido);
         if (!lista.length) setFundo((f) => (f === "png" ? "svg" : f));
       },
       () => setModelosImagem([]),
@@ -103,9 +116,9 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
       let fundoNovo: Fundo | undefined = fundo === "svg" ? novo.fundoPadrao : undefined;
       if (fundo === "png" && modeloImagem) {
         setFase("imagem");
-        const imagem = await api.gerarImagemIa(provedor.id, modeloImagem, historico.concat(pedido).join(". "));
+        const imagem = await api.gerarImagemIa(provedor.id, modeloImagem, historico.concat(pedido).join(". "), resolucao === "alta");
         if (este !== pedidoAtual.current) return;
-        fundoNovo = { tipo: "imagem", dados: await reduzirImagem(imagem), desfoque: 0, escurecimento: 0 };
+        fundoNovo = { tipo: "imagem", dados: await reduzirImagem(imagem, resolucao === "alta" ? 2560 : 1920), desfoque: 0, escurecimento: 0 };
       }
       // Fica o id do tema que está sendo editado; o resto vem da IA.
       aoAplicar({ ...novo, id: tema.id, fundoPadrao: fundoNovo ?? (fundo === "nenhum" ? { tipo: "cor" } : tema.fundoPadrao) });
@@ -130,13 +143,34 @@ export function CriarTemaIa({ tema, aoAplicar, ia, aoMudarIa }: { tema: Tema; ao
       <p className="campo-ajuda">{podeImagem ? t.pode_png(nomeProvedor) : t.so_svg(nomeProvedor)}</p>
       <Segmentado<TipoFundo> rotulo={t.fundo} valor={fundo} opcoes={fundos.map((f) => ({ valor: f, nome: t.fundos[f] }))} aoMudar={setFundo} />
       {fundo === "png" && modelosImagem && modeloImagem && (
-        <Escolha
-          rotulo={t.modeloImagem}
-          valor={modeloImagem}
-          opcoes={modelosImagem.map((m) => ({ valor: m, nome: m }))}
-          descricao={t.modeloImagemAjuda}
-          aoMudar={(m) => (setModeloImagem(m), guardarModeloImagem(provedor.id, m))}
-        />
+        <>
+          <Escolha
+            rotulo={t.modeloImagem}
+            valor={modeloImagem}
+            opcoes={(todosImagem ? modelosImagem : maisNovos(modelosImagem, [modeloImagem], true)).map((m) => ({ valor: m, nome: m }))}
+            descricao={t.modeloImagemAjuda}
+            aoMudar={(m) => (setModeloImagem(m), guardarModeloImagem(provedor.id, m))}
+          />
+          {maisNovos(modelosImagem, [modeloImagem], true).length < modelosImagem.length && (
+            <Button className="link" onPress={() => setTodosImagem((x) => !x)}>
+              {todosImagem ? t.soMaisNovos : t.verTodos(modelosImagem.length)}
+            </Button>
+          )}
+          <Segmentado<Resolucao>
+            rotulo={t.resolucao}
+            valor={resolucao}
+            opcoes={(["normal", "alta"] as const).map((r) => ({ valor: r, nome: t.resolucoes[r] }))}
+            aoMudar={(r) => {
+              setResolucao(r);
+              try {
+                localStorage.setItem("orbita.resolucaoImagem", r);
+              } catch {
+                // Vale só nesta sessão.
+              }
+            }}
+          />
+          <p className="campo-ajuda">{t.resolucaoAjuda}</p>
+        </>
       )}
       {podeImagem && (
         <div className="linha-ajuste">
