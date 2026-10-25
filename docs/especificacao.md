@@ -273,6 +273,12 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 - Depois de ditar: **Desfazer o ditado** e, se houver IA escolhida para a revisão, **Revisar com IA**, que mostra **como está e revisado** lado a lado; a pessoa escolhe. Texto que parece de saúde ou terapia passa pelo mesmo aviso da etapa 15.
 - Por enquanto o ditado grava só no Windows; Mac e celular entram na Onda 3.
 
+**Como ficou na Onda 1 (etapa 17, fechamento).**
+- **Bandeja do sistema**, opcional (Ajustes > Janela e bloqueio): fechar a janela só a esconde; o ícone perto do relógio abre, captura e sai. Na primeira vez, uma notificação explica onde o Órbita ficou. Sem a bandeja, fechar fecha, como antes.
+- **Bloqueio automático**, opcional (nunca, 5, 15, 30 minutos ou 1 hora sem mexer no mouse nem no teclado). Desligado por padrão. Não bloqueia com o timer de foco correndo. A tela de desbloqueio diz que foi o bloqueio automático e que nada se perdeu.
+- **Backup testado** com todo tipo de dado: salvar, apagar e restaurar em outro lugar.
+- **Revisão dos sete princípios** e lista do que testar no Windows: `docs/revisao-onda-1.md`.
+
 - Peso aproximado: um modelo pequeno ocupa de 2 a 5 GB em disco e precisa de 8 GB de memória ou mais para rodar bem; a transcrição local ocupa de 142 MB a 466 MB, conforme o modelo de voz escolhido.
 - Uso indicado: lançar itens a partir da conversa, organizar, resumir e revisar texto.
 - Limite: é mais lento e menos capaz que Claude, GPT ou Gemini em conversas longas ou complexas.
@@ -324,7 +330,7 @@ A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas pr
    - Módulos: Ideias e projetos, Tempo e rotina, Energia; IA, conversa e ditado.
    - **Marco "mínimo usável"** no meio da onda (captura, projetos, lista e kanban): Dan começa a usar no dia a dia antes do fim.
    - Mapa mental e linha do tempo ficam no fim da onda e podem passar para a Onda 2 se atrasarem o uso diário. (Feitos na etapa 13.)
-   - Portão: Dan usa no dia a dia por algumas semanas e aprova.
+   - Portão: Dan usa no dia a dia por algumas semanas e aprova. (Onda 1 construída na versão 0.16.0; portão em andamento.)
 2. **Onda 2 · Vida prática (Windows)**
    - Módulos: Dinheiro, Saúde, Cuidado psicológico e psiquiátrico.
    - Vida acadêmica, Hobbies, Caderno infinito, Leitura; exportação em formatos abertos.

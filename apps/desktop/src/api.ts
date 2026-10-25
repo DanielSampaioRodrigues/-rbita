@@ -316,6 +316,9 @@ interface Api {
   ditadoDescartar(): Promise<void>;
   /** Andamento do download do modelo de voz. Devolve a função para parar de ouvir. */
   ouvirProgressoDitado(aoMudar: (baixado: number, total: number) => void): Promise<() => void>;
+  /** Fechar a janela deixa o Órbita na bandeja do sistema. */
+  bandejaLigada(): Promise<boolean>;
+  definirBandeja(ligar: boolean): Promise<void>;
 }
 
 const chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
@@ -400,6 +403,8 @@ const nativa: Api = {
   ditadoComecar: () => chamar("ditado_comecar"),
   ditadoParar: () => chamar("ditado_parar"),
   ditadoDescartar: () => chamar("ditado_descartar"),
+  bandejaLigada: () => chamar("bandeja_ligada"),
+  definirBandeja: (ligar) => chamar("definir_bandeja", { ligar }),
   ouvirProgressoDitado: (aoMudar) => listen<{ baixado: number; total: number }>("ditado-progresso", (e) => aoMudar(e.payload.baixado, e.payload.total)),
 };
 
@@ -672,6 +677,7 @@ function criarSimulacao(): Api {
   const backup: SituacaoBackup = { pasta: null, ultimo: null, erro: null };
   const comItens = simularItens();
   const params0 = new URLSearchParams(globalThis.location?.search ?? "");
+  let bandeja = false;
   const comIa = simularIa(params0.get("ia") !== null, params0.get("ia") === "erro");
   const espera = () => new Promise((r) => setTimeout(r, 250));
   const falha = (codigo: CodigoErro, msg: string, extra?: number) => Promise.reject(new ErroOrbita(codigo, msg, extra));
@@ -763,6 +769,8 @@ function criarSimulacao(): Api {
     },
     ...comIa,
     ...simularDitado(params0.get("ditado")),
+    bandejaLigada: async () => bandeja,
+    definirBandeja: async (ligar) => void (bandeja = ligar),
     // A IA de mentira não conhece os projetos: liga a tarefa ao primeiro ativo.
     organizarTextoIa: async (texto, sensivel) => {
       const o = await comIa.organizarTextoIa(texto, sensivel);

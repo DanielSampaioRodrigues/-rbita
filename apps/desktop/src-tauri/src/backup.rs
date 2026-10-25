@@ -350,4 +350,71 @@ mod testes {
         assert!(nomes.contains(&"backup-manual.orbita-backup".to_string()));
         assert!(!nomes.contains(&nome_automatico("2026-01-01")));
     }
+
+    /// O portão da Onda 1: salvar, apagar tudo e restaurar, com todo tipo de dado.
+    #[test]
+    fn salvar_apagar_e_restaurar_com_todos_os_dados() {
+        use crate::banco::{energia, eventos, rotinas};
+        use crate::ia;
+
+        let origem = ambiente();
+        let (chave, _) = origem.cofre.criar(SENHA, ModoAbrir::Pin, Some("2468")).unwrap();
+        let conn = banco::abrir(&origem.cofre.caminho_banco(), &chave).unwrap();
+        itens::criar_ideia(&conn, "Livro sobre faróis").unwrap();
+        let projeto = itens::criar_projeto(&conn, "TCC", true).unwrap();
+        itens::definir_datas_projeto(&conn, &projeto.id, Some("2026-10-01"), Some("2026-12-15")).unwrap();
+        let etapa = itens::criar_tarefa(&conn, &projeto.id, "Revisão de literatura").unwrap();
+        itens::criar_tarefa(&conn, &etapa.id, "Fichar 5 artigos").unwrap();
+        itens::definir_prazo_tarefa(&conn, &etapa.id, Some("2026-11-03")).unwrap();
+        let inicio = 1_793_000_000_000;
+        eventos::salvar(
+            &conn,
+            eventos::Evento {
+                id: String::new(),
+                titulo: "Terapia".into(),
+                inicio,
+                fim: Some(inicio + 3_600_000),
+                dia_inteiro: false,
+                repeticao: Some(eventos::Repeticao { frequencia: "semanal".into(), dias: vec![4], ate: None }),
+                modelo: false,
+                notas: String::new(),
+                excecoes: vec![],
+            },
+        )
+        .unwrap();
+        let rotina = rotinas::criar(&conn, "Manhã").unwrap();
+        rotinas::salvar_passo(&conn, &rotina.id, rotinas::Passo { id: String::new(), titulo: "Tomar água".into(), icone: String::new(), minutos: Some(1) }).unwrap();
+        energia::registrar(&conn, 2, "dia pesado").unwrap();
+        let claude = ia::Provedor { id: String::new(), tipo: ia::TipoProvedor::Claude, nome: "Claude".into(), url: "https://api.anthropic.com".into(), modelo: "claude-opus-5-5".into() };
+        ia::salvar_provedor(&conn, claude, Some("sk-ant-chave-1234")).unwrap();
+
+        let arquivo = origem._pasta.path().join("tudo.orbita-backup");
+        criar(&origem.cofre, &conn, &chave, &arquivo).unwrap();
+        drop(conn);
+
+        // Apagar: os dados somem do computador; sobra só o arquivo de backup.
+        let backup_fora = tempfile::tempdir().unwrap();
+        let copia = backup_fora.path().join("tudo.orbita-backup");
+        fs::copy(&arquivo, &copia).unwrap();
+        drop(origem);
+
+        let novo = ambiente();
+        let (chave, _) = restaurar(&novo.cofre, &copia, &Segredo::Senha(SENHA.into())).unwrap();
+        let conn = banco::abrir(&novo.cofre.caminho_banco(), &chave).unwrap();
+        assert_eq!(itens::listar_ideias(&conn).unwrap()[0].texto, "Livro sobre faróis");
+        let p = itens::listar_projetos(&conn).unwrap().into_iter().find(|p| p.titulo == "TCC").unwrap();
+        assert_eq!((p.inicio.as_deref(), p.prazo.as_deref()), (Some("2026-10-01"), Some("2026-12-15")));
+        let tarefas = itens::listar_tarefas(&conn, &p.id).unwrap();
+        assert_eq!(tarefas.len(), 2);
+        assert!(tarefas.iter().any(|t| t.titulo == "Revisão de literatura" && t.prazo.as_deref() == Some("2026-11-03")));
+        let ev = eventos::listar(&conn, inicio - 1, inicio + 1).unwrap();
+        assert!(ev.iter().any(|e| e.titulo == "Terapia" && e.repeticao.is_some()));
+        let r = rotinas::listar(&conn).unwrap();
+        assert_eq!(r[0].passos[0].titulo, "Tomar água");
+        assert_eq!(energia::listar(&conn, 0, i64::MAX).unwrap()[0].nota, "dia pesado");
+        let e = ia::estado(&conn).unwrap();
+        assert_eq!(e.provedores[0].final_chave.as_deref(), Some("1234"));
+        // A senha continua abrindo o cofre restaurado.
+        assert!(novo.cofre.abrir_com_senha(SENHA).is_ok());
+    }
 }

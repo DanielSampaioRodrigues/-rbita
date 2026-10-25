@@ -24,6 +24,7 @@ import { LimiteProjetos } from "./LimiteProjetos";
 import { ANTECEDENCIAS } from "../preferencias";
 import { Seguranca } from "./Seguranca";
 import { AjustesIa } from "../ia/AjustesIa";
+import { AjustesJanela } from "../app/AjustesJanela";
 import { AjustesDitado } from "../ditado/AjustesDitado";
 
 const t = textos.ajustes;
@@ -154,6 +155,7 @@ export function Ajustes({ modo, aoMudarSeguranca, aoRestaurar }: Props) {
 
           <LimiteProjetos />
           <Seguranca modo={modo} aoMudar={aoMudarSeguranca} />
+          <AjustesJanela />
           <Backup aoRestaurar={aoRestaurar} />
           <AjustesIa />
           <AjustesDitado />

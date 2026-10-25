@@ -643,3 +643,15 @@ pub async fn ditado_descartar(ditado: State<'_, Ditado>) -> Result<(), Erro> {
     ditado.descartar();
     Ok(())
 }
+
+// ---------- Janela ----------
+
+#[tauri::command]
+pub async fn bandeja_ligada(bandeja: State<'_, crate::bandeja::Bandeja>) -> Result<bool, Erro> {
+    Ok(bandeja.ligada())
+}
+
+#[tauri::command]
+pub async fn definir_bandeja(app: tauri::AppHandle, ligar: bool) -> Result<(), Erro> {
+    crate::bandeja::definir(&app, ligar)
+}

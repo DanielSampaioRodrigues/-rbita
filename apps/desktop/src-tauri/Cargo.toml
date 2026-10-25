@@ -1,6 +1,6 @@
 [package]
 name = "orbita"
-version = "0.15.0"
+version = "0.16.0"
 description = "Órbita — organizador de vida para pessoas neurodivergentes"
 authors = ["Daniel Sampaio Rodrigues"]
 edition = "2021"
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
-tauri = { version = "2.12", features = [] }
+tauri = { version = "2.12", features = ["tray-icon"] }
 tauri-plugin-dialog = "2.8"
 tauri-plugin-notification = "2.3"
 serde = { version = "1", features = ["derive"] }

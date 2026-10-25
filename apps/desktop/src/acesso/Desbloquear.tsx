@@ -4,6 +4,7 @@ import { api, ErroOrbita, type Situacao } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { textos } from "../textos/pt-BR";
 import { MolduraAcesso } from "./Moldura";
+import { esquecerMotivo, motivoDoBloqueio } from "../app/BloqueioAutomatico";
 import { Recuperar } from "./Recuperar";
 
 const t = textos.desbloquear;
@@ -15,6 +16,8 @@ export function Desbloquear({ situacao, aoAbrir }: { situacao: Situacao; aoAbrir
   const [forma, setForma] = useState<Forma>(situacao.modo === "hello" ? "hello" : pinDisponivel ? "pin" : "senha");
   const [valor, setValor] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [motivo] = useState(motivoDoBloqueio);
+  useEffect(esquecerMotivo, []);
   const [erro, setErro] = useState<string | null>(
     situacao.modo === "pin" && !pinDisponivel ? t.pinBloqueado : null,
   );
@@ -61,6 +64,7 @@ export function Desbloquear({ situacao, aoAbrir }: { situacao: Situacao; aoAbrir
     <MolduraAcesso>
       <Form className="formulario" onSubmit={(e) => (e.preventDefault(), entrar())}>
         <h1>{t.titulo}</h1>
+        {motivo && <Aviso tipo="info">{textos.janela.bloqueadoPorTempo(motivo)}</Aviso>}
         <p>{forma === "hello" ? t.helloTexto : forma === "pin" ? t.pinTexto : t.senhaTexto}</p>
         {forma === "hello" ? null : forma === "pin" ? (
           <Campo key="pin" rotulo={textos.pin.rotulo} valor={valor} aoMudar={setValor} secreto numerico autoFocus maximo={8} />

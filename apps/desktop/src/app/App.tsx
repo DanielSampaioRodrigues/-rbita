@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { recarregarRecursos } from "../ditado/recursos";
+import { BloqueioAutomatico } from "./BloqueioAutomatico";
 import { CriarCofre } from "../acesso/CriarCofre";
 import { Desbloquear } from "../acesso/Desbloquear";
 import { MolduraAcesso } from "../acesso/Moldura";
@@ -154,6 +155,7 @@ export function App() {
     tela = (
       <ProvedorLimite>
         <ProvedorFoco>
+          <BloqueioAutomatico minutos={prefs.bloqueioAuto} aoBloquear={bloquear} />
           {prefs.baixaEnergia ? (
             <>
               <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />

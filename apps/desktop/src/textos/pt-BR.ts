@@ -72,6 +72,7 @@ export const textos = {
       "IA opcional, com a sua chave (Claude, GPT, Gemini, Grok, Sabiá) ou no seu computador (Ollama): sugere passos pequenos para uma tarefa, e você escolhe quais entram.",
       "Capturar > Separar com IA: escreva tudo de uma vez e a IA separa em ideias, tarefas e compromissos, para você conferir antes de guardar.",
       "Ditado: fale em vez de digitar, com a transcrição feita no seu computador (instale em Ajustes > Ditado). Depois, dá para revisar o texto com IA e ver antes e depois.",
+      "Janela e bloqueio (Ajustes): deixar o Órbita na bandeja ao fechar a janela e bloquear sozinho depois de um tempo sem uso. As duas opções começam desligadas.",
     ],
     dicaAtalhos: "Tudo no Órbita pode ser feito pelo teclado. Aperte F1 para ver os atalhos.",
   },
@@ -727,6 +728,19 @@ export const textos = {
     sensivelAviso: (p: string) => `O texto parece falar de saúde ou terapia. Para revisar, ele vai para ${p}, fora do seu computador.`,
     sensivelBloqueado: "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do computador.",
     revisarMesmoAssim: "Revisar mesmo assim",
+  },
+  janela: {
+    titulo: "Janela e bloqueio",
+    bandeja: "Ao fechar a janela, deixar o Órbita na bandeja",
+    bandejaAjuda:
+      "O Órbita fica no ícone perto do relógio, pronto para capturar com Ctrl + Alt + Espaço. Para sair de vez, clique no ícone com o botão direito e escolha Sair.",
+    bloqueio: "Bloquear sozinho depois de um tempo sem uso",
+    nunca: "Nunca",
+    minutos: (m: number) => (m === 60 ? "1 hora" : `${m} min`),
+    bloqueioAjuda:
+      "Sem uso quer dizer sem mexer no mouse nem no teclado. Com o timer de foco correndo, o Órbita não bloqueia. Para abrir de novo, use o seu jeito de sempre (Windows Hello, PIN ou senha).",
+    bloqueadoPorTempo: (m: number) =>
+      `O Órbita foi bloqueado depois de ${m === 60 ? "1 hora" : `${m} minutos`} sem uso, como está em Ajustes. Nada foi perdido.`,
   },
   atalhos: {
     titulo: "Atalhos de teclado",

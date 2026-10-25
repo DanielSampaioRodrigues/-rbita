@@ -1,4 +1,5 @@
 mod backup;
+mod bandeja;
 mod banco;
 mod cofre;
 mod comandos;
@@ -24,15 +25,35 @@ pub fn run() {
             let pasta = app.path().app_data_dir()?;
             let guarda = Arc::new(GuardaDoSistema { servico: app.config().identifier.clone() });
             app.manage(ditado::Ditado::new(pasta.join("modelos-de-voz")));
+            app.manage(bandeja::Bandeja::new(&pasta));
             app.manage(Estado::new(Cofre::new(pasta, guarda)));
             #[cfg(desktop)]
-            registrar_captura_global(app);
+            {
+                registrar_captura_global(app);
+                bandeja::iniciar(app.handle());
+            }
             Ok(())
         })
-        // Ao fechar a janela, faz o backup automático do dia, se estiver ligado.
+        // Ao fechar a janela: com a bandeja ligada, só esconde (avisando na primeira
+        // vez); sem ela, fecha, fazendo antes o backup automático do dia, se ligado.
         .on_window_event(|janela, evento| {
-            if let WindowEvent::CloseRequested { .. } = evento {
-                janela.state::<Estado>().backup_automatico_se_preciso(false);
+            if let WindowEvent::CloseRequested { api, .. } = evento {
+                let app = janela.app_handle();
+                if app.state::<bandeja::Bandeja>().ligada() && app.tray_by_id("principal").is_some() {
+                    api.prevent_close();
+                    let _ = janela.hide();
+                    if app.state::<bandeja::Bandeja>().primeiro_aviso() {
+                        use tauri_plugin_notification::NotificationExt;
+                        let _ = app
+                            .notification()
+                            .builder()
+                            .title("O Órbita continua aberto")
+                            .body("Ele fica no ícone perto do relógio. Para sair de vez, clique no ícone com o botão direito e escolha Sair.")
+                            .show();
+                    }
+                } else {
+                    janela.state::<Estado>().backup_automatico_se_preciso(false);
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -108,6 +129,8 @@ pub fn run() {
             comandos::ditado_comecar,
             comandos::ditado_parar,
             comandos::ditado_descartar,
+            comandos::bandeja_ligada,
+            comandos::definir_bandeja,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");
@@ -123,11 +146,7 @@ fn registrar_captura_global(app: &tauri::App) {
     let plugin = tauri_plugin_global_shortcut::Builder::new()
         .with_handler(move |app, recebido, evento| {
             if recebido == &atalho && evento.state() == ShortcutState::Pressed {
-                if let Some(janela) = app.get_webview_window("principal") {
-                    let _ = janela.show();
-                    let _ = janela.unminimize();
-                    let _ = janela.set_focus();
-                }
+                bandeja::mostrar_janela(app);
                 let _ = app.emit("capturar", ());
             }
         })

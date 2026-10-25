@@ -23,6 +23,13 @@ describe("preferências", () => {
     expect(carregar(m)).toEqual(prefs);
   });
 
+  it("bloqueio automático só aceita as opções da tela; o padrão é nunca", () => {
+    expect(PADRAO.bloqueioAuto).toBe(0);
+    expect(validar({ bloqueioAuto: 15 }).bloqueioAuto).toBe(15);
+    expect(validar({ bloqueioAuto: 7 }).bloqueioAuto).toBe(0);
+    expect(validar({ bloqueioAuto: "15" }).bloqueioAuto).toBe(0);
+  });
+
   it("troca valores estranhos pelo padrão, sem perder os bons", () => {
     const resultado = validar({ fonte: "comic", tamanho: 99, densidade: "compacta", modoCor: 3 });
     expect(resultado).toEqual({ ...PADRAO, densidade: "compacta" });

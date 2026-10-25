@@ -36,6 +36,8 @@ export interface Preferencias {
   avisos: { ligado: boolean; minutos: number; notificacao: boolean };
   /** Modo baixa energia: o app mostra só o essencial. */
   baixaEnergia: boolean;
+  /** Bloquear sozinho depois de tantos minutos sem uso (0 = nunca). */
+  bloqueioAuto: number;
   /** Id de um tema pronto. */
   tema: string;
   /** null = o fundo sugerido pelo tema. */
@@ -58,6 +60,7 @@ export const PADRAO: Preferencias = {
   baixoEstimulo: false,
   avisos: { ligado: true, minutos: 10, notificacao: true },
   baixaEnergia: false,
+  bloqueioAuto: 0,
   tema: "papel",
   fundo: null,
   temasProprios: [],
@@ -65,6 +68,8 @@ export const PADRAO: Preferencias = {
 };
 
 export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
+/** Opções de bloqueio automático, em minutos (0 = nunca). */
+export const BLOQUEIOS = [0, 5, 15, 30, 60] as const;
 
 const CHAVE = "orbita.preferencias.v1";
 
@@ -86,6 +91,7 @@ export function validar(bruto: unknown): Preferencias {
     baixoEstimulo: typeof p.baixoEstimulo === "boolean" ? p.baixoEstimulo : PADRAO.baixoEstimulo,
     avisos: validarAvisos(p.avisos),
     baixaEnergia: typeof p.baixaEnergia === "boolean" ? p.baixaEnergia : PADRAO.baixaEnergia,
+    bloqueioAuto: BLOQUEIOS.includes(p.bloqueioAuto as (typeof BLOQUEIOS)[number]) ? (p.bloqueioAuto as number) : PADRAO.bloqueioAuto,
     temasProprios,
     tema: [...TEMAS, ...temasProprios].some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,
     fundo: validarFundo(p.fundo),
