@@ -1,3 +1,5 @@
+- **Resumo para a consulta**: na seção Saúde, um botão monta um texto com seus remédios e os registros do período (7, 30 ou 90 dias) para levar ao médico. Você copia e cola num documento ou e-mail; nada sai do computador sozinho.
+
 - **Saúde: como você está**: um registro rápido de sono, sintoma ou sobrecarga sensorial, com intensidade de 1 a 5 e uma nota. Os últimos registros ficam listados ali mesmo, para você enxergar padrões e contar na consulta.
 - **Plano de crise**: um espaço para escrever, num momento bom, os sinais de que a crise está chegando, o que ajuda e com quem falar. Fica a um clique na seção Saúde e também pelo atalho Ctrl + Shift + C, de qualquer tela.
 

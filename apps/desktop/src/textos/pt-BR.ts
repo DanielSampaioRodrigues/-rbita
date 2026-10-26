@@ -706,6 +706,17 @@ export const textos = {
       excluir: "Apagar registro",
       excluido: "Registro apagado.",
     },
+    resumo: {
+      titulo: "Resumo para a consulta",
+      abrir: "Montar resumo para a consulta",
+      intro: "Junta seus remédios e os registros do período num texto só, para levar ao médico. Nada sai do computador: você copia e cola onde quiser.",
+      periodo: "Período",
+      periodos: { 7: "7 dias", 30: "30 dias", 90: "90 dias" },
+      copiar: "Copiar o resumo",
+      copiado: "Resumo copiado. Agora é só colar num documento ou e-mail.",
+      semCopia: "Não consegui copiar automaticamente. Selecione o texto e copie com Ctrl + C.",
+      previa: "Prévia",
+    },
     plano: {
       titulo: "Plano de crise",
       abrir: "Abrir o plano de crise",

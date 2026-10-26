@@ -29,7 +29,7 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [x] Consultas e exames: por ora pela Agenda (um compromisso já avisa antes). Falta uma marcação própria de "consulta/exame" e o "resumo para a consulta".
   - [x] Registro curto de sono, sintomas e sobrecarga sensorial (0.31.0).
   - [x] Plano de crise acessível em 1 clique e por atalho (Ctrl+Shift+C) (0.31.0).
-  - [ ] Resumo para levar à consulta (junta registros, remédios e perguntas).
+  - [x] Resumo para levar à consulta: junta remédios e registros do período, para copiar e colar (0.32.0). As perguntas entram com o módulo de Cuidado psicológico. Export direto em PDF/arquivo fica para a etapa de exportação (17).
 - [ ] **Cuidado psicológico e psiquiátrico**: sessões, "o que levar para a sessão", registro pós-sessão, perguntas para o psiquiatra com histórico de doses.
 - [ ] **Trava extra opcional** para saúde e cuidado psicológico.
 - [ ] **Dinheiro**: contas recorrentes com aviso, gastos por categoria, lista de espera de compras, gastos com interesses sem julgamento, metas de reserva, importar extrato (OFX ou CSV).

@@ -638,3 +638,14 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .rico-conteudo ul[data-type="taskList"] li > div, .texto-rico ul[data-type="taskList"] li > div { flex: 1; }
 .rico-conteudo p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--cor-texto-suave); float: left; height: 0; pointer-events: none; }
 .texto-rico > :last-child, .texto-rico > :last-child > :last-child { margin-bottom: 0; }
+
+/* Prévia do resumo para a consulta: texto monoespaçado, largura confortável. */
+.resumo-previa {
+  width: 100%;
+  min-height: 18rem;
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+}

@@ -10,6 +10,7 @@ import { Check, Heart, Pencil, Pause, Play, Plus, Trash2, TriangleAlert } from "
 import { textos } from "../textos/pt-BR";
 import { FormRemedio, novoRemedio } from "./FormRemedio";
 import { RegistrosSaude } from "./RegistrosSaude";
+import { JanelaResumoConsulta } from "./ResumoConsulta";
 
 const t = textos.saude;
 
@@ -64,6 +65,7 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
   const [alertas, setAlertas] = useState<AvisoSaude[]>([]);
   const [editando, setEditando] = useState<Remedio | null>(null);
   const [excluindo, setExcluindo] = useState<Remedio | null>(null);
+  const [resumoAberto, setResumoAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
   const hoje = chaveDia(new Date());
@@ -155,6 +157,9 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
         <h2 id="como-esta">{textos.saude.registros.titulo}</h2>
         <p className="texto-suave">{textos.saude.registros.intro}</p>
         <RegistrosSaude />
+        <div className="botoes">
+          <Button className="botao" onPress={() => setResumoAberto(true)}>{textos.saude.resumo.abrir}</Button>
+        </div>
       </section>
 
       <section className="cartao largura-leitura esticado" aria-labelledby="plano-crise">
@@ -186,6 +191,8 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
         aoCancelar={() => setExcluindo(null)}
         aoConfirmar={() => void excluir()}
       />
+
+      <JanelaResumoConsulta aberta={resumoAberto} aoFechar={() => setResumoAberto(false)} />
     </div>
   );
 }
