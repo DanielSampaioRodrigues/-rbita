@@ -955,6 +955,8 @@ export const textos = {
       refazer: "Refazer",
       ajustesDe: (nome: string) => `Ajustes: ${nome}`,
       previa: "Prévia do traço",
+      tamanho: "Tamanho",
+      escolherCor: "Escolher outra cor",
       estabilizacao: "Estabilização",
       estabilizacaoAjuda: "Mais estabilização deixa o traço mais firme e suave (bom quando a mão treme), mas responde um pouco mais devagar.",
       pressao: "Sensibilidade à pressão",

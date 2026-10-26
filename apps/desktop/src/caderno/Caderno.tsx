@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
 import { caminhoDeTraco, cenaVazia, FERRAMENTAS, lerCena, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, tracoAtingido, type Cena, type CoresPapel, type Ferramenta, type ModeloPapel, type Papel, type Traco } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type PaginaCaderno, type PastaCaderno } from "../api";
@@ -314,15 +314,20 @@ function medidaDe(tamanho: string) {
   return TAMANHOS[tamanho as keyof typeof TAMANHOS] ?? TAMANHOS.a4;
 }
 
-/** Cores de caneta (independentes da paleta de etiquetas). */
-const CORES_CANETA = ["#1f2937", "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04"];
-/** Multiplicador da espessura por grossura escolhida. */
-const MULT = { fina: 0.6, media: 1, grossa: 1.9 } as const;
+/** Cores favoritas que já vêm marcadas (a pessoa troca e adiciona as suas). */
+const CORES_PADRAO = ["#1f2937", "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04"];
+function lerFavoritos(): string[] {
+  try {
+    const s = localStorage.getItem("caderno-cores-favoritas");
+    if (s) { const v = JSON.parse(s); if (Array.isArray(v) && v.length) return v; }
+  } catch { /* usa o padrão */ }
+  return CORES_PADRAO;
+}
 
-type AjusteTraco = { afinar: number; alisar: number };
+type AjusteTraco = { tamanho: number; afinar: number; alisar: number };
 function ajustesPadrao(): Record<Ferramenta, AjusteTraco> {
   const o = {} as Record<Ferramenta, AjusteTraco>;
-  (Object.keys(FERRAMENTAS) as Ferramenta[]).forEach((f) => (o[f] = { afinar: FERRAMENTAS[f].afinar, alisar: FERRAMENTAS[f].alisar }));
+  (Object.keys(FERRAMENTAS) as Ferramenta[]).forEach((f) => (o[f] = { tamanho: FERRAMENTAS[f].tamanho, afinar: FERRAMENTAS[f].afinar, alisar: FERRAMENTAS[f].alisar }));
   return o;
 }
 /** Lê os ajustes salvos (estabilização e pressão por ferramenta). */
@@ -352,8 +357,17 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   const area = useRef<HTMLDivElement>(null);
   // Desenho: ferramenta, cor e grossura ativas; cenas e histórico por página.
   const [ferramenta, setFerramenta] = useState<Ferramenta>("caneta");
-  const [cor, setCor] = useState(CORES_CANETA[0]);
-  const [grossura, setGrossura] = useState<"fina" | "media" | "grossa">("media");
+  const [cor, setCor] = useState(CORES_PADRAO[0]);
+  const [favoritos, setFavoritos] = useState<string[]>(lerFavoritos);
+  const usarCor = (c: string) => {
+    setCor(c);
+    setFavoritos((f) => {
+      if (f.includes(c)) return f;
+      const novo = [c, ...f].slice(0, 14);
+      try { localStorage.setItem("caderno-cores-favoritas", JSON.stringify(novo)); } catch { /* ignora */ }
+      return novo;
+    });
+  };
   const [ajustes, setAjustes] = useState<Record<Ferramenta, AjusteTraco>>(lerAjustes);
   const [ajustando, setAjustando] = useState<Ferramenta | null>(null);
   const mudarAjuste = (f: Ferramenta, patch: Partial<AjusteTraco>) =>
@@ -513,7 +527,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
             <>
               {paginas.map((p, i) => (
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId} podeApagar={paginas.length > 1}
-                  cena={cenas[p.id] ?? cenaVazia()} ferramenta={ferramenta} cor={cor} escala={MULT[grossura]} ajuste={ajustes[ferramenta]}
+                  cena={cenas[p.id] ?? cenaVazia()} ferramenta={ferramenta} cor={cor} ajuste={ajustes[ferramenta]}
                   aoSelecionar={() => setSelId(p.id)}
                   aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
                   aoApagarTracos={(ids) => aoApagarTracos(p.id, ids)}
@@ -533,8 +547,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       {!infinito && (
         <BarraFerramentas
           ferramenta={ferramenta} aoFerramenta={setFerramenta} aoAjustar={setAjustando}
-          cor={cor} aoCor={setCor}
-          grossura={grossura} aoGrossura={setGrossura}
+          cor={cor} aoCor={usarCor} favoritos={favoritos}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
         />
       )}
@@ -550,9 +563,9 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, escala, ajuste, aoSelecionar, aoDesenhar, aoApagarTracos, aoTitulo, aoMarcar, aoApagar }: {
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, aoSelecionar, aoDesenhar, aoApagarTracos, aoTitulo, aoMarcar, aoApagar }: {
   id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
-  cena: Cena; ferramenta: Ferramenta; cor: string; escala: number; ajuste: AjusteTraco;
+  cena: Cena; ferramenta: Ferramenta; cor: string; ajuste: AjusteTraco;
   aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoApagarTracos: (ids: string[]) => void;
   aoTitulo: (t: string) => void; aoMarcar: () => void; aoApagar: () => void;
 }) {
@@ -569,15 +582,15 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
       </div>
       <div className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
-        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} escala={escala} ajuste={ajuste} largura={med.largura} altura={med.altura} aoDesenhar={aoDesenhar} aoApagarTracos={aoApagarTracos} />
+        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} largura={med.largura} altura={med.altura} aoDesenhar={aoDesenhar} aoApagarTracos={aoApagarTracos} />
       </div>
     </section>
   );
 }
 
 /** A camada onde a pessoa escreve/desenha, por cima da folha. */
-function SuperficieDesenho({ cena, ferramenta, cor, escala, ajuste, largura, altura, aoDesenhar, aoApagarTracos }: {
-  cena: Cena; ferramenta: Ferramenta; cor: string; escala: number; ajuste: AjusteTraco; largura: number; altura: number;
+function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoDesenhar, aoApagarTracos }: {
+  cena: Cena; ferramenta: Ferramenta; cor: string; ajuste: AjusteTraco; largura: number; altura: number;
   aoDesenhar: (t: Traco) => void; aoApagarTracos: (ids: string[]) => void;
 }) {
   const ref = useRef<SVGSVGElement>(null);
@@ -605,7 +618,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, escala, ajuste, largura, alt
     desenhando.current = true;
     const pt = ponto(e);
     if (ferramenta === "borracha") { apagados.current = new Set(); setEscondidos(new Set()); apagarEm(pt.x, pt.y); }
-    else setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta, cor, espessura: Math.round(FERRAMENTAS[ferramenta].tamanho * escala), afinar: ajuste.afinar, alisar: ajuste.alisar, pontos: [pt] });
+    else setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta, cor, espessura: Math.round(ajuste.tamanho), afinar: ajuste.afinar, alisar: ajuste.alisar, pontos: [pt] });
   };
   const mover = (e: React.PointerEvent) => {
     if (!desenhando.current) return;
@@ -642,10 +655,9 @@ const FERRAMENTAS_UI: { id: Ferramenta; icone: typeof PenLine }[] = [
   { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser },
 ];
 
-function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, grossura, aoGrossura, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
+function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
   ferramenta: Ferramenta; aoFerramenta: (f: Ferramenta) => void; aoAjustar: (f: Ferramenta) => void;
-  cor: string; aoCor: (c: string) => void;
-  grossura: "fina" | "media" | "grossa"; aoGrossura: (g: "fina" | "media" | "grossa") => void;
+  cor: string; aoCor: (c: string) => void; favoritos: string[];
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
 }) {
   return (
@@ -660,11 +672,14 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, gro
         ))}
       </span>
       <span className="caderno-barra-grupo caderno-cores" role="group" aria-label={t.ferramentas.cor}>
-        {CORES_CANETA.map((c) => (
-          <button key={c} type="button" className={cor === c ? "caderno-cor atual" : "caderno-cor"} style={{ background: c }} onClick={() => aoCor(c)} aria-label={c} aria-pressed={cor === c} />
+        {favoritos.map((c) => (
+          <button key={c} type="button" className={cor.toLowerCase() === c.toLowerCase() ? "caderno-cor atual" : "caderno-cor"} style={{ background: c }} onClick={() => aoCor(c)} aria-label={c} aria-pressed={cor.toLowerCase() === c.toLowerCase()} />
         ))}
+        <label className="caderno-cor-escolher" title={t.ferramentas.escolherCor}>
+          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#000000"} onChange={(e) => aoCor(e.target.value)} aria-label={t.ferramentas.escolherCor} />
+          <Plus aria-hidden="true" size="1em" />
+        </label>
       </span>
-      <Segmentado rotulo={t.ferramentas.grossura} valor={grossura} aoMudar={(v) => aoGrossura(v as typeof grossura)} opcoes={[{ valor: "fina", nome: t.ferramentas.grossuras.fina }, { valor: "media", nome: t.ferramentas.grossuras.media }, { valor: "grossa", nome: t.ferramentas.grossuras.grossa }]} />
       <span className="caderno-barra-grupo">
         <Button className="botao-icone" onPress={aoDesfazer} isDisabled={!podeDesfazer} aria-label={t.ferramentas.desfazer}><Undo2 aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={t.ferramentas.refazer}><Redo2 aria-hidden="true" size="1.1em" /></Button>
@@ -673,19 +688,24 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, gro
   );
 }
 
-const ESTABILIZACOES = [0.2, 0.5, 0.78];
-const PRESSOES = [0, 0.3, 0.55, 0.8];
-const maisPerto = (v: number, arr: number[]) => arr.reduce((b, _n, i) => (Math.abs(arr[i] - v) < Math.abs(arr[b] - v) ? i : b), 0);
+/** Barra deslizante com rótulo e valor mostrado. */
+function Deslizante({ rotulo, valor, min, max, passo, aoMudar, mostrar }: { rotulo: string; valor: number; min: number; max: number; passo: number; aoMudar: (n: number) => void; mostrar?: (n: number) => string }) {
+  const id = useId();
+  return (
+    <div className="campo">
+      <label className="campo-rotulo deslizante-rotulo" htmlFor={id}>{rotulo} <span className="texto-suave">{mostrar ? mostrar(valor) : valor}</span></label>
+      <input id={id} type="range" className="deslizante" min={min} max={max} step={passo} value={valor} onChange={(e) => aoMudar(Number(e.target.value))} />
+    </div>
+  );
+}
 
-/** Ajustes da ferramenta: estabilização e pressão, com uma prévia do traço. */
+/** Ajustes da ferramenta: tamanho, estabilização e pressão (sliders), com prévia. */
 function AjustesFerramenta({ ferramenta, ajuste, aoMudar, aoFechar }: { ferramenta: Ferramenta; ajuste: AjusteTraco; aoMudar: (p: Partial<AjusteTraco>) => void; aoFechar: () => void }) {
-  // Traço de amostra: ondinha com a pressão subindo e descendo, para ver o efeito.
   const amostra: Traco = {
-    tipo: "traco", id: "amostra", ferramenta, cor: "#1f2937", espessura: Math.round(FERRAMENTAS[ferramenta].tamanho * 1.3), afinar: ajuste.afinar, alisar: ajuste.alisar,
+    tipo: "traco", id: "amostra", ferramenta, cor: "#1f2937", espessura: Math.round(ajuste.tamanho * 1.15), afinar: ajuste.afinar, alisar: ajuste.alisar,
     pontos: Array.from({ length: 44 }, (_x, i) => ({ x: 12 + i * 6.3, y: 40 + Math.sin(i / 5) * 16, p: 0.15 + 0.85 * Math.sin((i / 43) * Math.PI) })),
   };
-  const nivelEstab = ESTABILIZACOES[maisPerto(ajuste.alisar, ESTABILIZACOES)];
-  const nivelPress = PRESSOES[maisPerto(ajuste.afinar, PRESSOES)];
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
   return (
     <div className="formulario">
       <div className="caderno-previa-traco">
@@ -693,11 +713,10 @@ function AjustesFerramenta({ ferramenta, ajuste, aoMudar, aoFechar }: { ferramen
           <path d={caminhoDeTraco(amostra)} fill={amostra.cor} opacity={FERRAMENTAS[ferramenta].opacidade} />
         </svg>
       </div>
-      <Segmentado rotulo={t.ferramentas.estabilizacao} valor={String(nivelEstab)} aoMudar={(v) => aoMudar({ alisar: Number(v) })}
-        opcoes={[{ valor: String(ESTABILIZACOES[0]), nome: t.ferramentas.niveis.baixa }, { valor: String(ESTABILIZACOES[1]), nome: t.ferramentas.niveis.media }, { valor: String(ESTABILIZACOES[2]), nome: t.ferramentas.niveis.alta }]} />
+      <Deslizante rotulo={t.ferramentas.tamanho} valor={ajuste.tamanho} min={1} max={30} passo={0.5} aoMudar={(n) => aoMudar({ tamanho: n })} mostrar={(n) => `${n.toFixed(1)} px`} />
+      <Deslizante rotulo={t.ferramentas.estabilizacao} valor={ajuste.alisar} min={0} max={0.9} passo={0.05} aoMudar={(n) => aoMudar({ alisar: n })} mostrar={pct} />
       <p className="campo-ajuda">{t.ferramentas.estabilizacaoAjuda}</p>
-      <Segmentado rotulo={t.ferramentas.pressao} valor={String(nivelPress)} aoMudar={(v) => aoMudar({ afinar: Number(v) })}
-        opcoes={[{ valor: String(PRESSOES[0]), nome: t.ferramentas.niveis.nenhuma }, { valor: String(PRESSOES[1]), nome: t.ferramentas.niveis.pouca }, { valor: String(PRESSOES[2]), nome: t.ferramentas.niveis.media }, { valor: String(PRESSOES[3]), nome: t.ferramentas.niveis.muita }]} />
+      <Deslizante rotulo={t.ferramentas.pressao} valor={ajuste.afinar} min={0} max={0.9} passo={0.05} aoMudar={(n) => aoMudar({ afinar: n })} mostrar={pct} />
       <p className="campo-ajuda">{t.ferramentas.pressaoAjuda}</p>
       <div className="janela-acoes">
         <Button className="botao principal" onPress={aoFechar}>{textos.comum.fechar}</Button>
