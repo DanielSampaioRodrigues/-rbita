@@ -61,6 +61,10 @@ export interface Traco {
   ferramenta: Ferramenta;
   cor: string;
   espessura: number;
+  /** Sensibilidade à pressão (0 = sem pressão). Omisso = padrão da ferramenta. */
+  afinar?: number;
+  /** Estabilização do traço (0..1). Omisso = padrão da ferramenta. */
+  alisar?: number;
   pontos: Ponto[];
 }
 

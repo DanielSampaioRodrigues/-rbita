@@ -46,14 +46,15 @@ export function caminhoSVG(pts: number[][]): string {
 /** Caminho SVG do traço, pronto para `<path d>`. */
 export function caminhoDeTraco(traco: Traco): string {
   const op = FERRAMENTAS[traco.ferramenta] ?? FERRAMENTAS.caneta;
+  const afinar = traco.afinar ?? op.afinar;
   const contorno = getStroke(
     traco.pontos.map((p) => [p.x, p.y, p.p]),
     {
       size: traco.espessura || op.tamanho,
-      thinning: op.afinar,
+      thinning: afinar,
       smoothing: op.suavizar,
-      streamline: op.alisar,
-      simulatePressure: true,
+      streamline: traco.alisar ?? op.alisar,
+      simulatePressure: afinar > 0,
       last: true,
       start: { cap: !op.achatado },
       end: { cap: !op.achatado },
