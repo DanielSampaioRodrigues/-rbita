@@ -30,7 +30,12 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [x] Registro curto de sono, sintomas e sobrecarga sensorial (0.31.0).
   - [x] Plano de crise acessível em 1 clique e por atalho (Ctrl+Shift+C) (0.31.0).
   - [x] Resumo para levar à consulta: junta remédios e registros do período, para copiar e colar (0.32.0). As perguntas entram com o módulo de Cuidado psicológico. Export direto em PDF/arquivo fica para a etapa de exportação (17).
-- [x] **Cuidado psicológico e psiquiátrico** (0.33.0): "o que levar para a sessão" e "perguntas para o psiquiatra" (com os remédios atuais ao lado), registro do que ficou de cada sessão. As sessões em si entram na Agenda. Falta: marcar um evento como "terapia/consulta" e puxar as perguntas para dentro do resumo da consulta. Falta teste de Dan no Windows.
+- [ ] **Cuidado — reescrita como "meus profissionais de saúde"** (visão acordada 26/10/2026; a 0.33.0 entregou só três listas numa tela, que Dan achou raso):
+  - [x] Base: "o que levar", "perguntas" e "o que ficou" numa tela só (0.33.0).
+  - [ ] **Lista de profissionais** (não só psi: neuro, nutri, fisio...), cada um com nome, especialidade e contato. Fronteira decidida: Saúde = coisas, Cuidado = pessoas.
+  - [ ] **Painel por profissional**: consultas (próxima + histórico por data, na Agenda com lembrete), "o que levar"/"o que ficou" por consulta, perguntas, linha do tempo da evolução.
+  - [ ] **Painéis por tipo**: psiquiatra puxa medicação/doses/efeitos da Saúde e monta o resumo; psicólogo acompanha temas.
+  - [ ] **Texto rico** (CampoRico, que já existe) em todo campo de anotação — hoje é texto simples.
 - [x] ~~Trava extra opcional para saúde e cuidado psicológico~~ — **descartada** (decisão de Dan, 26/10/2026): atrito desnecessário; o cofre já protege tudo.
 - [ ] **Dinheiro** (começado na 0.35.0):
   - [x] Gastos por categoria (com marca de interesse especial), contas recorrentes com dia de vencimento e aviso, lista de espera de compras (prazo antes de decidir), metas de reserva. Falta teste de Dan no Windows.

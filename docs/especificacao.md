@@ -136,12 +136,22 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
   - O computador recebe esses dados pela sincronização entre aparelhos; Windows e Mac não acessam o Apple Saúde nem o Health Connect diretamente.
   - Futuro: app no relógio para captura rápida, confirmação de remédio e avisos de transição discretos por vibração.
 
-### 6. Cuidado psicológico e psiquiátrico
+### 6. Cuidado — meus profissionais de saúde
 
-- Sessões de terapia e consultas psiquiátricas na agenda, com lembrete.
-- **"O que levar para a sessão"**: anotações feitas durante a semana.
-- Registro curto do que ficou de cada sessão.
-- **Perguntas para o psiquiatra**, com histórico de medicação, doses e efeitos percebidos, ligado ao módulo de saúde.
+Não é só psicólogo e psiquiatra: pessoas neurodivergentes costumam acompanhar **vários profissionais ao mesmo tempo** (neurologista, nutricionista, fisioterapeuta, clínico, terapeuta ocupacional...). O módulo é o acompanhamento de cada um deles ao longo do tempo.
+
+**Fronteira com o módulo Saúde (decidida por Dan, 26/10/2026): Saúde = coisas, Cuidado = pessoas.** A Saúde cuida de medicação, exames pontuais, registros de sintoma/sono e plano de crise. O Cuidado cuida da **relação de acompanhamento com cada profissional**: as consultas que se repetem, o que levar e o que ficou, a evolução. A medicação não é redigitada aqui — ela é cadastrada na Saúde e **aparece** no painel do psiquiatra.
+
+- **Lista dos seus profissionais**, que você adiciona (nome, especialidade, contato). Não são abas fixas; é a sua lista real.
+- **Ao entrar num profissional, um painel de acompanhamento completo:**
+  - **Consultas**: a próxima (com data e contagem) e o histórico, por data. Entram na Agenda com lembrete.
+  - **Antes da consulta** ("o que levar") e **depois** ("o que ficou"), por consulta.
+  - **Perguntas** para aquele profissional.
+  - **Linha do tempo** da evolução ao longo das consultas.
+  - **Painéis por tipo**: no psiquiatra, puxa a medicação, doses e efeitos percebidos do módulo Saúde e monta o resumo para levar; no psicólogo, acompanha os temas.
+- **Texto rico em todo campo de anotação** (negrito, listas, títulos), reaproveitando o editor que já existe no app — porque aqui a pessoa escreve muito.
+
+*Estado atual (0.33.0): a primeira versão é rasa — três listas ("o que levar", "perguntas", "o que ficou") numa tela só, com texto simples. A visão de hub por profissional acima é a reescrita acordada com Dan, ainda a construir.*
 
 ### 7. Vida acadêmica
 
