@@ -127,6 +127,15 @@ Mais que um registro de gastos: um lugar para **entender** para onde o dinheiro 
 
 *Estado atual (0.35.0): a primeira versão tem gastos por categoria de texto, contas, lista de espera e metas. Os grupos, a tabela por mês e os gráficos são a reescrita acordada com Dan (26/10/2026), a construir.*
 
+### Minha organização (quadros e listas) — decisão de Dan, 26/10/2026
+
+Pessoas neurodivergentes (autistas em especial) se apoiam muito em listas ao longo do dia. Este módulo é um organizador leve do dia a dia, com dois estilos que a pessoa escolhe por quadro:
+
+- **Quadro** (estilo Trello): colunas com cartões que se arrastam de uma para outra (mouse e teclado). Nasce com "A fazer / Fazendo / Feito"; dá para criar, renomear e apagar colunas. Cartão tem caixinha de feito.
+- **Lista**: itens com caixinha de feito, adicionar, marcar, apagar, limpar os feitos e contagem.
+
+A pessoa pode ter **vários quadros e listas ao mesmo tempo**. Guardado no cofre (tabela item: org_quadro / org_coluna / org_cartao). Evoluções possíveis: reordenar dentro da coluna, cor por cartão/coluna, prazo, ligação com Agenda e Projetos.
+
 ### 5. Saúde
 
 **A Saúde não é só carga negativa (decisão de Dan, 26/10/2026).** Hoje ela só coleta sintoma, crise e sobrecarga — isso ensina a pessoa a se ver como um conjunto de problemas. O módulo precisa dar peso igual ao que vai **bem**: potencialidades, o que faz bem, estratégias que funcionam. O objetivo é uma **visão holística de si**, com muitos gráficos, não um prontuário de queixas.
