@@ -1,3 +1,13 @@
+- **Exportar meus dados (novo)**: em Ajustes, um lugar para **levar seus dados para fora** em formatos que qualquer programa abre. A **agenda** sai em **.ics** (importa no Google Agenda e afins, com as repetições), os **gastos** e os **registros de saúde** em **.csv** (abrem no Excel ou no Google Planilhas) e **tudo** num **.json**, com todos os módulos. Diferente do backup, estes arquivos não são criptografados — guarde num lugar seguro. É o seu direito de nunca ficar preso ao app.
+
+- **Minha organização mais completa**: agora dá para **renomear e apagar as colunas** (o lápis e a lixeira funcionam), **editar cada cartão** num painel com **texto, cor e prazo** (a cor vira uma faixa na lateral e o prazo um selo com a data), e **reordenar** os cartões dentro da coluna com os botões de subir e descer — pelo mouse ou pelo teclado. O arrastar entre colunas continua igual.
+
+- **Dinheiro com evolução e filtros**: na visão "Para onde vai o dinheiro", um **gráfico de linha** mostra como o total vem mudando mês a mês, ao lado da pizza e das barras. E agora você pode **filtrar** por um grupo (ou "sem grupo") e ver **só os gastos de interesse especial** — a tabela e os gráficos seguem o filtro.
+
+---
+
+<!-- Abaixo: o que veio na 0.43.0. -->
+
 - **Minha organização (novo)**: uma seção só para organizar o dia a dia com **quadros e listas** — quantos você quiser. O **quadro** tem colunas (A fazer / Fazendo / Feito, que dá para renomear) e cartões que você **arrasta** de uma coluna para outra; a **lista** é mais direta, com caixinhas para marcar. Bom para quem se apoia em listas o dia todo.
 
 - **Cuidado agora é por profissional**: em vez de uma tela só, cada profissional que você acompanha (psiquiatra, psicólogo, neuro, nutri, TO, fono…) tem a **sua aba e o seu painel**: próxima consulta, um espaço "sobre" com formatação, o que levar, as perguntas, seus remédios atuais (puxados da Saúde) e o **diário de sessões** com data e texto formatado. O que você já tinha anotado foi movido para um profissional chamado "Acompanhamento".
