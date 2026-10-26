@@ -161,7 +161,9 @@ function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => vo
     await carregar();
   };
   const reordenar = async (ids: string[]) => {
-    setCartoes((cs) => cs.map((c) => { const i = ids.indexOf(c.id); return i >= 0 ? { ...c, ordem: i + 1 } : c; }));
+    // Atualiza a ordem E reordena o array (a lista é desenhada na ordem do array).
+    const posicao = new Map(ids.map((id, i) => [id, i + 1]));
+    setCartoes((cs) => cs.map((c) => (posicao.has(c.id) ? { ...c, ordem: posicao.get(c.id)! } : c)).sort((a, b) => a.ordem - b.ordem));
     try {
       await api.reordenarCartoesOrg(ids);
     } catch (e) {
@@ -407,6 +409,7 @@ function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoEditar, aoApagar, aoSu
         <Button className="botao-icone pequeno" onPress={aoSubir} isDisabled={!podeSubir} aria-label={`${t.cartao.subir}: ${cartao.texto}`}><ArrowUp aria-hidden="true" size="1em" /></Button>
         <Button className="botao-icone pequeno" onPress={aoDescer} isDisabled={!podeDescer} aria-label={`${t.cartao.descer}: ${cartao.texto}`}><ArrowDown aria-hidden="true" size="1em" /></Button>
       </span>
+      <Button className="botao-icone pequeno" onPress={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1em" /></Button>
       <Button className="botao-icone pequeno" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1em" /></Button>
     </div>
   );
