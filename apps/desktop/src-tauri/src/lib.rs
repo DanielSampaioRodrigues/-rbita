@@ -188,6 +188,15 @@ pub fn run() {
             comandos::registrar_sessao,
             comandos::listar_sessoes,
             comandos::excluir_sessao,
+            comandos::listar_materias,
+            comandos::salvar_materia,
+            comandos::excluir_materia,
+            comandos::listar_atividades,
+            comandos::salvar_atividade,
+            comandos::marcar_atividade,
+            comandos::excluir_atividade,
+            comandos::media_aprovacao,
+            comandos::definir_media_aprovacao,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

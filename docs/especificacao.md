@@ -145,9 +145,13 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 
 ### 7. Vida acadêmica
 
-- Disciplinas, aulas, prazos, provas e trabalhos num calendário único.
-- Leituras com status: a ler, lendo, fichada.
-- Projetos longos (TCC, artigos) com o mesmo cartão "onde parei".
+Serve tanto o ensino fundamental e médio quanto a faculdade. O vocabulário e as telas não pressupõem faculdade: um adolescente na escola é um usuário esperado.
+
+- **Matérias** (disciplinas) com professor opcional e cor própria.
+- **Atividades** num conceito único, com tipo: **prova**, **trabalho** ou **dever de casa**. Todas têm matéria e data; provas e trabalhos podem ter peso e nota depois. O dever de casa é só marcar como feito. O que está chegando aparece em ordem; o resto fica no histórico.
+- **Aulas** entram na Agenda como blocos da semana-modelo (a grade escolar fixa), ligadas à matéria — sem reinventar uma grade à parte.
+- **Notas e média**, para quem quer acompanhar: média ponderada por matéria e uma média de aprovação ajustável (por exemplo, 6 na escola, 7 em muitas faculdades). **Nota é informação, não julgamento.** Nada de boletim que pune: sem vermelho gritante, sem "você vai reprovar", sem comparação com os outros — só o dado, com calma (princípios 3 e 4). Tudo opcional: quem não quiser acompanhar nota, não precisa.
+- **Leituras** (status a ler, lendo, fichada) e **projetos longos** (TCC, artigos) com o cartão "onde parei" chegam junto com o módulo de Leitura, que compartilha o motor de leitura e o fichamento.
 
 ### 8. Hobbies e interesses
 

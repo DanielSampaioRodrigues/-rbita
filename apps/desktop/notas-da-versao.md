@@ -1,3 +1,5 @@
+- **Estudos**: uma seção nova para a escola e a faculdade. Cadastre suas **matérias** (com professor e cor), marque **provas, trabalhos e deveres de casa** com data, e veja o que vem aí. Quando a nota sair, você lança e o Órbita mostra, com calma, como a matéria vem indo — a média de aprovação (6, 7, o que for) você escolhe. Nota aqui é informação, nunca cobrança: sem vermelho, sem "você vai reprovar". As aulas você marca na Agenda, como blocos fixos da semana.
+
 - **Cuidado psicológico e psiquiátrico**: uma seção nova. Anote durante a semana **o que levar para a sessão** e as **perguntas para o psiquiatra** (marcando o que já falou), guarde **o que ficou de cada sessão** e veja seus remédios atuais ao lado das perguntas. As sessões em si você marca na Agenda, como qualquer compromisso.
 - **Sem senha extra por módulo**: decidimos não pedir senha separada para Saúde ou Cuidado. O cofre já protege tudo e uma trava a mais só atrapalharia.
 

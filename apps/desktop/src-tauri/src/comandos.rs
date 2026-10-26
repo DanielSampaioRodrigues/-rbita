@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, anexos, cuidado, energia, etiquetas, eventos, itens, rotinas, saude};
+use crate::banco::{self, academico, anexos, cuidado, energia, etiquetas, eventos, itens, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1175,4 +1175,51 @@ pub async fn listar_sessoes(estado: State<'_, Estado>, de: i64, ate: i64) -> Res
 #[tauri::command]
 pub async fn excluir_sessao(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| cuidado::excluir_sessao(&s.conn, &id))
+}
+
+// ---------- Vida acadêmica ----------
+
+#[tauri::command]
+pub async fn listar_materias(estado: State<'_, Estado>) -> Result<Vec<academico::Materia>, Erro> {
+    estado.com_sessao(|s| academico::listar_materias(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_materia(estado: State<'_, Estado>, materia: academico::Materia) -> Result<academico::Materia, Erro> {
+    estado.com_sessao(|s| academico::salvar_materia(&s.conn, materia))
+}
+
+#[tauri::command]
+pub async fn excluir_materia(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| academico::excluir_materia(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_atividades(estado: State<'_, Estado>) -> Result<Vec<academico::Atividade>, Erro> {
+    estado.com_sessao(|s| academico::listar_atividades(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_atividade(estado: State<'_, Estado>, atividade: academico::Atividade) -> Result<academico::Atividade, Erro> {
+    estado.com_sessao(|s| academico::salvar_atividade(&s.conn, atividade))
+}
+
+#[tauri::command]
+pub async fn marcar_atividade(estado: State<'_, Estado>, id: String, feita: bool) -> Result<(), Erro> {
+    estado.com_sessao(|s| academico::marcar_atividade(&s.conn, &id, feita))
+}
+
+#[tauri::command]
+pub async fn excluir_atividade(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| academico::excluir_atividade(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn media_aprovacao(estado: State<'_, Estado>) -> Result<f64, Erro> {
+    estado.com_sessao(|s| academico::media_aprovacao(&s.conn))
+}
+
+#[tauri::command]
+pub async fn definir_media_aprovacao(estado: State<'_, Estado>, media: f64) -> Result<(), Erro> {
+    estado.com_sessao(|s| academico::definir_media_aprovacao(&s.conn, media))
 }

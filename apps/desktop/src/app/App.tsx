@@ -21,6 +21,7 @@ import { PaginaSaude } from "../saude/Saude";
 import { LembretesRemedio } from "../saude/LembretesRemedio";
 import { JanelaPlanoDeCrise } from "../saude/PlanoDeCrise";
 import { PaginaCuidado } from "../cuidado/Cuidado";
+import { PaginaEstudos } from "../academico/Estudos";
 import { AvisosDeTransicao } from "./Avisos";
 import { Ideias } from "../paginas/Ideias";
 import { Inicio } from "../paginas/Inicio";
@@ -194,6 +195,7 @@ export function App() {
       );
     else if (secao === "saude") pagina = <PaginaSaude aoAbrirPlanoDeCrise={() => setPlanoCrise(true)} />;
     else if (secao === "cuidado") pagina = <PaginaCuidado />;
+    else if (secao === "estudos") pagina = <PaginaEstudos />;
     else if (secao === "aparencia") pagina = <Aparencia />;
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} temSenha={situacao.temSenha} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;

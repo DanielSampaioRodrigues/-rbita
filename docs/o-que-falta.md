@@ -33,7 +33,10 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [x] **Cuidado psicológico e psiquiátrico** (0.33.0): "o que levar para a sessão" e "perguntas para o psiquiatra" (com os remédios atuais ao lado), registro do que ficou de cada sessão. As sessões em si entram na Agenda. Falta: marcar um evento como "terapia/consulta" e puxar as perguntas para dentro do resumo da consulta. Falta teste de Dan no Windows.
 - [x] ~~Trava extra opcional para saúde e cuidado psicológico~~ — **descartada** (decisão de Dan, 26/10/2026): atrito desnecessário; o cofre já protege tudo.
 - [ ] **Dinheiro**: contas recorrentes com aviso, gastos por categoria, lista de espera de compras, gastos com interesses sem julgamento, metas de reserva, importar extrato (OFX ou CSV).
-- [ ] **Vida acadêmica**: disciplinas, aulas, provas e trabalhos no calendário; leituras com status; TCC como projeto.
+- [ ] **Vida acadêmica** (começada na 0.34.0, pensada para escola e faculdade):
+  - [x] Matérias, provas/trabalhos/deveres com data, "o que vem aí" e histórico, notas e média ponderada por matéria com média de aprovação ajustável (calma, sem punição). Falta teste de Dan no Windows.
+  - [ ] Aulas ligadas à matéria na semana-modelo da Agenda (hoje a aula é um bloco comum da Agenda, sem vínculo com a matéria).
+  - [ ] Leituras com status (a ler, lendo, fichada) e TCC/artigos como projeto — chegam com o módulo de Leitura.
 - [ ] **Hobbies e interesses**: arquivo de hiperfocos com notas, imagens e links, sem metas.
 - [ ] **Leitura**: pacote `packages/leitor` (EPUB e PDF), estante, leitor completo (fontes, cores, régua, voz alta, busca, sumário, dicionário), grifos com cores, notas, fichamentos com ABNT, diário de leitura, busca em todas as anotações, IA para explicar e resumir. Testar o pacote dentro do Escuta.
 - [ ] **Caderno** com os dois modos completos (decisão de Dan): estante, capas e folhas personalizáveis, modo caderno no estilo Goodnotes com páginas, PDF para anotar, caneta com pressão e rejeição da palma, todas as ferramentas (lápis, pincel, marca-texto, borracha, laço, formas, texto, setas, notas adesivas, imagens) e quadro infinito. Cinco etapas no plano da Onda 2.

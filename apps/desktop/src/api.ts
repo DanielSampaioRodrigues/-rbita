@@ -258,6 +258,35 @@ export interface RegistroSessao {
   nota: string;
 }
 
+/** Matéria (disciplina) da vida acadêmica. */
+export interface Materia {
+  /** Vazio ao criar. */
+  id: string;
+  nome: string;
+  professor: string;
+  /** Nome de cor da paleta de etiquetas. */
+  cor: string;
+  criadoEm: number;
+}
+
+/** Prova, trabalho ou dever de casa de uma matéria. */
+export interface Atividade {
+  /** Vazio ao criar. */
+  id: string;
+  materiaId: string;
+  /** "prova", "trabalho" ou "dever". */
+  tipo: string;
+  titulo: string;
+  /** "AAAA-MM-DD". */
+  data: string;
+  /** Peso na média; null conta como 1. */
+  peso: number | null;
+  /** Nota recebida; null quando ainda não saiu. */
+  nota: number | null;
+  feita: boolean;
+  criadoEm: number;
+}
+
 export interface SituacaoBackup {
   pasta: string | null;
   ultimo: number | null;
@@ -476,6 +505,15 @@ interface Api {
   registrarSessao(nota: string): Promise<RegistroSessao>;
   listarSessoes(de: number, ate: number): Promise<RegistroSessao[]>;
   excluirSessao(id: string): Promise<void>;
+  listarMaterias(): Promise<Materia[]>;
+  salvarMateria(materia: Materia): Promise<Materia>;
+  excluirMateria(id: string): Promise<void>;
+  listarAtividades(): Promise<Atividade[]>;
+  salvarAtividade(atividade: Atividade): Promise<Atividade>;
+  marcarAtividade(id: string, feita: boolean): Promise<void>;
+  excluirAtividade(id: string): Promise<void>;
+  mediaAprovacao(): Promise<number>;
+  definirMediaAprovacao(media: number): Promise<void>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -626,6 +664,15 @@ const nativa: Api = {
   registrarSessao: (nota) => chamar("registrar_sessao", { nota }),
   listarSessoes: (de, ate) => chamar("listar_sessoes", { de, ate }),
   excluirSessao: (id) => chamar("excluir_sessao", { id }),
+  listarMaterias: () => chamar("listar_materias"),
+  salvarMateria: (materia) => chamar("salvar_materia", { materia }),
+  excluirMateria: (id) => chamar("excluir_materia", { id }),
+  listarAtividades: () => chamar("listar_atividades"),
+  salvarAtividade: (atividade) => chamar("salvar_atividade", { atividade }),
+  marcarAtividade: (id, feita) => chamar("marcar_atividade", { id, feita }),
+  excluirAtividade: (id) => chamar("excluir_atividade", { id }),
+  mediaAprovacao: () => chamar("media_aprovacao"),
+  definirMediaAprovacao: (media) => chamar("definir_media_aprovacao", { media }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1150,6 +1197,63 @@ function simularCuidado() {
   };
 }
 
+function simularAcademico() {
+  const materias: Materia[] = [];
+  const atividades: Atividade[] = [];
+  let media = 6;
+  return {
+    listarMaterias: async () => materias.map((m) => ({ ...m })).sort((a, b) => a.nome.localeCompare(b.nome)),
+    salvarMateria: async (m: Materia) => {
+      const nome = m.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "A matéria precisa de um nome.");
+      const limpo: Materia = { ...m, nome, professor: m.professor.trim(), cor: m.cor.trim() || "mar" };
+      if (m.id) {
+        const i = materias.findIndex((x) => x.id === m.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Matéria não encontrada.");
+        materias[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      materias.push(novo);
+      return { ...novo };
+    },
+    excluirMateria: async (id: string) => {
+      const i = materias.findIndex((m) => m.id === id);
+      if (i >= 0) materias.splice(i, 1);
+      for (let j = atividades.length - 1; j >= 0; j--) if (atividades[j].materiaId === id) atividades.splice(j, 1);
+    },
+    listarAtividades: async () => atividades.map((a) => ({ ...a })),
+    salvarAtividade: async (a: Atividade) => {
+      const titulo = a.titulo.trim();
+      if (!titulo) throw new ErroOrbita("texto_vazio", "A atividade precisa de um título.");
+      if (!["prova", "trabalho", "dever"].includes(a.tipo)) throw new ErroOrbita("interno", "Tipo de atividade desconhecido.");
+      if (!a.materiaId.trim()) throw new ErroOrbita("interno", "Escolha a matéria.");
+      if (a.nota !== null && (a.nota < 0 || a.nota > 100)) throw new ErroOrbita("interno", "A nota precisa estar entre 0 e 100.");
+      if (a.peso !== null && a.peso < 0) throw new ErroOrbita("interno", "O peso não pode ser negativo.");
+      const limpo: Atividade = { ...a, titulo };
+      if (a.id) {
+        const i = atividades.findIndex((x) => x.id === a.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Atividade não encontrada.");
+        atividades[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      atividades.push(novo);
+      return { ...novo };
+    },
+    marcarAtividade: async (id: string, feita: boolean) => {
+      const a = atividades.find((x) => x.id === id);
+      if (a) a.feita = feita;
+    },
+    excluirAtividade: async (id: string) => {
+      const i = atividades.findIndex((a) => a.id === id);
+      if (i >= 0) atividades.splice(i, 1);
+    },
+    mediaAprovacao: async () => media,
+    definirMediaAprovacao: async (m: number) => void (media = Math.min(100, Math.max(0, m))),
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
@@ -1242,6 +1346,7 @@ function criarSimulacao(): Api {
     ...simularEnergia(),
     ...simularSaude(),
     ...simularCuidado(),
+    ...simularAcademico(),
     ...comAnexos,
     fazerBackup: async () => {
       await espera();
