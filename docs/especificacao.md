@@ -145,13 +145,20 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 
 ### 7. Vida acadêmica
 
-Serve tanto o ensino fundamental e médio quanto a faculdade. O vocabulário e as telas não pressupõem faculdade: um adolescente na escola é um usuário esperado.
+Serve do ensino fundamental e médio à faculdade e à pós. O vocabulário e as telas não pressupõem faculdade (um adolescente na escola é um usuário esperado) nem param nela (um estudante com iniciação científica, publicações e projetos também é).
 
-- **Matérias** (disciplinas) com professor opcional e cor própria.
-- **Atividades** num conceito único, com tipo: **prova**, **trabalho** ou **dever de casa**. Todas têm matéria e data; provas e trabalhos podem ter peso e nota depois. O dever de casa é só marcar como feito. O que está chegando aparece em ordem; o resto fica no histórico.
-- **Aulas** entram na Agenda como blocos da semana-modelo (a grade escolar fixa), ligadas à matéria — sem reinventar uma grade à parte.
-- **Notas e média**, para quem quer acompanhar: média ponderada por matéria e uma média de aprovação ajustável (por exemplo, 6 na escola, 7 em muitas faculdades). **Nota é informação, não julgamento.** Nada de boletim que pune: sem vermelho gritante, sem "você vai reprovar", sem comparação com os outros — só o dado, com calma (princípios 3 e 4). Tudo opcional: quem não quiser acompanhar nota, não precisa.
-- **Leituras** (status a ler, lendo, fichada) e **projetos longos** (TCC, artigos) com o cartão "onde parei" chegam junto com o módulo de Leitura, que compartilha o motor de leitura e o fichamento.
+**A ideia central: a matéria é um hub, não uma linha de lista.** O módulo não serve para *guardar* a vida acadêmica, e sim para *reuni-la* e responder "o que eu estudo agora?". Cada matéria recolhe tudo que pertence a ela — aulas, tarefas, trabalhos, leituras, grifos e páginas de caderno — e o topo do módulo mostra o próximo passo, não a média.
+
+- **Grade de horário semanal.** As matérias aparecem dispostas num quadro de dias × horários, como a agenda de um caderno estudantil — não uma lista. As aulas são blocos fixos da semana-modelo da Agenda, ligados à matéria; a grade do Estudos e a semana-modelo são a mesma coisa vista de dois jeitos.
+- **Matéria = assunto = etiqueta que atravessa o app.** Cada matéria carrega uma etiqueta de assunto. Essa etiqueta é acionável no **Leitor** (grifos e notas marcados por assunto) e no **Caderno** (páginas marcadas por assunto). Assim a matéria recolhe sozinha tudo que carrega aquele assunto: o livro, os grifos daquele livro, as anotações, os trabalhos. Começa pela matéria como etiqueta; sub-assuntos (uma matéria "Direito" com "Constitucional", "Penal") ficam para depois.
+- **Trabalhos acadêmicos são projetos, não entregas avulsas.** Não só o TCC: seminário, artigo, publicação, iniciação científica, monografia — coisas contínuas. Cada um é um **projeto** de verdade (passos, subtarefas, cartão "onde parei", prazo), reaproveitando o módulo de Ideias e projetos, com vínculo à matéria/assunto. Inclui **agendamento para trás**: uma entrega grande na sexta sugere "comece na terça", para atacar a iniciação de tarefa e a cegueira de tempo.
+- **Atividades curtas** (prova, dever de casa) seguem simples: matéria e data, marcar como feito. "O que vem aí" mostra o que está chegando, com a contagem de dias sentida ("faltam 3 dias"); liga no modo baixa energia com uma tarefa leve de estudo.
+- **Conexões (o módulo não é ilha):** prova e entrega viram eventos da Agenda com aviso de transição; "estudar agora" abre o **timer de Foco** amarrado à matéria; material da aula (links, PDFs) por matéria usa os anexos; as **leituras** por assunto vivem na estante da Leitura.
+- **Notas e média** encolhem para um detalhe opcional dentro da matéria: média ponderada e uma média de aprovação ajustável (6 na escola, 7 em muitas faculdades). **Nota é informação, não julgamento** — sem vermelho gritante, sem "você vai reprovar", sem comparação com os outros (princípios 3 e 4). Quem não quiser acompanhar, não precisa.
+
+**Sequência.** A grade semanal, trabalho-como-projeto, o "o que fazer agora", as ligações com Agenda e Foco e o encolhimento da nota podem ser construídos independentemente. A etiqueta de assunto já fica plantada na matéria desde cedo, mas as conexões com **grifos** (precisa do Leitor pronto) e com **páginas de caderno** (precisa do Caderno) só acendem quando esses módulos existirem.
+
+*Estado atual (0.34.0): a primeira versão entregue é o cadastro — matérias, atividades e média. A visão de hub acima é a reescrita acordada com Dan (26/10/2026), ainda a construir.*
 
 ### 8. Hobbies e interesses
 

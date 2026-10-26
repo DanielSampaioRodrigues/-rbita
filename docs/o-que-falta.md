@@ -36,10 +36,15 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [x] Gastos por categoria (com marca de interesse especial), contas recorrentes com dia de vencimento e aviso, lista de espera de compras (prazo antes de decidir), metas de reserva. Falta teste de Dan no Windows.
   - [ ] Importar extrato do banco (OFX ou CSV) — parsing próprio, numa próxima versão.
   - [ ] Avaliar notificar a conta a vencer (hoje aparece "a vencer" na própria tela; ainda não é notificação como a do remédio).
-- [ ] **Vida acadêmica** (começada na 0.34.0, pensada para escola e faculdade):
-  - [x] Matérias, provas/trabalhos/deveres com data, "o que vem aí" e histórico, notas e média ponderada por matéria com média de aprovação ajustável (calma, sem punição). Falta teste de Dan no Windows.
-  - [ ] Aulas ligadas à matéria na semana-modelo da Agenda (hoje a aula é um bloco comum da Agenda, sem vínculo com a matéria).
-  - [ ] Leituras com status (a ler, lendo, fichada) e TCC/artigos como projeto — chegam com o módulo de Leitura.
+- [ ] **Vida acadêmica — reescrita como "mesa de estudos"** (visão acordada 26/10/2026; a 0.34.0 entregou só o cadastro, que Dan achou raso):
+  - [x] Base: matérias, provas/trabalhos/deveres com data, "o que vem aí", notas e média (0.34.0).
+  - [ ] **Grade de horário semanal** (dias × horários), ligada à semana-modelo da Agenda; aula = bloco fixo da matéria.
+  - [ ] **Matéria = etiqueta de assunto** que atravessa o app (acionável no Leitor e no Caderno). A matéria recolhe tudo do assunto. Sub-assuntos depois.
+  - [ ] **Trabalhos acadêmicos como projetos** (não só TCC: IC, publicações, artigos, seminários), reusando Projetos, com passos, "onde parei" e **agendamento para trás** ("entrega sexta → comece terça").
+  - [ ] **"O que fazer agora"** no topo (próxima entrega/passo, contagem de dias sentida); liga no modo baixa energia.
+  - [ ] **Conexões**: prova/entrega → evento na Agenda com aviso; "estudar agora" → timer de Foco por matéria; material da aula por matéria (anexos); leituras por assunto na estante.
+  - [ ] Encolher nota/média para detalhe opcional dentro da matéria.
+  - [ ] Dependências: grifos por assunto precisam do Leitor pronto; páginas por assunto precisam do Caderno.
 - [x] **Hobbies e interesses** (0.36.0): arquivo de interesses/hiperfocos com notas, imagens e links (pelos anexos), sem metas. Falta teste de Dan no Windows.
 - [ ] **Leitura** (começada na 0.37.0):
   - [x] Estante com status (quero/lendo/lido/pausado) e diário de leitura (onde parei, impressões, datas). Falta teste de Dan no Windows.
