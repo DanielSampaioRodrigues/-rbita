@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, anotacoes, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, quadro, rotinas, saude};
+use crate::banco::{self, academico, anexos, anotacoes, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, organizacao, quadro, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1430,4 +1430,61 @@ pub async fn mover_cartao(estado: State<'_, Estado>, id: String, x: f64, y: f64)
 #[tauri::command]
 pub async fn excluir_cartao(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| quadro::excluir(&s.conn, &id))
+}
+
+// ---------- Minha organização (quadros e listas) ----------
+
+#[tauri::command]
+pub async fn listar_quadros(estado: State<'_, Estado>) -> Result<Vec<organizacao::Quadro>, Erro> {
+    estado.com_sessao(|s| organizacao::listar_quadros(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_quadro(estado: State<'_, Estado>, quadro: organizacao::Quadro) -> Result<organizacao::Quadro, Erro> {
+    estado.com_sessao(|s| organizacao::salvar_quadro(&s.conn, quadro))
+}
+
+#[tauri::command]
+pub async fn excluir_quadro(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| organizacao::excluir_quadro(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_colunas(estado: State<'_, Estado>, quadro_id: String) -> Result<Vec<organizacao::Coluna>, Erro> {
+    estado.com_sessao(|s| organizacao::listar_colunas(&s.conn, &quadro_id))
+}
+
+#[tauri::command]
+pub async fn salvar_coluna(estado: State<'_, Estado>, coluna: organizacao::Coluna) -> Result<organizacao::Coluna, Erro> {
+    estado.com_sessao(|s| organizacao::salvar_coluna(&s.conn, coluna))
+}
+
+#[tauri::command]
+pub async fn excluir_coluna(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| organizacao::excluir_coluna(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_cartoes_org(estado: State<'_, Estado>, quadro_id: String) -> Result<Vec<organizacao::Cartao>, Erro> {
+    estado.com_sessao(|s| organizacao::listar_cartoes(&s.conn, &quadro_id))
+}
+
+#[tauri::command]
+pub async fn salvar_cartao_org(estado: State<'_, Estado>, cartao: organizacao::Cartao) -> Result<organizacao::Cartao, Erro> {
+    estado.com_sessao(|s| organizacao::salvar_cartao(&s.conn, cartao))
+}
+
+#[tauri::command]
+pub async fn marcar_cartao_org(estado: State<'_, Estado>, id: String, feito: bool) -> Result<(), Erro> {
+    estado.com_sessao(|s| organizacao::marcar_cartao(&s.conn, &id, feito))
+}
+
+#[tauri::command]
+pub async fn mover_cartao_org(estado: State<'_, Estado>, id: String, coluna_id: String, ordem: f64) -> Result<(), Erro> {
+    estado.com_sessao(|s| organizacao::mover_cartao(&s.conn, &id, &coluna_id, ordem))
+}
+
+#[tauri::command]
+pub async fn excluir_cartao_org(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| organizacao::excluir_cartao(&s.conn, &id))
 }

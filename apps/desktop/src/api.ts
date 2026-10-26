@@ -381,6 +381,33 @@ export interface Anotacao {
   criadoEm: number;
 }
 
+/** "Minha organização": um quadro (estilo Trello) ou uma lista. */
+export interface Quadro {
+  id: string;
+  nome: string;
+  /** "quadro" (colunas com cartões) ou "lista" (itens com caixinha). */
+  estilo: "quadro" | "lista";
+  criadoEm: number;
+}
+
+/** Uma coluna de um quadro (na lista, uma só, sem título). */
+export interface Coluna {
+  id: string;
+  quadroId: string;
+  nome: string;
+  ordem: number;
+}
+
+/** Um cartão/item de "Minha organização". */
+export interface CartaoOrg {
+  id: string;
+  colunaId: string;
+  texto: string;
+  feito: boolean;
+  ordem: number;
+  criadoEm: number;
+}
+
 /** Prateleira (grupo) de livros. */
 export interface GrupoLivro {
   id: string;
@@ -697,6 +724,17 @@ interface Api {
   salvarCartao(cartao: CartaoQuadro): Promise<CartaoQuadro>;
   moverCartao(id: string, x: number, y: number): Promise<void>;
   excluirCartao(id: string): Promise<void>;
+  listarQuadros(): Promise<Quadro[]>;
+  salvarQuadro(quadro: Quadro): Promise<Quadro>;
+  excluirQuadro(id: string): Promise<void>;
+  listarColunas(quadroId: string): Promise<Coluna[]>;
+  salvarColuna(coluna: Coluna): Promise<Coluna>;
+  excluirColuna(id: string): Promise<void>;
+  listarCartoesOrg(quadroId: string): Promise<CartaoOrg[]>;
+  salvarCartaoOrg(cartao: CartaoOrg): Promise<CartaoOrg>;
+  marcarCartaoOrg(id: string, feito: boolean): Promise<void>;
+  moverCartaoOrg(id: string, colunaId: string, ordem: number): Promise<void>;
+  excluirCartaoOrg(id: string): Promise<void>;
   listarLivros(): Promise<Livro[]>;
   salvarLivro(livro: Livro): Promise<Livro>;
   mudarStatusLivro(id: string, status: string): Promise<void>;
@@ -895,6 +933,17 @@ const nativa: Api = {
   salvarCartao: (cartao) => chamar("salvar_cartao", { cartao }),
   moverCartao: (id, x, y) => chamar("mover_cartao", { id, x, y }),
   excluirCartao: (id) => chamar("excluir_cartao", { id }),
+  listarQuadros: () => chamar("listar_quadros"),
+  salvarQuadro: (quadro) => chamar("salvar_quadro", { quadro }),
+  excluirQuadro: (id) => chamar("excluir_quadro", { id }),
+  listarColunas: (quadroId) => chamar("listar_colunas", { quadroId }),
+  salvarColuna: (coluna) => chamar("salvar_coluna", { coluna }),
+  excluirColuna: (id) => chamar("excluir_coluna", { id }),
+  listarCartoesOrg: (quadroId) => chamar("listar_cartoes_org", { quadroId }),
+  salvarCartaoOrg: (cartao) => chamar("salvar_cartao_org", { cartao }),
+  marcarCartaoOrg: (id, feito) => chamar("marcar_cartao_org", { id, feito }),
+  moverCartaoOrg: (id, colunaId, ordem) => chamar("mover_cartao_org", { id, colunaId, ordem }),
+  excluirCartaoOrg: (id) => chamar("excluir_cartao_org", { id }),
   listarLivros: () => chamar("listar_livros"),
   salvarLivro: (livro) => chamar("salvar_livro", { livro }),
   mudarStatusLivro: (id, status) => chamar("mudar_status_livro", { id, status }),
@@ -1661,6 +1710,94 @@ function simularHobbies() {
   };
 }
 
+function simularOrganizacao() {
+  const quadros: Quadro[] = [];
+  const colunas: Coluna[] = [];
+  const cartoes: CartaoOrg[] = [];
+  const novaColuna = (quadroId: string, nome: string, ordem: number): Coluna => {
+    const c = { id: crypto.randomUUID(), quadroId, nome, ordem };
+    colunas.push(c);
+    return c;
+  };
+  return {
+    listarQuadros: async () => quadros.map((q) => ({ ...q })).sort((a, b) => a.criadoEm - b.criadoEm),
+    salvarQuadro: async (q: Quadro) => {
+      const nome = q.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "O quadro precisa de um nome.");
+      const estilo = q.estilo === "quadro" ? "quadro" : "lista";
+      if (q.id) {
+        const i = quadros.findIndex((x) => x.id === q.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Quadro não encontrado.");
+        quadros[i] = { ...quadros[i], nome };
+        return { ...quadros[i] };
+      }
+      const novo: Quadro = { id: crypto.randomUUID(), nome, estilo, criadoEm: Date.now() };
+      quadros.push(novo);
+      if (estilo === "lista") novaColuna(novo.id, "", 1);
+      else ["A fazer", "Fazendo", "Feito"].forEach((n, i) => novaColuna(novo.id, n, i + 1));
+      return { ...novo };
+    },
+    excluirQuadro: async (id: string) => {
+      const cols = colunas.filter((c) => c.quadroId === id).map((c) => c.id);
+      for (let i = cartoes.length - 1; i >= 0; i--) if (cols.includes(cartoes[i].colunaId)) cartoes.splice(i, 1);
+      for (let i = colunas.length - 1; i >= 0; i--) if (colunas[i].quadroId === id) colunas.splice(i, 1);
+      const qi = quadros.findIndex((q) => q.id === id);
+      if (qi >= 0) quadros.splice(qi, 1);
+    },
+    listarColunas: async (quadroId: string) => colunas.filter((c) => c.quadroId === quadroId).map((c) => ({ ...c })).sort((a, b) => a.ordem - b.ordem),
+    salvarColuna: async (col: Coluna) => {
+      if (!col.quadroId.trim()) throw new ErroOrbita("interno", "A coluna precisa de um quadro.");
+      if (col.id) {
+        const i = colunas.findIndex((x) => x.id === col.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Coluna não encontrada.");
+        colunas[i] = { ...col, nome: col.nome.trim() };
+        return { ...colunas[i] };
+      }
+      const ordem = col.ordem || Math.max(0, ...colunas.filter((c) => c.quadroId === col.quadroId).map((c) => c.ordem)) + 1;
+      return { ...novaColuna(col.quadroId, col.nome.trim(), ordem) };
+    },
+    excluirColuna: async (id: string) => {
+      for (let i = cartoes.length - 1; i >= 0; i--) if (cartoes[i].colunaId === id) cartoes.splice(i, 1);
+      const i = colunas.findIndex((c) => c.id === id);
+      if (i >= 0) colunas.splice(i, 1);
+    },
+    listarCartoesOrg: async (quadroId: string) => {
+      const cols = new Set(colunas.filter((c) => c.quadroId === quadroId).map((c) => c.id));
+      return cartoes.filter((c) => cols.has(c.colunaId)).map((c) => ({ ...c })).sort((a, b) => a.ordem - b.ordem);
+    },
+    salvarCartaoOrg: async (c: CartaoOrg) => {
+      if (!c.colunaId.trim()) throw new ErroOrbita("interno", "O cartão precisa de uma coluna.");
+      const texto = c.texto.trim();
+      if (!texto) throw new ErroOrbita("texto_vazio", "O cartão precisa de um texto.");
+      if (c.id) {
+        const i = cartoes.findIndex((x) => x.id === c.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Cartão não encontrado.");
+        cartoes[i] = { ...c, texto };
+        return { ...cartoes[i] };
+      }
+      const ordem = c.ordem || Math.max(0, ...cartoes.filter((x) => x.colunaId === c.colunaId).map((x) => x.ordem)) + 1;
+      const novo: CartaoOrg = { ...c, id: crypto.randomUUID(), texto, ordem, criadoEm: Date.now() };
+      cartoes.push(novo);
+      return { ...novo };
+    },
+    marcarCartaoOrg: async (id: string, feito: boolean) => {
+      const c = cartoes.find((x) => x.id === id);
+      if (!c) throw new ErroOrbita("nao_encontrado", "Cartão não encontrado.");
+      c.feito = feito;
+    },
+    moverCartaoOrg: async (id: string, colunaId: string, ordem: number) => {
+      const c = cartoes.find((x) => x.id === id);
+      if (!c) throw new ErroOrbita("nao_encontrado", "Cartão não encontrado.");
+      c.colunaId = colunaId;
+      c.ordem = ordem;
+    },
+    excluirCartaoOrg: async (id: string) => {
+      const i = cartoes.findIndex((c) => c.id === id);
+      if (i >= 0) cartoes.splice(i, 1);
+    },
+  };
+}
+
 function simularLeitura() {
   const livros: Livro[] = [];
   const gruposLivro: GrupoLivro[] = [];
@@ -1836,6 +1973,7 @@ function criarSimulacao(): Api {
     ...simularAcademico(),
     ...simularDinheiro(),
     ...simularHobbies(),
+    ...simularOrganizacao(),
     ...simularLeitura(),
     ...comAnexos,
     fazerBackup: async () => {

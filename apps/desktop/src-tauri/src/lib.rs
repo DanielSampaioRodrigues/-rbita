@@ -234,6 +234,17 @@ pub fn run() {
             comandos::salvar_cartao,
             comandos::mover_cartao,
             comandos::excluir_cartao,
+            comandos::listar_quadros,
+            comandos::salvar_quadro,
+            comandos::excluir_quadro,
+            comandos::listar_colunas,
+            comandos::salvar_coluna,
+            comandos::excluir_coluna,
+            comandos::listar_cartoes_org,
+            comandos::salvar_cartao_org,
+            comandos::marcar_cartao_org,
+            comandos::mover_cartao_org,
+            comandos::excluir_cartao_org,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");
