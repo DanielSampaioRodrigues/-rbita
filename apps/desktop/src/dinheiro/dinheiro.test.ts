@@ -12,14 +12,23 @@ async function limpar() {
 describe("dinheiro (simulação)", () => {
   beforeEach(limpar);
 
-  it("registra gasto com marca de interesse e recusa negativo", async () => {
+  it("registra gasto com grupo e marca de interesse, e recusa negativo", async () => {
     const agora = Date.now();
-    await api.registrarGasto(1250, "Mercado", "pão", false);
-    await api.registrarGasto(9900, "Jogos", "DLC", true);
+    await api.registrarGasto(1250, "g-mercado", "pão", false);
+    await api.registrarGasto(9900, "g-jogos", "DLC", true);
     await expect(api.registrarGasto(-1, "x", "", false)).rejects.toThrow();
     const gs = await api.listarGastos(agora - 1000, agora + 60_000);
     expect(gs).toHaveLength(2);
-    expect(gs.some((g) => g.interesse && g.categoria === "Jogos")).toBe(true);
+    expect(gs.some((g) => g.interesse && g.grupoId === "g-jogos")).toBe(true);
+  });
+
+  it("grupos: cria, valida e exclui", async () => {
+    const g = await api.salvarGrupoGasto({ id: "", nome: " Assinaturas ", cor: "", criadoEm: 0 });
+    expect([g.nome, g.cor]).toEqual(["Assinaturas", "mar"]);
+    await expect(api.salvarGrupoGasto({ id: "", nome: "  ", cor: "", criadoEm: 0 })).rejects.toThrow();
+    expect(await api.listarGruposGasto()).toHaveLength(1);
+    await api.excluirGrupoGasto(g.id);
+    expect(await api.listarGruposGasto()).toHaveLength(0);
   });
 
   it("conta valida o dia de vencimento", async () => {

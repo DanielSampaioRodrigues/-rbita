@@ -664,3 +664,16 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .leitor-seta { display: flex; align-items: center; justify-content: center; min-width: 3rem; border: none; background: none; color: var(--cor-texto); cursor: pointer; }
 .leitor-seta[data-hovered] { background: var(--cor-superficie-alternativa); }
 .leitor-aviso { padding: var(--espaco-3); }
+
+/* Dinheiro: tabela por mês e gráficos. */
+.tabela-rolagem { overflow-x: auto; margin: var(--espaco-3) 0; }
+.tabela-dados { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+.tabela-dados th, .tabela-dados td { padding: var(--espaco-2) var(--espaco-3); text-align: right; white-space: nowrap; border-bottom: 1px solid var(--cor-borda-suave); }
+.tabela-dados th[scope="col"] { font-weight: 650; }
+.tabela-dados th[scope="row"] { text-align: left; font-weight: 500; }
+.tabela-dados thead th, .tabela-dados tfoot th, .tabela-dados tfoot td { font-weight: 650; }
+.tabela-dados tfoot td, .tabela-dados tfoot th { border-top: 2px solid var(--cor-borda); border-bottom: none; }
+.graficos-lado-a-lado { display: flex; flex-wrap: wrap; gap: var(--espaco-5); align-items: flex-start; }
+.graficos-lado-a-lado > div { flex: 1; min-width: 15rem; }
+.grafico-pizza { display: flex; gap: var(--espaco-4); align-items: center; flex-wrap: wrap; }
+.grafico-legenda { flex: 1; min-width: 10rem; }

@@ -1,0 +1,110 @@
+// Agregação dos gastos por mês e por grupo, e a geometria da pizza. Tudo puro
+// (sem DOM, sem relógio além do que entra por parâmetro), para dar para testar.
+
+import type { Gasto, Grupo } from "../api";
+
+/** "AAAA-MM" do momento (ms), no horário local. */
+export function chaveMes(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Os últimos `n` meses até `ate` (inclusive), como "AAAA-MM", do mais antigo ao mais novo. */
+export function mesesRecentes(ate: Date, n: number): string[] {
+  const out: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(ate.getFullYear(), ate.getMonth() - i, 1);
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return out;
+}
+
+const SEM_GRUPO = { id: "", nome: "Sem grupo", cor: "cinza" };
+
+export interface LinhaTabela {
+  id: string;
+  nome: string;
+  cor: string;
+  /** Total em centavos por mês ("AAAA-MM" → centavos). */
+  porMes: Record<string, number>;
+  total: number;
+}
+
+export interface Tabela {
+  linhas: LinhaTabela[];
+  totaisMes: Record<string, number>;
+  total: number;
+}
+
+/**
+ * Monta a tabela: uma linha por grupo (mais "Sem grupo" quando houver), com o
+ * total de cada mês da lista `meses`. Só entram gastos desses meses.
+ */
+export function tabelaPorMes(gastos: Gasto[], grupos: Grupo[], meses: string[]): Tabela {
+  const porId = new Map(grupos.map((g) => [g.id, g]));
+  const linhas = new Map<string, LinhaTabela>();
+  const totaisMes: Record<string, number> = Object.fromEntries(meses.map((m) => [m, 0]));
+  let total = 0;
+
+  const linhaDe = (id: string): LinhaTabela => {
+    if (!linhas.has(id)) {
+      const g = porId.get(id);
+      const base = g ? { id: g.id, nome: g.nome, cor: g.cor } : SEM_GRUPO;
+      linhas.set(id, { ...base, porMes: Object.fromEntries(meses.map((m) => [m, 0])), total: 0 });
+    }
+    return linhas.get(id)!;
+  };
+
+  for (const gasto of gastos) {
+    const mes = chaveMes(gasto.momento);
+    if (!(mes in totaisMes)) continue;
+    const id = porId.has(gasto.grupoId) ? gasto.grupoId : "";
+    const linha = linhaDe(id);
+    linha.porMes[mes] += gasto.centavos;
+    linha.total += gasto.centavos;
+    totaisMes[mes] += gasto.centavos;
+    total += gasto.centavos;
+  }
+
+  // Grupos com mais gasto primeiro; "Sem grupo" por último.
+  const ordenadas = [...linhas.values()].sort((a, b) => (a.id === "" ? 1 : b.id === "" ? -1 : b.total - a.total));
+  return { linhas: ordenadas, totaisMes, total };
+}
+
+export interface Fatia {
+  label: string;
+  cor: string;
+  centavos: number;
+  porcentagem: number;
+  /** Caminho SVG da fatia, num círculo de centro (60,60) e raio 50. */
+  d: string;
+}
+
+/**
+ * Fatias da pizza a partir de itens com valor. Sem valor nenhum, lista vazia.
+ * Um único item vira o círculo inteiro.
+ */
+export function fatiasPizza(itens: { label: string; cor: string; centavos: number }[]): Fatia[] {
+  const validos = itens.filter((i) => i.centavos > 0);
+  const total = validos.reduce((s, i) => s + i.centavos, 0);
+  if (total === 0) return [];
+  const cx = 60;
+  const cy = 60;
+  const r = 50;
+  let angulo = -Math.PI / 2; // começa no topo
+  return validos.map((i) => {
+    const fracao = i.centavos / total;
+    const fim = angulo + fracao * 2 * Math.PI;
+    const x1 = cx + r * Math.cos(angulo);
+    const y1 = cy + r * Math.sin(angulo);
+    const x2 = cx + r * Math.cos(fim);
+    const y2 = cy + r * Math.sin(fim);
+    const grande = fim - angulo > Math.PI ? 1 : 0;
+    const d =
+      fracao >= 0.9999
+        ? `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`
+        : `M ${cx} ${cy} L ${x1.toFixed(3)} ${y1.toFixed(3)} A ${r} ${r} 0 ${grande} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} Z`;
+    angulo = fim;
+    return { label: i.label, cor: i.cor, centavos: i.centavos, porcentagem: Math.round(fracao * 100), d };
+  });
+}

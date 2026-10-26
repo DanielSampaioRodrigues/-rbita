@@ -1227,8 +1227,23 @@ pub async fn definir_media_aprovacao(estado: State<'_, Estado>, media: f64) -> R
 // ---------- Dinheiro ----------
 
 #[tauri::command]
-pub async fn registrar_gasto(estado: State<'_, Estado>, centavos: i64, categoria: String, descricao: String, interesse: bool) -> Result<dinheiro::Gasto, Erro> {
-    estado.com_sessao(|s| dinheiro::registrar_gasto(&s.conn, centavos, &categoria, &descricao, interesse))
+pub async fn registrar_gasto(estado: State<'_, Estado>, centavos: i64, grupo_id: String, descricao: String, interesse: bool) -> Result<dinheiro::Gasto, Erro> {
+    estado.com_sessao(|s| dinheiro::registrar_gasto(&s.conn, centavos, &grupo_id, &descricao, interesse))
+}
+
+#[tauri::command]
+pub async fn listar_grupos_gasto(estado: State<'_, Estado>) -> Result<Vec<dinheiro::Grupo>, Erro> {
+    estado.com_sessao(|s| dinheiro::listar_grupos(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_grupo_gasto(estado: State<'_, Estado>, grupo: dinheiro::Grupo) -> Result<dinheiro::Grupo, Erro> {
+    estado.com_sessao(|s| dinheiro::salvar_grupo(&s.conn, grupo))
+}
+
+#[tauri::command]
+pub async fn excluir_grupo_gasto(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| dinheiro::excluir_grupo(&s.conn, &id))
 }
 
 #[tauri::command]

@@ -114,11 +114,18 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 
 ### 4. Dinheiro
 
-- Contas recorrentes com aviso antecipado.
-- Registro de gastos simples, por categoria.
+Mais que um registro de gastos: um lugar para **entender** para onde o dinheiro vai, com calma e sem culpa.
+
+- **Grupos personalizáveis** criados pela pessoa (mercado, transporte, **assinaturas**, **hobbies/hiperfoco**...), cada um com cor. O gasto entra num grupo; a marca "interesse especial" continua como um filtro à parte, para ver esses gastos sem julgamento.
+- **Registro de gastos** rápido, ligado a um grupo.
+- **Tabela por mês**: grupos nas linhas, meses nas colunas, para comparar e enxergar a evolução; dá para filtrar por período e por grupo.
+- **Visualizações para compreender os gastos**: gráfico de **pizza** (distribuição por grupo no período), de **coluna/barra** (por mês ou por grupo) e de **linha** (evolução do total). Sempre com rótulos escritos e cores que também funcionam para quem não as distingue (acessibilidade), e sem alarme: é informação, não cobrança.
+- **Contas recorrentes** com aviso antecipado (as assinaturas entram aqui).
 - **Lista de espera de compras**, com prazo definido pela pessoa (por exemplo, 48 horas) antes de comprar.
-- Gastos com interesses especiais visíveis, sem julgamento.
-- Metas de reserva.
+- **Metas de reserva.**
+- Importar extrato (OFX ou CSV) continua previsto, como passo próprio.
+
+*Estado atual (0.35.0): a primeira versão tem gastos por categoria de texto, contas, lista de espera e metas. Os grupos, a tabela por mês e os gráficos são a reescrita acordada com Dan (26/10/2026), a construir.*
 
 ### 5. Saúde
 

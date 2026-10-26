@@ -37,10 +37,12 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [ ] **Painéis por tipo**: psiquiatra puxa medicação/doses/efeitos da Saúde e monta o resumo; psicólogo acompanha temas.
   - [ ] **Texto rico** (CampoRico, que já existe) em todo campo de anotação — hoje é texto simples.
 - [x] ~~Trava extra opcional para saúde e cuidado psicológico~~ — **descartada** (decisão de Dan, 26/10/2026): atrito desnecessário; o cofre já protege tudo.
-- [ ] **Dinheiro** (começado na 0.35.0):
-  - [x] Gastos por categoria (com marca de interesse especial), contas recorrentes com dia de vencimento e aviso, lista de espera de compras (prazo antes de decidir), metas de reserva. Falta teste de Dan no Windows.
+- [ ] **Dinheiro** (0.35.0; aprofundado na 0.40.0):
+  - [x] Gastos, contas recorrentes, lista de espera, metas (0.35.0).
+  - [x] Grupos de gasto personalizáveis com cor; tabela por mês (3/6/12 meses); gráficos de pizza (por grupo) e barras (por mês) (0.40.0). Falta teste de Dan no Windows.
+  - [ ] Gráfico de linha (evolução); filtro por grupo e por "interesse especial" na visão.
   - [ ] Importar extrato do banco (OFX ou CSV) — parsing próprio, numa próxima versão.
-  - [ ] Avaliar notificar a conta a vencer (hoje aparece "a vencer" na própria tela; ainda não é notificação como a do remédio).
+  - [ ] Avaliar notificar a conta a vencer.
 - [ ] **Vida acadêmica — reescrita como "mesa de estudos"** (visão acordada 26/10/2026; a 0.34.0 entregou só o cadastro, que Dan achou raso):
   - [x] Base: matérias, provas/trabalhos/deveres com data, "o que vem aí", notas e média (0.34.0).
   - [ ] **Grade de horário semanal** (dias × horários), ligada à semana-modelo da Agenda; aula = bloco fixo da matéria.

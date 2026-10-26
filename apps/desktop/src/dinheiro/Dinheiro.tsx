@@ -1,25 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Button, Form, ToggleButton } from "react-aria-components";
-import { api, type Conta, type Desejo, type Gasto, type Meta } from "../api";
+import { api, type Conta, type Desejo, type Gasto, type Grupo, type Meta } from "../api";
 import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
+import { EscolherCor } from "../ideias/etiquetas";
 import { Check, Pencil, Plus, Sparkles, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { formatarMoeda, reaisParaCentavos } from "./moeda";
 import { FormConta, novaConta } from "./FormConta";
 import { FormMeta, novaMeta } from "./FormMeta";
+import { Pizza, BarrasPorMes } from "./Graficos";
+import { mesesRecentes, tabelaPorMes } from "./visao";
+import type { CorEtiqueta } from "../api";
 
 const t = textos.dinheiro;
 const fmtData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+const fmtMesCurto = new Intl.DateTimeFormat("pt-BR", { month: "short" });
+const nomeMes = (chave: string) => {
+  const [a, m] = chave.split("-").map(Number);
+  return fmtMesCurto.format(new Date(a, m - 1, 1)).replace(".", "");
+};
 
 function diasNoMes(ano: number, mes: number): number {
   return new Date(ano, mes + 1, 0).getDate();
 }
-
-/** Dias até o próximo vencimento no dia `dia` do mês (hoje conta como 0). */
 function diasAteVencimento(dia: number): number {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -37,6 +44,7 @@ function diasAteVencimento(dia: number): number {
 
 export function PaginaDinheiro() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [contas, setContas] = useState<Conta[]>([]);
   const [desejos, setDesejos] = useState<Desejo[]>([]);
   const [metas, setMetas] = useState<Meta[]>([]);
@@ -44,47 +52,64 @@ export function PaginaDinheiro() {
   const [excluindoConta, setExcluindoConta] = useState<Conta | null>(null);
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [excluindoMeta, setExcluindoMeta] = useState<Meta | null>(null);
+  const [editandoGrupo, setEditandoGrupo] = useState<Grupo | null>(null);
+  const [excluindoGrupo, setExcluindoGrupo] = useState<Grupo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
 
-  const [inicioMes, fimMes] = useMemo(() => {
+  // Carrega até 12 meses de gastos (para a tabela e os gráficos).
+  const [de12, ate] = useMemo(() => {
     const agora = new Date();
-    return [new Date(agora.getFullYear(), agora.getMonth(), 1).getTime(), new Date(agora.getFullYear(), agora.getMonth() + 1, 1).getTime()];
+    return [new Date(agora.getFullYear(), agora.getMonth() - 11, 1).getTime(), new Date(agora.getFullYear(), agora.getMonth() + 1, 1).getTime()];
   }, []);
 
   useEffect(() => {
-    api.listarGastos(inicioMes, fimMes).then(setGastos, (e) => setErro(e instanceof Error ? e.message : String(e)));
+    api.listarGastos(de12, ate).then(setGastos, (e) => setErro(e instanceof Error ? e.message : String(e)));
+    api.listarGruposGasto().then(setGrupos, () => {});
     api.listarContas().then(setContas, () => {});
     api.listarDesejos().then(setDesejos, () => {});
     api.listarMetas().then(setMetas, () => {});
-  }, [mudancas, inicioMes, fimMes]);
+  }, [mudancas, de12, ate]);
 
-  const totalMes = gastos.reduce((s, g) => s + g.centavos, 0);
-  const totalInteresse = gastos.filter((g) => g.interesse).reduce((s, g) => s + g.centavos, 0);
   const contasOrdenadas = [...contas].sort((a, b) => diasAteVencimento(a.diaVencimento) - diasAteVencimento(b.diaVencimento));
 
-  const excluirConta = async () => {
-    if (!excluindoConta) return;
-    await api.excluirConta(excluindoConta.id);
-    setExcluindoConta(null);
-    avisarMudanca();
-  };
-  const excluirMeta = async () => {
-    if (!excluindoMeta) return;
-    await api.excluirMeta(excluindoMeta.id);
-    setExcluindoMeta(null);
-    avisarMudanca();
-  };
+  const excluirConta = async () => { if (excluindoConta) { await api.excluirConta(excluindoConta.id); setExcluindoConta(null); avisarMudanca(); } };
+  const excluirMeta = async () => { if (excluindoMeta) { await api.excluirMeta(excluindoMeta.id); setExcluindoMeta(null); avisarMudanca(); } };
+  const excluirGrupo = async () => { if (excluindoGrupo) { await api.excluirGrupoGasto(excluindoGrupo.id); setExcluindoGrupo(null); avisarMudanca(); } };
 
   return (
     <div className="pagina">
       <h1>{t.titulo}</h1>
       <p className="pagina-intro">{t.intro}</p>
 
-      <section className="cartao largura-leitura esticado" aria-labelledby="mes">
-        <h2 id="mes">{t.mes.resumo}</h2>
-        <p><strong>{t.mes.total(formatarMoeda(totalMes))}</strong></p>
-        {totalInteresse > 0 && <p className="texto-suave">{t.mes.interesseTotal(formatarMoeda(totalInteresse))}</p>}
+      <VisaoGastos gastos={gastos} grupos={grupos} />
+
+      <RegistrarGasto gastos={gastos} grupos={grupos} />
+
+      <section className="cartao largura-leitura esticado" aria-labelledby="grupos">
+        <h2 id="grupos">{t.grupos.titulo}</h2>
+        <p className="texto-suave">{t.grupos.intro}</p>
+        {grupos.length === 0 ? (
+          <p className="texto-suave">{t.grupos.semGrupos}</p>
+        ) : (
+          <ul className="lista-simples sem-marcador">
+            {grupos.map((g) => (
+              <li key={g.id} className="linha-ajuste">
+                <span className="etiqueta-chip">
+                  <span className={`etiqueta-cor cor-${g.cor}`} aria-hidden="true" />
+                  <strong>{g.nome}</strong>
+                </span>
+                <span className="linha-ajuste">
+                  <Button className="botao-icone" onPress={() => setEditandoGrupo(g)} aria-label={`${t.grupos.editar}: ${g.nome}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
+                  <Button className="botao-icone" onPress={() => setExcluindoGrupo(g)} aria-label={`${t.grupos.excluir}: ${g.nome}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="botoes">
+          <Button className="botao principal" onPress={() => setEditandoGrupo({ id: "", nome: "", cor: "mar", criadoEm: 0 })}><Plus aria-hidden="true" size="1.1em" /> {t.grupos.adicionar}</Button>
+        </div>
       </section>
 
       <section className="cartao largura-leitura esticado" aria-labelledby="contas">
@@ -113,8 +138,6 @@ export function PaginaDinheiro() {
           <Button className="botao principal" onPress={() => setEditandoConta(novaConta())}><Plus aria-hidden="true" size="1.1em" /> {t.contas.adicionar}</Button>
         </div>
       </section>
-
-      <RegistrarGasto gastos={gastos} />
 
       <ListaEspera desejos={desejos} />
 
@@ -157,19 +180,95 @@ export function PaginaDinheiro() {
       <Janela titulo={editandoMeta && editandoMeta.id ? t.metas.editar : t.metas.novo} aberta={editandoMeta !== null} aoFechar={() => setEditandoMeta(null)}>
         {editandoMeta && <FormMeta key={editandoMeta.id || "novo"} inicial={editandoMeta} aoFechar={() => setEditandoMeta(null)} />}
       </Janela>
+      <Janela titulo={editandoGrupo && editandoGrupo.id ? t.grupos.editar : t.grupos.novo} aberta={editandoGrupo !== null} aoFechar={() => setEditandoGrupo(null)}>
+        {editandoGrupo && <FormGrupo key={editandoGrupo.id || "novo"} inicial={editandoGrupo} aoFechar={() => setEditandoGrupo(null)} />}
+      </Janela>
       <Confirmar titulo={t.contas.excluir} texto={excluindoConta ? t.contas.confirmarExcluir(excluindoConta.nome) : ""} confirmar={t.contas.excluir} aberta={excluindoConta !== null} aoCancelar={() => setExcluindoConta(null)} aoConfirmar={() => void excluirConta()} />
       <Confirmar titulo={t.metas.excluir} texto={excluindoMeta ? t.metas.confirmarExcluir(excluindoMeta.nome) : ""} confirmar={t.metas.excluir} aberta={excluindoMeta !== null} aoCancelar={() => setExcluindoMeta(null)} aoConfirmar={() => void excluirMeta()} />
+      <Confirmar titulo={t.grupos.excluir} texto={excluindoGrupo ? t.grupos.confirmarExcluir(excluindoGrupo.nome) : ""} confirmar={t.grupos.excluir} aberta={excluindoGrupo !== null} aoCancelar={() => setExcluindoGrupo(null)} aoConfirmar={() => void excluirGrupo()} />
     </div>
   );
 }
 
-function RegistrarGasto({ gastos }: { gastos: Gasto[] }) {
+function VisaoGastos({ gastos, grupos }: { gastos: Gasto[]; grupos: Grupo[] }) {
+  const [periodo, setPeriodo] = useState<"3" | "6" | "12">("6");
+  const meses = useMemo(() => mesesRecentes(new Date(), Number(periodo)), [periodo]);
+  const tabela = useMemo(() => tabelaPorMes(gastos, grupos, meses), [gastos, grupos, meses]);
+
+  return (
+    <section className="cartao largura-leitura esticado" aria-labelledby="visao">
+      <h2 id="visao">{t.visao.titulo}</h2>
+      <p className="texto-suave">{t.visao.intro}</p>
+      <Segmentado
+        rotulo={t.visao.periodo}
+        valor={periodo}
+        aoMudar={setPeriodo}
+        opcoes={[
+          { valor: "3", nome: t.visao.periodos[3] },
+          { valor: "6", nome: t.visao.periodos[6] },
+          { valor: "12", nome: t.visao.periodos[12] },
+        ]}
+      />
+
+      {tabela.total === 0 ? (
+        <p className="texto-suave">{t.visao.semDados}</p>
+      ) : (
+        <>
+          <div className="tabela-rolagem">
+            <table className="tabela-dados" aria-label={t.visao.tabelaRotulo}>
+              <thead>
+                <tr>
+                  <th scope="col">{t.visao.grupoColuna}</th>
+                  {meses.map((m) => <th key={m} scope="col">{nomeMes(m)}</th>)}
+                  <th scope="col">{t.visao.totalLinha}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tabela.linhas.map((l) => (
+                  <tr key={l.id || "sem"}>
+                    <th scope="row">
+                      <span className="etiqueta-chip"><span className={`etiqueta-cor cor-${l.cor}`} aria-hidden="true" />{l.nome}</span>
+                    </th>
+                    {meses.map((m) => <td key={m}>{l.porMes[m] ? formatarMoeda(l.porMes[m]) : "—"}</td>)}
+                    <td><strong>{formatarMoeda(l.total)}</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">{t.visao.totalLinha}</th>
+                  {meses.map((m) => <td key={m}>{tabela.totaisMes[m] ? formatarMoeda(tabela.totaisMes[m]) : "—"}</td>)}
+                  <td><strong>{formatarMoeda(tabela.total)}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div className="graficos-lado-a-lado">
+            <div>
+              <h3 className="campo-rotulo">{t.visao.pizzaTitulo}</h3>
+              <Pizza linhas={tabela.linhas} />
+            </div>
+            <div>
+              <h3 className="campo-rotulo">{t.visao.barrasTitulo}</h3>
+              <BarrasPorMes meses={meses} totaisMes={tabela.totaisMes} />
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function RegistrarGasto({ gastos, grupos }: { gastos: Gasto[]; grupos: Grupo[] }) {
   const [valor, setValor] = useState("");
-  const [categoria, setCategoria] = useState("");
+  const [grupoId, setGrupoId] = useState("");
   const [descricao, setDescricao] = useState("");
   const [interesse, setInteresse] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const idGrupo = useId();
   const recado = useRecado();
+  const porGrupo = useMemo(() => new Map(grupos.map((g) => [g.id, g])), [grupos]);
 
   const registrar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,8 +279,8 @@ function RegistrarGasto({ gastos }: { gastos: Gasto[] }) {
       return;
     }
     try {
-      await api.registrarGasto(centavos, categoria, descricao, interesse);
-      setValor(""); setCategoria(""); setDescricao(""); setInteresse(false);
+      await api.registrarGasto(centavos, grupoId, descricao, interesse);
+      setValor(""); setDescricao(""); setInteresse(false);
       avisarMudanca();
       recado(t.gasto.registrado);
     } catch (err) {
@@ -189,17 +288,22 @@ function RegistrarGasto({ gastos }: { gastos: Gasto[] }) {
     }
   };
 
-  const apagar = async (id: string) => {
-    await api.excluirGasto(id);
-    avisarMudanca();
-  };
+  const apagar = async (id: string) => { await api.excluirGasto(id); avisarMudanca(); };
+  const recentes = [...gastos].sort((a, b) => b.momento - a.momento).slice(0, 12);
 
   return (
     <section className="cartao largura-leitura esticado" aria-labelledby="gasto">
       <h2 id="gasto">{t.gasto.titulo}</h2>
       <Form className="formulario" onSubmit={registrar}>
         <Campo rotulo={t.gasto.valor} valor={valor} aoMudar={setValor} numerico semDitado />
-        <Campo rotulo={t.gasto.categoria} valor={categoria} aoMudar={setCategoria} descricao={t.gasto.categoriaAjuda} maximo={40} semDitado />
+        <div className="campo">
+          <label className="campo-rotulo" htmlFor={idGrupo}>{t.gasto.grupo}</label>
+          <select id={idGrupo} className="entrada-texto sozinha" value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
+            <option value="">{t.gasto.semGrupo}</option>
+            {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+          </select>
+          {grupos.length === 0 && <p className="campo-ajuda">{t.gasto.crieGrupoAntes}</p>}
+        </div>
         <Campo rotulo={t.gasto.descricao} valor={descricao} aoMudar={setDescricao} maximo={120} />
         <ToggleButton isSelected={interesse} onChange={setInteresse} className="etiqueta-alternar">
           <Sparkles aria-hidden="true" size="1.1em" /> {t.gasto.interesse}
@@ -210,26 +314,62 @@ function RegistrarGasto({ gastos }: { gastos: Gasto[] }) {
           <Button className="botao principal" type="submit">{t.gasto.registrar}</Button>
         </div>
       </Form>
-      {gastos.length > 0 && (
+      {recentes.length > 0 && (
         <div className="campo">
           <span className="campo-rotulo">{t.gasto.recentes}</span>
           <ul className="lista-simples sem-marcador">
-            {gastos.slice(0, 12).map((g) => (
-              <li key={g.id} className="linha-ajuste">
-                <span className="quebra">
-                  <strong>{formatarMoeda(g.centavos)}</strong>
-                  {g.categoria && <span className="texto-suave"> · {g.categoria}</span>}
-                  {g.interesse && <span className="etiqueta-estado"> <Sparkles aria-hidden="true" size="0.9em" /></span>}
-                  <span className="texto-suave"> · {fmtData.format(g.momento)}</span>
-                  {g.descricao && <><br /><span>{g.descricao}</span></>}
-                </span>
-                <Button className="botao-icone" onPress={() => void apagar(g.id)} aria-label={t.gasto.excluir}><Trash2 aria-hidden="true" size="1.1em" /></Button>
-              </li>
-            ))}
+            {recentes.map((g) => {
+              const grupo = porGrupo.get(g.grupoId);
+              const nomeGrupo = grupo?.nome || g.categoria || t.gasto.semGrupo;
+              return (
+                <li key={g.id} className="linha-ajuste">
+                  <span className="quebra">
+                    <strong>{formatarMoeda(g.centavos)}</strong>
+                    <span className="texto-suave"> · </span>
+                    <span className="etiqueta-chip"><span className={`etiqueta-cor cor-${grupo?.cor ?? "cinza"}`} aria-hidden="true" />{nomeGrupo}</span>
+                    {g.interesse && <span className="etiqueta-estado"> <Sparkles aria-hidden="true" size="0.9em" /></span>}
+                    <span className="texto-suave"> · {fmtData.format(g.momento)}</span>
+                    {g.descricao && <><br /><span>{g.descricao}</span></>}
+                  </span>
+                  <Button className="botao-icone" onPress={() => void apagar(g.id)} aria-label={t.gasto.excluir}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
     </section>
+  );
+}
+
+function FormGrupo({ inicial, aoFechar }: { inicial: Grupo; aoFechar: () => void }) {
+  const [nome, setNome] = useState(inicial.nome);
+  const [cor, setCor] = useState<CorEtiqueta>((inicial.cor || "mar") as CorEtiqueta);
+  const [erro, setErro] = useState<string | null>(null);
+  const editando = inicial.id !== "";
+
+  const enviar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErro(null);
+    try {
+      await api.salvarGrupoGasto({ ...inicial, nome, cor });
+      avisarMudanca();
+      aoFechar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  return (
+    <Form className="formulario" onSubmit={enviar}>
+      <Campo rotulo={t.grupos.nome} valor={nome} aoMudar={setNome} autoFocus maximo={40} semDitado />
+      <EscolherCor valor={cor} aoMudar={setCor} />
+      <Aviso>{erro}</Aviso>
+      <div className="janela-acoes">
+        <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
+        <Button className="botao principal" type="submit">{editando ? t.grupos.salvarMudancas : t.grupos.salvar}</Button>
+      </div>
+    </Form>
   );
 }
 
@@ -297,9 +437,7 @@ function ListaEspera({ desejos }: { desejos: Desejo[] }) {
                   </span>
                 </span>
                 <span className="linha-ajuste">
-                  {!resolvido && (
-                    <Button className="botao-icone" onPress={() => void resolver(d.id)} aria-label={t.espera.jaDecidi}><Check aria-hidden="true" size="1.1em" /></Button>
-                  )}
+                  {!resolvido && <Button className="botao-icone" onPress={() => void resolver(d.id)} aria-label={t.espera.jaDecidi}><Check aria-hidden="true" size="1.1em" /></Button>}
                   <Button className="botao-icone" onPress={() => void apagar(d.id)} aria-label={t.espera.excluir}><Trash2 aria-hidden="true" size="1.1em" /></Button>
                 </span>
               </li>

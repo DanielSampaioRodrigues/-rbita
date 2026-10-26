@@ -16,6 +16,9 @@ use crate::erro::Erro;
 pub struct Gasto {
     pub id: String,
     pub centavos: i64,
+    /// Id do grupo (categoria) a que pertence; vazio = sem grupo.
+    pub grupo_id: String,
+    /// Texto de categoria antigo, mantido para gastos criados antes dos grupos.
     pub categoria: String,
     /// Gasto com interesse especial / hiperfoco. Visível, sem julgamento.
     pub interesse: bool,
@@ -27,24 +30,28 @@ pub struct Gasto {
 #[serde(rename_all = "camelCase")]
 struct ValorGasto {
     centavos: i64,
+    #[serde(default)]
+    grupo_id: String,
+    #[serde(default)]
     categoria: String,
     #[serde(default)]
     interesse: bool,
 }
 
-pub fn registrar_gasto(conn: &Connection, centavos: i64, categoria: &str, descricao: &str, interesse: bool) -> Result<Gasto, Erro> {
+pub fn registrar_gasto(conn: &Connection, centavos: i64, grupo_id: &str, descricao: &str, interesse: bool) -> Result<Gasto, Erro> {
     if centavos < 0 {
         return Err(Erro::Interno("o valor não pode ser negativo".into()));
     }
     let g = Gasto {
         id: novo_id(),
         centavos,
-        categoria: categoria.trim().to_string(),
+        grupo_id: grupo_id.trim().to_string(),
+        categoria: String::new(),
         interesse,
         descricao: descricao.trim().to_string(),
         momento: agora_ms(),
     };
-    let valor = ValorGasto { centavos, categoria: g.categoria.clone(), interesse };
+    let valor = ValorGasto { centavos, grupo_id: g.grupo_id.clone(), categoria: String::new(), interesse };
     conn.execute(
         "INSERT INTO registro (id, tipo, momento, valor, nota, criado_em, alterado_em) VALUES (?1, 'gasto', ?2, ?3, ?4, ?2, ?2)",
         params![g.id, g.momento, serde_json::to_string(&valor).unwrap(), g.descricao],
@@ -59,11 +66,78 @@ pub fn listar_gastos(conn: &Connection, de: i64, ate: i64) -> Result<Vec<Gasto>,
     )?;
     let lista = c
         .query_map(params![de, ate], |r| {
-            let v: ValorGasto = serde_json::from_str(&r.get::<_, String>(2)?).unwrap_or(ValorGasto { centavos: 0, categoria: String::new(), interesse: false });
-            Ok(Gasto { id: r.get(0)?, momento: r.get(1)?, centavos: v.centavos, categoria: v.categoria, interesse: v.interesse, descricao: r.get(3)? })
+            let v: ValorGasto = serde_json::from_str(&r.get::<_, String>(2)?).unwrap_or(ValorGasto { centavos: 0, grupo_id: String::new(), categoria: String::new(), interesse: false });
+            Ok(Gasto { id: r.get(0)?, momento: r.get(1)?, centavos: v.centavos, grupo_id: v.grupo_id, categoria: v.categoria, interesse: v.interesse, descricao: r.get(3)? })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
+}
+
+// ---------- Grupos de gasto ----------
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Grupo {
+    #[serde(default)]
+    pub id: String,
+    pub nome: String,
+    #[serde(default)]
+    pub cor: String,
+    #[serde(default)]
+    pub criado_em: i64,
+}
+
+#[derive(Serialize, Deserialize)]
+struct DadosGrupo {
+    cor: String,
+}
+
+pub fn listar_grupos(conn: &Connection) -> Result<Vec<Grupo>, Erro> {
+    let mut c = conn.prepare(
+        "SELECT id, titulo, dados, criado_em FROM item WHERE tipo = 'grupo_gasto' AND excluido_em IS NULL ORDER BY titulo COLLATE NOCASE",
+    )?;
+    let lista = c
+        .query_map([], |r| {
+            let d: DadosGrupo = serde_json::from_str(&r.get::<_, String>(2)?).unwrap_or(DadosGrupo { cor: String::new() });
+            Ok(Grupo { id: r.get(0)?, nome: r.get(1)?, cor: d.cor, criado_em: r.get(3)? })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(lista)
+}
+
+pub fn salvar_grupo(conn: &Connection, mut grupo: Grupo) -> Result<Grupo, Erro> {
+    grupo.nome = grupo.nome.trim().to_string();
+    if grupo.nome.is_empty() {
+        return Err(Erro::Interno("o grupo precisa de um nome".into()));
+    }
+    if grupo.cor.trim().is_empty() {
+        grupo.cor = "mar".into();
+    }
+    let dados = serde_json::to_string(&DadosGrupo { cor: grupo.cor.clone() }).map_err(|e| Erro::Interno(e.to_string()))?;
+    let agora = agora_ms();
+    if grupo.id.is_empty() {
+        grupo.id = novo_id();
+        grupo.criado_em = agora;
+        conn.execute(
+            "INSERT INTO item (id, tipo, titulo, dados, criado_em, alterado_em) VALUES (?1, 'grupo_gasto', ?2, ?3, ?4, ?4)",
+            params![grupo.id, grupo.nome, dados, agora],
+        )?;
+    } else {
+        let n = conn.execute(
+            "UPDATE item SET titulo = ?2, dados = ?3, alterado_em = ?4 WHERE id = ?1 AND tipo = 'grupo_gasto' AND excluido_em IS NULL",
+            params![grupo.id, grupo.nome, dados, agora],
+        )?;
+        if n == 0 {
+            return Err(Erro::Interno("grupo não encontrado".into()));
+        }
+    }
+    Ok(grupo)
+}
+
+/// Apaga o grupo. Os gastos dele ficam "sem grupo" (não são apagados).
+pub fn excluir_grupo(conn: &Connection, id: &str) -> Result<(), Erro> {
+    conn.execute("UPDATE item SET excluido_em = ?2, alterado_em = ?2 WHERE id = ?1 AND tipo = 'grupo_gasto'", params![id, agora_ms()])?;
+    Ok(())
 }
 
 pub fn excluir_gasto(conn: &Connection, id: &str) -> Result<(), Erro> {
@@ -304,12 +378,24 @@ mod testes {
     #[test]
     fn gastos_registram_e_listam() {
         let (_p, conn) = banco();
-        registrar_gasto(&conn, 1250, "Mercado", "pão e leite", false).unwrap();
-        registrar_gasto(&conn, 9900, "Jogos", "DLC", true).unwrap();
+        registrar_gasto(&conn, 1250, "g-mercado", "pão e leite", false).unwrap();
+        registrar_gasto(&conn, 9900, "g-jogos", "DLC", true).unwrap();
         assert!(registrar_gasto(&conn, -1, "x", "", false).is_err());
         let gs = listar_gastos(&conn, 0, i64::MAX).unwrap();
         assert_eq!(gs.len(), 2);
-        assert!(gs.iter().any(|g| g.interesse && g.categoria == "Jogos"));
+        assert!(gs.iter().any(|g| g.interesse && g.grupo_id == "g-jogos"));
+    }
+
+    #[test]
+    fn grupos_criam_editam_e_excluem() {
+        let (_p, conn) = banco();
+        let g = salvar_grupo(&conn, Grupo { id: String::new(), nome: " Assinaturas ".into(), cor: String::new(), criado_em: 0 }).unwrap();
+        assert_eq!((g.nome.as_str(), g.cor.as_str()), ("Assinaturas", "mar"));
+        assert!(salvar_grupo(&conn, Grupo { id: String::new(), nome: "  ".into(), cor: String::new(), criado_em: 0 }).is_err());
+        salvar_grupo(&conn, Grupo { id: g.id.clone(), nome: "Streaming".into(), cor: "ceu".into(), criado_em: 0 }).unwrap();
+        assert_eq!(listar_grupos(&conn).unwrap()[0].nome, "Streaming");
+        excluir_grupo(&conn, &g.id).unwrap();
+        assert!(listar_grupos(&conn).unwrap().is_empty());
     }
 
     #[test]

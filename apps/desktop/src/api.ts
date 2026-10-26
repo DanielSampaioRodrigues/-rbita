@@ -262,11 +262,22 @@ export interface RegistroSessao {
 export interface Gasto {
   id: string;
   centavos: number;
+  /** Id do grupo (categoria) a que pertence; vazio = sem grupo. */
+  grupoId: string;
+  /** Texto de categoria antigo, de gastos anteriores aos grupos. */
   categoria: string;
   /** Gasto com interesse especial / hiperfoco. Visível, sem julgamento. */
   interesse: boolean;
   descricao: string;
   momento: number;
+}
+
+/** Grupo de gasto (categoria personalizável), com cor. */
+export interface Grupo {
+  id: string;
+  nome: string;
+  cor: string;
+  criadoEm: number;
 }
 
 /** Conta recorrente (valor em centavos). */
@@ -585,9 +596,12 @@ interface Api {
   excluirAtividade(id: string): Promise<void>;
   mediaAprovacao(): Promise<number>;
   definirMediaAprovacao(media: number): Promise<void>;
-  registrarGasto(centavos: number, categoria: string, descricao: string, interesse: boolean): Promise<Gasto>;
+  registrarGasto(centavos: number, grupoId: string, descricao: string, interesse: boolean): Promise<Gasto>;
   listarGastos(de: number, ate: number): Promise<Gasto[]>;
   excluirGasto(id: string): Promise<void>;
+  listarGruposGasto(): Promise<Grupo[]>;
+  salvarGrupoGasto(grupo: Grupo): Promise<Grupo>;
+  excluirGrupoGasto(id: string): Promise<void>;
   listarContas(): Promise<Conta[]>;
   salvarConta(conta: Conta): Promise<Conta>;
   excluirConta(id: string): Promise<void>;
@@ -768,9 +782,12 @@ const nativa: Api = {
   excluirAtividade: (id) => chamar("excluir_atividade", { id }),
   mediaAprovacao: () => chamar("media_aprovacao"),
   definirMediaAprovacao: (media) => chamar("definir_media_aprovacao", { media }),
-  registrarGasto: (centavos, categoria, descricao, interesse) => chamar("registrar_gasto", { centavos, categoria, descricao, interesse }),
+  registrarGasto: (centavos, grupoId, descricao, interesse) => chamar("registrar_gasto", { centavos, grupoId, descricao, interesse }),
   listarGastos: (de, ate) => chamar("listar_gastos", { de, ate }),
   excluirGasto: (id) => chamar("excluir_gasto", { id }),
+  listarGruposGasto: () => chamar("listar_grupos_gasto"),
+  salvarGrupoGasto: (grupo) => chamar("salvar_grupo_gasto", { grupo }),
+  excluirGrupoGasto: (id) => chamar("excluir_grupo_gasto", { id }),
   listarContas: () => chamar("listar_contas"),
   salvarConta: (conta) => chamar("salvar_conta", { conta }),
   excluirConta: (id) => chamar("excluir_conta", { id }),
@@ -1373,15 +1390,35 @@ function simularAcademico() {
 
 function simularDinheiro() {
   const gastos: Gasto[] = [];
+  const grupos: Grupo[] = [];
   const contas: Conta[] = [];
   const desejos: Desejo[] = [];
   const metas: Meta[] = [];
   return {
-    registrarGasto: async (centavos: number, categoria: string, descricao: string, interesse: boolean) => {
+    registrarGasto: async (centavos: number, grupoId: string, descricao: string, interesse: boolean) => {
       if (centavos < 0) throw new ErroOrbita("interno", "O valor não pode ser negativo.");
-      const g: Gasto = { id: crypto.randomUUID(), centavos, categoria: categoria.trim(), interesse, descricao: descricao.trim(), momento: Date.now() };
+      const g: Gasto = { id: crypto.randomUUID(), centavos, grupoId: grupoId.trim(), categoria: "", interesse, descricao: descricao.trim(), momento: Date.now() };
       gastos.push(g);
       return { ...g };
+    },
+    listarGruposGasto: async () => grupos.map((x) => ({ ...x })).sort((a, b) => a.nome.localeCompare(b.nome)),
+    salvarGrupoGasto: async (grupo: Grupo) => {
+      const nome = grupo.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "O grupo precisa de um nome.");
+      const limpo: Grupo = { ...grupo, nome, cor: grupo.cor.trim() || "mar" };
+      if (grupo.id) {
+        const i = grupos.findIndex((x) => x.id === grupo.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Grupo não encontrado.");
+        grupos[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      grupos.push(novo);
+      return { ...novo };
+    },
+    excluirGrupoGasto: async (id: string) => {
+      const i = grupos.findIndex((g) => g.id === id);
+      if (i >= 0) grupos.splice(i, 1);
     },
     listarGastos: async (de: number, ate: number) =>
       gastos.filter((g) => g.momento >= de && g.momento < ate).sort((a, b) => b.momento - a.momento).map((g) => ({ ...g })),
