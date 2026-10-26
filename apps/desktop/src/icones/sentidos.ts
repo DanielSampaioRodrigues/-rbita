@@ -13,6 +13,8 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   BellRing: "sino com badalo e pequenos arcos de vibração nas laterais",
   Bold: "letra B em negrito, com traços grossos",
   BookOpen: "livro aberto de lado, com duas páginas em forma de V",
+  Bookmark: "marcador de página: faixa vertical com entalhe em V na base",
+  Eraser: "borracha inclinada apagando uma superfície",
   Bot: "rosto de robô quadrado com antenas, olhos e boca",
   CalendarDays: "calendário com duas argolas no topo e pontos de dias na grade",
   Check: "tique simples, em forma de V inclinado para a direita",

@@ -9,7 +9,7 @@ import * as pdfjs from "pdfjs-dist";
 // O worker do PDF.js é resolvido como URL pelo empacotador (Vite) do app.
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { temaEpub, coresDeLeitura, zoomPdf } from "./estilo";
-import type { ConfigLeitura, Formato, ItemSumario, Localizacao } from "./tipos";
+import type { ConfigLeitura, Formato, ItemSumario, Localizacao, ModoCaneta, SelecaoTexto, Traco } from "./tipos";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -36,12 +36,25 @@ export async function lerMetadados(bytes: ArrayBuffer, formato: Formato): Promis
 }
 
 type AoMudar = (loc: Localizacao) => void;
+const SVG_NS = "http://www.w3.org/2000/svg";
+/** Traço grosso (marca-texto) fica translúcido para deixar ler por baixo; fino (caneta) fica opaco. */
+const opacidadePara = (espessura: number): number => (espessura >= 0.015 ? 0.3 : 0.9);
 
 export class Leitor {
   private container: HTMLElement;
   private formato: Formato = "epub";
   private config!: ConfigLeitura;
   private aoMudar: AoMudar = () => {};
+  private aoSelecionar: (s: SelecaoTexto) => void = () => {};
+  private aoTracar: (t: Omit<Traco, "id">) => void = () => {};
+  private aoApagarTraco: (id: string) => void = () => {};
+  private ultimaLoc: Localizacao = {};
+
+  // Caneta do PDF.
+  private modoCaneta: ModoCaneta = "ler";
+  private corTraco = "#2e7a80";
+  private espessuraTraco = 0.004;
+  private tracosGuardados: Traco[] = [];
 
   // Fontes a injetar na página do EPUB (que roda num iframe isolado, sem as
   // fontes do app). Cada uma: família e URL do arquivo.
@@ -104,9 +117,65 @@ export class Leitor {
     }
     this.rendition.themes.default(temaEpub(this.config));
     this.rendition.on("relocated", (loc: any) => {
-      this.aoMudar({ epubCfi: loc?.start?.cfi });
+      this.ultimaLoc = { epubCfi: loc?.start?.cfi };
+      this.aoMudar(this.ultimaLoc);
+    });
+    // Seleção de texto vira um grifo (a pessoa escolhe a cor e confirma).
+    this.rendition.on("selected", (cfiRange: string, contents: any) => {
+      let texto = "";
+      try {
+        texto = contents?.window?.getSelection?.()?.toString?.() ?? "";
+      } catch {
+        // Sem acesso à seleção: o grifo guarda só a posição.
+      }
+      this.aoSelecionar({ cfiRange, texto: texto.trim() });
     });
     await this.rendition.display(inicial?.epubCfi || undefined);
+  }
+
+  /** Adiciona um grifo ao EPUB (cor em hex). */
+  grifar(cfiRange: string, cor: string): void {
+    try {
+      this.rendition?.annotations?.add("highlight", cfiRange, {}, undefined, "grifo-orbita", {
+        fill: cor,
+        "fill-opacity": "0.3",
+        "mix-blend-mode": "multiply",
+      });
+    } catch {
+      // epub.js pode recusar um CFI inválido; ignora.
+    }
+  }
+
+  /** Remove um grifo do EPUB. */
+  removerGrifo(cfiRange: string): void {
+    try {
+      this.rendition?.annotations?.remove(cfiRange, "highlight");
+    } catch {
+      // Já pode ter sido removido.
+    }
+  }
+
+  /** Desenha de novo os grifos guardados (ao abrir ou trocar de página). */
+  aplicarGrifos(grifos: { cfiRange: string; cor: string }[]): void {
+    for (const g of grifos) this.grifar(g.cfiRange, g.cor);
+  }
+
+  /** Limpa a seleção de texto atual dentro do livro. */
+  limparSelecao(): void {
+    try {
+      for (const c of this.rendition?.getContents?.() ?? []) c?.window?.getSelection?.()?.removeAllRanges?.();
+    } catch {
+      // Sem seleção para limpar.
+    }
+  }
+
+  /** Posição atual (CFI no EPUB, página no PDF) — para marcadores e notas. */
+  localizacaoAtual(): Localizacao {
+    return { ...this.ultimaLoc };
+  }
+
+  aoSelecionarTexto(cb: (s: SelecaoTexto) => void): void {
+    this.aoSelecionar = cb;
   }
 
   private async abrirPdf(bytes: ArrayBuffer, inicial?: Localizacao): Promise<void> {
@@ -126,35 +195,188 @@ export class Leitor {
     for (let n = 1; n <= this.pdf.numPages; n++) {
       const pagina = await this.pdf.getPage(n);
       const viewport = pagina.getViewport({ scale: escala * 1.5 });
+      // Uma "folha" por página: o canvas do PDF e, por cima, a camada da caneta.
+      const folha = document.createElement("div");
+      folha.className = "leitor-pdf-folha";
+      folha.dataset.pagina = String(n);
+      folha.style.position = "relative";
+      folha.style.margin = "0 auto 0.75rem";
+      folha.style.width = `${viewport.width}px`;
+      folha.style.maxWidth = "100%";
       const canvas = document.createElement("canvas");
-      canvas.className = "leitor-pdf-pagina";
-      canvas.dataset.pagina = String(n);
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       canvas.style.display = "block";
-      canvas.style.margin = "0 auto 0.75rem";
-      canvas.style.maxWidth = "100%";
+      canvas.style.width = "100%";
+      canvas.style.height = "auto";
       const ctx = canvas.getContext("2d");
       if (ctx) await pagina.render({ canvasContext: ctx, viewport }).promise;
-      this.container.appendChild(canvas);
+      folha.appendChild(canvas);
+      folha.appendChild(this.criarCamadaCaneta(n, viewport.width, viewport.height));
+      this.container.appendChild(folha);
     }
+    this.aplicarModoCaneta();
+    this.redesenharTracos();
     // Observa qual página está visível, para guardar "onde parei".
     const obs = new IntersectionObserver(
       (entradas) => {
         for (const e of entradas) {
           if (e.isIntersecting) {
             this.paginaAtual = Number((e.target as HTMLElement).dataset.pagina) || 1;
-            this.aoMudar({ pdfPagina: this.paginaAtual });
+            this.ultimaLoc = { pdfPagina: this.paginaAtual };
+            this.aoMudar(this.ultimaLoc);
           }
         }
       },
       { root: this.container, threshold: 0.5 },
     );
-    this.container.querySelectorAll(".leitor-pdf-pagina").forEach((c) => obs.observe(c));
+    this.container.querySelectorAll(".leitor-pdf-folha").forEach((c) => obs.observe(c));
+  }
+
+  /** A camada SVG onde a caneta desenha, por cima de uma página do PDF. */
+  private criarCamadaCaneta(pagina: number, largura: number, altura: number): SVGSVGElement {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.classList.add("leitor-pdf-caneta");
+    svg.dataset.pagina = String(pagina);
+    svg.setAttribute("viewBox", `0 0 ${largura} ${altura}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.style.position = "absolute";
+    svg.style.inset = "0";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
+    svg.style.touchAction = "none";
+    this.ligarEventosCaneta(svg, largura, altura);
+    return svg;
+  }
+
+  private ligarEventosCaneta(svg: SVGSVGElement, largura: number, altura: number): void {
+    let atual: SVGPolylineElement | null = null;
+    let pontos: { x: number; y: number }[] = [];
+    const rel = (ev: PointerEvent) => {
+      const r = svg.getBoundingClientRect();
+      return { x: (ev.clientX - r.left) / r.width, y: (ev.clientY - r.top) / r.height };
+    };
+    const apagarEm = (ev: PointerEvent) => {
+      const alvo = ev.target as Element | null;
+      const linha = alvo?.closest?.(".traco-guardado") as SVGElement | null;
+      const id = linha?.dataset?.id;
+      if (id) {
+        linha?.remove();
+        this.tracosGuardados = this.tracosGuardados.filter((t) => t.id !== id);
+        this.aoApagarTraco(id);
+      }
+    };
+    svg.addEventListener("pointerdown", (ev) => {
+      if (this.modoCaneta === "ler") return;
+      ev.preventDefault();
+      svg.setPointerCapture(ev.pointerId);
+      if (this.modoCaneta === "borracha") {
+        apagarEm(ev);
+        return;
+      }
+      pontos = [rel(ev)];
+      atual = document.createElementNS(SVG_NS, "polyline");
+      atual.setAttribute("fill", "none");
+      atual.setAttribute("stroke", this.corTraco);
+      atual.setAttribute("stroke-linecap", "round");
+      atual.setAttribute("stroke-linejoin", "round");
+      atual.setAttribute("stroke-width", String(this.espessuraTraco * largura));
+      atual.setAttribute("stroke-opacity", String(opacidadePara(this.espessuraTraco)));
+      svg.appendChild(atual);
+    });
+    svg.addEventListener("pointermove", (ev) => {
+      if (this.modoCaneta === "ler") return;
+      if (this.modoCaneta === "borracha") {
+        if (ev.buttons) apagarEm(ev);
+        return;
+      }
+      if (!atual) return;
+      pontos.push(rel(ev));
+      atual.setAttribute("points", pontos.map((p) => `${p.x * largura},${p.y * altura}`).join(" "));
+    });
+    const terminar = (ev: PointerEvent) => {
+      if (!atual) return;
+      try {
+        svg.releasePointerCapture(ev.pointerId);
+      } catch {
+        // Sem captura; tudo bem.
+      }
+      if (pontos.length >= 2) {
+        this.aoTracar({
+          pagina: Number(svg.dataset.pagina) || 1,
+          cor: this.corTraco,
+          espessura: this.espessuraTraco,
+          pontos: [...pontos],
+        });
+      }
+      // Some o traço "ao vivo"; ele volta já salvo, via desenharTracos.
+      atual.remove();
+      atual = null;
+      pontos = [];
+    };
+    svg.addEventListener("pointerup", terminar);
+    svg.addEventListener("pointercancel", terminar);
+  }
+
+  private aplicarModoCaneta(): void {
+    const desenhando = this.modoCaneta !== "ler";
+    this.container.querySelectorAll<SVGElement>(".leitor-pdf-caneta").forEach((svg) => {
+      svg.style.pointerEvents = desenhando ? "auto" : "none";
+      svg.style.cursor = this.modoCaneta === "borracha" ? "cell" : desenhando ? "crosshair" : "auto";
+    });
+  }
+
+  /** Redesenha os traços guardados nas páginas certas. */
+  private redesenharTracos(): void {
+    this.container.querySelectorAll(".leitor-pdf-caneta .traco-guardado").forEach((n) => n.remove());
+    for (const t of this.tracosGuardados) {
+      const svg = this.container.querySelector<SVGSVGElement>(`.leitor-pdf-caneta[data-pagina="${t.pagina}"]`);
+      if (!svg) continue;
+      const vb = svg.viewBox.baseVal;
+      const linha = document.createElementNS(SVG_NS, "polyline");
+      linha.classList.add("traco-guardado");
+      linha.dataset.id = t.id;
+      linha.setAttribute("fill", "none");
+      linha.setAttribute("stroke", t.cor);
+      linha.setAttribute("stroke-linecap", "round");
+      linha.setAttribute("stroke-linejoin", "round");
+      linha.setAttribute("stroke-width", String(t.espessura * vb.width));
+      linha.setAttribute("stroke-opacity", String(opacidadePara(t.espessura)));
+      linha.style.pointerEvents = "stroke";
+      linha.setAttribute("points", t.pontos.map((p) => `${p.x * vb.width},${p.y * vb.height}`).join(" "));
+      svg.appendChild(linha);
+    }
+  }
+
+  /** Mostra os traços guardados (chamar ao abrir e quando a lista mudar). */
+  desenharTracos(tracos: Traco[]): void {
+    this.tracosGuardados = [...tracos];
+    this.redesenharTracos();
+  }
+
+  definirModoCaneta(modo: ModoCaneta): void {
+    this.modoCaneta = modo;
+    this.aplicarModoCaneta();
+  }
+
+  definirCorTraco(cor: string): void {
+    this.corTraco = cor;
+  }
+
+  definirEspessuraTraco(rel: number): void {
+    this.espessuraTraco = rel;
+  }
+
+  aoTracarNovo(cb: (t: Omit<Traco, "id">) => void): void {
+    this.aoTracar = cb;
+  }
+
+  aoApagarTracoGuardado(cb: (id: string) => void): void {
+    this.aoApagarTraco = cb;
   }
 
   private irParaPaginaPdf(n: number): void {
-    const alvo = this.container.querySelector<HTMLElement>(`.leitor-pdf-pagina[data-pagina="${n}"]`);
+    const alvo = this.container.querySelector<HTMLElement>(`.leitor-pdf-folha[data-pagina="${n}"]`);
     alvo?.scrollIntoView();
     this.paginaAtual = n;
   }

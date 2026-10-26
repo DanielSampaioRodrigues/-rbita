@@ -47,3 +47,35 @@ export interface ItemSumario {
   destino: string;
   nivel: number;
 }
+
+/** Cores de grifo e caneta, em hex, iguais à paleta de etiquetas do app. */
+export const CORES_ANOTACAO: Record<string, string> = {
+  musgo: "#5b7a4c",
+  mar: "#2e7a80",
+  ceu: "#44709f",
+  lavanda: "#7c68a8",
+  rosa: "#a95b7f",
+  terra: "#94603d",
+  areia: "#8f7738",
+  cinza: "#6f747c",
+};
+
+/** Ferramenta ativa ao ler um PDF. */
+export type ModoCaneta = "ler" | "caneta" | "marcaTexto" | "borracha";
+
+/** Um traço da caneta numa página do PDF; pontos relativos (0 a 1). */
+export interface Traco {
+  id: string;
+  pagina: number;
+  /** Cor em hex. */
+  cor: string;
+  /** Espessura relativa à largura da página (0 a 1). */
+  espessura: number;
+  pontos: { x: number; y: number }[];
+}
+
+/** Um trecho selecionado no EPUB, para virar grifo. */
+export interface SelecaoTexto {
+  cfiRange: string;
+  texto: string;
+}

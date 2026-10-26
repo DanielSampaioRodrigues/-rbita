@@ -1,4 +1,4 @@
 export { Leitor, lerMetadados } from "./leitor";
 export { CORES_FUNDO, coresDeLeitura, estiloDoCorpo, temaEpub, zoomPdf } from "./estilo";
-export { CONFIG_PADRAO } from "./tipos";
-export type { ConfigLeitura, CorFundo, Alinhamento, Modo, Formato, Localizacao, ItemSumario } from "./tipos";
+export { CONFIG_PADRAO, CORES_ANOTACAO } from "./tipos";
+export type { ConfigLeitura, CorFundo, Alinhamento, Modo, Formato, Localizacao, ItemSumario, ModoCaneta, Traco, SelecaoTexto } from "./tipos";
