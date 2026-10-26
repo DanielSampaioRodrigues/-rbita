@@ -1,15 +1,20 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button, Form } from "react-aria-components";
+import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { lerMetadados } from "@orbita/leitor";
 import { api, escolherLivro, type CorEtiqueta, type GrupoLivro, type Livro } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { CampoData } from "../componentes/CampoData";
 import { Confirmar, Janela } from "../componentes/Janela";
+import { pularEntreColunas } from "../componentes/tecladoColunas";
+import { useRecado } from "../app/Recado";
 import { EscolherCor } from "../ideias/etiquetas";
-import { BookOpen, Check, Pencil, Plus, Trash2 } from "../icones";
+import { BookOpen, Check, GripVertical, Pencil, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { LeitorLivro } from "./Leitor";
+
+const SEM = "sem";
 
 const t = textos.leitura;
 const ORDEM: Livro["status"][] = ["lendo", "quero", "pausado", "lido"];
@@ -74,10 +79,81 @@ export function PaginaLeitura() {
 
   if (lendo) return <LeitorLivro livro={lendo} aoFechar={() => setLendo(null)} />;
 
-  // Prateleiras nomeadas primeiro (em ordem), depois os livros sem prateleira.
-  const prateleiras: { id: string; nome: string }[] = [
-    ...grupos.map((g) => ({ id: g.id, nome: g.nome })),
-    { id: "", nome: t.semPrateleira },
+  return (
+    <Estante
+      livros={livros}
+      grupos={grupos}
+      erro={erro}
+      editando={editando}
+      excluindo={excluindo}
+      editandoGrupo={editandoGrupo}
+      excluindoGrupo={excluindoGrupo}
+      setEditando={setEditando}
+      setExcluindo={setExcluindo}
+      setEditandoGrupo={setEditandoGrupo}
+      setExcluindoGrupo={setExcluindoGrupo}
+      setLendo={setLendo}
+      mudarStatus={mudarStatus}
+      mudarGrupo={mudarGrupo}
+      excluir={excluir}
+      excluirGrupo={excluirGrupo}
+    />
+  );
+}
+
+function Estante({
+  livros, grupos, erro, editando, excluindo, editandoGrupo, excluindoGrupo,
+  setEditando, setExcluindo, setEditandoGrupo, setExcluindoGrupo, setLendo,
+  mudarStatus, mudarGrupo, excluir, excluirGrupo,
+}: {
+  livros: Livro[];
+  grupos: GrupoLivro[];
+  erro: string | null;
+  editando: Livro | null;
+  excluindo: Livro | null;
+  editandoGrupo: GrupoLivro | null;
+  excluindoGrupo: GrupoLivro | null;
+  setEditando: (l: Livro | null) => void;
+  setExcluindo: (l: Livro | null) => void;
+  setEditandoGrupo: (g: GrupoLivro | null) => void;
+  setExcluindoGrupo: (g: GrupoLivro | null) => void;
+  setLendo: (l: Livro | null) => void;
+  mudarStatus: (l: Livro, s: string) => void;
+  mudarGrupo: (l: Livro, g: string) => void;
+  excluir: () => void;
+  excluirGrupo: () => void;
+}) {
+  const recado = useRecado();
+  const arrastou = useRef(false);
+  const sensores = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] }, coordinateGetter: pularEntreColunas }),
+  );
+  const livroDe = (id: unknown) => livros.find((l) => l.id === String(id).split("|")[1]);
+  const nomePrateleira = (id: unknown) => (id === SEM ? t.semPrateleira : grupos.find((g) => g.id === id)?.nome ?? "");
+
+  const soltar = async ({ active, over }: DragEndEvent) => {
+    setTimeout(() => (arrastou.current = false), 150);
+    const livro = livroDe(active.id);
+    const origem = String(active.id).split("|")[0];
+    const destino = over?.id as string | undefined;
+    if (!livro || !destino || destino === origem) return;
+    const grupoId = destino === SEM ? "" : destino;
+    try {
+      await api.salvarLivro({ ...livro, grupoId });
+      avisarMudanca();
+      recado(t.movidoPara(livro.titulo, nomePrateleira(destino)));
+    } catch (e) {
+      recado(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  // Prateleiras nomeadas primeiro (sempre visíveis, para poder soltar nelas),
+  // depois os livros sem prateleira (só quando houver algum).
+  const semGrupo = livros.filter((l) => !grupos.some((g) => g.id === l.grupoId));
+  const prateleiras: { id: string; dropId: string; nome: string; grupo: GrupoLivro | null }[] = [
+    ...grupos.map((g) => ({ id: g.id, dropId: g.id, nome: g.nome, grupo: g })),
+    ...(semGrupo.length ? [{ id: "", dropId: SEM, nome: t.semPrateleira, grupo: null }] : []),
   ];
   const ordenar = (a: Livro, b: Livro) =>
     (ORDEM.indexOf(a.status) - ORDEM.indexOf(b.status)) || a.titulo.localeCompare(b.titulo);
@@ -99,33 +175,33 @@ export function PaginaLeitura() {
       {livros.length === 0 ? (
         <section className="cartao largura-leitura esticado"><p className="texto-suave">{t.semLivros}</p></section>
       ) : (
-        prateleiras
-          .filter((p) => (p.id === "" ? livros.some((l) => !grupos.some((g) => g.id === l.grupoId)) : livros.some((l) => l.grupoId === p.id)))
-          .map((p) => {
-            const daPrateleira = (p.id === ""
-              ? livros.filter((l) => !grupos.some((g) => g.id === l.grupoId))
-              : livros.filter((l) => l.grupoId === p.id)
-            ).sort(ordenar);
-            const grupo = grupos.find((g) => g.id === p.id);
+        <DndContext
+          sensors={sensores}
+          onDragStart={() => (arrastou.current = true)}
+          onDragEnd={soltar}
+          onDragCancel={() => (arrastou.current = false)}
+          accessibility={{
+            screenReaderInstructions: { draggable: t.arrastarInstrucoes },
+            announcements: {
+              onDragStart: ({ active }) => `Pegou "${livroDe(active.id)?.titulo ?? ""}".`,
+              onDragOver: ({ active, over }) => (over ? `"${livroDe(active.id)?.titulo ?? ""}" sobre ${nomePrateleira(over.id)}.` : "Fora das prateleiras."),
+              onDragEnd: ({ active, over }) => (over ? `"${livroDe(active.id)?.titulo ?? ""}" solto em ${nomePrateleira(over.id)}.` : "Voltou ao lugar."),
+              onDragCancel: () => "Movimento cancelado.",
+            },
+          }}
+        >
+          {grupos.length > 0 && <p className="texto-suave pequeno">{t.arrastarDica}</p>}
+          {prateleiras.map((p) => {
+            const daPrateleira = livros.filter((l) => (p.id === "" ? !grupos.some((g) => g.id === l.grupoId) : l.grupoId === p.id)).sort(ordenar);
             return (
-              <section key={p.id || "sem"} className="cartao largura-leitura esticado" aria-labelledby={`prat-${p.id || "sem"}`}>
-                <div className="linha-ajuste">
-                  <h2 id={`prat-${p.id || "sem"}`}>{p.nome}</h2>
-                  {grupo && (
-                    <span className="linha-ajuste">
-                      <Button className="botao-icone" onPress={() => setEditandoGrupo(grupo)} aria-label={`${t.prateleiras.editar}: ${grupo.nome}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
-                      <Button className="botao-icone" onPress={() => setExcluindoGrupo(grupo)} aria-label={`${t.prateleiras.excluir}: ${grupo.nome}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
-                    </span>
-                  )}
-                </div>
-                <ul className="lista-simples sem-marcador">
-                  {daPrateleira.map((l) => (
-                    <LivroCartao key={l.id} livro={l} grupos={grupos} aoMudarStatus={mudarStatus} aoMudarGrupo={mudarGrupo} aoLer={() => setLendo(l)} aoEditar={() => setEditando(l)} aoExcluir={() => setExcluindo(l)} />
-                  ))}
-                </ul>
-              </section>
+              <PrateleiraSecao key={p.dropId} dropId={p.dropId} nome={p.nome} grupo={p.grupo} vazia={daPrateleira.length === 0} aoEditarGrupo={setEditandoGrupo} aoExcluirGrupo={setExcluindoGrupo}>
+                {daPrateleira.map((l) => (
+                  <LivroCartao key={l.id} livro={l} grupos={grupos} arrastou={arrastou} aoMudarStatus={mudarStatus} aoMudarGrupo={mudarGrupo} aoLer={() => setLendo(l)} aoEditar={() => setEditando(l)} aoExcluir={() => setExcluindo(l)} />
+                ))}
+              </PrateleiraSecao>
             );
-          })
+          })}
+        </DndContext>
       )}
 
       <Aviso>{erro}</Aviso>
@@ -144,14 +220,59 @@ export function PaginaLeitura() {
   );
 }
 
-function LivroCartao({ livro, grupos, aoMudarStatus, aoMudarGrupo, aoLer, aoEditar, aoExcluir }: { livro: Livro; grupos: GrupoLivro[]; aoMudarStatus: (l: Livro, s: string) => void; aoMudarGrupo: (l: Livro, g: string) => void; aoLer: () => void; aoEditar: () => void; aoExcluir: () => void }) {
+/** Uma prateleira: aceita livros arrastados (droppable) e tem título e ações. */
+function PrateleiraSecao({ dropId, nome, grupo, vazia, aoEditarGrupo, aoExcluirGrupo, children }: {
+  dropId: string;
+  nome: string;
+  grupo: GrupoLivro | null;
+  vazia: boolean;
+  aoEditarGrupo: (g: GrupoLivro) => void;
+  aoExcluirGrupo: (g: GrupoLivro) => void;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: dropId });
+  return (
+    <section ref={setNodeRef} className={isOver ? "cartao largura-leitura esticado prateleira-sobre" : "cartao largura-leitura esticado"} aria-label={nome}>
+      <div className="linha-ajuste">
+        <h2>{nome}</h2>
+        {grupo && (
+          <span className="linha-ajuste">
+            <Button className="botao-icone" onPress={() => aoEditarGrupo(grupo)} aria-label={`${t.prateleiras.editar}: ${grupo.nome}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
+            <Button className="botao-icone" onPress={() => aoExcluirGrupo(grupo)} aria-label={`${t.prateleiras.excluir}: ${grupo.nome}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+          </span>
+        )}
+      </div>
+      {vazia ? (
+        <p className="texto-suave pequeno">{t.prateleiraVazia}</p>
+      ) : (
+        <ul className="lista-simples sem-marcador">{children}</ul>
+      )}
+    </section>
+  );
+}
+
+function LivroCartao({ livro, grupos, arrastou, aoMudarStatus, aoMudarGrupo, aoLer, aoEditar, aoExcluir }: { livro: Livro; grupos: GrupoLivro[]; arrastou: React.MutableRefObject<boolean>; aoMudarStatus: (l: Livro, s: string) => void; aoMudarGrupo: (l: Livro, g: string) => void; aoLer: () => void; aoEditar: () => void; aoExcluir: () => void }) {
   const idStatus = useId();
   const idGrupo = useId();
   const temArquivo = livro.arquivoId !== "" && livro.formato !== "";
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `${livro.grupoId || SEM}|${livro.id}` });
+  const estilo = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   return (
-    <li className="livro-cartao">
+    <li ref={setNodeRef} className={isDragging ? "livro-cartao arrastando" : "livro-cartao"} style={estilo}>
       <div className="linha-ajuste">
         <span className="quebra livro-nome">
+          <span
+            className="livro-alca"
+            {...attributes}
+            {...listeners}
+            role="button"
+            tabIndex={0}
+            aria-roledescription="livro arrastável"
+            aria-label={t.arrastarAlca(livro.titulo)}
+            onClick={(e) => { if (arrastou.current) e.preventDefault(); }}
+          >
+            <GripVertical aria-hidden="true" size="1.1em" />
+          </span>
           <span className={`etiqueta-cor cor-${livro.cor || "cinza"}`} aria-hidden="true" />
           <span>
             <strong>{livro.titulo}</strong>
