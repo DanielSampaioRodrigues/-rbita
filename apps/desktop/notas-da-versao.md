@@ -1,4 +1,10 @@
-- **Caderno (começo): a estante**: uma seção nova para seus **cadernos**. Você cria quantos quiser, escolhendo o **modo** — *caderno* (com páginas A4, A5 ou carta) ou *quadro infinito* (um espaço sem bordas) — organiza em **pastas** e dá uma **capa** (uma cor ou uma da galeria). Por enquanto você monta e organiza os cadernos e as páginas; **a escrita e o desenho à mão, com caneta, vêm no próximo passo**. É a base do maior recurso do app.
+- **Caderno — folhas, modo imersivo e pastas**: abrir um caderno agora ocupa a **tela toda** (estilo GoodNotes); um botão de menu no canto traz a barra do app de volta quando você precisar. Cada página mostra a **folha de verdade** — você escolhe o modelo (**liso, pautado, quadriculado, pontilhado, isométrico, planner ou pauta musical**), a cor do papel e das linhas, o espaçamento, a espessura, a margem e o cabeçalho, com prévia. Cada página pode ter **título** (que aparece num **índice** lateral) e **marcador**. E as **pastas** agora têm cara de pasta mesmo: clique para abrir e organize seus cadernos dentro. **A escrita e o desenho à mão, com caneta, vêm no próximo passo.**
+
+---
+
+<!-- Abaixo: o que veio na 0.44.1. -->
+
+- **Caderno (começo): a estante**: uma seção nova para seus **cadernos**. Você cria quantos quiser, escolhendo o **modo** — *caderno* (com páginas A4, A5 ou carta) ou *quadro infinito* (um espaço sem bordas) — organiza em **pastas** e dá uma **capa** (uma cor ou uma da galeria).
 
 - **Resumo legível dos seus dados (.md)**: em *Ajustes → Exportar meus dados*, um botão novo gera um **documento de texto** com tudo o que você guardou, por seção (ideias, agenda, saúde, dinheiro, estudos…), para **ler ou imprimir** — diferente do JSON, que é mais técnico.
 
