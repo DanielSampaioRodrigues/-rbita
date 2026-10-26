@@ -16,8 +16,8 @@ export const TAMANHOS: Record<Exclude<TamanhoPagina, "infinito">, { largura: num
   carta: { largura: 816, altura: 1056 },
 };
 
-/** Modelo de linhas da folha. */
-export type ModeloPapel = "liso" | "pautado" | "quadriculado" | "pontilhado" | "isometrico" | "planner" | "partitura";
+/** Modelo de linhas da folha. "proprio" usa um arquivo da pessoa (PDF/PNG/SVG). */
+export type ModeloPapel = "liso" | "pautado" | "quadriculado" | "pontilhado" | "isometrico" | "planner" | "partitura" | "proprio";
 
 /** A folha: fundo e linhas. Vale por página (cada página pode ter a sua). */
 export interface Papel {
@@ -27,12 +27,18 @@ export interface Papel {
   corLinha: string;
   /** Distância entre linhas, em px. */
   espacamento: number;
+  /** Espessura das linhas, em px. */
+  espessura: number;
+  /** Linha de margem à esquerda. */
   margem: boolean;
+  /** Linha de cabeçalho no topo. */
   cabecalho: boolean;
+  /** Modelo "proprio": id do anexo (PDF/PNG/SVG) usado como fundo. */
+  anexoId: string;
 }
 
 export function papelPadrao(): Papel {
-  return { modelo: "liso", corPapel: "", corLinha: "", espacamento: 32, margem: false, cabecalho: false };
+  return { modelo: "liso", corPapel: "", corLinha: "", espacamento: 32, espessura: 1, margem: false, cabecalho: false, anexoId: "" };
 }
 
 /** Um ponto do traço, com pressão de 0 a 1 (1 quando não há caneta sensível). */
