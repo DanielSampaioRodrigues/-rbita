@@ -83,6 +83,8 @@ pub fn listar(conn: &Connection) -> Result<Vec<Livro>, Erro> {
                 fim: String::new(),
                 formato: String::new(),
                 arquivo_id: String::new(),
+                grupo_id: String::new(),
+                cor: String::new(),
             });
             Ok(Livro {
                 id: r.get(0)?,
