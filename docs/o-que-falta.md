@@ -32,10 +32,10 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [x] Resumo para levar à consulta: junta remédios e registros do período, para copiar e colar (0.32.0). As perguntas entram com o módulo de Cuidado psicológico. Export direto em PDF/arquivo fica para a etapa de exportação (17).
 - [ ] **Cuidado — reescrita como "meus profissionais de saúde"** (visão acordada 26/10/2026; a 0.33.0 entregou só três listas numa tela, que Dan achou raso):
   - [x] Base: "o que levar", "perguntas" e "o que ficou" numa tela só (0.33.0).
-  - [ ] **Lista de profissionais** (não só psi: neuro, nutri, fisio...), cada um com nome, especialidade e contato. Fronteira decidida: Saúde = coisas, Cuidado = pessoas.
-  - [ ] **Painel por profissional**: consultas (próxima + histórico por data, na Agenda com lembrete), "o que levar"/"o que ficou" por consulta, perguntas, linha do tempo da evolução.
-  - [ ] **Painéis por tipo**: psiquiatra puxa medicação/doses/efeitos da Saúde e monta o resumo; psicólogo acompanha temas.
-  - [ ] **Texto rico** (CampoRico, que já existe) em todo campo de anotação — hoje é texto simples.
+  - [x] **Lista de profissionais** (não só psi: neuro, nutri, fisio...), com abas, nome, especialidade e "sobre" (na branch, ainda não publicado). Fronteira: Saúde = coisas, Cuidado = pessoas. Migra os dados antigos para um profissional "Acompanhamento".
+  - [x] **Painel por profissional**: próxima consulta, "o que levar" (pautas), perguntas, diário de sessões com data e texto rico; remédios atuais da Saúde aparecem no painel (na branch). Falta teste de Dan no Windows.
+  - [x] **Texto rico** (CampoRico) no "sobre" e nas sessões (na branch). Pautas/perguntas seguem como captura rápida (texto simples).
+  - [ ] Histórico de consultas ligado à Agenda (lembrete) e linha do tempo da evolução.
 - [x] ~~Trava extra opcional para saúde e cuidado psicológico~~ — **descartada** (decisão de Dan, 26/10/2026): atrito desnecessário; o cofre já protege tudo.
 - [ ] **Dinheiro** (0.35.0; aprofundado na 0.40.0):
   - [x] Gastos, contas recorrentes, lista de espera, metas (0.35.0).
@@ -45,16 +45,17 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [ ] Avaliar notificar a conta a vencer.
 - [ ] **Vida acadêmica — reescrita como "mesa de estudos"** (visão acordada 26/10/2026; a 0.34.0 entregou só o cadastro, que Dan achou raso):
   - [x] Base: matérias, provas/trabalhos/deveres com data, "o que vem aí", notas e média (0.34.0).
-  - [ ] **Grade de horário semanal** (dias × horários), ligada à semana-modelo da Agenda; aula = bloco fixo da matéria.
-  - [ ] **Matéria = etiqueta de assunto** que atravessa o app (acionável no Leitor e no Caderno). A matéria recolhe tudo do assunto. Sub-assuntos depois.
+  - [x] **Grade de horário semanal** por dias, aula = bloco fixo da matéria (com cor) (na branch, ainda não publicado). Falta ligar à semana-modelo da Agenda e teste de Dan no Windows.
+  - [ ] **Matéria = etiqueta de assunto** que atravessa o app (acionável no Leitor e no Caderno). A matéria recolhe tudo do assunto. Sub-assuntos depois. (Depende do Caderno e de mais Leitor.)
   - [ ] **Trabalhos acadêmicos como projetos** (não só TCC: IC, publicações, artigos, seminários), reusando Projetos, com passos, "onde parei" e **agendamento para trás** ("entrega sexta → comece terça").
-  - [ ] **"O que fazer agora"** no topo (próxima entrega/passo, contagem de dias sentida); liga no modo baixa energia.
+  - [x] **"O que vem aí"** no topo (próximas entregas/provas/deveres por data) — já existe desde a 0.34.0; aprofundar depois com contagem sentida e ligação ao modo baixa energia.
   - [ ] **Conexões**: prova/entrega → evento na Agenda com aviso; "estudar agora" → timer de Foco por matéria; material da aula por matéria (anexos); leituras por assunto na estante.
   - [ ] Encolher nota/média para detalhe opcional dentro da matéria.
   - [ ] Dependências: grifos por assunto precisam do Leitor pronto; páginas por assunto precisam do Caderno.
 - [x] **Hobbies e interesses** (0.36.0): arquivo de interesses/hiperfocos com notas, imagens e links (pelos anexos), sem metas. Falta teste de Dan no Windows.
   - [x] **Quadro livre** por hobby (na branch, ainda não publicado): cartões soltos de texto, arquivo, imagem, link e áudio gravado, arrastáveis pelo mouse e pelo teclado; posição guardada. Áudio pelo microfone (MediaRecorder) salvo no cofre via `anexar_bytes`. **Falta teste de Dan no Windows — o microfone no WebView2 e a renderização não dá para validar na nuvem.**
   - [ ] Redimensionar cartões; conectar cartões; fundo/cor do quadro.
+- [x] **Minha organização** (novo, decidido por Dan 26/10/2026; na branch, ainda não publicado): quadros estilo Trello (colunas com cartões arrastáveis) e listas (itens com caixinha), vários ao mesmo tempo. Falta teste de Dan no Windows. Evoluir: reordenar dentro da coluna, cor por cartão, prazo, ligação com Agenda/Projetos.
 - [ ] **Leitura** (começada na 0.37.0):
   - [x] Estante com status (quero/lendo/lido/pausado) e diário de leitura (onde parei, impressões, datas). Falta teste de Dan no Windows.
   - [x] Pacote `packages/leitor` (sem React/Tauri, reaproveitável no Escuta) com o leitor de EPUB (epub.js) e PDF (PDF.js): fontes (inclusive dislexia), cores de papel, tamanho e modo páginas/rolagem; lembra onde parou (0.38.0). **Falta teste de Dan no Windows — a renderização não foi validada na nuvem.** Limite de 300 MB por arquivo (reusa os anexos do cofre) (0.39.0).
