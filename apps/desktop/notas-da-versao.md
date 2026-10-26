@@ -1,3 +1,5 @@
+- **Hobbies e interesses**: um lugar só seu para guardar interesses e hiperfocos, com notas, imagens e links. Sem metas e sem cobrança — é espaço de prazer.
+
 - **Dinheiro**: uma seção nova. Registre **gastos** por categoria (e marque os de interesse especial, sem julgamento), cadastre **contas que se repetem** com aviso de quando vencem, use a **lista de espera de compras** (anote e espere 1, 2, 3 dias ou uma semana antes de decidir) e acompanhe **metas de reserva** no seu ritmo. Tudo no computador, sem ligar com banco. Importar extrato do banco (OFX/CSV) fica para uma próxima versão.
 
 - **Estudos**: uma seção nova para a escola e a faculdade. Cadastre suas **matérias** (com professor e cor), marque **provas, trabalhos e deveres de casa** com data, e veja o que vem aí. Quando a nota sair, você lança e o Órbita mostra, com calma, como a matéria vem indo — a média de aprovação (6, 7, o que for) você escolhe. Nota aqui é informação, nunca cobrança: sem vermelho, sem "você vai reprovar". As aulas você marca na Agenda, como blocos fixos da semana.

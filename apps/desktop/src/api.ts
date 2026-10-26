@@ -302,6 +302,14 @@ export interface Meta {
   criadoEm: number;
 }
 
+/** Um interesse ou hiperfoco. Imagens e links usam os anexos do item. */
+export interface Hobby {
+  id: string;
+  nome: string;
+  notas: string;
+  criadoEm: number;
+}
+
 /** Matéria (disciplina) da vida acadêmica. */
 export interface Materia {
   /** Vazio ao criar. */
@@ -571,6 +579,9 @@ interface Api {
   listarMetas(): Promise<Meta[]>;
   salvarMeta(meta: Meta): Promise<Meta>;
   excluirMeta(id: string): Promise<void>;
+  listarHobbies(): Promise<Hobby[]>;
+  salvarHobby(hobby: Hobby): Promise<Hobby>;
+  excluirHobby(id: string): Promise<void>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -743,6 +754,9 @@ const nativa: Api = {
   listarMetas: () => chamar("listar_metas"),
   salvarMeta: (meta) => chamar("salvar_meta", { meta }),
   excluirMeta: (id) => chamar("excluir_meta", { id }),
+  listarHobbies: () => chamar("listar_hobbies"),
+  salvarHobby: (hobby) => chamar("salvar_hobby", { hobby }),
+  excluirHobby: (id) => chamar("excluir_hobby", { id }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1404,6 +1418,31 @@ function simularDinheiro() {
   };
 }
 
+function simularHobbies() {
+  const hobbies: Hobby[] = [];
+  return {
+    listarHobbies: async () => hobbies.map((h) => ({ ...h })).sort((a, b) => b.criadoEm - a.criadoEm),
+    salvarHobby: async (h: Hobby) => {
+      const nome = h.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "O interesse precisa de um nome.");
+      const limpo: Hobby = { ...h, nome, notas: h.notas.trim() };
+      if (h.id) {
+        const i = hobbies.findIndex((x) => x.id === h.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Interesse não encontrado.");
+        hobbies[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      hobbies.push(novo);
+      return { ...novo };
+    },
+    excluirHobby: async (id: string) => {
+      const i = hobbies.findIndex((h) => h.id === id);
+      if (i >= 0) hobbies.splice(i, 1);
+    },
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
@@ -1498,6 +1537,7 @@ function criarSimulacao(): Api {
     ...simularCuidado(),
     ...simularAcademico(),
     ...simularDinheiro(),
+    ...simularHobbies(),
     ...comAnexos,
     fazerBackup: async () => {
       await espera();

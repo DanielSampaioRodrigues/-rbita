@@ -9,6 +9,7 @@ pub mod anexos;
 pub mod cuidado;
 pub mod dinheiro;
 pub mod energia;
+pub mod hobbies;
 pub mod etiquetas;
 pub mod eventos;
 pub mod itens;

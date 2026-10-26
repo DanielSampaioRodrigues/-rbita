@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Palette, BatteryMedium, BookOpen, CalendarDays, FolderKanban, Heart, ListChecks, Quote, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
+import { ArrowLeft, ArrowRight, Palette, BatteryMedium, BookOpen, CalendarDays, FolderKanban, Heart, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
 import type { ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Interruptor } from "../componentes/Interruptor";
@@ -7,7 +7,7 @@ import { textos } from "../textos/pt-BR";
 import { formatarRestante, useFoco } from "../foco/Foco";
 import { Marca } from "./Marca";
 
-export type Secao = "inicio" | "ideias" | "projetos" | "agenda" | "rotinas" | "foco" | "energia" | "dinheiro" | "saude" | "cuidado" | "estudos" | "aparencia" | "ajustes";
+export type Secao = "inicio" | "ideias" | "projetos" | "agenda" | "rotinas" | "foco" | "energia" | "dinheiro" | "saude" | "cuidado" | "estudos" | "hobbies" | "aparencia" | "ajustes";
 
 const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "inicio", icone: House, nome: textos.secoes.inicio },
@@ -21,6 +21,7 @@ const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "saude", icone: Heart, nome: textos.secoes.saude },
   { id: "cuidado", icone: Quote, nome: textos.secoes.cuidado },
   { id: "estudos", icone: BookOpen, nome: textos.secoes.estudos },
+  { id: "hobbies", icone: Sparkles, nome: textos.secoes.hobbies },
   { id: "aparencia", icone: Palette, nome: textos.secoes.aparencia },
   { id: "ajustes", icone: SlidersHorizontal, nome: textos.secoes.ajustes },
 ];

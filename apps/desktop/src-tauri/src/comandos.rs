@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, cuidado, dinheiro, energia, etiquetas, eventos, itens, rotinas, saude};
+use crate::banco::{self, academico, anexos, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1289,4 +1289,21 @@ pub async fn salvar_meta(estado: State<'_, Estado>, meta: dinheiro::Meta) -> Res
 #[tauri::command]
 pub async fn excluir_meta(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| dinheiro::excluir_meta(&s.conn, &id))
+}
+
+// ---------- Hobbies e interesses ----------
+
+#[tauri::command]
+pub async fn listar_hobbies(estado: State<'_, Estado>) -> Result<Vec<hobbies::Hobby>, Erro> {
+    estado.com_sessao(|s| hobbies::listar(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_hobby(estado: State<'_, Estado>, hobby: hobbies::Hobby) -> Result<hobbies::Hobby, Erro> {
+    estado.com_sessao(|s| hobbies::salvar(&s.conn, hobby))
+}
+
+#[tauri::command]
+pub async fn excluir_hobby(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| hobbies::excluir(&s.conn, &id))
 }

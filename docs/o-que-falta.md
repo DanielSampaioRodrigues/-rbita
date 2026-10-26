@@ -40,7 +40,7 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [x] Matérias, provas/trabalhos/deveres com data, "o que vem aí" e histórico, notas e média ponderada por matéria com média de aprovação ajustável (calma, sem punição). Falta teste de Dan no Windows.
   - [ ] Aulas ligadas à matéria na semana-modelo da Agenda (hoje a aula é um bloco comum da Agenda, sem vínculo com a matéria).
   - [ ] Leituras com status (a ler, lendo, fichada) e TCC/artigos como projeto — chegam com o módulo de Leitura.
-- [ ] **Hobbies e interesses**: arquivo de hiperfocos com notas, imagens e links, sem metas.
+- [x] **Hobbies e interesses** (0.36.0): arquivo de interesses/hiperfocos com notas, imagens e links (pelos anexos), sem metas. Falta teste de Dan no Windows.
 - [ ] **Leitura**: pacote `packages/leitor` (EPUB e PDF), estante, leitor completo (fontes, cores, régua, voz alta, busca, sumário, dicionário), grifos com cores, notas, fichamentos com ABNT, diário de leitura, busca em todas as anotações, IA para explicar e resumir. Testar o pacote dentro do Escuta.
 - [ ] **Caderno** com os dois modos completos (decisão de Dan): estante, capas e folhas personalizáveis, modo caderno no estilo Goodnotes com páginas, PDF para anotar, caneta com pressão e rejeição da palma, todas as ferramentas (lápis, pincel, marca-texto, borracha, laço, formas, texto, setas, notas adesivas, imagens) e quadro infinito. Cinco etapas no plano da Onda 2.
 - [ ] **Exportação em formatos abertos** de todos os módulos (CSV, Markdown, JSON, ICS para a agenda).

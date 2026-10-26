@@ -210,6 +210,9 @@ pub fn run() {
             comandos::listar_metas,
             comandos::salvar_meta,
             comandos::excluir_meta,
+            comandos::listar_hobbies,
+            comandos::salvar_hobby,
+            comandos::excluir_hobby,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");
