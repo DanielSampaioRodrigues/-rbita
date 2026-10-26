@@ -122,7 +122,7 @@ fn migrar_antigos(conn: &Connection) -> Result<(), Erro> {
     let p = salvar_profissional(conn, Profissional { id: String::new(), nome: "Acompanhamento".into(), especialidade: String::new(), sobre: String::new(), proxima_consulta: String::new(), criado_em: 0 })?;
     let agora = agora_ms();
     // Pautas e perguntas órfãs passam a ser do profissional novo.
-    conn.execute("UPDATE item SET pai_id = ?2, alterado_em = ?3 WHERE tipo IN ('pauta', 'pergunta') AND pai_id IS NULL AND excluido_em IS NULL", params![p.id, agora])?;
+    conn.execute("UPDATE item SET pai_id = ?1, alterado_em = ?2 WHERE tipo IN ('pauta', 'pergunta') AND pai_id IS NULL AND excluido_em IS NULL", params![p.id, agora])?;
     // Sessões antigas (registro) viram sessões do profissional (item), com a data do momento.
     let mut c = conn.prepare("SELECT momento, nota FROM registro WHERE tipo = 'sessao' AND excluido_em IS NULL")?;
     let antigas: Vec<(i64, String)> = c.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<Result<_, _>>()?;
