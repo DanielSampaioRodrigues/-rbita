@@ -72,7 +72,8 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [ ] **Caderno** com os dois modos completos (decisão de Dan): estante, capas e folhas personalizáveis, modo caderno no estilo Goodnotes com páginas, PDF para anotar, caneta com pressão e rejeição da palma, todas as ferramentas (lápis, pincel, marca-texto, borracha, laço, formas, texto, setas, notas adesivas, imagens) e quadro infinito. Cinco etapas no plano da Onda 2.
 - [ ] **Exportação em formatos abertos** de todos os módulos (CSV, Markdown, JSON, ICS para a agenda).
   - [x] Motor de exportação (funções puras testadas) + comando para gravar o arquivo; cartão "Exportar meus dados" em Ajustes: agenda em **ICS**, gastos e registros de saúde em **CSV**, e **tudo** num **JSON** (na branch, ainda não publicado). Falta teste de Dan no Windows.
-  - [ ] CSV dos demais módulos e um resumo em **Markdown** legível de cada seção.
+  - [x] Resumo em **Markdown** legível de todos os módulos (na branch, ainda não publicado). Falta teste de Dan no Windows.
+  - [ ] CSV dos demais módulos tabulares (contas, metas, atividades…), se fizer falta além do Markdown/JSON.
 - [ ] Remédio do modo baixa energia vindo da medicação cadastrada.
 - [ ] Portão: grupo de teste neurodivergente usa e aprova.
 

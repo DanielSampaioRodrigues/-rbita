@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Evento, Gasto, Grupo, RegistroSaude } from "../api";
-import { eventosParaICS, gastosParaCSV, montarJSON, paraCSV, registrosSaudeParaCSV } from "./exportar";
+import { eventosParaICS, gastosParaCSV, montarJSON, paraCSV, paraMarkdown, registrosSaudeParaCSV } from "./exportar";
 
 const evento = (e: Partial<Evento>): Evento => ({
   id: "e1", titulo: "Terapia", inicio: new Date(2026, 9, 15, 14, 30).getTime(), fim: new Date(2026, 9, 15, 15, 30).getTime(),
@@ -67,6 +67,24 @@ describe("exportar (puro)", () => {
   it("ICS: pula eventos da semana-modelo", () => {
     const ics = eventosParaICS([evento({ modelo: true })], 0);
     expect(ics).not.toContain("BEGIN:VEVENT");
+  });
+
+  it("Markdown: seções só aparecem com dados, e formata campos", () => {
+    const md = paraMarkdown({
+      ideias: [{ id: "1", texto: "Farol", criadoEm: 0, nota: "um por capítulo", etiquetas: [], ligadas: [] }],
+      gruposDeGasto: [{ id: "g1", nome: "Mercado", cor: "mar", criadoEm: 0 }],
+      gastos: [{ id: "1", centavos: 500, grupoId: "g1", categoria: "", interesse: true, descricao: "café", momento: new Date(2026, 9, 1, 9, 0).getTime() }],
+      atividades: [{ id: "1", materiaId: "m1", tipo: "prova", titulo: "P1", data: "2026-11-10", peso: null, nota: 8, feita: false, criadoEm: 0 }],
+      materias: [{ id: "m1", nome: "Cálculo", professor: "", cor: "mar", criadoEm: 0 }],
+    });
+    expect(md).toContain("# Meus dados do Órbita");
+    expect(md).toContain("## Ideias");
+    expect(md).toContain("- **Farol** — um por capítulo");
+    expect(md).toContain("· Mercado · interesse especial — café");
+    expect(md).toContain("**P1** (prova) · 10/11/2026 · Cálculo · nota 8");
+    // Sem dados de agenda, a seção não aparece.
+    expect(md).not.toContain("## Agenda");
+    expect(md).not.toContain("## Remédios");
   });
 
   it("JSON empacota com versão e data", () => {

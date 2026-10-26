@@ -1,7 +1,10 @@
 // Exportação em formatos abertos: ICS (agenda), CSV (tabelas) e JSON (tudo).
 // Tudo puro (sem DOM, sem relógio além do que entra por parâmetro), para testar.
 
-import type { Evento, Gasto, Grupo, RegistroSaude } from "../api";
+import type {
+  Atividade, Aula, Conta, Desejo, Evento, Gasto, Grupo, Hobby, Ideia, Livro,
+  Materia, Meta, PlanoSaude, Profissional, Projeto, Quadro, RegistroSaude, Remedio,
+} from "../api";
 import { formatarMoeda } from "../dinheiro/moeda";
 
 // ---------- CSV ----------
@@ -128,6 +131,78 @@ export function eventosParaICS(eventos: Evento[], agora = Date.now()): string {
   const corpo = eventos.filter((e) => !e.modelo).flatMap((e) => vevento(e, carimbo));
   const linhas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Orbita//Agenda//PT", "CALSCALE:GREGORIAN", ...corpo, "END:VCALENDAR"];
   return linhas.map(dobrar).join("\r\n") + "\r\n";
+}
+
+// ---------- Markdown (resumo legível) ----------
+
+/** Tudo o que o resumo em Markdown sabe formatar. Qualquer parte pode faltar. */
+export interface DadosResumo {
+  ideias?: Ideia[];
+  projetos?: Projeto[];
+  agenda?: Evento[];
+  remedios?: Remedio[];
+  registrosDeSaude?: RegistroSaude[];
+  planosDeSaude?: PlanoSaude[];
+  profissionais?: Profissional[];
+  materias?: Materia[];
+  atividades?: Atividade[];
+  aulas?: Aula[];
+  gruposDeGasto?: Grupo[];
+  gastos?: Gasto[];
+  contas?: Conta[];
+  desejos?: Desejo[];
+  metas?: Meta[];
+  hobbies?: Hobby[];
+  quadros?: Quadro[];
+  livros?: Livro[];
+}
+
+const DIAS_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+const ROTULO_TIPO_SAUDE: Record<string, string> = {
+  sono: "Sono", sintoma: "Sintoma", sobrecarga: "Sobrecarga", coisa_boa: "Coisa boa", potencialidade: "Potencialidade", regulacao: "Regulação",
+};
+
+/** "AAAA-MM-DD" → "DD/MM/AAAA"; vazio continua vazio. */
+function dataBR(iso: string): string {
+  const [a, m, d] = iso.split("-");
+  return a && m && d ? `${d}/${m}/${a}` : iso;
+}
+
+/** Uma seção "## título" com uma linha por item; nada sai se a lista estiver vazia. */
+function secao<T>(titulo: string, itens: T[] | undefined, linha: (x: T) => string): string {
+  if (!itens || itens.length === 0) return "";
+  return `## ${titulo}\n\n${itens.map((x) => `- ${linha(x)}`).join("\n")}\n`;
+}
+
+/**
+ * Um documento legível com o que a pessoa guardou, por seção. Pensado para ler
+ * e imprimir, não para reimportar (para isso há o JSON).
+ */
+export function paraMarkdown(dados: DadosResumo, agora = Date.now()): string {
+  const grupo = new Map((dados.gruposDeGasto ?? []).map((g) => [g.id, g.nome]));
+  const materia = new Map((dados.materias ?? []).map((m) => [m.id, m.nome]));
+  const partes: string[] = [
+    `# Meus dados do Órbita`,
+    `Gerado em ${dataHoraLocal(agora)}.`,
+    secao("Ideias", dados.ideias, (i) => `**${i.texto}**${i.nota ? ` — ${i.nota}` : ""}`),
+    secao("Projetos", dados.projetos, (p) => `**${p.titulo}** (${p.estado})${p.prazo ? ` · entrega ${dataBR(p.prazo)}` : ""} · ${p.tarefasFeitas}/${p.tarefasTotal} tarefas`),
+    secao("Agenda", dados.agenda, (e) => `**${e.titulo}** — ${e.diaInteiro ? dataHoraLocal(e.inicio).slice(0, 10) : dataHoraLocal(e.inicio)}${e.repeticao ? " (repete)" : ""}`),
+    secao("Remédios", dados.remedios, (r) => `**${r.nome}**${r.dose ? ` — ${r.dose}` : ""}${r.horarios.length ? ` · ${r.horarios.join(", ")}` : ""}${r.estado === "pausado" ? " · pausado" : ""}`),
+    secao("Registros de saúde", dados.registrosDeSaude, (r) => `${dataHoraLocal(r.momento)} · ${ROTULO_TIPO_SAUDE[r.tipo] ?? r.tipo}${r.intensidade != null ? ` (${r.intensidade}/5)` : ""}${r.nota ? ` — ${r.nota}` : ""}`),
+    secao("Planos de crise e estratégias", dados.planosDeSaude, (p) => `**${p.titulo}** (${p.tipo})`),
+    secao("Profissionais de saúde", dados.profissionais, (p) => `**${p.nome}**${p.especialidade ? ` — ${p.especialidade}` : ""}${p.proximaConsulta ? ` · próxima: ${dataBR(p.proximaConsulta)}` : ""}`),
+    secao("Matérias", dados.materias, (m) => `**${m.nome}**${m.professor ? ` — ${m.professor}` : ""}`),
+    secao("Provas, trabalhos e deveres", dados.atividades, (a) => `**${a.titulo}** (${a.tipo}) · ${dataBR(a.data)}${materia.get(a.materiaId) ? ` · ${materia.get(a.materiaId)}` : ""}${a.nota != null ? ` · nota ${a.nota}` : ""}`),
+    secao("Aulas", dados.aulas, (a) => `${DIAS_SEMANA[a.diaSemana]} · ${a.inicio}–${a.fim}${materia.get(a.materiaId) ? ` · ${materia.get(a.materiaId)}` : ""}`),
+    secao("Gastos", dados.gastos, (g) => `${dataHoraLocal(g.momento)} · ${formatarMoeda(g.centavos)}${grupo.get(g.grupoId) ? ` · ${grupo.get(g.grupoId)}` : ""}${g.interesse ? " · interesse especial" : ""}${g.descricao ? ` — ${g.descricao}` : ""}`),
+    secao("Contas que se repetem", dados.contas, (c) => `**${c.nome}** — ${formatarMoeda(c.centavos)} · vence dia ${c.diaVencimento}`),
+    secao("Metas de reserva", dados.metas, (m) => `**${m.nome}** — ${formatarMoeda(m.guardadoCentavos)} de ${formatarMoeda(m.alvoCentavos)}`),
+    secao("Lista de espera", dados.desejos, (d) => `**${d.nome}**${d.centavos ? ` — ${formatarMoeda(d.centavos)}` : ""} (${d.estado})`),
+    secao("Hobbies e interesses", dados.hobbies, (h) => `**${h.nome}**${h.notas ? ` — ${h.notas}` : ""}`),
+    secao("Minha organização", dados.quadros, (q) => `**${q.nome}** (${q.estilo})`),
+    secao("Leitura", dados.livros, (l) => `**${l.titulo}**${l.autor ? ` — ${l.autor}` : ""} (${l.status})`),
+  ];
+  return partes.filter(Boolean).join("\n") + "\n";
 }
 
 // ---------- JSON (tudo) ----------

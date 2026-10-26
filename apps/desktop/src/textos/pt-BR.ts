@@ -383,10 +383,11 @@ export const textos = {
     titulo: "Exportar meus dados",
     explicacao: "Leve seus dados para fora do Órbita em formatos abertos, que qualquer programa abre. Diferente do backup, estes arquivos não são criptografados — guarde num lugar seguro.",
     feito: "Arquivo salvo.",
-    ajuda: "A agenda (.ics) importa no Google Agenda e afins. As planilhas (.csv) abrem no Excel ou no Google Planilhas. O “tudo” (.json) traz todos os módulos num arquivo só.",
+    ajuda: "A agenda (.ics) importa no Google Agenda e afins. As planilhas (.csv) abrem no Excel ou no Google Planilhas. O resumo (.md) é um documento legível para ler ou imprimir. O “tudo” (.json) traz todos os módulos num arquivo só.",
     agenda: { botao: "Agenda (.ics)", arquivo: "orbita-agenda", filtro: "Agenda (iCalendar)" },
     gastos: { botao: "Gastos (.csv)", arquivo: "orbita-gastos", filtro: "Planilha (CSV)" },
     saude: { botao: "Registros de saúde (.csv)", arquivo: "orbita-saude", filtro: "Planilha (CSV)" },
+    resumo: { botao: "Resumo legível (.md)", arquivo: "orbita-resumo", filtro: "Texto (Markdown)" },
     tudo: { botao: "Tudo (.json)", arquivo: "orbita-dados", filtro: "Dados (JSON)" },
   },
   backup: {
