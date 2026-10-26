@@ -314,6 +314,10 @@ export interface Livro {
   /** "AAAA-MM-DD", opcionais. */
   inicio: string;
   fim: string;
+  /** "epub", "pdf" ou vazio (só acompanhamento). */
+  formato: string;
+  /** Id do anexo com o arquivo do livro, quando houver. */
+  arquivoId: string;
   criadoEm: number;
 }
 
@@ -601,6 +605,8 @@ interface Api {
   salvarLivro(livro: Livro): Promise<Livro>;
   mudarStatusLivro(id: string, status: string): Promise<void>;
   excluirLivro(id: string): Promise<void>;
+  /** Conteúdo de um anexo em base64 (para abrir um livro no leitor). */
+  bytesAnexo(id: string): Promise<string>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -780,6 +786,7 @@ const nativa: Api = {
   salvarLivro: (livro) => chamar("salvar_livro", { livro }),
   mudarStatusLivro: (id, status) => chamar("mudar_status_livro", { id, status }),
   excluirLivro: (id) => chamar("excluir_livro", { id }),
+  bytesAnexo: (id) => chamar("bytes_anexo", { id }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1499,6 +1506,8 @@ function simularLeitura() {
       const i = livros.findIndex((l) => l.id === id);
       if (i >= 0) livros.splice(i, 1);
     },
+    // No navegador não há arquivo guardado; o leitor mostra um aviso.
+    bytesAnexo: async () => "",
   };
 }
 
@@ -1896,6 +1905,13 @@ export async function escolherArquivoParaAnexar(soImagens = false): Promise<stri
   if (!noApp) return soImagens ? "C:\\Users\\Dan\\Imagens\\copo-de-agua.png" : "C:\\Users\\Dan\\Imagens\\esboço-da-capa.png";
   const filters = soImagens ? [{ name: "Imagens", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }] : undefined;
   const caminho = await open({ multiple: false, directory: false, filters });
+  return typeof caminho === "string" ? caminho : null;
+}
+
+/** Escolhe um arquivo EPUB ou PDF para a estante. */
+export async function escolherLivro(): Promise<string | null> {
+  if (!noApp) return "C:\\Users\\Dan\\Livros\\dom-casmurro.epub";
+  const caminho = await open({ multiple: false, directory: false, filters: [{ name: "Livros", extensions: ["epub", "pdf"] }] });
   return typeof caminho === "string" ? caminho : null;
 }
 

@@ -1,12 +1,13 @@
 import { useEffect, useId, useState } from "react";
 import { Button, Form } from "react-aria-components";
-import { api, type Livro } from "../api";
+import { api, escolherLivro, type Livro } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { CampoData } from "../componentes/CampoData";
 import { Confirmar, Janela } from "../componentes/Janela";
-import { Pencil, Plus, Trash2 } from "../icones";
+import { BookOpen, Pencil, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
+import { LeitorLivro } from "./Leitor";
 
 const t = textos.leitura;
 const ORDEM: Livro["status"][] = ["lendo", "quero", "pausado", "lido"];
@@ -14,13 +15,14 @@ const fmtData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short
 const dataLegivel = (iso: string) => (iso ? fmtData.format(new Date(`${iso}T00:00:00`)) : "");
 
 function livroNovo(): Livro {
-  return { id: "", titulo: "", autor: "", status: "quero", ondeParei: "", impressoes: "", inicio: "", fim: "", criadoEm: 0 };
+  return { id: "", titulo: "", autor: "", status: "quero", ondeParei: "", impressoes: "", inicio: "", fim: "", formato: "", arquivoId: "", criadoEm: 0 };
 }
 
 export function PaginaLeitura() {
   const [livros, setLivros] = useState<Livro[]>([]);
   const [editando, setEditando] = useState<Livro | null>(null);
   const [excluindo, setExcluindo] = useState<Livro | null>(null);
+  const [lendo, setLendo] = useState<Livro | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
 
@@ -39,6 +41,8 @@ export function PaginaLeitura() {
     setExcluindo(null);
     avisarMudanca();
   };
+
+  if (lendo) return <LeitorLivro livro={lendo} aoFechar={() => setLendo(null)} />;
 
   return (
     <div className="pagina">
@@ -59,7 +63,7 @@ export function PaginaLeitura() {
             <h2 id={`estante-${st}`}>{t.status[st as keyof typeof t.status]}</h2>
             <ul className="lista-simples sem-marcador">
               {livros.filter((l) => l.status === st).map((l) => (
-                <LivroCartao key={l.id} livro={l} aoMudarStatus={mudarStatus} aoEditar={() => setEditando(l)} aoExcluir={() => setExcluindo(l)} />
+                <LivroCartao key={l.id} livro={l} aoMudarStatus={mudarStatus} aoLer={() => setLendo(l)} aoEditar={() => setEditando(l)} aoExcluir={() => setExcluindo(l)} />
               ))}
             </ul>
           </section>
@@ -77,8 +81,9 @@ export function PaginaLeitura() {
   );
 }
 
-function LivroCartao({ livro, aoMudarStatus, aoEditar, aoExcluir }: { livro: Livro; aoMudarStatus: (l: Livro, s: string) => void; aoEditar: () => void; aoExcluir: () => void }) {
+function LivroCartao({ livro, aoMudarStatus, aoLer, aoEditar, aoExcluir }: { livro: Livro; aoMudarStatus: (l: Livro, s: string) => void; aoLer: () => void; aoEditar: () => void; aoExcluir: () => void }) {
   const idStatus = useId();
+  const temArquivo = livro.arquivoId !== "" && livro.formato !== "";
   return (
     <li className="livro-cartao">
       <div className="linha-ajuste">
@@ -87,6 +92,9 @@ function LivroCartao({ livro, aoMudarStatus, aoEditar, aoExcluir }: { livro: Liv
           {livro.autor && <span className="texto-suave"> {t.porAutor(livro.autor)}</span>}
         </span>
         <span className="linha-ajuste">
+          {temArquivo && (
+            <Button className="botao" onPress={aoLer}><BookOpen aria-hidden="true" size="1.1em" /> {t.abrir}</Button>
+          )}
           <Button className="botao-icone" onPress={aoEditar} aria-label={`${t.editar}: ${livro.titulo}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
           <Button className="botao-icone" onPress={aoExcluir} aria-label={`${t.excluir}: ${livro.titulo}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
         </span>
@@ -120,15 +128,28 @@ function FormLivro({ inicial, aoFechar }: { inicial: Livro; aoFechar: () => void
   const [impressoes, setImpressoes] = useState(inicial.impressoes);
   const [inicio, setInicio] = useState(inicial.inicio);
   const [fim, setFim] = useState(inicial.fim);
+  const [caminho, setCaminho] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const idStatus = useId();
   const editando = inicial.id !== "";
+  const temArquivo = inicial.arquivoId !== "" || caminho !== null;
+
+  const escolher = async () => {
+    const c = await escolherLivro();
+    if (c) setCaminho(c);
+  };
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
     try {
-      await api.salvarLivro({ ...inicial, titulo, autor, status, ondeParei, impressoes, inicio, fim });
+      const salvo = await api.salvarLivro({ ...inicial, titulo, autor, status, ondeParei, impressoes, inicio, fim });
+      // Se escolheu um arquivo novo, anexa ao livro e guarda o formato.
+      if (caminho) {
+        const anexo = await api.anexarArquivo(salvo.id, caminho);
+        const formato = caminho.toLowerCase().endsWith(".pdf") ? "pdf" : "epub";
+        await api.salvarLivro({ ...salvo, formato, arquivoId: anexo.id });
+      }
       avisarMudanca();
       aoFechar();
     } catch (err) {
@@ -147,6 +168,13 @@ function FormLivro({ inicial, aoFechar }: { inicial: Livro; aoFechar: () => void
             <option key={st} value={st}>{t.status[st as keyof typeof t.status]}</option>
           ))}
         </select>
+      </div>
+      <div className="campo">
+        <span className="campo-rotulo">{t.form.arquivo}</span>
+        <div className="linha-ajuste">
+          <Button className="botao" onPress={() => void escolher()}>{t.form.escolherArquivo}</Button>
+          <span className="texto-suave quebra">{caminho ? t.form.arquivoEscolhido : temArquivo ? t.form.arquivoEscolhido : t.form.semArquivo}</span>
+        </div>
       </div>
       <Campo rotulo={t.ondeParei} valor={ondeParei} aoMudar={setOndeParei} multilinha />
       <Campo rotulo={t.impressoes} valor={impressoes} aoMudar={setImpressoes} multilinha />

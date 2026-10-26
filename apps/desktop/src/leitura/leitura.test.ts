@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { api, type Livro } from "../api";
 
 const livro = (titulo: string, status = "quero"): Livro => ({
-  id: "", titulo, autor: "Autor", status, ondeParei: "", impressoes: "", inicio: "", fim: "", criadoEm: 0,
+  id: "", titulo, autor: "Autor", status, ondeParei: "", impressoes: "", inicio: "", fim: "", formato: "", arquivoId: "", criadoEm: 0,
 });
 
 async function limpar() {

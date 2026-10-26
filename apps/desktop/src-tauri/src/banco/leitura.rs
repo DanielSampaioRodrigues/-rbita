@@ -34,6 +34,12 @@ pub struct Livro {
     pub inicio: String,
     #[serde(default)]
     pub fim: String,
+    /// "epub", "pdf" ou vazio (só acompanhamento, sem arquivo).
+    #[serde(default)]
+    pub formato: String,
+    /// Id do anexo com o arquivo do livro, quando houver.
+    #[serde(default)]
+    pub arquivo_id: String,
     #[serde(default)]
     pub criado_em: i64,
 }
@@ -46,6 +52,10 @@ struct DadosLivro {
     impressoes: String,
     inicio: String,
     fim: String,
+    #[serde(default)]
+    formato: String,
+    #[serde(default)]
+    arquivo_id: String,
 }
 
 pub fn listar(conn: &Connection) -> Result<Vec<Livro>, Erro> {
@@ -61,6 +71,8 @@ pub fn listar(conn: &Connection) -> Result<Vec<Livro>, Erro> {
                 impressoes: String::new(),
                 inicio: String::new(),
                 fim: String::new(),
+                formato: String::new(),
+                arquivo_id: String::new(),
             });
             Ok(Livro {
                 id: r.get(0)?,
@@ -71,6 +83,8 @@ pub fn listar(conn: &Connection) -> Result<Vec<Livro>, Erro> {
                 impressoes: d.impressoes,
                 inicio: d.inicio,
                 fim: d.fim,
+                formato: d.formato,
+                arquivo_id: d.arquivo_id,
                 criado_em: r.get(4)?,
             })
         })?
@@ -93,6 +107,8 @@ pub fn salvar(conn: &Connection, mut livro: Livro) -> Result<Livro, Erro> {
         impressoes: livro.impressoes.trim().to_string(),
         inicio: livro.inicio.clone(),
         fim: livro.fim.clone(),
+        formato: livro.formato.clone(),
+        arquivo_id: livro.arquivo_id.clone(),
     })
     .map_err(|e| Erro::Interno(e.to_string()))?;
     let agora = agora_ms();
@@ -148,7 +164,7 @@ mod testes {
     }
 
     fn livro(titulo: &str, status: &str) -> Livro {
-        Livro { id: String::new(), titulo: titulo.into(), autor: "Autor".into(), status: status.into(), onde_parei: String::new(), impressoes: String::new(), inicio: String::new(), fim: String::new(), criado_em: 0 }
+        Livro { id: String::new(), titulo: titulo.into(), autor: "Autor".into(), status: status.into(), onde_parei: String::new(), impressoes: String::new(), inicio: String::new(), fim: String::new(), formato: String::new(), arquivo_id: String::new(), criado_em: 0 }
     }
 
     #[test]

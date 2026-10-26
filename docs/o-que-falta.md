@@ -43,7 +43,8 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [x] **Hobbies e interesses** (0.36.0): arquivo de interesses/hiperfocos com notas, imagens e links (pelos anexos), sem metas. Falta teste de Dan no Windows.
 - [ ] **Leitura** (começada na 0.37.0):
   - [x] Estante com status (quero/lendo/lido/pausado) e diário de leitura (onde parei, impressões, datas). Falta teste de Dan no Windows.
-  - [ ] Pacote `packages/leitor` (sem React/Tauri, reaproveitável no Escuta) com o leitor de EPUB (epub.js) e PDF (PDF.js): fontes, cores, régua de leitura, voz alta, busca, sumário, dicionário. **Confirmar a escolha das bibliotecas com Dan antes de começar.**
+  - [x] Pacote `packages/leitor` (sem React/Tauri, reaproveitável no Escuta) com o leitor de EPUB (epub.js) e PDF (PDF.js): fontes (inclusive dislexia), cores de papel, tamanho e modo páginas/rolagem; lembra onde parou (0.38.0). **Falta teste de Dan no Windows — a renderização não foi validada na nuvem.** Limite de 20 MB por arquivo (reusa os anexos do cofre).
+  - [ ] No leitor: régua de leitura, leitura em voz alta, busca no livro, sumário navegável, dicionário.
   - [ ] Grifos com cores de significado, notas na margem, marcadores.
   - [ ] Fichamentos (citação, resumo, comentário, paráfrase) com ABNT; exportar Word/PDF/Markdown.
   - [ ] Busca em todas as anotações; IA opcional para explicar/resumir. Testar o pacote dentro do Escuta.

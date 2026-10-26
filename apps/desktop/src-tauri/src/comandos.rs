@@ -1329,3 +1329,13 @@ pub async fn mudar_status_livro(estado: State<'_, Estado>, id: String, status: S
 pub async fn excluir_livro(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| leitura::excluir(&s.conn, &id))
 }
+
+/// Bytes de um anexo em base64, para abrir um livro (EPUB/PDF) no leitor.
+#[tauri::command]
+pub async fn bytes_anexo(estado: State<'_, Estado>, id: String) -> Result<String, Erro> {
+    use base64::Engine;
+    estado.com_sessao(|s| {
+        let bytes = anexos::conteudo(&s.conn, &id)?;
+        Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+    })
+}

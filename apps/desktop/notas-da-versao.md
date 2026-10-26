@@ -1,3 +1,5 @@
+- **Leitura — o leitor de EPUB e PDF**: agora dá para anexar um arquivo EPUB ou PDF a um livro da estante e abrir para ler dentro do Órbita. No leitor você ajusta a cor do papel (branco, creme, pólen, cinza, escuro), a fonte (inclusive uma para dislexia), o tamanho da letra e o modo (páginas ou rolagem); ele lembra onde você parou. Grifos, fichamentos, leitura em voz alta e busca vêm nos próximos passos.
+
 - **Leitura — a estante**: a primeira parte do módulo de Leitura. Guarde seus livros com status (quero ler, lendo, lido, pausado — abandonar não é fracasso), mova um livro de prateleira com um toque, e mantenha o diário de leitura de cada um: onde parei, impressões e as datas de início e fim. O leitor de EPUB e PDF, com grifos e fichamentos, vem num próximo passo.
 
 - **Hobbies e interesses**: um lugar só seu para guardar interesses e hiperfocos, com notas, imagens e links. Sem metas e sem cobrança — é espaço de prazer.

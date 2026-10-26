@@ -217,6 +217,7 @@ pub fn run() {
             comandos::salvar_livro,
             comandos::mudar_status_livro,
             comandos::excluir_livro,
+            comandos::bytes_anexo,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

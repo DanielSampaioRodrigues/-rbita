@@ -653,3 +653,14 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 /* Cartão de livro na estante: um bloco com título, diário e o seletor de status. */
 .livro-cartao { padding: var(--espaco-3) 0; display: flex; flex-direction: column; gap: var(--espaco-2); }
 .livro-cartao + .livro-cartao { border-top: 1px solid var(--cor-borda-suave); }
+
+/* Leitor de livro em tela cheia. */
+.leitor-tela { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--cor-fundo); }
+.leitor-barra { display: flex; align-items: center; gap: var(--espaco-3); padding: var(--espaco-2) var(--espaco-3); border-bottom: 1px solid var(--cor-borda-suave); flex-wrap: wrap; }
+.leitor-titulo { flex: 1; min-width: 8rem; }
+.leitor-controles { display: flex; align-items: center; gap: var(--espaco-2); flex-wrap: wrap; }
+.leitor-conteudo { flex: 1; display: flex; align-items: stretch; min-height: 0; }
+.leitor-pagina { flex: 1; min-width: 0; height: 100%; overflow: auto; }
+.leitor-seta { display: flex; align-items: center; justify-content: center; min-width: 3rem; border: none; background: none; color: var(--cor-texto); cursor: pointer; }
+.leitor-seta[data-hovered] { background: var(--cor-superficie-alternativa); }
+.leitor-aviso { padding: var(--espaco-3); }
