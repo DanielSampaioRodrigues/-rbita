@@ -365,18 +365,29 @@ fn hora_valida(h: &str) -> bool {
     matches!((hh.parse::<u32>(), mm.parse::<u32>()), (Ok(hh), Ok(mm)) if hh < 24 && mm < 60)
 }
 
-// ---------- Registros curtos: sono, sintomas e sobrecarga sensorial ----------
+// ---------- Registros curtos: difíceis e bons ----------
+//
+// A Saúde não é só carga negativa: além de sono, sintoma e sobrecarga, a pessoa
+// registra o que vai bem — uma coisa boa, uma potencialidade exercida, um
+// momento de regulação. Tudo com a mesma captura rápida (intensidade + nota).
 
-const TIPOS_REGISTRO: [&str; 3] = ["sono", "sintoma", "sobrecarga"];
+const TIPOS_REGISTRO: [&str; 6] = ["sono", "sintoma", "sobrecarga", "coisa_boa", "potencialidade", "regulacao"];
+/// Quais registros são do lado positivo (para os gráficos separarem).
+pub const TIPOS_POSITIVOS: [&str; 3] = ["coisa_boa", "potencialidade", "regulacao"];
+
+/// Lista dos tipos entre aspas para o `IN (...)` do SQL (strings nossas, seguras).
+fn lista_tipos_sql() -> String {
+    TIPOS_REGISTRO.iter().map(|t| format!("'{t}'")).collect::<Vec<_>>().join(", ")
+}
 
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RegistroSaude {
     pub id: String,
-    /// "sono", "sintoma" ou "sobrecarga".
+    /// "sono", "sintoma", "sobrecarga", "coisa_boa", "potencialidade" ou "regulacao".
     pub tipo: String,
     pub momento: i64,
-    /// De 1 a 5 (horas de sono, força do sintoma, nível de sobrecarga). Opcional.
+    /// De 1 a 5. Opcional. Nos positivos, o quanto ajudou/foi marcante.
     pub intensidade: Option<u8>,
     pub nota: String,
 }
@@ -404,13 +415,15 @@ pub fn registrar(conn: &Connection, tipo: &str, intensidade: Option<u8>, nota: &
     Ok(r)
 }
 
-/// Os registros de sono, sintoma e sobrecarga no intervalo, dos mais novos aos mais antigos.
+/// Os registros de saúde (difíceis e bons) no intervalo, dos mais novos aos mais antigos.
 pub fn listar_registros(conn: &Connection, de: i64, ate: i64) -> Result<Vec<RegistroSaude>, Erro> {
-    let mut c = conn.prepare(
+    let sql = format!(
         "SELECT id, tipo, momento, valor, nota FROM registro
-         WHERE tipo IN ('sono', 'sintoma', 'sobrecarga') AND excluido_em IS NULL
+         WHERE tipo IN ({}) AND excluido_em IS NULL
            AND momento >= ?1 AND momento < ?2 ORDER BY momento DESC",
-    )?;
+        lista_tipos_sql(),
+    );
+    let mut c = conn.prepare(&sql)?;
     let lista = c
         .query_map(params![de, ate], |r| {
             let v: ValorRegistro = serde_json::from_str(&r.get::<_, String>(3)?).unwrap_or(ValorRegistro { intensidade: None });
@@ -421,21 +434,31 @@ pub fn listar_registros(conn: &Connection, de: i64, ate: i64) -> Result<Vec<Regi
 }
 
 pub fn excluir_registro(conn: &Connection, id: &str) -> Result<(), Erro> {
-    conn.execute(
-        "UPDATE registro SET excluido_em = ?2, alterado_em = ?2
-         WHERE id = ?1 AND tipo IN ('sono', 'sintoma', 'sobrecarga')",
-        params![id, agora_ms()],
-    )?;
+    let sql = format!(
+        "UPDATE registro SET excluido_em = ?2, alterado_em = ?2 WHERE id = ?1 AND tipo IN ({})",
+        lista_tipos_sql(),
+    );
+    conn.execute(&sql, params![id, agora_ms()])?;
     Ok(())
 }
 
-// ---------- Plano de crise ----------
+// ---------- Planos de crise e estratégias ----------
+//
+// A pessoa cria vários planos, não só um. Cada plano é de "crise" (sinais, o que
+// ajuda, com quem falar) ou de "estrategia" (o que me faz bem, o que me regula,
+// meus apoios). Os três campos servem aos dois; a interface rotula conforme o
+// tipo. Guardados na tabela `item` (tipo 'plano_saude'); o tipo em `estado`.
 
-/// Escrito num momento bom, para ter à mão num momento ruim: sinais, o que
-/// ajuda e com quem falar. Guardado como configuração dentro do cofre.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+const TIPOS_PLANO: [&str; 2] = ["crise", "estrategia"];
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct PlanoDeCrise {
+pub struct PlanoSaude {
+    #[serde(default)]
+    pub id: String,
+    /// "crise" ou "estrategia".
+    pub tipo: String,
+    pub titulo: String,
     #[serde(default)]
     pub sinais: String,
     #[serde(default)]
@@ -446,17 +469,103 @@ pub struct PlanoDeCrise {
     pub atualizado_em: i64,
 }
 
-pub fn plano_de_crise(conn: &Connection) -> Result<PlanoDeCrise, Erro> {
-    Ok(ler_config(conn, CONFIG_PLANO)?.and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default())
+#[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct DadosPlano {
+    #[serde(default)]
+    sinais: String,
+    #[serde(default)]
+    ajuda: String,
+    #[serde(default)]
+    contatos: String,
 }
 
-pub fn salvar_plano_de_crise(conn: &Connection, mut plano: PlanoDeCrise) -> Result<PlanoDeCrise, Erro> {
+/// Formato antigo: um plano de crise único guardado em `config`.
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct PlanoAntigo {
+    #[serde(default)]
+    sinais: String,
+    #[serde(default)]
+    ajuda: String,
+    #[serde(default)]
+    contatos: String,
+}
+
+/// Move o plano de crise antigo (config) para a coleção, uma única vez.
+fn migrar_plano_antigo(conn: &Connection) -> Result<(), Erro> {
+    let Some(texto) = ler_config(conn, CONFIG_PLANO)? else { return Ok(()) };
+    let antigo: PlanoAntigo = serde_json::from_str(&texto).unwrap_or_default();
+    // Só migra se tiver algo escrito e ainda não houver planos.
+    let tem_algo = !(antigo.sinais.is_empty() && antigo.ajuda.is_empty() && antigo.contatos.is_empty());
+    let ja_existem: i64 = conn.query_row(
+        "SELECT count(*) FROM item WHERE tipo = 'plano_saude' AND excluido_em IS NULL",
+        [],
+        |r| r.get(0),
+    )?;
+    if tem_algo && ja_existem == 0 {
+        salvar_plano(
+            conn,
+            PlanoSaude { id: String::new(), tipo: "crise".into(), titulo: "Plano de crise".into(), sinais: antigo.sinais, ajuda: antigo.ajuda, contatos: antigo.contatos, atualizado_em: 0 },
+        )?;
+    }
+    // Apaga a config antiga para não migrar de novo.
+    crate::banco::apagar_config(conn, CONFIG_PLANO)?;
+    Ok(())
+}
+
+pub fn listar_planos(conn: &Connection) -> Result<Vec<PlanoSaude>, Erro> {
+    migrar_plano_antigo(conn)?;
+    let mut c = conn.prepare(
+        "SELECT id, estado, titulo, dados, alterado_em FROM item
+         WHERE tipo = 'plano_saude' AND excluido_em IS NULL
+         ORDER BY CASE estado WHEN 'crise' THEN 0 ELSE 1 END, titulo COLLATE NOCASE",
+    )?;
+    let lista = c
+        .query_map([], |r| {
+            let d: DadosPlano = serde_json::from_str(&r.get::<_, String>(3)?).unwrap_or_default();
+            Ok(PlanoSaude { id: r.get(0)?, tipo: r.get(1)?, titulo: r.get(2)?, sinais: d.sinais, ajuda: d.ajuda, contatos: d.contatos, atualizado_em: r.get(4)? })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(lista)
+}
+
+pub fn salvar_plano(conn: &Connection, mut plano: PlanoSaude) -> Result<PlanoSaude, Erro> {
+    if !TIPOS_PLANO.contains(&plano.tipo.as_str()) {
+        return Err(Erro::Interno("tipo de plano desconhecido".into()));
+    }
+    plano.titulo = plano.titulo.trim().to_string();
+    if plano.titulo.is_empty() {
+        plano.titulo = if plano.tipo == "crise" { "Plano de crise".into() } else { "Estratégia".into() };
+    }
     plano.sinais = plano.sinais.trim().to_string();
     plano.ajuda = plano.ajuda.trim().to_string();
     plano.contatos = plano.contatos.trim().to_string();
-    plano.atualizado_em = agora_ms();
-    gravar_config(conn, CONFIG_PLANO, &serde_json::to_string(&plano).map_err(|e| Erro::Interno(e.to_string()))?)?;
+    let dados = serde_json::to_string(&DadosPlano { sinais: plano.sinais.clone(), ajuda: plano.ajuda.clone(), contatos: plano.contatos.clone() })
+        .map_err(|e| Erro::Interno(e.to_string()))?;
+    let agora = agora_ms();
+    plano.atualizado_em = agora;
+    if plano.id.is_empty() {
+        plano.id = novo_id();
+        conn.execute(
+            "INSERT INTO item (id, tipo, estado, titulo, dados, criado_em, alterado_em) VALUES (?1, 'plano_saude', ?2, ?3, ?4, ?5, ?5)",
+            params![plano.id, plano.tipo, plano.titulo, dados, agora],
+        )?;
+    } else {
+        let n = conn.execute(
+            "UPDATE item SET estado = ?2, titulo = ?3, dados = ?4, alterado_em = ?5 WHERE id = ?1 AND tipo = 'plano_saude' AND excluido_em IS NULL",
+            params![plano.id, plano.tipo, plano.titulo, dados, agora],
+        )?;
+        if n == 0 {
+            return Err(Erro::Interno("plano não encontrado".into()));
+        }
+    }
     Ok(plano)
+}
+
+pub fn excluir_plano(conn: &Connection, id: &str) -> Result<(), Erro> {
+    conn.execute("UPDATE item SET excluido_em = ?2, alterado_em = ?2 WHERE id = ?1 AND tipo = 'plano_saude'", params![id, agora_ms()])?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -579,13 +688,42 @@ mod testes {
     }
 
     #[test]
-    fn plano_de_crise_salva_e_volta() {
+    fn registra_coisas_boas_tambem() {
         let (_p, conn) = banco();
-        assert_eq!(plano_de_crise(&conn).unwrap(), PlanoDeCrise::default());
-        let p = PlanoDeCrise { sinais: "  mãos suando ".into(), ajuda: "respirar".into(), contatos: "mãe".into(), atualizado_em: 0 };
-        let salvo = salvar_plano_de_crise(&conn, p).unwrap();
-        assert_eq!(salvo.sinais, "mãos suando");
-        assert!(salvo.atualizado_em > 0);
-        assert_eq!(plano_de_crise(&conn).unwrap().contatos, "mãe");
+        registrar(&conn, "coisa_boa", Some(5), " caminhada no sol ").unwrap();
+        registrar(&conn, "potencialidade", None, "foco no hiperfoco").unwrap();
+        registrar(&conn, "regulacao", Some(4), "respiração").unwrap();
+        let rs = listar_registros(&conn, 0, i64::MAX).unwrap();
+        assert_eq!(rs.len(), 3);
+        assert!(rs.iter().all(|r| TIPOS_POSITIVOS.contains(&r.tipo.as_str())));
+        assert_eq!(rs.iter().find(|r| r.tipo == "coisa_boa").unwrap().nota, "caminhada no sol");
+    }
+
+    #[test]
+    fn planos_colecao_valida_ordena_e_exclui() {
+        let (_p, conn) = banco();
+        salvar_plano(&conn, PlanoSaude { id: String::new(), tipo: "estrategia".into(), titulo: "  O que me regula ".into(), sinais: "música".into(), ajuda: "".into(), contatos: "".into(), atualizado_em: 0 }).unwrap();
+        let crise = salvar_plano(&conn, PlanoSaude { id: String::new(), tipo: "crise".into(), titulo: "".into(), sinais: " mãos suando ".into(), ajuda: "respirar".into(), contatos: "mãe".into(), atualizado_em: 0 }).unwrap();
+        assert_eq!(crise.titulo, "Plano de crise"); // título vazio vira padrão
+        assert!(salvar_plano(&conn, PlanoSaude { id: String::new(), tipo: "xpto".into(), titulo: "x".into(), sinais: "".into(), ajuda: "".into(), contatos: "".into(), atualizado_em: 0 }).is_err());
+        let planos = listar_planos(&conn).unwrap();
+        assert_eq!(planos.len(), 2);
+        assert_eq!(planos[0].tipo, "crise"); // crise primeiro
+        assert_eq!(planos[0].sinais, "mãos suando");
+        assert_eq!(planos[1].titulo, "O que me regula");
+        excluir_plano(&conn, &crise.id).unwrap();
+        assert_eq!(listar_planos(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn migra_plano_de_crise_antigo_para_a_colecao() {
+        let (_p, conn) = banco();
+        gravar_config(&conn, CONFIG_PLANO, r#"{"sinais":"aperto no peito","ajuda":"sair do barulho","contatos":"irmã"}"#).unwrap();
+        let planos = listar_planos(&conn).unwrap();
+        assert_eq!(planos.len(), 1);
+        assert_eq!((planos[0].tipo.as_str(), planos[0].sinais.as_str(), planos[0].contatos.as_str()), ("crise", "aperto no peito", "irmã"));
+        // Config antiga apagada: não duplica numa segunda leitura.
+        assert_eq!(listar_planos(&conn).unwrap().len(), 1);
+        assert!(ler_config(&conn, CONFIG_PLANO).unwrap().is_none());
     }
 }

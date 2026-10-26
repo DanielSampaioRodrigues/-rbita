@@ -1139,13 +1139,18 @@ pub async fn excluir_registro_saude(estado: State<'_, Estado>, id: String) -> Re
 }
 
 #[tauri::command]
-pub async fn plano_de_crise(estado: State<'_, Estado>) -> Result<saude::PlanoDeCrise, Erro> {
-    estado.com_sessao(|s| saude::plano_de_crise(&s.conn))
+pub async fn listar_planos(estado: State<'_, Estado>) -> Result<Vec<saude::PlanoSaude>, Erro> {
+    estado.com_sessao(|s| saude::listar_planos(&s.conn))
 }
 
 #[tauri::command]
-pub async fn salvar_plano_de_crise(estado: State<'_, Estado>, plano: saude::PlanoDeCrise) -> Result<saude::PlanoDeCrise, Erro> {
-    estado.com_sessao(|s| saude::salvar_plano_de_crise(&s.conn, plano))
+pub async fn salvar_plano(estado: State<'_, Estado>, plano: saude::PlanoSaude) -> Result<saude::PlanoSaude, Erro> {
+    estado.com_sessao(|s| saude::salvar_plano(&s.conn, plano))
+}
+
+#[tauri::command]
+pub async fn excluir_plano(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| saude::excluir_plano(&s.conn, &id))
 }
 
 // ---------- Cuidado psicológico e psiquiátrico ----------

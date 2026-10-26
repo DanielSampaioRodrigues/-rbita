@@ -10,7 +10,7 @@ import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.saude.registros;
-type Tipo = "sono" | "sintoma" | "sobrecarga";
+type Tipo = "sono" | "sintoma" | "sobrecarga" | "coisa_boa" | "potencialidade" | "regulacao";
 const fmtDataHora = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 export function RegistrosSaude() {
@@ -50,14 +50,23 @@ export function RegistrosSaude() {
   return (
     <Form className="formulario" onSubmit={registrar}>
       <Segmentado
-        rotulo={t.titulo}
-        rotuloOculto
-        valor={tipo}
+        rotulo={t.ladoDificil}
+        valor={["sono", "sintoma", "sobrecarga"].includes(tipo) ? tipo : "sono"}
         aoMudar={(v) => setTipo(v as Tipo)}
         opcoes={[
           { valor: "sono", nome: t.tipos.sono },
           { valor: "sintoma", nome: t.tipos.sintoma },
           { valor: "sobrecarga", nome: t.tipos.sobrecarga },
+        ]}
+      />
+      <Segmentado
+        rotulo={t.ladoBom}
+        valor={["coisa_boa", "potencialidade", "regulacao"].includes(tipo) ? tipo : ("" as Tipo)}
+        aoMudar={(v) => setTipo(v as Tipo)}
+        opcoes={[
+          { valor: "coisa_boa", nome: t.tipos.coisa_boa },
+          { valor: "potencialidade", nome: t.tipos.potencialidade },
+          { valor: "regulacao", nome: t.tipos.regulacao },
         ]}
       />
 

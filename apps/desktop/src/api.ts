@@ -223,10 +223,14 @@ export interface AvisoSaude {
   quanto: number;
 }
 
-/** Registro curto de sono, sintoma ou sobrecarga sensorial. */
+/** Tipos de registro de saúde: difíceis e também positivos. */
+export type TipoRegistroSaude = "sono" | "sintoma" | "sobrecarga" | "coisa_boa" | "potencialidade" | "regulacao";
+/** Os tipos do lado positivo (para separar nos gráficos). */
+export const TIPOS_SAUDE_POSITIVOS: TipoRegistroSaude[] = ["coisa_boa", "potencialidade", "regulacao"];
+
+/** Registro curto de saúde, difícil (sono/sintoma/sobrecarga) ou positivo. */
 export interface RegistroSaude {
   id: string;
-  /** "sono", "sintoma" ou "sobrecarga". */
   tipo: string;
   momento: number;
   /** De 1 a 5; null quando não se aplica. */
@@ -234,8 +238,14 @@ export interface RegistroSaude {
   nota: string;
 }
 
-/** Plano de crise, escrito num momento bom para ter à mão num momento ruim. */
-export interface PlanoDeCrise {
+/** Tipo de plano: de crise ou de estratégia/potencialidade. */
+export type TipoPlano = "crise" | "estrategia";
+
+/** Um plano de crise ou estratégia, escrito num momento bom. A pessoa pode ter vários. */
+export interface PlanoSaude {
+  id: string;
+  tipo: TipoPlano;
+  titulo: string;
   sinais: string;
   ajuda: string;
   contatos: string;
@@ -644,8 +654,9 @@ interface Api {
   registrarSaude(tipo: string, intensidade: number | null, nota: string): Promise<RegistroSaude>;
   listarRegistrosSaude(de: number, ate: number): Promise<RegistroSaude[]>;
   excluirRegistroSaude(id: string): Promise<void>;
-  planoDeCrise(): Promise<PlanoDeCrise>;
-  salvarPlanoDeCrise(plano: PlanoDeCrise): Promise<PlanoDeCrise>;
+  listarPlanos(): Promise<PlanoSaude[]>;
+  salvarPlano(plano: PlanoSaude): Promise<PlanoSaude>;
+  excluirPlano(id: string): Promise<void>;
   /** `tipo`: "pauta" (o que levar) ou "pergunta" (para o psiquiatra). */
   listarNotasCuidado(tipo: string): Promise<Nota[]>;
   criarNotaCuidado(tipo: string, texto: string): Promise<Nota>;
@@ -842,8 +853,9 @@ const nativa: Api = {
   registrarSaude: (tipo, intensidade, nota) => chamar("registrar_saude", { tipo, intensidade, nota }),
   listarRegistrosSaude: (de, ate) => chamar("listar_registros_saude", { de, ate }),
   excluirRegistroSaude: (id) => chamar("excluir_registro_saude", { id }),
-  planoDeCrise: () => chamar("plano_de_crise"),
-  salvarPlanoDeCrise: (plano) => chamar("salvar_plano_de_crise", { plano }),
+  listarPlanos: () => chamar("listar_planos"),
+  salvarPlano: (plano) => chamar("salvar_plano", { plano }),
+  excluirPlano: (id) => chamar("excluir_plano", { id }),
   listarNotasCuidado: (tipo) => chamar("listar_notas_cuidado", { tipo }),
   criarNotaCuidado: (tipo, texto) => chamar("criar_nota_cuidado", { tipo, texto }),
   marcarNotaCuidado: (id, feita) => chamar("marcar_nota_cuidado", { id, feita }),
@@ -1298,7 +1310,7 @@ function simularSaude() {
   // Doses tomadas: chave "remedioId|horario|data".
   const tomadas = new Set<string>();
   const registros: RegistroSaude[] = [];
-  let plano: PlanoDeCrise = { sinais: "", ajuda: "", contatos: "", atualizadoEm: 0 };
+  const planos: PlanoSaude[] = [];
   const normalizar = (hs: string[]) =>
     [...new Set(hs.map((h) => h.trim()).filter(Boolean))].filter((h) => /^\d{2}:\d{2}$/.test(h)).sort();
   if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
@@ -1363,7 +1375,7 @@ function simularSaude() {
       return avisos;
     },
     registrarSaude: async (tipo: string, intensidade: number | null, nota: string) => {
-      if (!["sono", "sintoma", "sobrecarga"].includes(tipo)) throw new ErroOrbita("interno", "Tipo de registro desconhecido.");
+      if (!["sono", "sintoma", "sobrecarga", "coisa_boa", "potencialidade", "regulacao"].includes(tipo)) throw new ErroOrbita("interno", "Tipo de registro desconhecido.");
       if (intensidade !== null && (intensidade < 1 || intensidade > 5)) throw new ErroOrbita("interno", "A intensidade vai de 1 a 5.");
       const r: RegistroSaude = { id: crypto.randomUUID(), tipo, momento: Date.now(), intensidade, nota: nota.trim() };
       registros.push(r);
@@ -1375,10 +1387,25 @@ function simularSaude() {
       const i = registros.findIndex((r) => r.id === id);
       if (i >= 0) registros.splice(i, 1);
     },
-    planoDeCrise: async () => ({ ...plano }),
-    salvarPlanoDeCrise: async (p: PlanoDeCrise) => {
-      plano = { sinais: p.sinais.trim(), ajuda: p.ajuda.trim(), contatos: p.contatos.trim(), atualizadoEm: Date.now() };
-      return { ...plano };
+    listarPlanos: async () =>
+      planos.map((p) => ({ ...p })).sort((a, b) => (a.tipo === b.tipo ? a.titulo.localeCompare(b.titulo) : a.tipo === "crise" ? -1 : 1)),
+    salvarPlano: async (p: PlanoSaude) => {
+      if (!["crise", "estrategia"].includes(p.tipo)) throw new ErroOrbita("interno", "Tipo de plano desconhecido.");
+      const titulo = p.titulo.trim() || (p.tipo === "crise" ? "Plano de crise" : "Estratégia");
+      const limpo: PlanoSaude = { ...p, titulo, sinais: p.sinais.trim(), ajuda: p.ajuda.trim(), contatos: p.contatos.trim(), atualizadoEm: Date.now() };
+      if (p.id) {
+        const i = planos.findIndex((x) => x.id === p.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Plano não encontrado.");
+        planos[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID() };
+      planos.push(novo);
+      return { ...novo };
+    },
+    excluirPlano: async (id: string) => {
+      const i = planos.findIndex((p) => p.id === id);
+      if (i >= 0) planos.splice(i, 1);
     },
   };
 }

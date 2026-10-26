@@ -77,11 +77,26 @@ describe("saúde: registros e plano de crise (simulação)", () => {
     expect(await api.listarRegistrosSaude(agora - 1000, agora + 60_000)).toHaveLength(1);
   });
 
-  it("salva o plano de crise e carimba a data", async () => {
-    expect((await api.planoDeCrise()).sinais).toBe("");
-    const salvo = await api.salvarPlanoDeCrise({ sinais: "  mãos suando ", ajuda: "respirar", contatos: "mãe", atualizadoEm: 0 });
-    expect(salvo.sinais).toBe("mãos suando");
-    expect(salvo.atualizadoEm).toBeGreaterThan(0);
-    expect((await api.planoDeCrise()).contatos).toBe("mãe");
+  it("registra também o lado positivo", async () => {
+    const agora = Date.now();
+    await api.registrarSaude("coisa_boa", 5, "sol");
+    await api.registrarSaude("potencialidade", null, "foco");
+    const tipos = (await api.listarRegistrosSaude(agora - 1000, agora + 60_000)).map((r) => r.tipo);
+    expect(tipos).toContain("coisa_boa");
+    expect(tipos).toContain("potencialidade");
+  });
+
+  it("planos: cria crise e estratégia, ordena, valida e apaga", async () => {
+    for (const p of await api.listarPlanos()) await api.excluirPlano(p.id);
+    await api.salvarPlano({ id: "", tipo: "estrategia", titulo: "  Me regula ", sinais: "música", ajuda: "", contatos: "", atualizadoEm: 0 });
+    const crise = await api.salvarPlano({ id: "", tipo: "crise", titulo: "", sinais: " mãos suando ", ajuda: "respirar", contatos: "mãe", atualizadoEm: 0 });
+    expect(crise.titulo).toBe("Plano de crise"); // título vazio vira padrão
+    expect(crise.sinais).toBe("mãos suando");
+    expect(crise.atualizadoEm).toBeGreaterThan(0);
+    await expect(api.salvarPlano({ id: "", tipo: "xpto" as "crise", titulo: "x", sinais: "", ajuda: "", contatos: "", atualizadoEm: 0 })).rejects.toThrow();
+    const planos = await api.listarPlanos();
+    expect(planos.map((p) => p.tipo)).toEqual(["crise", "estrategia"]); // crise primeiro
+    await api.excluirPlano(crise.id);
+    expect(await api.listarPlanos()).toHaveLength(1);
   });
 });

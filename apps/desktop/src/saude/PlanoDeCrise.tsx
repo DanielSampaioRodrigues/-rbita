@@ -1,92 +1,120 @@
 import { useEffect, useState } from "react";
 import { Button, Form } from "react-aria-components";
-import { api, type PlanoDeCrise } from "../api";
+import { api, type PlanoSaude, type TipoPlano } from "../api";
 import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
-import { Janela } from "../componentes/Janela";
+import { Confirmar, Janela } from "../componentes/Janela";
+import { Pencil, Plus, Trash2 } from "../icones";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.saude.plano;
 const fmtData = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" });
 
-const vazio: PlanoDeCrise = { sinais: "", ajuda: "", contatos: "", atualizadoEm: 0 };
+function planoVazio(tipo: TipoPlano): PlanoSaude {
+  return { id: "", tipo, titulo: "", sinais: "", ajuda: "", contatos: "", atualizadoEm: 0 };
+}
 
+/** Janela dos planos de crise e estratégias. A pessoa pode ter vários. */
 export function JanelaPlanoDeCrise({ aberta, aoFechar }: { aberta: boolean; aoFechar: () => void }) {
-  const [plano, setPlano] = useState<PlanoDeCrise>(vazio);
-  const [editando, setEditando] = useState(false);
-  const [rascunho, setRascunho] = useState<PlanoDeCrise>(vazio);
+  const [planos, setPlanos] = useState<PlanoSaude[]>([]);
+  const [editando, setEditando] = useState<PlanoSaude | null>(null);
+  const [excluindo, setExcluindo] = useState<PlanoSaude | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const recado = useRecado();
 
+  const carregar = () => api.listarPlanos().then(setPlanos, (e) => setErro(e instanceof Error ? e.message : String(e)));
   useEffect(() => {
     if (!aberta) return;
-    setEditando(false);
+    setEditando(null);
     setErro(null);
-    api.planoDeCrise().then(
-      (p) => {
-        setPlano(p);
-        setRascunho(p);
-        // Se está tudo vazio, já abre no modo de escrever.
-        if (!p.sinais && !p.ajuda && !p.contatos) setEditando(true);
-      },
-      (e) => setErro(e instanceof Error ? e.message : String(e)),
-    );
+    void carregar();
   }, [aberta]);
 
-  const salvar = async (e: React.FormEvent) => {
+  const salvar = async (p: PlanoSaude) => {
+    await api.salvarPlano(p);
+    setEditando(null);
+    await carregar();
+    recado(t.salvo);
+  };
+
+  const excluir = async () => {
+    if (!excluindo) return;
+    await api.excluirPlano(excluindo.id);
+    setExcluindo(null);
+    await carregar();
+  };
+
+  return (
+    <Janela titulo={t.titulo} aberta={aberta} aoFechar={aoFechar} larga>
+      {editando ? (
+        <FormPlano inicial={editando} aoSalvar={salvar} aoCancelar={() => setEditando(null)} />
+      ) : (
+        <>
+          <p className="texto-suave">{t.intro}</p>
+          {planos.length === 0 ? (
+            <p>{t.semPlanos}</p>
+          ) : (
+            <ul className="lista-simples sem-marcador">
+              {planos.map((p) => (
+                <li key={p.id} className="cartao compacto">
+                  <div className="linha-ajuste">
+                    <strong className="quebra">
+                      <span className={`livro-selo`}>{t.tipos[p.tipo]}</span> {p.titulo}
+                    </strong>
+                    <span className="linha-ajuste">
+                      <Button className="botao-icone" onPress={() => setEditando(p)} aria-label={`${t.editar}: ${p.titulo}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
+                      <Button className="botao-icone" onPress={() => setExcluindo(p)} aria-label={`${t.excluir}: ${p.titulo}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+                    </span>
+                  </div>
+                  <Secao titulo={t.campos[p.tipo].sinais} texto={p.sinais} />
+                  <Secao titulo={t.campos[p.tipo].ajuda} texto={p.ajuda} />
+                  <Secao titulo={t.campos[p.tipo].contatos} texto={p.contatos} />
+                  {p.atualizadoEm > 0 && <p className="campo-ajuda">{t.atualizadoEm(fmtData.format(p.atualizadoEm))}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Aviso>{erro}</Aviso>
+          <div className="botoes">
+            <Button className="botao principal" onPress={() => setEditando(planoVazio("crise"))}><Plus aria-hidden="true" size="1.1em" /> {t.adicionarCrise}</Button>
+            <Button className="botao" onPress={() => setEditando(planoVazio("estrategia"))}><Plus aria-hidden="true" size="1.1em" /> {t.adicionarEstrategia}</Button>
+          </div>
+        </>
+      )}
+
+      <Confirmar titulo={t.excluir} texto={excluindo ? t.confirmarExcluir(excluindo.titulo) : ""} confirmar={t.excluir} aberta={excluindo !== null} aoCancelar={() => setExcluindo(null)} aoConfirmar={() => void excluir()} />
+    </Janela>
+  );
+}
+
+function FormPlano({ inicial, aoSalvar, aoCancelar }: { inicial: PlanoSaude; aoSalvar: (p: PlanoSaude) => void; aoCancelar: () => void }) {
+  const [plano, setPlano] = useState<PlanoSaude>(inicial);
+  const [erro, setErro] = useState<string | null>(null);
+  const campos = t.campos[plano.tipo];
+
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
     try {
-      const salvo = await api.salvarPlanoDeCrise(rascunho);
-      setPlano(salvo);
-      setRascunho(salvo);
-      setEditando(false);
-      recado(t.salvo);
+      await aoSalvar(plano);
     } catch (err) {
       setErro(err instanceof Error ? err.message : String(err));
     }
   };
 
-  const vazioAgora = !plano.sinais && !plano.ajuda && !plano.contatos;
-
   return (
-    <Janela titulo={t.titulo} aberta={aberta} aoFechar={aoFechar}>
-      <p className="texto-suave">{t.intro}</p>
-
-      {editando ? (
-        <Form className="formulario" onSubmit={salvar}>
-          <Campo rotulo={t.sinais} valor={rascunho.sinais} aoMudar={(v) => setRascunho((p) => ({ ...p, sinais: v }))} multilinha descricao={t.sinaisAjuda} autoFocus />
-          <Campo rotulo={t.ajuda} valor={rascunho.ajuda} aoMudar={(v) => setRascunho((p) => ({ ...p, ajuda: v }))} multilinha descricao={t.ajudaAjuda} />
-          <Campo rotulo={t.contatos} valor={rascunho.contatos} aoMudar={(v) => setRascunho((p) => ({ ...p, contatos: v }))} multilinha descricao={t.contatosAjuda} />
-          <Aviso>{erro}</Aviso>
-          <div className="janela-acoes">
-            {!vazioAgora && (
-              <Button className="botao" onPress={() => { setRascunho(plano); setEditando(false); }}>{textos.comum.cancelar}</Button>
-            )}
-            <Button className="botao principal" type="submit">{t.salvar}</Button>
-          </div>
-        </Form>
-      ) : vazioAgora ? (
-        <>
-          <p>{t.vazio}</p>
-          <Aviso>{erro}</Aviso>
-          <div className="janela-acoes">
-            <Button className="botao principal" onPress={() => setEditando(true)}>{t.editar}</Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <Secao titulo={t.sinais} texto={plano.sinais} />
-          <Secao titulo={t.ajuda} texto={plano.ajuda} />
-          <Secao titulo={t.contatos} texto={plano.contatos} />
-          {plano.atualizadoEm > 0 && <p className="campo-ajuda">{t.atualizadoEm(fmtData.format(plano.atualizadoEm))}</p>}
-          <Aviso>{erro}</Aviso>
-          <div className="janela-acoes">
-            <Button className="botao" onPress={() => setEditando(true)}>{t.editar}</Button>
-          </div>
-        </>
-      )}
-    </Janela>
+    <Form className="formulario" onSubmit={enviar}>
+      <p className="texto-suave">{t.tipos[plano.tipo]}</p>
+      <Campo rotulo={t.titulo_campo} valor={plano.titulo} aoMudar={(v) => setPlano((p) => ({ ...p, titulo: v }))} maximo={80} semDitado autoFocus />
+      <Campo rotulo={campos.sinais} valor={plano.sinais} aoMudar={(v) => setPlano((p) => ({ ...p, sinais: v }))} multilinha descricao={campos.sinaisAjuda} />
+      <Campo rotulo={campos.ajuda} valor={plano.ajuda} aoMudar={(v) => setPlano((p) => ({ ...p, ajuda: v }))} multilinha descricao={campos.ajudaAjuda} />
+      <Campo rotulo={campos.contatos} valor={plano.contatos} aoMudar={(v) => setPlano((p) => ({ ...p, contatos: v }))} multilinha descricao={campos.contatosAjuda} />
+      <Aviso>{erro}</Aviso>
+      <div className="janela-acoes">
+        <Button className="botao" onPress={aoCancelar}>{textos.comum.cancelar}</Button>
+        <Button className="botao principal" type="submit">{t.salvar}</Button>
+      </div>
+    </Form>
   );
 }
 
