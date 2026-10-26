@@ -1,3 +1,11 @@
+- **Hobbies viraram quadros livres**: cada interesse agora abre num **quadro** em tela cheia, onde você solta o que quiser — **texto, arquivos (PDF, docx…), imagens, links e áudios gravados na hora** pelo microfone — e **arrasta cada coisa** para o lugar que fizer sentido (dá para mover pelo teclado também: setas movem, Delete apaga). Imagem abre ampliada, arquivo e link abrem no programa ou navegador, o texto você escreve no próprio cartão e o áudio toca ali mesmo. Tudo fica guardado no cofre; nada sai do computador.
+
+- **Leitor com marcadores, notas e grifos**: dentro do leitor agora dá para **marcar a página** onde você está, escrever uma **nota** e, no **EPUB**, **grifar** um trecho selecionado escolhendo a cor (com uma nota opcional). Um **painel lateral** lista tudo, com "ir até aqui" e apagar.
+
+- **Caneta no PDF**: no PDF você pode **riscar e marcar à mão** com caneta, marca-texto (translúcido, dá para ler por baixo) e borracha, escolhendo cor e espessura. Os desenhos ficam salvos.
+
+- **Arrastar livros entre prateleiras**: na biblioteca, pegue um livro pela alça (⠿) e arraste para outra prateleira — com o mouse ou pelo teclado. O seletor de prateleira em cada livro continua, para quem preferir.
+
 - **Biblioteca em prateleiras**: organize a estante em **prateleiras** (faculdade, lazer, quadrinhos — o que você quiser) e mova cada livro de prateleira num toque. Cada livro agora tem uma **cor** para você reconhecer de relance, e o status (quero ler, lendo, lido, pausado) aparece como uma etiqueta ao lado do título. (Arrastar os livros com o mouse vem no próximo passo.)
 
 - **Leitor com mais ajustes**: o painel de ajustes do leitor ganhou **espaçamento entre linhas**, **margem** e **alinhamento** (à esquerda ou justificado), além da cor do papel, fonte, tamanho e modo que já tinham. E a **troca de fonte no EPUB agora funciona de verdade** (antes não mudava nada).
