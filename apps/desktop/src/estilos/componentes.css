@@ -732,7 +732,9 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .org-alca { display: inline-flex; align-items: center; color: var(--cor-texto-suave); cursor: grab; touch-action: none; padding: 0.1rem; }
 .org-alca:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
 .org-cartao-check { display: inline-flex; align-items: center; }
-.org-cartao-texto { flex: 1; min-width: 0; }
+.org-cartao-texto { flex: 1; min-width: 0; text-align: left; background: none; border: none; color: inherit; font: inherit; cursor: text; padding: 0.1rem 0.2rem; border-radius: var(--raio-1); }
+.org-cartao-texto:hover { background: var(--cor-superficie-alternativa); }
+.org-cartao-editar { flex: 1; min-width: 0; }
 .org-novo-cartao { margin-top: var(--espaco-1); }
 .org-lista { display: flex; flex-direction: column; gap: var(--espaco-3); }
 .org-lista-nova { display: flex; gap: var(--espaco-2); align-items: center; }

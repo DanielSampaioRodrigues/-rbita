@@ -1046,6 +1046,7 @@ export const textos = {
       novo: "Escreva e tecle Enter…",
       vazioColuna: "Sem cartões aqui.",
       mover: "Arrastar o cartão",
+      editar: "Editar o cartão",
       excluir: "Apagar o cartão",
       feito: "Feito",
     },

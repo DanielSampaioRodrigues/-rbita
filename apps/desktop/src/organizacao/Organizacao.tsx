@@ -148,6 +148,17 @@ function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => vo
     setCartoes((cs) => cs.map((x) => (x.id === c.id ? { ...x, feito } : x)));
     await api.marcarCartaoOrg(c.id, feito);
   };
+  const editarCartao = async (c: CartaoOrg, texto: string) => {
+    const t2 = texto.trim();
+    if (!t2 || t2 === c.texto) return;
+    setCartoes((cs) => cs.map((x) => (x.id === c.id ? { ...x, texto: t2 } : x)));
+    try {
+      await api.salvarCartaoOrg({ ...c, texto: t2 });
+    } catch (e) {
+      setErro(mensagem(e));
+      await carregar();
+    }
+  };
   const apagarCartao = async (c: CartaoOrg) => {
     await api.excluirCartaoOrg(c.id);
     await carregar();
@@ -166,9 +177,9 @@ function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => vo
 
       <div className="org-corpo">
         {quadro.estilo === "quadro" ? (
-          <VisaoQuadro quadro={quadro} colunas={colunas} cartoes={cartoes} aoRecarregar={carregar} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoApagar={apagarCartao} aoErro={setErro} />
+          <VisaoQuadro quadro={quadro} colunas={colunas} cartoes={cartoes} aoRecarregar={carregar} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={editarCartao} aoApagar={apagarCartao} aoErro={setErro} />
         ) : (
-          <VisaoLista coluna={colunas[0]} cartoes={cartoes} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoApagar={apagarCartao} aoRecarregar={carregar} />
+          <VisaoLista coluna={colunas[0]} cartoes={cartoes} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={editarCartao} aoApagar={apagarCartao} aoRecarregar={carregar} />
         )}
       </div>
     </div>
@@ -177,13 +188,14 @@ function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => vo
 
 // ---------- Estilo quadro (colunas + arrastar) ----------
 
-function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMarcar, aoApagar, aoErro }: {
+function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoErro }: {
   quadro: Quadro;
   colunas: Coluna[];
   cartoes: CartaoOrg[];
   aoRecarregar: () => Promise<void>;
   aoAdicionar: (colunaId: string, texto: string) => Promise<void>;
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
+  aoEditar: (c: CartaoOrg, texto: string) => void;
   aoApagar: (c: CartaoOrg) => void;
   aoErro: (m: string) => void;
 }) {
@@ -246,6 +258,7 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
             arrastou={arrastou}
             aoAdicionar={(texto) => aoAdicionar(col.id, texto)}
             aoMarcar={aoMarcar}
+            aoEditar={aoEditar}
             aoApagar={aoApagar}
             aoRenomear={() => setEditandoColuna(col)}
             aoExcluir={() => setExcluindoColuna(col)}
@@ -264,12 +277,13 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
   );
 }
 
-function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoApagar, aoRenomear, aoExcluir }: {
+function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoRenomear, aoExcluir }: {
   coluna: Coluna;
   cartoes: CartaoOrg[];
   arrastou: React.MutableRefObject<boolean>;
   aoAdicionar: (texto: string) => Promise<void>;
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
+  aoEditar: (c: CartaoOrg, texto: string) => void;
   aoApagar: (c: CartaoOrg) => void;
   aoRenomear: () => void;
   aoExcluir: () => void;
@@ -286,7 +300,7 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoApag
       </div>
       <ul className="org-cartoes">
         {cartoes.map((c) => (
-          <li key={c.id}><CartaoArrastavel cartao={c} arrastou={arrastou} aoMarcar={aoMarcar} aoApagar={aoApagar} /></li>
+          <li key={c.id}><CartaoArrastavel cartao={c} arrastou={arrastou} aoMarcar={aoMarcar} aoEditar={aoEditar} aoApagar={aoApagar} /></li>
         ))}
       </ul>
       <NovoCartao aoAdicionar={aoAdicionar} />
@@ -294,9 +308,14 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoApag
   );
 }
 
-function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoApagar }: { cartao: CartaoOrg; arrastou: React.MutableRefObject<boolean>; aoMarcar: (c: CartaoOrg, feito: boolean) => void; aoApagar: (c: CartaoOrg) => void }) {
+function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoEditar, aoApagar }: { cartao: CartaoOrg; arrastou: React.MutableRefObject<boolean>; aoMarcar: (c: CartaoOrg, feito: boolean) => void; aoEditar: (c: CartaoOrg, texto: string) => void; aoApagar: (c: CartaoOrg) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `${cartao.colunaId}|${cartao.id}` });
+  const [editando, setEditando] = useState(false);
+  const [txt, setTxt] = useState(cartao.texto);
   const estilo = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
+
+  const confirmar = () => { setEditando(false); aoEditar(cartao, txt); };
+
   return (
     <div ref={setNodeRef} className={isDragging ? "org-cartao arrastando" : cartao.feito ? "org-cartao feito" : "org-cartao"} style={estilo}>
       <span className="org-alca" {...attributes} {...listeners} role="button" tabIndex={0} aria-roledescription="cartão arrastável" aria-label={`${t.cartao.mover}: ${cartao.texto}`} onClick={(e) => { if (arrastou.current) e.preventDefault(); }}>
@@ -305,8 +324,25 @@ function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoApagar }: { cartao: Ca
       <label className="org-cartao-check">
         <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={t.cartao.feito} />
       </label>
-      <span className="quebra org-cartao-texto">{cartao.texto}</span>
-      <Button className="botao-icone pequeno" onPress={() => aoApagar(cartao)} aria-label={t.cartao.excluir}><Trash2 aria-hidden="true" size="1em" /></Button>
+      {editando ? (
+        <input
+          className="entrada-texto sozinha org-cartao-editar"
+          value={txt}
+          autoFocus
+          onChange={(e) => setTxt(e.target.value)}
+          onBlur={confirmar}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); confirmar(); }
+            else if (e.key === "Escape") { setTxt(cartao.texto); setEditando(false); }
+          }}
+          aria-label={t.cartao.editar}
+        />
+      ) : (
+        <button type="button" className="org-cartao-texto quebra" onClick={() => { setTxt(cartao.texto); setEditando(true); }} aria-label={`${t.cartao.editar}: ${cartao.texto}`}>
+          {cartao.texto}
+        </button>
+      )}
+      <Button className="botao-icone pequeno" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1em" /></Button>
     </div>
   );
 }
@@ -342,11 +378,12 @@ function FormColuna({ inicial, aoSalvar, aoFechar }: { inicial: Coluna; aoSalvar
 
 // ---------- Estilo lista (caixinhas) ----------
 
-function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoApagar, aoRecarregar }: {
+function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoRecarregar }: {
   coluna: Coluna | undefined;
   cartoes: CartaoOrg[];
   aoAdicionar: (colunaId: string, texto: string) => Promise<void>;
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
+  aoEditar: (c: CartaoOrg, texto: string) => void;
   aoApagar: (c: CartaoOrg) => void;
   aoRecarregar: () => Promise<void>;
 }) {
@@ -383,17 +420,44 @@ function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoApagar, aoRecarr
           </div>
           <ul className="lista-simples sem-marcador org-itens">
             {cartoes.map((c) => (
-              <li key={c.id} className={c.feito ? "org-item feito" : "org-item"}>
-                <label className="org-item-check">
-                  <input type="checkbox" checked={c.feito} onChange={(e) => aoMarcar(c, e.target.checked)} aria-label={c.texto} />
-                  <span className="quebra">{c.texto}</span>
-                </label>
-                <Button className="botao-icone" onPress={() => aoApagar(c)} aria-label={t.cartao.excluir}><Trash2 aria-hidden="true" size="1.1em" /></Button>
-              </li>
+              <ItemLista key={c.id} cartao={c} aoMarcar={aoMarcar} aoEditar={aoEditar} aoApagar={aoApagar} />
             ))}
           </ul>
         </>
       )}
     </div>
+  );
+}
+
+function ItemLista({ cartao, aoMarcar, aoEditar, aoApagar }: { cartao: CartaoOrg; aoMarcar: (c: CartaoOrg, feito: boolean) => void; aoEditar: (c: CartaoOrg, texto: string) => void; aoApagar: (c: CartaoOrg) => void }) {
+  const [editando, setEditando] = useState(false);
+  const [txt, setTxt] = useState(cartao.texto);
+  const confirmar = () => { setEditando(false); aoEditar(cartao, txt); };
+  return (
+    <li className={cartao.feito ? "org-item feito" : "org-item"}>
+      <label className="org-item-check">
+        <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={cartao.texto} />
+        {editando ? (
+          <input
+            className="entrada-texto sozinha"
+            value={txt}
+            autoFocus
+            onChange={(e) => setTxt(e.target.value)}
+            onBlur={confirmar}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); confirmar(); }
+              else if (e.key === "Escape") { setTxt(cartao.texto); setEditando(false); }
+            }}
+            aria-label={t.cartao.editar}
+          />
+        ) : (
+          <span className="quebra">{cartao.texto}</span>
+        )}
+      </label>
+      <span className="linha-ajuste">
+        {!editando && <Button className="botao-icone" onPress={() => { setTxt(cartao.texto); setEditando(true); }} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1.1em" /></Button>}
+        <Button className="botao-icone" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+      </span>
+    </li>
   );
 }
