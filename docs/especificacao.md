@@ -210,7 +210,7 @@ Serve do ensino fundamental e médio à faculdade e à pós. O vocabulário e as
 - Escrita com caneta, mouse ou dedo, com **sensibilidade à pressão** e rejeição da palma da mão.
 - Ferramentas: caneta, lápis, pincel, marca-texto, borracha, formas que se ajustam sozinhas, texto, setas, notas adesivas, imagens e laço de seleção para mover, redimensionar e recolorir.
 - Ligado ao resto: um rascunho pode ser anexado a um projeto, e uma nota pode virar ideia no estacionamento.
-- Base técnica: biblioteca de quadro livre de código aberto (por exemplo, Excalidraw) para o modo infinito, mais um motor de páginas para o modo caderno; entrada por caneta também no iPad e em mesas digitalizadoras.
+- Base técnica: **motor próprio único** para os dois modos (decisão de Dan, 26/10/2026), no pacote `@orbita/caderno`, com traço por pressão pela biblioteca aberta **perfect-freehand** (cara de caneta, não de rascunho). A página é uma cena com borda; o quadro infinito é a mesma cena sem borda. Excalidraw e tldraw foram descartados (traço de rascunho; acoplamento a React; no caso do tldraw, licença comercial com marca d'água). Entrada por caneta também no iPad e em mesas digitalizadoras.
 - **Os dois modos completos entram na Onda 2** (decisão de Dan, 25/10/2026): não só o quadro infinito, mas o caderno no estilo Goodnotes com tudo acima (páginas, capas, folhas, PDF, pressão e todas as ferramentas). Por ser o maior item da especificação, fica dividido em cinco etapas em `docs/plano-onda-2.md`.
 
 ### 10. Leitura

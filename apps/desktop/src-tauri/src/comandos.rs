@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, anotacoes, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, organizacao, quadro, rotinas, saude};
+use crate::banco::{self, academico, anexos, anotacoes, caderno, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, organizacao, quadro, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1529,4 +1529,61 @@ pub async fn reordenar_cartoes_org(estado: State<'_, Estado>, ids: Vec<String>) 
 #[tauri::command]
 pub async fn excluir_cartao_org(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| organizacao::excluir_cartao(&s.conn, &id))
+}
+
+// ----- Caderno -----
+
+#[tauri::command]
+pub async fn listar_pastas_caderno(estado: State<'_, Estado>) -> Result<Vec<caderno::PastaCaderno>, Erro> {
+    estado.com_sessao(|s| caderno::listar_pastas(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_pasta_caderno(estado: State<'_, Estado>, pasta: caderno::PastaCaderno) -> Result<caderno::PastaCaderno, Erro> {
+    estado.com_sessao(|s| caderno::salvar_pasta(&s.conn, pasta))
+}
+
+#[tauri::command]
+pub async fn excluir_pasta_caderno(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| caderno::excluir_pasta(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_cadernos(estado: State<'_, Estado>) -> Result<Vec<caderno::Caderno>, Erro> {
+    estado.com_sessao(|s| caderno::listar_cadernos(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_caderno(estado: State<'_, Estado>, cad: caderno::Caderno) -> Result<caderno::Caderno, Erro> {
+    estado.com_sessao(|s| caderno::salvar_caderno(&s.conn, cad))
+}
+
+#[tauri::command]
+pub async fn excluir_caderno(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| caderno::excluir_caderno(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_paginas_caderno(estado: State<'_, Estado>, caderno_id: String) -> Result<Vec<caderno::Pagina>, Erro> {
+    estado.com_sessao(|s| caderno::listar_paginas(&s.conn, &caderno_id))
+}
+
+#[tauri::command]
+pub async fn salvar_pagina_caderno(estado: State<'_, Estado>, pagina: caderno::Pagina) -> Result<caderno::Pagina, Erro> {
+    estado.com_sessao(|s| caderno::salvar_pagina(&s.conn, pagina))
+}
+
+#[tauri::command]
+pub async fn excluir_pagina_caderno(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| caderno::excluir_pagina(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn carregar_cena_caderno(estado: State<'_, Estado>, pagina_id: String) -> Result<String, Erro> {
+    estado.com_sessao(|s| caderno::carregar_cena(&s.conn, &pagina_id))
+}
+
+#[tauri::command]
+pub async fn salvar_cena_caderno(estado: State<'_, Estado>, pagina_id: String, cena: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| caderno::salvar_cena(&s.conn, &pagina_id, &cena))
 }

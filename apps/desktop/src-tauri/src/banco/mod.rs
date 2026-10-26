@@ -7,6 +7,7 @@
 pub mod academico;
 pub mod anexos;
 pub mod anotacoes;
+pub mod caderno;
 pub mod cuidado;
 pub mod dinheiro;
 pub mod energia;

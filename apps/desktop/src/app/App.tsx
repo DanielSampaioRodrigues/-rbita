@@ -25,6 +25,7 @@ import { PaginaEstudos } from "../academico/Estudos";
 import { PaginaDinheiro } from "../dinheiro/Dinheiro";
 import { PaginaHobbies } from "../hobbies/Hobbies";
 import { PaginaOrganizacao } from "../organizacao/Organizacao";
+import { PaginaCaderno } from "../caderno/Caderno";
 import { PaginaLeitura } from "../leitura/Leitura";
 import { AvisosDeTransicao } from "./Avisos";
 import { Ideias } from "../paginas/Ideias";
@@ -204,6 +205,7 @@ export function App() {
     else if (secao === "dinheiro") pagina = <PaginaDinheiro />;
     else if (secao === "hobbies") pagina = <PaginaHobbies />;
     else if (secao === "leitura") pagina = <PaginaLeitura />;
+    else if (secao === "caderno") pagina = <PaginaCaderno />;
     else if (secao === "aparencia") pagina = <Aparencia />;
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} temSenha={situacao.temSenha} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;

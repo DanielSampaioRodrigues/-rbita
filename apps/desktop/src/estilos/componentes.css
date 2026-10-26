@@ -802,3 +802,31 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 /* Caixa flutuante para grifar o texto selecionado (EPUB). */
 .leitor-grifo-popup { position: absolute; left: 50%; bottom: var(--espaco-4); transform: translateX(-50%); width: min(94vw, 28rem); display: flex; flex-direction: column; gap: var(--espaco-3); padding: var(--espaco-4); background: var(--cor-superficie); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-2); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16); z-index: 3; }
 .leitor-grifo-trecho { font-style: italic; color: var(--cor-texto-suave); max-height: 6rem; overflow: auto; }
+
+/* ---------- Caderno (estante e casca) ---------- */
+.caderno-grupo { margin-bottom: var(--espaco-5); }
+.caderno-grupo-titulo { font-size: 1.1rem; margin: 0 0 var(--espaco-2); }
+.caderno-grade { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: var(--espaco-4); }
+.caderno-item { display: flex; flex-direction: column; gap: var(--espaco-1); }
+.caderno-capa { position: relative; display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 3 / 4; border: none; border-radius: var(--raio-2); padding: var(--espaco-3); cursor: pointer; color: #fff; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); overflow: hidden; }
+.caderno-capa:hover { filter: brightness(1.06); }
+.caderno-capa:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
+.caderno-capa-modo { position: absolute; top: var(--espaco-2); right: var(--espaco-2); opacity: 0.85; }
+.caderno-capa-nome { font-weight: 600; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); word-break: break-word; }
+.caderno-item-pe { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-2); }
+.caderno-galeria { display: flex; flex-wrap: wrap; gap: var(--espaco-2); }
+.caderno-galeria-opcao { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: var(--raio-1); }
+.caderno-galeria-opcao[data-selected] { outline: 2px solid var(--cor-destaque); }
+.caderno-galeria-amostra { width: 2.6rem; height: 3.3rem; border-radius: var(--raio-1); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
+
+.caderno-tela { display: flex; flex-direction: column; height: 100%; }
+.caderno-corpo { flex: 1; overflow: auto; padding: var(--espaco-4); display: flex; flex-direction: column; gap: var(--espaco-4); }
+.caderno-aviso-breve { display: flex; align-items: center; gap: var(--espaco-2); padding: var(--espaco-3) var(--espaco-4); background: var(--cor-fundo-suave); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-1); color: var(--cor-texto-suave); }
+.caderno-paginas-topo { align-items: flex-end; flex-wrap: wrap; gap: var(--espaco-3); }
+.caderno-paginas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: var(--espaco-4); }
+.caderno-pagina { display: flex; flex-direction: column; gap: var(--espaco-1); }
+.caderno-pagina-folha { width: 100%; background: #fff; border: 1px solid var(--cor-borda); border-radius: var(--raio-1); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12); }
+.caderno-pagina-pe { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-2); }
+.caderno-infinito-previa { flex: 1; min-height: 16rem; border: 2px dashed var(--cor-borda); border-radius: var(--raio-2); background:
+  repeating-linear-gradient(0deg, transparent, transparent 23px, var(--cor-borda-suave) 24px),
+  repeating-linear-gradient(90deg, transparent, transparent 23px, var(--cor-borda-suave) 24px); }

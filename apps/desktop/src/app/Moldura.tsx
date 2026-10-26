@@ -7,7 +7,7 @@ import { textos } from "../textos/pt-BR";
 import { formatarRestante, useFoco } from "../foco/Foco";
 import { Marca } from "./Marca";
 
-export type Secao = "inicio" | "organizacao" | "ideias" | "projetos" | "agenda" | "rotinas" | "foco" | "energia" | "dinheiro" | "saude" | "cuidado" | "estudos" | "hobbies" | "leitura" | "aparencia" | "ajustes";
+export type Secao = "inicio" | "organizacao" | "ideias" | "projetos" | "agenda" | "rotinas" | "foco" | "energia" | "dinheiro" | "saude" | "cuidado" | "estudos" | "hobbies" | "leitura" | "caderno" | "aparencia" | "ajustes";
 
 const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "inicio", icone: House, nome: textos.secoes.inicio },
@@ -24,6 +24,7 @@ const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "estudos", icone: BookOpen, nome: textos.secoes.estudos },
   { id: "hobbies", icone: Sparkles, nome: textos.secoes.hobbies },
   { id: "leitura", icone: Books, nome: textos.secoes.leitura },
+  { id: "caderno", icone: PenLine, nome: textos.secoes.caderno },
   { id: "aparencia", icone: Palette, nome: textos.secoes.aparencia },
   { id: "ajustes", icone: SlidersHorizontal, nome: textos.secoes.ajustes },
 ];

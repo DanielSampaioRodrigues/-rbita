@@ -427,6 +427,41 @@ export interface CartaoOrg {
   criadoEm: number;
 }
 
+/** Capa do caderno: cor da paleta ou id de uma capa pronta. */
+export interface Capa {
+  tipo: "cor" | "galeria";
+  valor: string;
+}
+
+/** Um caderno da estante (modo caderno com páginas, ou quadro infinito). */
+export interface Caderno {
+  id: string;
+  nome: string;
+  modo: "caderno" | "infinito";
+  capa: Capa;
+  /** Pasta a que pertence; vazio = fora de pasta. */
+  pastaId: string;
+  criadoEm: number;
+}
+
+/** Pasta da estante de cadernos. */
+export interface PastaCaderno {
+  id: string;
+  nome: string;
+  criadoEm: number;
+}
+
+/** Uma página de um caderno. `papel` é o objeto Papel do pacote (ou null). */
+export interface PaginaCaderno {
+  id: string;
+  cadernoId: string;
+  ordem: number;
+  /** "a4", "a5", "carta" ou "infinito". */
+  tamanho: string;
+  papel: unknown;
+  criadoEm: number;
+}
+
 /** Prateleira (grupo) de livros. */
 export interface GrupoLivro {
   id: string;
@@ -773,6 +808,17 @@ interface Api {
   moverCartaoOrg(id: string, colunaId: string, ordem: number): Promise<void>;
   reordenarCartoesOrg(ids: string[]): Promise<void>;
   excluirCartaoOrg(id: string): Promise<void>;
+  listarPastasCaderno(): Promise<PastaCaderno[]>;
+  salvarPastaCaderno(pasta: PastaCaderno): Promise<PastaCaderno>;
+  excluirPastaCaderno(id: string): Promise<void>;
+  listarCadernos(): Promise<Caderno[]>;
+  salvarCaderno(cad: Caderno): Promise<Caderno>;
+  excluirCaderno(id: string): Promise<void>;
+  listarPaginasCaderno(cadernoId: string): Promise<PaginaCaderno[]>;
+  salvarPaginaCaderno(pagina: PaginaCaderno): Promise<PaginaCaderno>;
+  excluirPaginaCaderno(id: string): Promise<void>;
+  carregarCenaCaderno(paginaId: string): Promise<string>;
+  salvarCenaCaderno(paginaId: string, cena: string): Promise<void>;
   listarLivros(): Promise<Livro[]>;
   salvarLivro(livro: Livro): Promise<Livro>;
   mudarStatusLivro(id: string, status: string): Promise<void>;
@@ -991,6 +1037,17 @@ const nativa: Api = {
   moverCartaoOrg: (id, colunaId, ordem) => chamar("mover_cartao_org", { id, colunaId, ordem }),
   reordenarCartoesOrg: (ids) => chamar("reordenar_cartoes_org", { ids }),
   excluirCartaoOrg: (id) => chamar("excluir_cartao_org", { id }),
+  listarPastasCaderno: () => chamar("listar_pastas_caderno"),
+  salvarPastaCaderno: (pasta) => chamar("salvar_pasta_caderno", { pasta }),
+  excluirPastaCaderno: (id) => chamar("excluir_pasta_caderno", { id }),
+  listarCadernos: () => chamar("listar_cadernos"),
+  salvarCaderno: (cad) => chamar("salvar_caderno", { cad }),
+  excluirCaderno: (id) => chamar("excluir_caderno", { id }),
+  listarPaginasCaderno: (cadernoId) => chamar("listar_paginas_caderno", { cadernoId }),
+  salvarPaginaCaderno: (pagina) => chamar("salvar_pagina_caderno", { pagina }),
+  excluirPaginaCaderno: (id) => chamar("excluir_pagina_caderno", { id }),
+  carregarCenaCaderno: (paginaId) => chamar("carregar_cena_caderno", { paginaId }),
+  salvarCenaCaderno: (paginaId, cena) => chamar("salvar_cena_caderno", { paginaId, cena }),
   listarLivros: () => chamar("listar_livros"),
   salvarLivro: (livro) => chamar("salvar_livro", { livro }),
   mudarStatusLivro: (id, status) => chamar("mudar_status_livro", { id, status }),
@@ -1902,6 +1959,74 @@ function simularOrganizacao() {
   };
 }
 
+function simularCaderno() {
+  const pastas: PastaCaderno[] = [];
+  const cadernos: Caderno[] = [];
+  const paginas: PaginaCaderno[] = [];
+  const cenas = new Map<string, string>();
+  return {
+    listarPastasCaderno: async () => pastas.map((p) => ({ ...p })).sort((a, b) => a.nome.localeCompare(b.nome)),
+    salvarPastaCaderno: async (p: PastaCaderno) => {
+      if (!p.nome.trim()) throw new ErroOrbita("texto_vazio", "A pasta precisa de um nome.");
+      if (p.id) {
+        const i = pastas.findIndex((x) => x.id === p.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Pasta não encontrada.");
+        pastas[i] = { ...p, nome: p.nome.trim() };
+        return { ...pastas[i] };
+      }
+      const nova: PastaCaderno = { id: crypto.randomUUID(), nome: p.nome.trim(), criadoEm: Date.now() };
+      pastas.push(nova);
+      return { ...nova };
+    },
+    excluirPastaCaderno: async (id: string) => {
+      cadernos.forEach((c) => { if (c.pastaId === id) c.pastaId = ""; });
+      const i = pastas.findIndex((p) => p.id === id);
+      if (i >= 0) pastas.splice(i, 1);
+    },
+    listarCadernos: async () => cadernos.map((c) => ({ ...c })).sort((a, b) => b.criadoEm - a.criadoEm),
+    salvarCaderno: async (c: Caderno) => {
+      if (!c.nome.trim()) throw new ErroOrbita("texto_vazio", "O caderno precisa de um nome.");
+      if (c.id) {
+        const i = cadernos.findIndex((x) => x.id === c.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Caderno não encontrado.");
+        cadernos[i] = { ...cadernos[i], nome: c.nome.trim(), capa: c.capa, pastaId: c.pastaId };
+        return { ...cadernos[i] };
+      }
+      const modo = c.modo === "infinito" ? "infinito" : "caderno";
+      const novo: Caderno = { ...c, id: crypto.randomUUID(), nome: c.nome.trim(), modo, criadoEm: Date.now() };
+      cadernos.push(novo);
+      paginas.push({ id: crypto.randomUUID(), cadernoId: novo.id, ordem: 1, tamanho: modo === "infinito" ? "infinito" : "a4", papel: null, criadoEm: Date.now() });
+      return { ...novo };
+    },
+    excluirCaderno: async (id: string) => {
+      for (let i = paginas.length - 1; i >= 0; i--) if (paginas[i].cadernoId === id) paginas.splice(i, 1);
+      const i = cadernos.findIndex((c) => c.id === id);
+      if (i >= 0) cadernos.splice(i, 1);
+    },
+    listarPaginasCaderno: async (cadernoId: string) => paginas.filter((p) => p.cadernoId === cadernoId).map((p) => ({ ...p })).sort((a, b) => a.ordem - b.ordem),
+    salvarPaginaCaderno: async (p: PaginaCaderno) => {
+      if (!p.cadernoId.trim()) throw new ErroOrbita("interno", "A página precisa de um caderno.");
+      if (p.id) {
+        const i = paginas.findIndex((x) => x.id === p.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Página não encontrada.");
+        paginas[i] = { ...p };
+        return { ...paginas[i] };
+      }
+      const ordem = p.ordem || Math.max(0, ...paginas.filter((x) => x.cadernoId === p.cadernoId).map((x) => x.ordem)) + 1;
+      const nova: PaginaCaderno = { ...p, id: crypto.randomUUID(), tamanho: p.tamanho || "a4", ordem, criadoEm: Date.now() };
+      paginas.push(nova);
+      return { ...nova };
+    },
+    excluirPaginaCaderno: async (id: string) => {
+      const i = paginas.findIndex((p) => p.id === id);
+      if (i >= 0) paginas.splice(i, 1);
+      cenas.delete(id);
+    },
+    carregarCenaCaderno: async (paginaId: string) => cenas.get(paginaId) ?? "",
+    salvarCenaCaderno: async (paginaId: string, cena: string) => { cenas.set(paginaId, cena); },
+  };
+}
+
 function simularLeitura() {
   const livros: Livro[] = [];
   const gruposLivro: GrupoLivro[] = [];
@@ -2078,6 +2203,7 @@ function criarSimulacao(): Api {
     ...simularDinheiro(),
     ...simularHobbies(),
     ...simularOrganizacao(),
+    ...simularCaderno(),
     ...simularLeitura(),
     ...comAnexos,
     fazerBackup: async () => {
