@@ -40,6 +40,12 @@ pub struct Livro {
     /// Id do anexo com o arquivo do livro, quando houver.
     #[serde(default)]
     pub arquivo_id: String,
+    /// Id do grupo (prateleira) a que pertence; vazio = sem grupo.
+    #[serde(default)]
+    pub grupo_id: String,
+    /// Cor da capa/lombada do livro (nome da paleta de etiquetas).
+    #[serde(default)]
+    pub cor: String,
     #[serde(default)]
     pub criado_em: i64,
 }
@@ -56,6 +62,10 @@ struct DadosLivro {
     formato: String,
     #[serde(default)]
     arquivo_id: String,
+    #[serde(default)]
+    grupo_id: String,
+    #[serde(default)]
+    cor: String,
 }
 
 pub fn listar(conn: &Connection) -> Result<Vec<Livro>, Erro> {
@@ -85,6 +95,8 @@ pub fn listar(conn: &Connection) -> Result<Vec<Livro>, Erro> {
                 fim: d.fim,
                 formato: d.formato,
                 arquivo_id: d.arquivo_id,
+                grupo_id: d.grupo_id,
+                cor: d.cor,
                 criado_em: r.get(4)?,
             })
         })?
@@ -109,6 +121,8 @@ pub fn salvar(conn: &Connection, mut livro: Livro) -> Result<Livro, Erro> {
         fim: livro.fim.clone(),
         formato: livro.formato.clone(),
         arquivo_id: livro.arquivo_id.clone(),
+        grupo_id: livro.grupo_id.clone(),
+        cor: livro.cor.clone(),
     })
     .map_err(|e| Erro::Interno(e.to_string()))?;
     let agora = agora_ms();
@@ -151,6 +165,59 @@ pub fn excluir(conn: &Connection, id: &str) -> Result<(), Erro> {
     Ok(())
 }
 
+// ---------- Grupos de livro (prateleiras) ----------
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GrupoLivro {
+    #[serde(default)]
+    pub id: String,
+    pub nome: String,
+    #[serde(default)]
+    pub criado_em: i64,
+}
+
+pub fn listar_grupos(conn: &Connection) -> Result<Vec<GrupoLivro>, Erro> {
+    let mut c = conn.prepare(
+        "SELECT id, titulo, criado_em FROM item WHERE tipo = 'grupo_livro' AND excluido_em IS NULL ORDER BY titulo COLLATE NOCASE",
+    )?;
+    let lista = c
+        .query_map([], |r| Ok(GrupoLivro { id: r.get(0)?, nome: r.get(1)?, criado_em: r.get(2)? }))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(lista)
+}
+
+pub fn salvar_grupo(conn: &Connection, mut grupo: GrupoLivro) -> Result<GrupoLivro, Erro> {
+    grupo.nome = grupo.nome.trim().to_string();
+    if grupo.nome.is_empty() {
+        return Err(Erro::Interno("a prateleira precisa de um nome".into()));
+    }
+    let agora = agora_ms();
+    if grupo.id.is_empty() {
+        grupo.id = novo_id();
+        grupo.criado_em = agora;
+        conn.execute(
+            "INSERT INTO item (id, tipo, titulo, criado_em, alterado_em) VALUES (?1, 'grupo_livro', ?2, ?3, ?3)",
+            params![grupo.id, grupo.nome, agora],
+        )?;
+    } else {
+        let n = conn.execute(
+            "UPDATE item SET titulo = ?2, alterado_em = ?3 WHERE id = ?1 AND tipo = 'grupo_livro' AND excluido_em IS NULL",
+            params![grupo.id, grupo.nome, agora],
+        )?;
+        if n == 0 {
+            return Err(Erro::Interno("prateleira não encontrada".into()));
+        }
+    }
+    Ok(grupo)
+}
+
+/// Apaga a prateleira. Os livros dela ficam "sem prateleira", não são apagados.
+pub fn excluir_grupo(conn: &Connection, id: &str) -> Result<(), Erro> {
+    conn.execute("UPDATE item SET excluido_em = ?2, alterado_em = ?2 WHERE id = ?1 AND tipo = 'grupo_livro'", params![id, agora_ms()])?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod testes {
     use super::*;
@@ -164,7 +231,7 @@ mod testes {
     }
 
     fn livro(titulo: &str, status: &str) -> Livro {
-        Livro { id: String::new(), titulo: titulo.into(), autor: "Autor".into(), status: status.into(), onde_parei: String::new(), impressoes: String::new(), inicio: String::new(), fim: String::new(), formato: String::new(), arquivo_id: String::new(), criado_em: 0 }
+        Livro { id: String::new(), titulo: titulo.into(), autor: "Autor".into(), status: status.into(), onde_parei: String::new(), impressoes: String::new(), inicio: String::new(), fim: String::new(), formato: String::new(), arquivo_id: String::new(), grupo_id: String::new(), cor: String::new(), criado_em: 0 }
     }
 
     #[test]

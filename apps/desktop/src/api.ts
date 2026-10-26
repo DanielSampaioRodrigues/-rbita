@@ -329,6 +329,17 @@ export interface Livro {
   formato: string;
   /** Id do anexo com o arquivo do livro, quando houver. */
   arquivoId: string;
+  /** Id da prateleira (grupo) a que pertence; vazio = sem prateleira. */
+  grupoId: string;
+  /** Cor da capa do livro (nome da paleta de etiquetas). */
+  cor: string;
+  criadoEm: number;
+}
+
+/** Prateleira (grupo) de livros. */
+export interface GrupoLivro {
+  id: string;
+  nome: string;
   criadoEm: number;
 }
 
@@ -623,6 +634,9 @@ interface Api {
   bytesAnexo(id: string): Promise<string>;
   /** Conteúdo de um arquivo do disco em base64 (para ler os metadados ao escolher). */
   bytesArquivo(caminho: string): Promise<string>;
+  listarGruposLivro(): Promise<GrupoLivro[]>;
+  salvarGrupoLivro(grupo: GrupoLivro): Promise<GrupoLivro>;
+  excluirGrupoLivro(id: string): Promise<void>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -807,6 +821,9 @@ const nativa: Api = {
   excluirLivro: (id) => chamar("excluir_livro", { id }),
   bytesAnexo: (id) => chamar("bytes_anexo", { id }),
   bytesArquivo: (caminho) => chamar("bytes_arquivo", { caminho }),
+  listarGruposLivro: () => chamar("listar_grupos_livro"),
+  salvarGrupoLivro: (grupo) => chamar("salvar_grupo_livro", { grupo }),
+  excluirGrupoLivro: (id) => chamar("excluir_grupo_livro", { id }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1515,6 +1532,7 @@ function simularHobbies() {
 
 function simularLeitura() {
   const livros: Livro[] = [];
+  const gruposLivro: GrupoLivro[] = [];
   const ordem: Record<string, number> = { lendo: 0, quero: 1, pausado: 2, lido: 3 };
   const STATUS = ["quero", "lendo", "lido", "pausado"];
   return {
@@ -1549,6 +1567,24 @@ function simularLeitura() {
     // No navegador não há arquivo guardado; o leitor mostra um aviso.
     bytesAnexo: async () => "",
     bytesArquivo: async () => "",
+    listarGruposLivro: async () => gruposLivro.map((g) => ({ ...g })).sort((a, b) => a.nome.localeCompare(b.nome)),
+    salvarGrupoLivro: async (grupo: GrupoLivro) => {
+      const nome = grupo.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "A prateleira precisa de um nome.");
+      if (grupo.id) {
+        const i = gruposLivro.findIndex((x) => x.id === grupo.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Prateleira não encontrada.");
+        gruposLivro[i] = { ...grupo, nome };
+        return { ...gruposLivro[i] };
+      }
+      const novo = { ...grupo, nome, id: crypto.randomUUID(), criadoEm: Date.now() };
+      gruposLivro.push(novo);
+      return { ...novo };
+    },
+    excluirGrupoLivro: async (id: string) => {
+      const i = gruposLivro.findIndex((g) => g.id === id);
+      if (i >= 0) gruposLivro.splice(i, 1);
+    },
   };
 }
 

@@ -18,10 +18,10 @@ export function ChipEtiqueta({ etiqueta }: { etiqueta: Etiqueta }) {
 }
 
 /** Escolha de cor com as 8 cores, pelo nome e pela bolinha. Setas trocam. */
-export function EscolherCor({ valor, aoMudar }: { valor: CorEtiqueta; aoMudar: (c: CorEtiqueta) => void }) {
+export function EscolherCor({ valor, aoMudar, rotulo }: { valor: CorEtiqueta; aoMudar: (c: CorEtiqueta) => void; rotulo?: string }) {
   return (
     <RadioGroup className="campo" value={valor} onChange={(v) => aoMudar(v as CorEtiqueta)} orientation="horizontal">
-      <Label className="campo-rotulo">{t.corEtiqueta}</Label>
+      <Label className="campo-rotulo">{rotulo ?? t.corEtiqueta}</Label>
       <div className="cores-etiqueta">
         {CORES_ETIQUETA.map((c) => (
           <Radio key={c} value={c} className="cor-opcao" aria-label={t.cores[c]}>

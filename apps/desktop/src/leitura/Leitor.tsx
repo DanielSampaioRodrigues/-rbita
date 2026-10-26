@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "react-aria-components";
 import { Leitor, CONFIG_PADRAO, type ConfigLeitura, type CorFundo, type Localizacao } from "@orbita/leitor";
+import atkinsonUrl from "@fontsource-variable/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-wght-normal.woff2?url";
+import lexendUrl from "@fontsource-variable/lexend/files/lexend-latin-wght-normal.woff2?url";
+import dyslexicUrl from "../fontes/opendyslexic/OpenDyslexic-Regular.woff2?url";
 import { api, type Livro } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Segmentado } from "../componentes/Segmentado";
-import { ChevronLeft, ChevronRight, X } from "../icones";
+import { ChevronLeft, ChevronRight, SlidersHorizontal, X } from "../icones";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.leitura.leitor;
@@ -16,6 +19,17 @@ const FONTES: Record<string, string> = {
   lexend: "Lexend",
   dislexia: "OpenDyslexic",
 };
+/** Fontes do app, com URL absoluta para resolverem dentro do iframe do EPUB. */
+const FONTES_ARQUIVOS = [
+  { family: "Atkinson Hyperlegible Next", url: new URL(atkinsonUrl, location.href).href },
+  { family: "Lexend", url: new URL(lexendUrl, location.href).href },
+  { family: "OpenDyslexic", url: new URL(dyslexicUrl, location.href).href },
+];
+
+const ENTRELINHAS: Record<string, number> = { apertada: 1.3, media: 1.6, solta: 2.0 };
+const MARGENS: Record<string, number> = { estreita: 3, media: 6, larga: 10 };
+const chaveProxima = (valor: number, mapa: Record<string, number>) =>
+  Object.keys(mapa).reduce((a, b) => (Math.abs(mapa[b] - valor) < Math.abs(mapa[a] - valor) ? b : a));
 
 function lerConfig(): ConfigLeitura {
   try {
@@ -40,7 +54,9 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
   const motor = useRef<Leitor | null>(null);
   const [config, setConfig] = useState<ConfigLeitura>(lerConfig);
   const [carregando, setCarregando] = useState(true);
+  const [mostrarAjustes, setMostrarAjustes] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const ehPdf = livro.formato === "pdf";
 
   useEffect(() => {
     let vivo = true;
@@ -52,6 +68,7 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
       return;
     }
     const leitor = new Leitor(container);
+    leitor.definirFontes(FONTES_ARQUIVOS);
     motor.current = leitor;
     leitor.aoMudarLocalizacao((loc) => {
       try {
@@ -112,38 +129,78 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.fechar}><X aria-hidden="true" size="1.2em" /></Button>
         <strong className="leitor-titulo quebra">{livro.titulo}</strong>
         <div className="leitor-controles">
+          <Button className="botao-icone" onPress={() => mudarConfig({ tamanho: Math.max(60, config.tamanho - 10) })} aria-label={t.menor}>A−</Button>
+          <Button className="botao-icone" onPress={() => mudarConfig({ tamanho: Math.min(300, config.tamanho + 10) })} aria-label={t.maior}>A+</Button>
+          <Button className={mostrarAjustes ? "botao-icone principal" : "botao-icone"} onPress={() => setMostrarAjustes((v) => !v)} aria-label={t.ajustes} aria-pressed={mostrarAjustes}>
+            <SlidersHorizontal aria-hidden="true" size="1.2em" />
+          </Button>
+        </div>
+      </div>
+
+      {mostrarAjustes && (
+        <div className="leitor-ajustes">
           <Segmentado
             rotulo={t.fundo}
-            rotuloOculto
             valor={config.corFundo}
             aoMudar={(v) => mudarConfig({ corFundo: v as CorFundo })}
             opcoes={(["branco", "creme", "polen", "cinza", "escuro"] as CorFundo[]).map((c) => ({ valor: c, nome: t.fundos[c] }))}
           />
-          <Segmentado
-            rotulo={t.fonte}
-            rotuloOculto
-            valor={fonteAtual}
-            aoMudar={(v) => mudarConfig({ fonte: FONTES[v] })}
-            opcoes={[
-              { valor: "atkinson", nome: t.fontes.atkinson },
-              { valor: "lexend", nome: t.fontes.lexend },
-              { valor: "dislexia", nome: t.fontes.dislexia },
-            ]}
-          />
-          <Button className="botao-icone" onPress={() => mudarConfig({ tamanho: Math.max(60, config.tamanho - 10) })} aria-label={t.menor}>A−</Button>
-          <Button className="botao-icone" onPress={() => mudarConfig({ tamanho: Math.min(300, config.tamanho + 10) })} aria-label={t.maior}>A+</Button>
-          <Segmentado
-            rotulo={t.modo}
-            rotuloOculto
-            valor={config.modo}
-            aoMudar={(v) => mudarConfig({ modo: v as "paginas" | "rolagem" })}
-            opcoes={[
-              { valor: "paginas", nome: t.modos.paginas },
-              { valor: "rolagem", nome: t.modos.rolagem },
-            ]}
-          />
+          {ehPdf ? (
+            <p className="campo-ajuda">{t.soEpub}</p>
+          ) : (
+            <>
+              <Segmentado
+                rotulo={t.fonte}
+                valor={fonteAtual}
+                aoMudar={(v) => mudarConfig({ fonte: FONTES[v] })}
+                opcoes={[
+                  { valor: "atkinson", nome: t.fontes.atkinson },
+                  { valor: "lexend", nome: t.fontes.lexend },
+                  { valor: "dislexia", nome: t.fontes.dislexia },
+                ]}
+              />
+              <Segmentado
+                rotulo={t.entrelinha}
+                valor={chaveProxima(config.entrelinha, ENTRELINHAS)}
+                aoMudar={(v) => mudarConfig({ entrelinha: ENTRELINHAS[v] })}
+                opcoes={[
+                  { valor: "apertada", nome: t.entrelinhas.apertada },
+                  { valor: "media", nome: t.entrelinhas.media },
+                  { valor: "solta", nome: t.entrelinhas.solta },
+                ]}
+              />
+              <Segmentado
+                rotulo={t.margem}
+                valor={chaveProxima(config.margem, MARGENS)}
+                aoMudar={(v) => mudarConfig({ margem: MARGENS[v] })}
+                opcoes={[
+                  { valor: "estreita", nome: t.margens.estreita },
+                  { valor: "media", nome: t.margens.media },
+                  { valor: "larga", nome: t.margens.larga },
+                ]}
+              />
+              <Segmentado
+                rotulo={t.alinhamento}
+                valor={config.alinhamento}
+                aoMudar={(v) => mudarConfig({ alinhamento: v as "esquerda" | "justificado" })}
+                opcoes={[
+                  { valor: "esquerda", nome: t.alinhamentos.esquerda },
+                  { valor: "justificado", nome: t.alinhamentos.justificado },
+                ]}
+              />
+              <Segmentado
+                rotulo={t.modo}
+                valor={config.modo}
+                aoMudar={(v) => mudarConfig({ modo: v as "paginas" | "rolagem" })}
+                opcoes={[
+                  { valor: "paginas", nome: t.modos.paginas },
+                  { valor: "rolagem", nome: t.modos.rolagem },
+                ]}
+              />
+            </>
+          )}
         </div>
-      </div>
+      )}
 
       {erro ? (
         <div className="leitor-aviso"><Aviso tipo="info">{erro}</Aviso></div>

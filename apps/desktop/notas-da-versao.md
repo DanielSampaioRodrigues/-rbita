@@ -1,3 +1,9 @@
+- **Biblioteca em prateleiras**: organize a estante em **prateleiras** (faculdade, lazer, quadrinhos — o que você quiser) e mova cada livro de prateleira num toque. Cada livro agora tem uma **cor** para você reconhecer de relance, e o status (quero ler, lendo, lido, pausado) aparece como uma etiqueta ao lado do título. (Arrastar os livros com o mouse vem no próximo passo.)
+
+- **Leitor com mais ajustes**: o painel de ajustes do leitor ganhou **espaçamento entre linhas**, **margem** e **alinhamento** (à esquerda ou justificado), além da cor do papel, fonte, tamanho e modo que já tinham. E a **troca de fonte no EPUB agora funciona de verdade** (antes não mudava nada).
+
+- **PDF sem opções que não funcionam**: ao ler um **PDF**, o leitor agora mostra só os ajustes que o PDF aceita (a cor do fundo) e esconde os que são só do EPUB (fonte, espaçamento, margem…), com um aviso curto explicando. Assim você não mexe em algo que não muda nada.
+
 - **Dinheiro mais completo**: agora você cria **grupos de gasto** com cor (mercado, transporte, assinaturas, hobbies, hiperfoco — o que fizer sentido) e registra cada gasto num grupo. Uma seção nova, **"Para onde vai o dinheiro"**, mostra uma **tabela com os meses nas colunas** (3, 6 ou 12 meses), um **gráfico de pizza** da distribuição por grupo e um **gráfico de barras** do total por mês — para você entender seus gastos com calma, sem cobrança. Contas, lista de espera e metas continuam ali.
 
 - **Livros grandes e mais fáceis de anexar**: o limite de arquivo subiu de 20 MB para **300 MB**, para caber EPUB e PDF pesados (lembrando que o arquivo fica no cofre e, por isso, no backup). Ao escolher o arquivo, o Órbita **puxa o título e o autor** dos dados do livro e preenche os campos sozinho (dá para corrigir à mão). E o botão de escolher **fica verde com um ✓** depois que o arquivo é anexado, mostrando que deu certo.

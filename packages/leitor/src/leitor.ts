@@ -43,6 +43,10 @@ export class Leitor {
   private config!: ConfigLeitura;
   private aoMudar: AoMudar = () => {};
 
+  // Fontes a injetar na página do EPUB (que roda num iframe isolado, sem as
+  // fontes do app). Cada uma: família e URL do arquivo.
+  private fontes: { family: string; url: string }[] = [];
+
   // EPUB (epub.js, tipos soltos).
   private book: any = null;
   private rendition: any = null;
@@ -53,6 +57,15 @@ export class Leitor {
 
   constructor(container: HTMLElement) {
     this.container = container;
+  }
+
+  /** Fontes do app para usar dentro do EPUB (chamar antes de `abrir`). */
+  definirFontes(fontes: { family: string; url: string }[]): void {
+    this.fontes = fontes;
+  }
+
+  private cssDasFontes(): string {
+    return this.fontes.map((f) => `@font-face { font-family: "${f.family}"; src: url("${f.url}") format("woff2"); font-display: swap; }`).join("\n");
   }
 
   /** Abre o livro. `bytes` é o conteúdo do arquivo. */
@@ -75,6 +88,20 @@ export class Leitor {
       flow: this.config.modo === "rolagem" ? "scrolled-doc" : "paginated",
       spread: "none",
     });
+    // Injeta as fontes do app dentro da página do livro (iframe isolado),
+    // senão a troca de fonte (inclusive a de dislexia) não teria efeito.
+    const css = this.cssDasFontes();
+    if (css) {
+      this.rendition.hooks.content.register((contents: any) => {
+        try {
+          const estilo = contents.document.createElement("style");
+          estilo.textContent = css;
+          contents.document.head.appendChild(estilo);
+        } catch {
+          // Se não der para injetar, a fonte cai no padrão do livro.
+        }
+      });
+    }
     this.rendition.themes.default(temaEpub(this.config));
     this.rendition.on("relocated", (loc: any) => {
       this.aoMudar({ epubCfi: loc?.start?.cfi });

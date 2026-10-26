@@ -1366,3 +1366,20 @@ pub async fn bytes_arquivo(_estado: State<'_, Estado>, caminho: String) -> Resul
     }
     Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
 }
+
+// ---------- Leitura: grupos (prateleiras) ----------
+
+#[tauri::command]
+pub async fn listar_grupos_livro(estado: State<'_, Estado>) -> Result<Vec<leitura::GrupoLivro>, Erro> {
+    estado.com_sessao(|s| leitura::listar_grupos(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_grupo_livro(estado: State<'_, Estado>, grupo: leitura::GrupoLivro) -> Result<leitura::GrupoLivro, Erro> {
+    estado.com_sessao(|s| leitura::salvar_grupo(&s.conn, grupo))
+}
+
+#[tauri::command]
+pub async fn excluir_grupo_livro(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| leitura::excluir_grupo(&s.conn, &id))
+}
