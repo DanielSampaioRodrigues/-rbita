@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
-import { MODELOS_PAPEL, papelDataUri, papelPadrao, TAMANHOS, type CoresPapel, type ModeloPapel, type Papel } from "@orbita/caderno";
+import { caminhoDeTraco, cenaVazia, FERRAMENTAS, lerCena, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, tracoAtingido, type Cena, type CoresPapel, type Ferramenta, type ModeloPapel, type Papel, type Traco } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type PaginaCaderno, type PastaCaderno } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Bookmark, ChevronLeft, FolderOpen, FolderPlus, LayoutGrid, List, Pencil, PenLine, Plus, SlidersHorizontal, Trash2 } from "../icones";
+import { Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, Highlighter, LayoutGrid, List, Pencil, PenLine, Plus, Redo2, SlidersHorizontal, Trash2, Undo2, Wand2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
 import { textos } from "../textos/pt-BR";
@@ -314,6 +314,11 @@ function medidaDe(tamanho: string) {
   return TAMANHOS[tamanho as keyof typeof TAMANHOS] ?? TAMANHOS.a4;
 }
 
+/** Cores de caneta (independentes da paleta de etiquetas). */
+const CORES_CANETA = ["#1f2937", "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04"];
+/** Multiplicador da espessura por grossura escolhida. */
+const MULT = { fina: 0.6, media: 1, grossa: 1.9 } as const;
+
 /** Desenha a folha (o papel) num tamanho dado, pela SVG do pacote. */
 function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; className?: string }) {
   const med = medidaDe(tamanho);
@@ -330,6 +335,14 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   const [editor, setEditor] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const area = useRef<HTMLDivElement>(null);
+  // Desenho: ferramenta, cor e grossura ativas; cenas e histórico por página.
+  const [ferramenta, setFerramenta] = useState<Ferramenta>("caneta");
+  const [cor, setCor] = useState(CORES_CANETA[0]);
+  const [grossura, setGrossura] = useState<"fina" | "media" | "grossa">("media");
+  const [cenas, setCenas] = useState<Record<string, Cena>>({});
+  const [historia, setHistoria] = useState<Record<string, { pilha: Cena[]; i: number }>>({});
+  const carregadas = useRef<Set<string>>(new Set());
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const carregar = useCallback(async () => {
     try {
@@ -342,8 +355,53 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   }, [caderno.id]);
   useEffect(() => void carregar(), [carregar]);
 
+  // Carrega a cena (os traços) de cada página uma vez.
+  useEffect(() => {
+    let vivo = true;
+    for (const p of paginas) {
+      if (carregadas.current.has(p.id)) continue;
+      carregadas.current.add(p.id);
+      api.carregarCenaCaderno(p.id).then((txt) => {
+        if (!vivo) return;
+        const c = lerCena(txt);
+        setCenas((m) => ({ ...m, [p.id]: c }));
+        setHistoria((h) => ({ ...h, [p.id]: { pilha: [c], i: 0 } }));
+      }, () => carregadas.current.delete(p.id));
+    }
+    return () => { vivo = false; };
+  }, [paginas]);
+
   const infinito = caderno.modo === "infinito";
   const sel = paginas.find((p) => p.id === selId) ?? paginas[0];
+
+  const agendarSalvarCena = (id: string, nova: Cena) => {
+    clearTimeout(timers.current[id]);
+    timers.current[id] = setTimeout(() => void api.salvarCenaCaderno(id, serializarCena(nova)).catch((e) => setErro(mensagem(e))), 700);
+  };
+  const mudarCena = (id: string, nova: Cena) => {
+    setCenas((m) => ({ ...m, [id]: nova }));
+    setHistoria((h) => {
+      const at = h[id] ?? { pilha: [cenaVazia()], i: 0 };
+      const pilha = [...at.pilha.slice(0, at.i + 1), nova];
+      const corte = Math.max(0, pilha.length - 50); // guarda até 50 passos
+      return { ...h, [id]: { pilha: pilha.slice(corte), i: pilha.length - 1 - corte } };
+    });
+    agendarSalvarCena(id, nova);
+  };
+  const aoDesenhar = (id: string, traco: Traco) => mudarCena(id, { elementos: [...(cenas[id]?.elementos ?? []), traco] });
+  const aoApagarTracos = (id: string, ids: string[]) => mudarCena(id, { elementos: (cenas[id]?.elementos ?? []).filter((e) => !ids.includes(e.id)) });
+  const andar = (passo: number) => {
+    const h = historia[selId];
+    if (!h) return;
+    const i = h.i + passo;
+    if (i < 0 || i >= h.pilha.length) return;
+    const nova = h.pilha[i];
+    setHistoria((hs) => ({ ...hs, [selId]: { ...h, i } }));
+    setCenas((m) => ({ ...m, [selId]: nova }));
+    agendarSalvarCena(selId, nova);
+  };
+  const podeDesfazer = (historia[selId]?.i ?? 0) > 0;
+  const podeRefazer = !!historia[selId] && historia[selId].i < historia[selId].pilha.length - 1;
 
   const salvar = async (pg: PaginaCaderno) => {
     setPaginas((ps) => ps.map((x) => (x.id === pg.id ? pg : x)));
@@ -426,15 +484,16 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
         )}
 
         <div className="caderno-rolagem" ref={area}>
-          <div className="caderno-aviso-breve"><PenLine aria-hidden="true" size="1.1em" /> {t.emBreve}</div>
-
           {infinito ? (
-            <Folha papel={folhaDe(paginas[0] ?? { papel: null } as PaginaCaderno)} tamanho="a4" className="caderno-infinito-previa" />
+            <div className="caderno-aviso-breve"><LayoutGrid aria-hidden="true" size="1.1em" /> {t.infinitoEmBreve}</div>
           ) : (
             <>
               {paginas.map((p, i) => (
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId} podeApagar={paginas.length > 1}
+                  cena={cenas[p.id] ?? cenaVazia()} ferramenta={ferramenta} cor={cor} escala={MULT[grossura]}
                   aoSelecionar={() => setSelId(p.id)}
+                  aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
+                  aoApagarTracos={(ids) => aoApagarTracos(p.id, ids)}
                   aoTitulo={(titulo) => salvar({ ...p, titulo })}
                   aoMarcar={() => salvar({ ...p, marcado: !p.marcado })}
                   aoApagar={() => void apagar(p.id)} />
@@ -448,6 +507,15 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
         </div>
       </div>
 
+      {!infinito && (
+        <BarraFerramentas
+          ferramenta={ferramenta} aoFerramenta={setFerramenta}
+          cor={cor} aoCor={setCor}
+          grossura={grossura} aoGrossura={setGrossura}
+          aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
+        />
+      )}
+
       <Janela titulo={t.folha.titulo} aberta={editor} aoFechar={() => setEditor(false)}>
         {editor && <EditorFolha inicial={sel ? folhaDe(sel) : papelPadrao()} tamanho={sel?.tamanho ?? "a4"} varias={paginas.length > 1} aoAplicar={aplicarFolha} aoFechar={() => setEditor(false)} />}
       </Janela>
@@ -455,22 +523,124 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, podeApagar, aoSelecionar, aoTitulo, aoMarcar, aoApagar }: {
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, escala, aoSelecionar, aoDesenhar, aoApagarTracos, aoTitulo, aoMarcar, aoApagar }: {
   id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
-  aoSelecionar: () => void; aoTitulo: (t: string) => void; aoMarcar: () => void; aoApagar: () => void;
+  cena: Cena; ferramenta: Ferramenta; cor: string; escala: number;
+  aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoApagarTracos: (ids: string[]) => void;
+  aoTitulo: (t: string) => void; aoMarcar: () => void; aoApagar: () => void;
 }) {
   const [titulo, setTitulo] = useState(pagina.titulo);
   useEffect(() => setTitulo(pagina.titulo), [pagina.titulo]);
+  const med = medidaDe(pagina.tamanho);
   return (
-    <section id={id} className={selecionada ? "caderno-folha-bloco atual" : "caderno-folha-bloco"} onMouseDown={aoSelecionar}>
+    <section id={id} className={selecionada ? "caderno-folha-bloco atual" : "caderno-folha-bloco"}>
       <div className="caderno-folha-topo">
         <span className="texto-suave pequeno">{t.paginas.numero(numero)}</span>
         <input className="entrada-texto sozinha caderno-folha-titulo" value={titulo} placeholder={t.paginas.semTitulo} onChange={(e) => setTitulo(e.target.value)} onBlur={() => titulo !== pagina.titulo && aoTitulo(titulo)} aria-label={t.paginas.tituloCampo} maxLength={80} />
         <Button className={pagina.marcado ? "botao-icone pequeno ativo" : "botao-icone pequeno"} onPress={aoMarcar} aria-label={pagina.marcado ? t.paginas.desmarcar : t.paginas.marcar} aria-pressed={pagina.marcado}><Bookmark aria-hidden="true" size="1em" /></Button>
         {podeApagar && <Button className="botao-icone pequeno" onPress={aoApagar} aria-label={t.paginas.excluir}><Trash2 aria-hidden="true" size="1em" /></Button>}
       </div>
-      <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha" />
+      <div className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
+        <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
+        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} escala={escala} largura={med.largura} altura={med.altura} aoDesenhar={aoDesenhar} aoApagarTracos={aoApagarTracos} />
+      </div>
     </section>
+  );
+}
+
+/** A camada onde a pessoa escreve/desenha, por cima da folha. */
+function SuperficieDesenho({ cena, ferramenta, cor, escala, largura, altura, aoDesenhar, aoApagarTracos }: {
+  cena: Cena; ferramenta: Ferramenta; cor: string; escala: number; largura: number; altura: number;
+  aoDesenhar: (t: Traco) => void; aoApagarTracos: (ids: string[]) => void;
+}) {
+  const ref = useRef<SVGSVGElement>(null);
+  const [vivo, setVivo] = useState<Traco | null>(null);
+  const [escondidos, setEscondidos] = useState<Set<string>>(new Set());
+  const desenhando = useRef(false);
+  const apagados = useRef<Set<string>>(new Set());
+
+  const ponto = (e: React.PointerEvent) => {
+    const r = ref.current!.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * largura, y: ((e.clientY - r.top) / r.height) * altura, p: e.pressure > 0 ? e.pressure : 0.5 };
+  };
+  const apagarEm = (x: number, y: number) => {
+    const raio = FERRAMENTAS.borracha.tamanho / 2;
+    let mudou = false;
+    for (const el of cena.elementos) {
+      if (el.tipo === "traco" && !apagados.current.has(el.id) && tracoAtingido(el, x, y, raio)) { apagados.current.add(el.id); mudou = true; }
+    }
+    if (mudou) setEscondidos(new Set(apagados.current));
+  };
+  const inicio = (e: React.PointerEvent) => {
+    if (e.button != null && e.button !== 0) return;
+    e.preventDefault();
+    ref.current?.setPointerCapture(e.pointerId);
+    desenhando.current = true;
+    const pt = ponto(e);
+    if (ferramenta === "borracha") { apagados.current = new Set(); setEscondidos(new Set()); apagarEm(pt.x, pt.y); }
+    else setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta, cor, espessura: Math.round(FERRAMENTAS[ferramenta].tamanho * escala), pontos: [pt] });
+  };
+  const mover = (e: React.PointerEvent) => {
+    if (!desenhando.current) return;
+    const pt = ponto(e);
+    if (ferramenta === "borracha") apagarEm(pt.x, pt.y);
+    else setVivo((v) => (v ? { ...v, pontos: [...v.pontos, pt] } : v));
+  };
+  const fim = () => {
+    if (!desenhando.current) return;
+    desenhando.current = false;
+    if (ferramenta === "borracha") {
+      const ids = [...apagados.current];
+      apagados.current = new Set();
+      setEscondidos(new Set());
+      if (ids.length) aoApagarTracos(ids);
+    } else {
+      setVivo((v) => { if (v && v.pontos.length) aoDesenhar(v); return null; });
+    }
+  };
+
+  const classe = ferramenta === "borracha" ? "caderno-desenho borracha" : "caderno-desenho";
+  return (
+    <svg ref={ref} className={classe} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
+      onPointerDown={inicio} onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
+      {cena.elementos.map((el) =>
+        el.tipo === "traco" && !escondidos.has(el.id) ? <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={FERRAMENTAS[el.ferramenta].opacidade} /> : null,
+      )}
+      {vivo && <path d={caminhoDeTraco(vivo)} fill={vivo.cor} opacity={FERRAMENTAS[vivo.ferramenta].opacidade} />}
+    </svg>
+  );
+}
+
+const FERRAMENTAS_UI: { id: Ferramenta; icone: typeof PenLine }[] = [
+  { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser },
+];
+
+function BarraFerramentas({ ferramenta, aoFerramenta, cor, aoCor, grossura, aoGrossura, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
+  ferramenta: Ferramenta; aoFerramenta: (f: Ferramenta) => void;
+  cor: string; aoCor: (c: string) => void;
+  grossura: "fina" | "media" | "grossa"; aoGrossura: (g: "fina" | "media" | "grossa") => void;
+  aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
+}) {
+  return (
+    <div className="caderno-barra" role="toolbar" aria-label={t.ferramentas.titulo}>
+      <span className="caderno-barra-grupo">
+        {FERRAMENTAS_UI.map(({ id, icone: Icone }) => (
+          <Button key={id} className={ferramenta === id ? "caderno-ferramenta ativa" : "caderno-ferramenta"} onPress={() => aoFerramenta(id)} aria-label={t.ferramentas.nomes[id]} aria-pressed={ferramenta === id}>
+            <Icone aria-hidden="true" size="1.2em" />
+          </Button>
+        ))}
+      </span>
+      <span className="caderno-barra-grupo caderno-cores" role="group" aria-label={t.ferramentas.cor}>
+        {CORES_CANETA.map((c) => (
+          <button key={c} type="button" className={cor === c ? "caderno-cor atual" : "caderno-cor"} style={{ background: c }} onClick={() => aoCor(c)} aria-label={c} aria-pressed={cor === c} />
+        ))}
+      </span>
+      <Segmentado rotulo={t.ferramentas.grossura} valor={grossura} aoMudar={(v) => aoGrossura(v as typeof grossura)} opcoes={[{ valor: "fina", nome: t.ferramentas.grossuras.fina }, { valor: "media", nome: t.ferramentas.grossuras.media }, { valor: "grossa", nome: t.ferramentas.grossuras.grossa }]} />
+      <span className="caderno-barra-grupo">
+        <Button className="botao-icone" onPress={aoDesfazer} isDisabled={!podeDesfazer} aria-label={t.ferramentas.desfazer}><Undo2 aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={t.ferramentas.refazer}><Redo2 aria-hidden="true" size="1.1em" /></Button>
+      </span>
+    </div>
   );
 }
 

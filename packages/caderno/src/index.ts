@@ -3,3 +3,4 @@
 
 export * from "./tipos";
 export * from "./papel";
+export * from "./tracos";

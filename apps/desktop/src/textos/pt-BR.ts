@@ -945,7 +945,16 @@ export const textos = {
       aplicar: "Aplicar a esta página",
       aplicarTodas: "Aplicar a todas",
     },
-    emBreve: "A escrita e o desenho à mão — caneta com pressão, lápis, marca-texto, formas e o quadro infinito — chegam na próxima atualização. Por enquanto, você monta as páginas e escolhe a folha (pautado, quadriculado, pontilhado…).",
+    ferramentas: {
+      titulo: "Ferramentas de desenho",
+      nomes: { caneta: "Caneta", lapis: "Lápis", pincel: "Pincel", marcatexto: "Marca-texto", borracha: "Borracha" },
+      cor: "Cor",
+      grossura: "Grossura",
+      grossuras: { fina: "Fina", media: "Média", grossa: "Grossa" },
+      desfazer: "Desfazer",
+      refazer: "Refazer",
+    },
+    infinitoEmBreve: "O quadro infinito — com rolagem e zoom livres e as mesmas ferramentas — chega na próxima etapa. Por enquanto, use o modo caderno para escrever e desenhar.",
   },
   leitura: {
     titulo: "Leitura",
