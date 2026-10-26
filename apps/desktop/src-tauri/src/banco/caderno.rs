@@ -79,6 +79,12 @@ pub struct Pagina {
     /// A folha (modelo, cores, espaçamento...), como objeto livre vindo do front.
     #[serde(default)]
     pub papel: Value,
+    /// Título da página (para o índice); vazio = sem título.
+    #[serde(default)]
+    pub titulo: String,
+    /// Se está marcada (marcador).
+    #[serde(default)]
+    pub marcado: bool,
     #[serde(default)]
     pub criado_em: i64,
 }
@@ -90,6 +96,10 @@ struct DadosPagina {
     tamanho: String,
     #[serde(default)]
     papel: Value,
+    #[serde(default)]
+    titulo: String,
+    #[serde(default)]
+    marcado: bool,
 }
 
 // ---------- Pastas ----------
@@ -198,12 +208,12 @@ pub fn excluir_caderno(conn: &Connection, id: &str) -> Result<(), Erro> {
 fn criar_pagina_interna(conn: &Connection, caderno_id: &str, tamanho: &str, papel: &Value, ordem: f64) -> Result<Pagina, Erro> {
     let id = novo_id();
     let agora = agora_ms();
-    let dados = serde_json::to_string(&DadosPagina { tamanho: tamanho.to_string(), papel: papel.clone() }).map_err(|e| Erro::Interno(e.to_string()))?;
+    let dados = serde_json::to_string(&DadosPagina { tamanho: tamanho.to_string(), papel: papel.clone(), titulo: String::new(), marcado: false }).map_err(|e| Erro::Interno(e.to_string()))?;
     conn.execute(
         "INSERT INTO item (id, tipo, pai_id, conteudo, ordem, dados, criado_em, alterado_em) VALUES (?1, 'caderno_pagina', ?2, '', ?3, ?4, ?5, ?5)",
         params![id, caderno_id, ordem, dados, agora],
     )?;
-    Ok(Pagina { id, caderno_id: caderno_id.to_string(), ordem, tamanho: tamanho.to_string(), papel: papel.clone(), criado_em: agora })
+    Ok(Pagina { id, caderno_id: caderno_id.to_string(), ordem, tamanho: tamanho.to_string(), papel: papel.clone(), titulo: String::new(), marcado: false, criado_em: agora })
 }
 
 pub fn listar_paginas(conn: &Connection, caderno_id: &str) -> Result<Vec<Pagina>, Erro> {
@@ -213,7 +223,7 @@ pub fn listar_paginas(conn: &Connection, caderno_id: &str) -> Result<Vec<Pagina>
     let lista = c
         .query_map([caderno_id], |r| {
             let d: DadosPagina = serde_json::from_str(&r.get::<_, String>(3)?).unwrap_or_default();
-            Ok(Pagina { id: r.get(0)?, caderno_id: r.get(1)?, ordem: r.get(2)?, tamanho: d.tamanho, papel: d.papel, criado_em: r.get(4)? })
+            Ok(Pagina { id: r.get(0)?, caderno_id: r.get(1)?, ordem: r.get(2)?, tamanho: d.tamanho, papel: d.papel, titulo: d.titulo, marcado: d.marcado, criado_em: r.get(4)? })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
@@ -233,7 +243,7 @@ pub fn salvar_pagina(conn: &Connection, mut p: Pagina) -> Result<Pagina, Erro> {
         }
         return criar_pagina_interna(conn, &p.caderno_id, &p.tamanho, &p.papel, p.ordem);
     }
-    let dados = serde_json::to_string(&DadosPagina { tamanho: p.tamanho.clone(), papel: p.papel.clone() }).map_err(|e| Erro::Interno(e.to_string()))?;
+    let dados = serde_json::to_string(&DadosPagina { tamanho: p.tamanho.clone(), papel: p.papel.clone(), titulo: p.titulo.clone(), marcado: p.marcado }).map_err(|e| Erro::Interno(e.to_string()))?;
     let n = conn.execute(
         "UPDATE item SET ordem = ?2, dados = ?3, alterado_em = ?4 WHERE id = ?1 AND tipo = 'caderno_pagina' AND excluido_em IS NULL",
         params![p.id, p.ordem, dados, agora_ms()],
@@ -298,12 +308,17 @@ mod testes {
     fn paginas_adicionam_salvam_cena_e_apagam() {
         let (_p, conn) = banco();
         let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: "C".into(), modo: "caderno".into(), capa: Capa::default(), pasta_id: String::new(), criado_em: 0 }).unwrap();
-        let p2 = salvar_pagina(&conn, Pagina { id: String::new(), caderno_id: cad.id.clone(), ordem: 0.0, tamanho: "a5".into(), papel: Value::Null, criado_em: 0 }).unwrap();
+        let p2 = salvar_pagina(&conn, Pagina { id: String::new(), caderno_id: cad.id.clone(), ordem: 0.0, tamanho: "a5".into(), papel: Value::Null, titulo: String::new(), marcado: false, criado_em: 0 }).unwrap();
         assert_eq!(listar_paginas(&conn, &cad.id).unwrap().len(), 2);
 
         assert_eq!(carregar_cena(&conn, &p2.id).unwrap(), "");
         salvar_cena(&conn, &p2.id, "{\"elementos\":[]}").unwrap();
         assert_eq!(carregar_cena(&conn, &p2.id).unwrap(), "{\"elementos\":[]}");
+
+        // Título e marcador voltam.
+        salvar_pagina(&conn, Pagina { titulo: "Introdução".into(), marcado: true, ..p2.clone() }).unwrap();
+        let salva = listar_paginas(&conn, &cad.id).unwrap().into_iter().find(|x| x.id == p2.id).unwrap();
+        assert_eq!((salva.titulo.as_str(), salva.marcado), ("Introdução", true));
 
         excluir_pagina(&conn, &p2.id).unwrap();
         assert_eq!(listar_paginas(&conn, &cad.id).unwrap().len(), 1);

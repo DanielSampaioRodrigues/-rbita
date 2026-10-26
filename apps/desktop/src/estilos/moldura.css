@@ -105,7 +105,7 @@
 .imersivo-menu {
   position: absolute;
   top: var(--espaco-3);
-  right: var(--espaco-3);
+  left: var(--espaco-3);
   z-index: 10;
   display: inline-flex;
   align-items: center;
@@ -128,6 +128,8 @@
   background: rgba(0, 0, 0, 0.18);
   cursor: pointer;
 }
+/* Abre espaço na barra do caderno para o botão de menu não cobrir o "voltar". */
+.moldura.imersivo .leitor-barra { padding-left: 3.4rem; }
 
 /* Janela estreita: a barra lateral fica só com os ícones. */
 @media (max-width: 760px) {

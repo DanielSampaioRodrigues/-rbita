@@ -459,6 +459,10 @@ export interface PaginaCaderno {
   /** "a4", "a5", "carta" ou "infinito". */
   tamanho: string;
   papel: unknown;
+  /** Título da página (para o índice); vazio = sem título. */
+  titulo: string;
+  /** Marcador. */
+  marcado: boolean;
   criadoEm: number;
 }
 
@@ -1995,7 +1999,7 @@ function simularCaderno() {
       const modo = c.modo === "infinito" ? "infinito" : "caderno";
       const novo: Caderno = { ...c, id: crypto.randomUUID(), nome: c.nome.trim(), modo, criadoEm: Date.now() };
       cadernos.push(novo);
-      paginas.push({ id: crypto.randomUUID(), cadernoId: novo.id, ordem: 1, tamanho: modo === "infinito" ? "infinito" : "a4", papel: null, criadoEm: Date.now() });
+      paginas.push({ id: crypto.randomUUID(), cadernoId: novo.id, ordem: 1, tamanho: modo === "infinito" ? "infinito" : "a4", papel: null, titulo: "", marcado: false, criadoEm: Date.now() });
       return { ...novo };
     },
     excluirCaderno: async (id: string) => {
@@ -2013,7 +2017,7 @@ function simularCaderno() {
         return { ...paginas[i] };
       }
       const ordem = p.ordem || Math.max(0, ...paginas.filter((x) => x.cadernoId === p.cadernoId).map((x) => x.ordem)) + 1;
-      const nova: PaginaCaderno = { ...p, id: crypto.randomUUID(), tamanho: p.tamanho || "a4", ordem, criadoEm: Date.now() };
+      const nova: PaginaCaderno = { ...p, id: crypto.randomUUID(), tamanho: p.tamanho || "a4", titulo: p.titulo ?? "", marcado: p.marcado ?? false, ordem, criadoEm: Date.now() };
       paginas.push(nova);
       return { ...nova };
     },

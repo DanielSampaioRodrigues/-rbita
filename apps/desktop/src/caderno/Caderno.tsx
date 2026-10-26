@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
-import { TAMANHOS } from "@orbita/caderno";
+import { MODELOS_PAPEL, papelDataUri, papelPadrao, TAMANHOS, type CoresPapel, type ModeloPapel, type Papel } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type PaginaCaderno, type PastaCaderno } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
+import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { ChevronLeft, FolderOpen, FolderPlus, LayoutGrid, Pencil, PenLine, Plus, Trash2 } from "../icones";
+import { Bookmark, ChevronLeft, FolderOpen, FolderPlus, LayoutGrid, List, Pencil, PenLine, Plus, SlidersHorizontal, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
 import { textos } from "../textos/pt-BR";
@@ -291,26 +292,73 @@ function FormPasta({ inicial, aoFechar }: { inicial: PastaCaderno; aoFechar: () 
   );
 }
 
-// ---------- Caderno aberto (casca; o desenho chega na etapa seguinte) ----------
+// ---------- Caderno aberto: visor do modo caderno com as folhas ----------
+// (As folhas — pautado, quadriculado... — são reais; o desenho à mão com
+// caneta chega na etapa seguinte.)
+
+/** Cor de paleta → hex (tema claro). Papel/linha sem cor usam o padrão. */
+const HEX_ETIQUETA: Record<string, string> = {
+  musgo: "#5b7a4c", mar: "#2e7a80", ceu: "#44709f", lavanda: "#7c68a8",
+  rosa: "#a95b7f", terra: "#94603d", areia: "#8f7738", cinza: "#6f747c",
+};
+function coresDaFolha(papel: Papel): CoresPapel {
+  return {
+    fundo: papel.corPapel ? HEX_ETIQUETA[papel.corPapel] ?? "#ffffff" : "#ffffff",
+    linha: papel.corLinha ? HEX_ETIQUETA[papel.corLinha] ?? "#c9ccd4" : "#c9ccd4",
+  };
+}
+function folhaDe(pagina: PaginaCaderno): Papel {
+  return { ...papelPadrao(), ...((pagina.papel as Partial<Papel>) || {}) };
+}
+function medidaDe(tamanho: string) {
+  return TAMANHOS[tamanho as keyof typeof TAMANHOS] ?? TAMANHOS.a4;
+}
+
+/** Desenha a folha (o papel) num tamanho dado, pela SVG do pacote. */
+function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; className?: string }) {
+  const med = medidaDe(tamanho);
+  const uri = papelDataUri(papel, med.largura, med.altura, coresDaFolha(papel));
+  return <div className={className} style={{ aspectRatio: `${med.largura} / ${med.altura}`, backgroundImage: `url("${uri}")`, backgroundSize: "100% 100%", backgroundColor: coresDaFolha(papel).fundo }} />;
+}
 
 function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () => void }) {
   useEntrarImersivo();
   const [paginas, setPaginas] = useState<PaginaCaderno[]>([]);
   const [tamanho, setTamanho] = useState<"a4" | "a5" | "carta">("a4");
+  const [selId, setSelId] = useState<string>("");
+  const [painel, setPainel] = useState(false);
+  const [editor, setEditor] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const area = useRef<HTMLDivElement>(null);
 
   const carregar = useCallback(async () => {
     try {
-      setPaginas(await api.listarPaginasCaderno(caderno.id));
+      const pgs = await api.listarPaginasCaderno(caderno.id);
+      setPaginas(pgs);
+      setSelId((s) => (pgs.some((p) => p.id === s) ? s : pgs[0]?.id ?? ""));
     } catch (e) {
       setErro(mensagem(e));
     }
   }, [caderno.id]);
   useEffect(() => void carregar(), [carregar]);
 
+  const infinito = caderno.modo === "infinito";
+  const sel = paginas.find((p) => p.id === selId) ?? paginas[0];
+
+  const salvar = async (pg: PaginaCaderno) => {
+    setPaginas((ps) => ps.map((x) => (x.id === pg.id ? pg : x)));
+    try {
+      await api.salvarPaginaCaderno(pg);
+    } catch (e) {
+      setErro(mensagem(e));
+      await carregar();
+    }
+  };
   const adicionar = async () => {
     try {
-      await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem: 0, tamanho, papel: null, criadoEm: 0 });
+      // Nova página herda a folha da última (mantém o estilo do caderno).
+      const papel = paginas.length ? folhaDe(paginas[paginas.length - 1]) : papelPadrao();
+      await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem: 0, tamanho, papel, titulo: "", marcado: false, criadoEm: 0 });
       await carregar();
     } catch (e) {
       setErro(mensagem(e));
@@ -324,58 +372,162 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       setErro(mensagem(e));
     }
   };
-
-  const infinito = caderno.modo === "infinito";
+  const aplicarFolha = async (papel: Papel, todas: boolean) => {
+    setEditor(false);
+    const alvos = todas ? paginas : sel ? [sel] : [];
+    try {
+      for (const pg of alvos) await api.salvarPaginaCaderno({ ...pg, papel });
+      await carregar();
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
+  const irPara = (id: string) => {
+    setSelId(id);
+    area.current?.querySelector(`#pg-${id}`)?.scrollIntoView({ block: "start" });
+  };
 
   return (
     <div className="caderno-tela">
       <div className="leitor-barra">
-        <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltar}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
+        <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
         <strong className="leitor-titulo quebra">
           {infinito ? <LayoutGrid aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />} {caderno.nome}
         </strong>
+        <span className="linha-ajuste">
+          {!infinito && <Button className={painel ? "botao-icone ativo" : "botao-icone"} onPress={() => setPainel((v) => !v)} aria-label={t.indice.titulo} aria-pressed={painel}><List aria-hidden="true" size="1.1em" /></Button>}
+          <Button className="botao-icone" onPress={() => setEditor(true)} aria-label={t.folha.abrir}><SlidersHorizontal aria-hidden="true" size="1.1em" /></Button>
+        </span>
       </div>
 
       {erro && <div className="leitor-aviso"><Aviso>{erro}</Aviso></div>}
 
-      <div className="caderno-corpo">
-        <div className="caderno-aviso-breve"><PenLine aria-hidden="true" size="1.1em" /> {t.emBreve}</div>
-
-        {infinito ? (
-          <div className="caderno-infinito-previa" aria-hidden="true" />
-        ) : (
-          <>
-            <div className="linha-ajuste caderno-paginas-topo">
-              <h2>{t.paginas.titulo} <span className="texto-suave">({paginas.length})</span></h2>
-              <span className="linha-ajuste">
-                <Segmentado rotulo={t.paginas.tamanho} valor={tamanho} aoMudar={(v) => setTamanho(v as typeof tamanho)} opcoes={[{ valor: "a4", nome: t.paginas.tamanhos.a4 }, { valor: "a5", nome: t.paginas.tamanhos.a5 }, { valor: "carta", nome: t.paginas.tamanhos.carta }]} />
-                <Button className="botao com-icone" onPress={() => void adicionar()}><Plus aria-hidden="true" size="1.1em" /> {t.paginas.adicionar}</Button>
-              </span>
-            </div>
+      <div className="caderno-area">
+        {painel && !infinito && (
+          <aside className="caderno-indice">
+            <h2 className="campo-rotulo">{t.indice.titulo}</h2>
             {paginas.length === 0 ? (
-              <p className="texto-suave">{t.paginas.vazio}</p>
+              <p className="texto-suave pequeno">{t.indice.vazio}</p>
             ) : (
-              <ul className="caderno-paginas">
-                {paginas.map((p, i) => <ThumbPagina key={p.id} numero={i + 1} pagina={p} aoApagar={() => void apagar(p.id)} podeApagar={paginas.length > 1} />)}
+              <ul className="lista-simples sem-marcador">
+                {paginas.map((p, i) => (
+                  <li key={p.id}>
+                    <button className={p.id === selId ? "caderno-indice-item atual" : "caderno-indice-item"} onClick={() => irPara(p.id)}>
+                      <Folha papel={folhaDe(p)} tamanho={p.tamanho} className="caderno-indice-mini" />
+                      <span className="quebra">
+                        {p.marcado && <Bookmark aria-hidden="true" size="0.9em" />} {p.titulo || t.indice.semTitulo(i + 1)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
-          </>
+          </aside>
         )}
+
+        <div className="caderno-rolagem" ref={area}>
+          <div className="caderno-aviso-breve"><PenLine aria-hidden="true" size="1.1em" /> {t.emBreve}</div>
+
+          {infinito ? (
+            <Folha papel={folhaDe(paginas[0] ?? { papel: null } as PaginaCaderno)} tamanho="a4" className="caderno-infinito-previa" />
+          ) : (
+            <>
+              {paginas.map((p, i) => (
+                <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId} podeApagar={paginas.length > 1}
+                  aoSelecionar={() => setSelId(p.id)}
+                  aoTitulo={(titulo) => salvar({ ...p, titulo })}
+                  aoMarcar={() => salvar({ ...p, marcado: !p.marcado })}
+                  aoApagar={() => void apagar(p.id)} />
+              ))}
+              <div className="caderno-adicionar">
+                <Segmentado rotulo={t.paginas.tamanho} valor={tamanho} aoMudar={(v) => setTamanho(v as typeof tamanho)} opcoes={[{ valor: "a4", nome: t.paginas.tamanhos.a4 }, { valor: "a5", nome: t.paginas.tamanhos.a5 }, { valor: "carta", nome: t.paginas.tamanhos.carta }]} />
+                <Button className="botao com-icone" onPress={() => void adicionar()}><Plus aria-hidden="true" size="1.1em" /> {t.paginas.adicionar}</Button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      <Janela titulo={t.folha.titulo} aberta={editor} aoFechar={() => setEditor(false)}>
+        {editor && <EditorFolha inicial={sel ? folhaDe(sel) : papelPadrao()} tamanho={sel?.tamanho ?? "a4"} varias={paginas.length > 1} aoAplicar={aplicarFolha} aoFechar={() => setEditor(false)} />}
+      </Janela>
     </div>
   );
 }
 
-function ThumbPagina({ numero, pagina, aoApagar, podeApagar }: { numero: number; pagina: PaginaCaderno; aoApagar: () => void; podeApagar: boolean }) {
-  const med = TAMANHOS[pagina.tamanho as keyof typeof TAMANHOS] ?? TAMANHOS.a4;
-  const prop = med.largura / med.altura;
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, aoSelecionar, aoTitulo, aoMarcar, aoApagar }: {
+  id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
+  aoSelecionar: () => void; aoTitulo: (t: string) => void; aoMarcar: () => void; aoApagar: () => void;
+}) {
+  const [titulo, setTitulo] = useState(pagina.titulo);
+  useEffect(() => setTitulo(pagina.titulo), [pagina.titulo]);
   return (
-    <li className="caderno-pagina">
-      <div className="caderno-pagina-folha" style={{ aspectRatio: `${prop}` }} aria-hidden="true" />
-      <div className="caderno-pagina-pe">
-        <span className="texto-suave pequeno">{t.paginas.numero(numero)} · {(t.paginas.tamanhos as Record<string, string>)[pagina.tamanho] ?? pagina.tamanho}</span>
+    <section id={id} className={selecionada ? "caderno-folha-bloco atual" : "caderno-folha-bloco"} onMouseDown={aoSelecionar}>
+      <div className="caderno-folha-topo">
+        <span className="texto-suave pequeno">{t.paginas.numero(numero)}</span>
+        <input className="entrada-texto sozinha caderno-folha-titulo" value={titulo} placeholder={t.paginas.semTitulo} onChange={(e) => setTitulo(e.target.value)} onBlur={() => titulo !== pagina.titulo && aoTitulo(titulo)} aria-label={t.paginas.tituloCampo} maxLength={80} />
+        <Button className={pagina.marcado ? "botao-icone pequeno ativo" : "botao-icone pequeno"} onPress={aoMarcar} aria-label={pagina.marcado ? t.paginas.desmarcar : t.paginas.marcar} aria-pressed={pagina.marcado}><Bookmark aria-hidden="true" size="1em" /></Button>
         {podeApagar && <Button className="botao-icone pequeno" onPress={aoApagar} aria-label={t.paginas.excluir}><Trash2 aria-hidden="true" size="1em" /></Button>}
       </div>
-    </li>
+      <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha" />
+    </section>
+  );
+}
+
+function PickCor({ rotulo, valor, aoMudar }: { rotulo: string; valor: string; aoMudar: (c: string) => void }) {
+  return (
+    <RadioGroup className="campo" value={valor} onChange={aoMudar} orientation="horizontal">
+      <Label className="campo-rotulo">{rotulo}</Label>
+      <div className="cores-etiqueta">
+        <Radio value="" className="cor-opcao" aria-label={t.folha.padraoCor}>
+          <span className="etiqueta-cor grande cor-nenhuma" aria-hidden="true" />
+        </Radio>
+        {CORES_ETIQUETA.map((c) => (
+          <Radio key={c} value={c} className="cor-opcao" aria-label={textos.ideias.cores[c]}>
+            <span className={`etiqueta-cor grande cor-${c}`} aria-hidden="true" />
+          </Radio>
+        ))}
+      </div>
+    </RadioGroup>
+  );
+}
+
+function EditorFolha({ inicial, tamanho, varias, aoAplicar, aoFechar }: { inicial: Papel; tamanho: string; varias: boolean; aoAplicar: (p: Papel, todas: boolean) => void; aoFechar: () => void }) {
+  const [papel, setPapel] = useState<Papel>(inicial);
+  const mudar = (campo: Partial<Papel>) => setPapel((p) => ({ ...p, ...campo }));
+  return (
+    <div className="formulario">
+      <div className="caderno-folha-previa"><Folha papel={papel} tamanho={tamanho} className="caderno-folha" /></div>
+
+      <div className="campo">
+        <span className="campo-rotulo">{t.folha.modelo}</span>
+        <div className="caderno-modelos">
+          {MODELOS_PAPEL.map((m) => (
+            <button key={m} type="button" className={papel.modelo === m ? "caderno-modelo atual" : "caderno-modelo"} onClick={() => mudar({ modelo: m as ModeloPapel })} aria-pressed={papel.modelo === m}>
+              <Folha papel={{ ...papel, modelo: m as ModeloPapel }} tamanho="a5" className="caderno-modelo-mini" />
+              <span className="pequeno">{t.folha.modelos[m as keyof typeof t.folha.modelos]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <PickCor rotulo={t.folha.corPapel} valor={papel.corPapel} aoMudar={(corPapel) => mudar({ corPapel })} />
+      {papel.modelo !== "liso" && <PickCor rotulo={t.folha.corLinha} valor={papel.corLinha} aoMudar={(corLinha) => mudar({ corLinha })} />}
+
+      {papel.modelo !== "liso" && (
+        <>
+          <Segmentado rotulo={t.folha.espacamento} valor={String(papel.espacamento)} aoMudar={(v) => mudar({ espacamento: Number(v) })} opcoes={[{ valor: "24", nome: t.folha.espacamentos.apertado }, { valor: "32", nome: t.folha.espacamentos.normal }, { valor: "44", nome: t.folha.espacamentos.largo }]} />
+          <Segmentado rotulo={t.folha.espessura} valor={String(papel.espessura)} aoMudar={(v) => mudar({ espessura: Number(v) })} opcoes={[{ valor: "0.6", nome: t.folha.espessuras.fina }, { valor: "1", nome: t.folha.espessuras.media }, { valor: "2", nome: t.folha.espessuras.grossa }]} />
+        </>
+      )}
+      <Interruptor rotulo={t.folha.margem} ligado={papel.margem} aoMudar={(margem) => mudar({ margem })} />
+      <Interruptor rotulo={t.folha.cabecalho} ligado={papel.cabecalho} aoMudar={(cabecalho) => mudar({ cabecalho })} />
+
+      <div className="janela-acoes">
+        <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
+        {varias && <Button className="botao" onPress={() => aoAplicar(papel, true)}>{t.folha.aplicarTodas}</Button>}
+        <Button className="botao principal" onPress={() => aoAplicar(papel, false)}>{t.folha.aplicar}</Button>
+      </div>
+    </div>
   );
 }

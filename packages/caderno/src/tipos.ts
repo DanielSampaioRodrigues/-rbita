@@ -19,6 +19,9 @@ export const TAMANHOS: Record<Exclude<TamanhoPagina, "infinito">, { largura: num
 /** Modelo de linhas da folha. "proprio" usa um arquivo da pessoa (PDF/PNG/SVG). */
 export type ModeloPapel = "liso" | "pautado" | "quadriculado" | "pontilhado" | "isometrico" | "planner" | "partitura" | "proprio";
 
+/** Os modelos de folha oferecidos (sem "proprio", que depende de importar arquivo). */
+export const MODELOS_PAPEL: ModeloPapel[] = ["liso", "pautado", "quadriculado", "pontilhado", "isometrico", "planner", "partitura"];
+
 /** A folha: fundo e linhas. Vale por página (cada página pode ter a sua). */
 export interface Papel {
   modelo: ModeloPapel;
