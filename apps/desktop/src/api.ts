@@ -486,6 +486,18 @@ export interface Atividade {
   criadoEm: number;
 }
 
+/** Uma aula fixa da grade semanal: uma matéria num dia e horário. */
+export interface Aula {
+  id: string;
+  materiaId: string;
+  /** 0 = domingo … 6 = sábado. */
+  diaSemana: number;
+  /** "HH:MM". */
+  inicio: string;
+  fim: string;
+  criadoEm: number;
+}
+
 export interface SituacaoBackup {
   pasta: string | null;
   ultimo: number | null;
@@ -719,6 +731,9 @@ interface Api {
   excluirAtividade(id: string): Promise<void>;
   mediaAprovacao(): Promise<number>;
   definirMediaAprovacao(media: number): Promise<void>;
+  listarAulas(): Promise<Aula[]>;
+  salvarAula(aula: Aula): Promise<Aula>;
+  excluirAula(id: string): Promise<void>;
   registrarGasto(centavos: number, grupoId: string, descricao: string, interesse: boolean): Promise<Gasto>;
   listarGastos(de: number, ate: number): Promise<Gasto[]>;
   excluirGasto(id: string): Promise<void>;
@@ -931,6 +946,9 @@ const nativa: Api = {
   excluirAtividade: (id) => chamar("excluir_atividade", { id }),
   mediaAprovacao: () => chamar("media_aprovacao"),
   definirMediaAprovacao: (media) => chamar("definir_media_aprovacao", { media }),
+  listarAulas: () => chamar("listar_aulas"),
+  salvarAula: (aula) => chamar("salvar_aula", { aula }),
+  excluirAula: (id) => chamar("excluir_aula", { id }),
   registrarGasto: (centavos, grupoId, descricao, interesse) => chamar("registrar_gasto", { centavos, grupoId, descricao, interesse }),
   listarGastos: (de, ate) => chamar("listar_gastos", { de, ate }),
   excluirGasto: (id) => chamar("excluir_gasto", { id }),
@@ -1550,7 +1568,9 @@ function simularCuidado() {
 function simularAcademico() {
   const materias: Materia[] = [];
   const atividades: Atividade[] = [];
+  const aulas: Aula[] = [];
   let media = 6;
+  const horaOk = (h: string) => /^\d{2}:\d{2}$/.test(h) && Number(h.slice(0, 2)) < 24 && Number(h.slice(3)) < 60;
   return {
     listarMaterias: async () => materias.map((m) => ({ ...m })).sort((a, b) => a.nome.localeCompare(b.nome)),
     salvarMateria: async (m: Materia) => {
@@ -1571,6 +1591,7 @@ function simularAcademico() {
       const i = materias.findIndex((m) => m.id === id);
       if (i >= 0) materias.splice(i, 1);
       for (let j = atividades.length - 1; j >= 0; j--) if (atividades[j].materiaId === id) atividades.splice(j, 1);
+      for (let j = aulas.length - 1; j >= 0; j--) if (aulas[j].materiaId === id) aulas.splice(j, 1);
     },
     listarAtividades: async () => atividades.map((a) => ({ ...a })),
     salvarAtividade: async (a: Atividade) => {
@@ -1601,6 +1622,27 @@ function simularAcademico() {
     },
     mediaAprovacao: async () => media,
     definirMediaAprovacao: async (m: number) => void (media = Math.min(100, Math.max(0, m))),
+    listarAulas: async () => aulas.map((a) => ({ ...a })),
+    salvarAula: async (a: Aula) => {
+      if (!a.materiaId.trim()) throw new ErroOrbita("interno", "Escolha a matéria.");
+      if (a.diaSemana < 0 || a.diaSemana > 6) throw new ErroOrbita("interno", "Dia da semana inválido.");
+      if (!horaOk(a.inicio.trim())) throw new ErroOrbita("interno", "Horário de início inválido (use HH:MM).");
+      if (a.fim.trim() && !horaOk(a.fim.trim())) throw new ErroOrbita("interno", "Horário de fim inválido (use HH:MM).");
+      const limpo: Aula = { ...a, inicio: a.inicio.trim(), fim: a.fim.trim() };
+      if (a.id) {
+        const i = aulas.findIndex((x) => x.id === a.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Aula não encontrada.");
+        aulas[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      aulas.push(novo);
+      return { ...novo };
+    },
+    excluirAula: async (id: string) => {
+      const i = aulas.findIndex((a) => a.id === id);
+      if (i >= 0) aulas.splice(i, 1);
+    },
   };
 }
 

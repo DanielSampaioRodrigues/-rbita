@@ -80,15 +80,101 @@ pub fn salvar_materia(conn: &Connection, mut materia: Materia) -> Result<Materia
     Ok(materia)
 }
 
-/// Apaga a matéria e, junto, as atividades dela (não ficam órfãs).
+/// Apaga a matéria e, junto, as atividades e aulas dela (não ficam órfãs).
 pub fn excluir_materia(conn: &Connection, id: &str) -> Result<(), Erro> {
     let agora = agora_ms();
     conn.execute("UPDATE item SET excluido_em = ?2, alterado_em = ?2 WHERE id = ?1 AND tipo = 'materia'", params![id, agora])?;
     conn.execute(
         "UPDATE item SET excluido_em = ?2, alterado_em = ?2
-         WHERE tipo = 'atividade' AND excluido_em IS NULL AND json_extract(dados, '$.materiaId') = ?1",
+         WHERE tipo IN ('atividade', 'aula') AND excluido_em IS NULL AND json_extract(dados, '$.materiaId') = ?1",
         params![id, agora],
     )?;
+    Ok(())
+}
+
+// ---------- Grade de horário semanal (aulas) ----------
+
+/// Uma aula fixa da semana: uma matéria num dia e horário. A grade é o conjunto.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Aula {
+    #[serde(default)]
+    pub id: String,
+    pub materia_id: String,
+    /// Dia da semana: 0 = domingo ... 6 = sábado.
+    pub dia_semana: u8,
+    /// "HH:MM" (24h).
+    pub inicio: String,
+    #[serde(default)]
+    pub fim: String,
+    #[serde(default)]
+    pub criado_em: i64,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct DadosAula {
+    materia_id: String,
+    dia_semana: u8,
+    inicio: String,
+    #[serde(default)]
+    fim: String,
+}
+
+fn hora_ok(h: &str) -> bool {
+    let mut p = h.split(':');
+    match (p.next(), p.next(), p.next()) {
+        (Some(hh), Some(mm), None) if hh.len() == 2 && mm.len() == 2 => {
+            matches!((hh.parse::<u32>(), mm.parse::<u32>()), (Ok(hh), Ok(mm)) if hh < 24 && mm < 60)
+        }
+        _ => false,
+    }
+}
+
+pub fn listar_aulas(conn: &Connection) -> Result<Vec<Aula>, Erro> {
+    let mut c = conn.prepare("SELECT id, dados, criado_em FROM item WHERE tipo = 'aula' AND excluido_em IS NULL")?;
+    let lista = c
+        .query_map([], |r| {
+            let d: DadosAula = serde_json::from_str(&r.get::<_, String>(1)?).unwrap_or_default();
+            Ok(Aula { id: r.get(0)?, materia_id: d.materia_id, dia_semana: d.dia_semana, inicio: d.inicio, fim: d.fim, criado_em: r.get(2)? })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(lista)
+}
+
+pub fn salvar_aula(conn: &Connection, mut a: Aula) -> Result<Aula, Erro> {
+    if a.materia_id.trim().is_empty() {
+        return Err(Erro::Interno("escolha a matéria".into()));
+    }
+    if a.dia_semana > 6 {
+        return Err(Erro::Interno("dia da semana inválido".into()));
+    }
+    a.inicio = a.inicio.trim().to_string();
+    a.fim = a.fim.trim().to_string();
+    if !hora_ok(&a.inicio) {
+        return Err(Erro::Interno("horário de início inválido (use HH:MM)".into()));
+    }
+    if !a.fim.is_empty() && !hora_ok(&a.fim) {
+        return Err(Erro::Interno("horário de fim inválido (use HH:MM)".into()));
+    }
+    let dados = serde_json::to_string(&DadosAula { materia_id: a.materia_id.clone(), dia_semana: a.dia_semana, inicio: a.inicio.clone(), fim: a.fim.clone() })
+        .map_err(|e| Erro::Interno(e.to_string()))?;
+    let agora = agora_ms();
+    if a.id.is_empty() {
+        a.id = novo_id();
+        a.criado_em = agora;
+        conn.execute("INSERT INTO item (id, tipo, dados, criado_em, alterado_em) VALUES (?1, 'aula', ?2, ?3, ?3)", params![a.id, dados, agora])?;
+    } else {
+        let n = conn.execute("UPDATE item SET dados = ?2, alterado_em = ?3 WHERE id = ?1 AND tipo = 'aula' AND excluido_em IS NULL", params![a.id, dados, agora])?;
+        if n == 0 {
+            return Err(Erro::Interno("aula não encontrada".into()));
+        }
+    }
+    Ok(a)
+}
+
+pub fn excluir_aula(conn: &Connection, id: &str) -> Result<(), Erro> {
+    conn.execute("UPDATE item SET excluido_em = ?2, alterado_em = ?2 WHERE id = ?1 AND tipo = 'aula'", params![id, agora_ms()])?;
     Ok(())
 }
 
@@ -282,6 +368,20 @@ mod testes {
         excluir_materia(&conn, &m.id).unwrap();
         assert!(listar_materias(&conn).unwrap().is_empty());
         assert!(listar_atividades(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn aulas_da_grade_validam_e_somem_com_a_materia() {
+        let (_p, conn) = banco();
+        let m = salvar_materia(&conn, materia("Biologia")).unwrap();
+        let a = salvar_aula(&conn, Aula { id: String::new(), materia_id: m.id.clone(), dia_semana: 1, inicio: "08:00".into(), fim: "09:40".into(), criado_em: 0 }).unwrap();
+        assert!(!a.id.is_empty());
+        assert!(salvar_aula(&conn, Aula { id: String::new(), materia_id: m.id.clone(), dia_semana: 9, inicio: "08:00".into(), fim: String::new(), criado_em: 0 }).is_err());
+        assert!(salvar_aula(&conn, Aula { id: String::new(), materia_id: m.id.clone(), dia_semana: 1, inicio: "25:00".into(), fim: String::new(), criado_em: 0 }).is_err());
+        assert!(salvar_aula(&conn, Aula { id: String::new(), materia_id: String::new(), dia_semana: 1, inicio: "08:00".into(), fim: String::new(), criado_em: 0 }).is_err());
+        assert_eq!(listar_aulas(&conn).unwrap().len(), 1);
+        excluir_materia(&conn, &m.id).unwrap();
+        assert!(listar_aulas(&conn).unwrap().is_empty());
     }
 
     #[test]

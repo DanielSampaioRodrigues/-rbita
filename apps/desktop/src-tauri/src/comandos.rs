@@ -1252,6 +1252,21 @@ pub async fn definir_media_aprovacao(estado: State<'_, Estado>, media: f64) -> R
     estado.com_sessao(|s| academico::definir_media_aprovacao(&s.conn, media))
 }
 
+#[tauri::command]
+pub async fn listar_aulas(estado: State<'_, Estado>) -> Result<Vec<academico::Aula>, Erro> {
+    estado.com_sessao(|s| academico::listar_aulas(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_aula(estado: State<'_, Estado>, aula: academico::Aula) -> Result<academico::Aula, Erro> {
+    estado.com_sessao(|s| academico::salvar_aula(&s.conn, aula))
+}
+
+#[tauri::command]
+pub async fn excluir_aula(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| academico::excluir_aula(&s.conn, &id))
+}
+
 // ---------- Dinheiro ----------
 
 #[tauri::command]

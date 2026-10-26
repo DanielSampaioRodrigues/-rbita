@@ -44,4 +44,16 @@ describe("vida acadêmica (simulação)", () => {
     expect(await api.mediaAprovacao()).toBe(7);
     await api.definirMediaAprovacao(6);
   });
+
+  it("aulas da grade validam e somem com a matéria", async () => {
+    const m = await api.salvarMateria(mat("Biologia"));
+    const a = await api.salvarAula({ id: "", materiaId: m.id, diaSemana: 1, inicio: "08:00", fim: "09:40", criadoEm: 0 });
+    expect(a.id).not.toBe("");
+    await expect(api.salvarAula({ id: "", materiaId: m.id, diaSemana: 9, inicio: "08:00", fim: "", criadoEm: 0 })).rejects.toThrow();
+    await expect(api.salvarAula({ id: "", materiaId: m.id, diaSemana: 1, inicio: "25:00", fim: "", criadoEm: 0 })).rejects.toThrow();
+    await expect(api.salvarAula({ id: "", materiaId: "", diaSemana: 1, inicio: "08:00", fim: "", criadoEm: 0 })).rejects.toThrow();
+    expect(await api.listarAulas()).toHaveLength(1);
+    await api.excluirMateria(m.id);
+    expect(await api.listarAulas()).toHaveLength(0);
+  });
 });

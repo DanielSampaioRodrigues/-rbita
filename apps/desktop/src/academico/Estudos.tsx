@@ -10,6 +10,7 @@ import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { FormMateria, novaMateria } from "./FormMateria";
 import { FormAtividade, novaAtividade } from "./FormAtividade";
+import { GradeHorario } from "./Grade";
 import { mediaPonderada, situacao } from "./media";
 
 const t = textos.estudos;
@@ -146,6 +147,14 @@ export function PaginaEstudos() {
             })}
           </ul>
           <MediaAprovacao atual={aprovacao} />
+        </section>
+      )}
+
+      {materias.length > 0 && (
+        <section className="cartao largura-leitura esticado" aria-labelledby="grade">
+          <h2 id="grade">{t.grade.titulo}</h2>
+          <p className="texto-suave">{t.grade.intro}</p>
+          <GradeHorario materias={materias} />
         </section>
       )}
 
