@@ -7,8 +7,13 @@ use serde::{Deserialize, Serialize};
 use super::{agora_ms, novo_id};
 use crate::erro::Erro;
 
-/// Tamanho máximo de um arquivo anexado.
-pub const MAXIMO_BYTES: usize = 20 * 1024 * 1024;
+/// Tamanho máximo de um arquivo anexado. Alto para caber livros (EPUB/PDF)
+/// pesados; lembrando que o conteúdo entra no banco criptografado e, portanto,
+/// no backup.
+pub const MAXIMO_BYTES: usize = 300 * 1024 * 1024;
+
+/// O limite em MB, para mostrar na mensagem.
+pub const MAXIMO_MB: usize = MAXIMO_BYTES / (1024 * 1024);
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -74,7 +79,7 @@ fn ligar(conn: &Connection, item: &str, anexo: &str, agora: i64) -> Result<(), E
 
 pub fn anexar_arquivo(conn: &Connection, item: &str, nome: &str, conteudo: &[u8]) -> Result<Anexo, Erro> {
     if conteudo.len() > MAXIMO_BYTES {
-        return Err(erro("o arquivo passa de 20 MB, o limite para anexos"));
+        return Err(erro(&format!("o arquivo passa de {MAXIMO_MB} MB, o limite para anexos")));
     }
     let nome = nome_limpo(nome);
     let agora = agora_ms();

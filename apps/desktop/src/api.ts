@@ -607,6 +607,8 @@ interface Api {
   excluirLivro(id: string): Promise<void>;
   /** Conteúdo de um anexo em base64 (para abrir um livro no leitor). */
   bytesAnexo(id: string): Promise<string>;
+  /** Conteúdo de um arquivo do disco em base64 (para ler os metadados ao escolher). */
+  bytesArquivo(caminho: string): Promise<string>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -787,6 +789,7 @@ const nativa: Api = {
   mudarStatusLivro: (id, status) => chamar("mudar_status_livro", { id, status }),
   excluirLivro: (id) => chamar("excluir_livro", { id }),
   bytesAnexo: (id) => chamar("bytes_anexo", { id }),
+  bytesArquivo: (caminho) => chamar("bytes_arquivo", { caminho }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1508,6 +1511,7 @@ function simularLeitura() {
     },
     // No navegador não há arquivo guardado; o leitor mostra um aviso.
     bytesAnexo: async () => "",
+    bytesArquivo: async () => "",
   };
 }
 

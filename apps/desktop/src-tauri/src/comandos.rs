@@ -1339,3 +1339,15 @@ pub async fn bytes_anexo(estado: State<'_, Estado>, id: String) -> Result<String
         Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
     })
 }
+
+/// Lê um arquivo do disco (escolhido pela pessoa) e devolve em base64. Serve
+/// para o leitor puxar os metadados de um livro antes de anexá-lo.
+#[tauri::command]
+pub async fn bytes_arquivo(_estado: State<'_, Estado>, caminho: String) -> Result<String, Erro> {
+    use base64::Engine;
+    let bytes = std::fs::read(&caminho).map_err(|e| Erro::Interno(format!("não consegui ler o arquivo: {e}")))?;
+    if bytes.len() > anexos::MAXIMO_BYTES {
+        return Err(Erro::Interno(format!("o arquivo passa de {} MB, o limite para anexos", anexos::MAXIMO_MB)));
+    }
+    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+}

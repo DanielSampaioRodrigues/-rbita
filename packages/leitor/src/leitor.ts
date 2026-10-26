@@ -13,6 +13,28 @@ import type { ConfigLeitura, Formato, ItemSumario, Localizacao } from "./tipos";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
+/** Título e autor do livro, lidos dos metadados do arquivo. Campos vazios quando não houver. */
+export async function lerMetadados(bytes: ArrayBuffer, formato: Formato): Promise<{ titulo: string; autor: string }> {
+  try {
+    if (formato === "epub") {
+      const livro: any = ePub(bytes);
+      const meta = await livro.loaded.metadata;
+      const r = { titulo: (meta?.title ?? "").trim(), autor: (meta?.creator ?? "").trim() };
+      livro.destroy?.();
+      return r;
+    }
+    const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
+    const m: any = await pdf.getMetadata();
+    const info = m?.info ?? {};
+    const r = { titulo: String(info.Title ?? "").trim(), autor: String(info.Author ?? "").trim() };
+    await pdf.destroy();
+    return r;
+  } catch {
+    // Sem metadados legíveis: devolve vazio, a pessoa preenche à mão.
+    return { titulo: "", autor: "" };
+  }
+}
+
 type AoMudar = (loc: Localizacao) => void;
 
 export class Leitor {

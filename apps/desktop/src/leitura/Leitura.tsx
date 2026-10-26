@@ -1,10 +1,11 @@
 import { useEffect, useId, useState } from "react";
 import { Button, Form } from "react-aria-components";
+import { lerMetadados } from "@orbita/leitor";
 import { api, escolherLivro, type Livro } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { CampoData } from "../componentes/CampoData";
 import { Confirmar, Janela } from "../componentes/Janela";
-import { BookOpen, Pencil, Plus, Trash2 } from "../icones";
+import { BookOpen, Check, Pencil, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { LeitorLivro } from "./Leitor";
@@ -13,6 +14,13 @@ const t = textos.leitura;
 const ORDEM: Livro["status"][] = ["lendo", "quero", "pausado", "lido"];
 const fmtData = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 const dataLegivel = (iso: string) => (iso ? fmtData.format(new Date(`${iso}T00:00:00`)) : "");
+
+function base64ParaBytes(b64: string): ArrayBuffer {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
 
 function livroNovo(): Livro {
   return { id: "", titulo: "", autor: "", status: "quero", ondeParei: "", impressoes: "", inicio: "", fim: "", formato: "", arquivoId: "", criadoEm: 0 };
@@ -129,6 +137,8 @@ function FormLivro({ inicial, aoFechar }: { inicial: Livro; aoFechar: () => void
   const [inicio, setInicio] = useState(inicial.inicio);
   const [fim, setFim] = useState(inicial.fim);
   const [caminho, setCaminho] = useState<string | null>(null);
+  const [nomeArquivo, setNomeArquivo] = useState("");
+  const [lendoMeta, setLendoMeta] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const idStatus = useId();
   const editando = inicial.id !== "";
@@ -136,7 +146,24 @@ function FormLivro({ inicial, aoFechar }: { inicial: Livro; aoFechar: () => void
 
   const escolher = async () => {
     const c = await escolherLivro();
-    if (c) setCaminho(c);
+    if (!c) return;
+    setCaminho(c);
+    setNomeArquivo(c.split(/[\\/]/).pop() ?? c);
+    // Puxa os metadados do arquivo para preencher título e autor (se vazios).
+    setLendoMeta(true);
+    try {
+      const b64 = await api.bytesArquivo(c);
+      if (b64) {
+        const fmt = c.toLowerCase().endsWith(".pdf") ? "pdf" : "epub";
+        const meta = await lerMetadados(base64ParaBytes(b64), fmt);
+        if (meta.titulo && !titulo.trim()) setTitulo(meta.titulo);
+        if (meta.autor && !autor.trim()) setAutor(meta.autor);
+      }
+    } catch {
+      // Sem metadados: a pessoa preenche à mão.
+    } finally {
+      setLendoMeta(false);
+    }
   };
 
   const enviar = async (e: React.FormEvent) => {
@@ -172,8 +199,16 @@ function FormLivro({ inicial, aoFechar }: { inicial: Livro; aoFechar: () => void
       <div className="campo">
         <span className="campo-rotulo">{t.form.arquivo}</span>
         <div className="linha-ajuste">
-          <Button className="botao" onPress={() => void escolher()}>{t.form.escolherArquivo}</Button>
-          <span className="texto-suave quebra">{caminho ? t.form.arquivoEscolhido : temArquivo ? t.form.arquivoEscolhido : t.form.semArquivo}</span>
+          <Button className={temArquivo ? "botao principal" : "botao"} onPress={() => void escolher()} isDisabled={lendoMeta}>
+            {temArquivo ? (
+              <><Check aria-hidden="true" size="1.1em" /> {caminho ? t.form.anexado : t.form.trocarArquivo}</>
+            ) : (
+              t.form.escolherArquivo
+            )}
+          </Button>
+          <span className="texto-suave quebra">
+            {lendoMeta ? t.form.lendoMeta : nomeArquivo || (inicial.arquivoId ? t.form.arquivoEscolhido : t.form.semArquivo)}
+          </span>
         </div>
       </div>
       <Campo rotulo={t.ondeParei} valor={ondeParei} aoMudar={setOndeParei} multilinha />
