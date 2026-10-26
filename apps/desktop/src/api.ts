@@ -792,6 +792,8 @@ interface Api {
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
   listarPrazos(de: string, ate: string): Promise<Prazo[]>;
   fazerBackup(caminho: string): Promise<void>;
+  /** Grava um texto (exportação em formato aberto) no caminho escolhido. */
+  exportarTexto(caminho: string, conteudo: string): Promise<void>;
   infoBackup(caminho: string): Promise<InfoBackup>;
   /** `escolha`: como abrir no dia a dia depois (obrigatória se o backup não tem senha). */
   restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }, escolha?: { modo: ModoAbrir; pin?: string }): Promise<ModoAbrir>;
@@ -1009,6 +1011,7 @@ const nativa: Api = {
   definirPrazoTarefa: (id, prazo) => chamar("definir_prazo_tarefa", { id, prazo }),
   listarPrazos: (de, ate) => chamar("listar_prazos", { de, ate }),
   fazerBackup: (caminho) => chamar("fazer_backup", { caminho }),
+  exportarTexto: (caminho, conteudo) => chamar("exportar_texto", { caminho, conteudo }),
   infoBackup: (caminho) => chamar("info_backup", { caminho }),
   restaurarBackup: (caminho, { senha, palavras }, escolha) =>
     chamar("restaurar_backup", { caminho, senha: senha ?? null, palavras: palavras ?? null, modo: escolha?.modo ?? null, pin: escolha?.pin ?? null }),
@@ -2080,6 +2083,9 @@ function criarSimulacao(): Api {
     fazerBackup: async () => {
       await espera();
     },
+    exportarTexto: async () => {
+      await espera();
+    },
     // `?backup=semsenha`: o backup de exemplo não tem senha (abre com as palavras).
     infoBackup: async () => ({ criadoEm: Date.now() - 86_400_000, versaoApp: "0.5.0", temSenha: params.get("backup") !== "semsenha" }),
     restaurarBackup: async (_c, { senha, palavras }, escolha) => {
@@ -2354,6 +2360,15 @@ export async function escolherOndeSalvarBackup(): Promise<string | null> {
   return save({
     defaultPath: `orbita-backup-${hoje()}.orbita-backup`,
     filters: [{ name: "Backup do Órbita", extensions: ["orbita-backup"] }],
+  });
+}
+
+/** Diálogo de "salvar como" para uma exportação (nome sugerido + extensão). */
+export async function escolherOndeExportar(nomeBase: string, nomeFiltro: string, extensao: string): Promise<string | null> {
+  if (!noApp) return `simulacao-${nomeBase}.${extensao}`;
+  return save({
+    defaultPath: `${nomeBase}.${extensao}`,
+    filters: [{ name: nomeFiltro, extensions: [extensao] }],
   });
 }
 

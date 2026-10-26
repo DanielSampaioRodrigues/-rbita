@@ -254,6 +254,13 @@ pub async fn fazer_backup(estado: State<'_, Estado>, caminho: PathBuf) -> Result
     estado.com_sessao(|s| backup::criar(&estado.cofre, &s.conn, &s.chave, &caminho))
 }
 
+/// Grava um texto (exportação em formato aberto) num arquivo escolhido pela
+/// pessoa. A serialização é feita no frontend; aqui só se escreve o arquivo.
+#[tauri::command]
+pub async fn exportar_texto(caminho: PathBuf, conteudo: String) -> Result<(), Erro> {
+    std::fs::write(&caminho, conteudo).map_err(Erro::from)
+}
+
 #[tauri::command]
 pub async fn info_backup(caminho: PathBuf) -> Result<backup::Informacao, Erro> {
     backup::informacao(&caminho)

@@ -4,6 +4,7 @@ import { usePreferencias } from "../estado";
 import type { ModoAbrir } from "../api";
 import { textos } from "../textos/pt-BR";
 import { Backup } from "./Backup";
+import { Exportar } from "./Exportar";
 import { AjustesAtualizacao } from "../atualizacao/TelasAtualizacao";
 import { AjustesNuvem } from "../nuvem/Nuvem";
 import { LimiteProjetos } from "./LimiteProjetos";
@@ -65,6 +66,7 @@ export function Ajustes({ modo, temSenha, aoMudarSeguranca, aoRestaurar }: Props
           <AjustesJanela />
           <AjustesAtualizacao />
           <Backup aoRestaurar={aoRestaurar} />
+          <Exportar />
           <AjustesNuvem />
           <AjustesIa />
           <AjustesDitado />

@@ -379,6 +379,16 @@ export const textos = {
     verTitulo: "Chave de recuperação",
     salvoComSucesso: "Pronto, salvo.",
   },
+  exportar: {
+    titulo: "Exportar meus dados",
+    explicacao: "Leve seus dados para fora do Órbita em formatos abertos, que qualquer programa abre. Diferente do backup, estes arquivos não são criptografados — guarde num lugar seguro.",
+    feito: "Arquivo salvo.",
+    ajuda: "A agenda (.ics) importa no Google Agenda e afins. As planilhas (.csv) abrem no Excel ou no Google Planilhas. O “tudo” (.json) traz todos os módulos num arquivo só.",
+    agenda: { botao: "Agenda (.ics)", arquivo: "orbita-agenda", filtro: "Agenda (iCalendar)" },
+    gastos: { botao: "Gastos (.csv)", arquivo: "orbita-gastos", filtro: "Planilha (CSV)" },
+    saude: { botao: "Registros de saúde (.csv)", arquivo: "orbita-saude", filtro: "Planilha (CSV)" },
+    tudo: { botao: "Tudo (.json)", arquivo: "orbita-dados", filtro: "Dados (JSON)" },
+  },
   backup: {
     titulo: "Backup",
     explicacao: "O backup é um arquivo único e criptografado. Abre com as 6 palavras (ou com a senha, se você criou uma), em qualquer computador.",

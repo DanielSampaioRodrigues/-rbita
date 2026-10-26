@@ -91,6 +91,7 @@ pub fn run() {
             comandos::mudar_modo,
             comandos::bloquear,
             comandos::fazer_backup,
+            comandos::exportar_texto,
             comandos::info_backup,
             comandos::restaurar_backup,
             comandos::situacao_backup,
