@@ -87,6 +87,48 @@
   backdrop-filter: blur(3px);
 }
 
+/* Modo imersivo (caderno aberto): a lateral some e o conteúdo ocupa tudo.
+   Um botão de menu a traz de volta por cima, com tudo (inclusive o baixo
+   estímulo, que por princípio nunca pode sumir). */
+.moldura.imersivo { grid-template-columns: 1fr; }
+.moldura.imersivo > .lateral { display: none; }
+.moldura.imersivo.menu-aberto > .lateral {
+  display: flex;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 30;
+  width: 15rem;
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.25);
+}
+.imersivo-menu {
+  position: absolute;
+  top: var(--espaco-3);
+  right: var(--espaco-3);
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+.imersivo-menu[data-hovered] { background: var(--cor-superficie-alternativa); }
+.imersivo-fundo {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border: none;
+  background: rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}
+
 /* Janela estreita: a barra lateral fica só com os ícones. */
 @media (max-width: 760px) {
   .lateral { width: auto; }

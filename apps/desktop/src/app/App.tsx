@@ -26,6 +26,7 @@ import { PaginaDinheiro } from "../dinheiro/Dinheiro";
 import { PaginaHobbies } from "../hobbies/Hobbies";
 import { PaginaOrganizacao } from "../organizacao/Organizacao";
 import { PaginaCaderno } from "../caderno/Caderno";
+import { ProvedorImersivo } from "./Imersivo";
 import { PaginaLeitura } from "../leitura/Leitura";
 import { AvisosDeTransicao } from "./Avisos";
 import { Ideias } from "../paginas/Ideias";
@@ -213,6 +214,7 @@ export function App() {
       <ProvedorAtualizacao procurarAoAbrir={prefs.procurarAtualizacao}>
         <ProvedorLimite>
           <ProvedorFoco>
+           <ProvedorImersivo>
             <BloqueioAutomatico minutos={prefs.bloqueioAuto} aoBloquear={bloquear} />
             <LembretesRemedio aberto={aberto} />
             {prefs.baixaEnergia ? (
@@ -231,6 +233,7 @@ export function App() {
               </Moldura>
             )}
             <Captura aberta={capturando} aoFechar={() => setCapturando(false)} />
+           </ProvedorImersivo>
           </ProvedorFoco>
         </ProvedorLimite>
       </ProvedorAtualizacao>

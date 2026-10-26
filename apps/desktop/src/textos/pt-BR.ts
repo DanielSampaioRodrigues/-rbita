@@ -37,6 +37,7 @@ export const textos = {
     baixoEstimulo: "Baixo estímulo",
     bloquear: "Bloquear",
     verAtalhos: "Atalhos",
+    menu: "Abrir o menu",
   },
   inicio: {
     titulo: "Início",

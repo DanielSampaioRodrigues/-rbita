@@ -7,6 +7,7 @@ import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
 import { ChevronLeft, LayoutGrid, Pencil, PenLine, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
+import { useEntrarImersivo } from "../app/Imersivo";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.caderno;
@@ -247,6 +248,7 @@ function FormPasta({ inicial, aoFechar }: { inicial: PastaCaderno; aoFechar: () 
 // ---------- Caderno aberto (casca; o desenho chega na etapa seguinte) ----------
 
 function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () => void }) {
+  useEntrarImersivo();
   const [paginas, setPaginas] = useState<PaginaCaderno[]>([]);
   const [tamanho, setTamanho] = useState<"a4" | "a5" | "carta">("a4");
   const [erro, setErro] = useState<string | null>(null);

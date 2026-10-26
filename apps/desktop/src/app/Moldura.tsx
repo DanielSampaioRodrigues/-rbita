@@ -1,10 +1,11 @@
-import { ArrowLeft, ArrowRight, Palette, BatteryMedium, BookOpen, Books, CalendarDays, FolderKanban, Heart, LayoutGrid, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
-import type { ReactNode } from "react";
+import { ArrowLeft, ArrowRight, List, Palette, BatteryMedium, BookOpen, Books, CalendarDays, FolderKanban, Heart, LayoutGrid, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Interruptor } from "../componentes/Interruptor";
 import { usePreferencias } from "../estado";
 import { textos } from "../textos/pt-BR";
 import { formatarRestante, useFoco } from "../foco/Foco";
+import { useImersivo } from "./Imersivo";
 import { Marca } from "./Marca";
 
 export type Secao = "inicio" | "organizacao" | "ideias" | "projetos" | "agenda" | "rotinas" | "foco" | "energia" | "dinheiro" | "saude" | "cuidado" | "estudos" | "hobbies" | "leitura" | "caderno" | "aparencia" | "ajustes";
@@ -43,9 +44,14 @@ interface Props {
 export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCapturar, navegacao, children }: Props) {
   const { prefs, mudar } = usePreferencias();
   const foco = useFoco();
+  const { imersivo } = useImersivo();
+  const [menuAberto, setMenuAberto] = useState(false);
+  // Ao sair do modo imersivo (fechar o caderno), o menu volta ao normal.
+  useEffect(() => { if (!imersivo) setMenuAberto(false); }, [imersivo]);
+  const escolher = (id: Secao) => { aoEscolherSecao(id); setMenuAberto(false); };
 
   return (
-    <div className="moldura">
+    <div className={`moldura${imersivo ? " imersivo" : ""}${imersivo && menuAberto ? " menu-aberto" : ""}`}>
       <aside className="lateral">
         <div className="lateral-marca">
           <Marca />
@@ -63,7 +69,7 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
               <li key={id}>
                 <Button
                   className="lateral-item"
-                  onPress={() => aoEscolherSecao(id)}
+                  onPress={() => escolher(id)}
                   aria-current={secao === id ? "page" : undefined}
                 >
                   <Icone aria-hidden="true" size="1.15em" strokeWidth={1.75} />
@@ -102,6 +108,12 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
       </aside>
 
       <main className="conteudo" id="conteudo">
+        {imersivo && (
+          <Button className="imersivo-menu" onPress={() => setMenuAberto((v) => !v)} aria-label={textos.moldura.menu} aria-expanded={menuAberto}>
+            <List aria-hidden="true" size="1.2em" />
+          </Button>
+        )}
+        {imersivo && menuAberto && <Button className="imersivo-fundo" aria-label={textos.comum.fechar} onPress={() => setMenuAberto(false)} />}
         {/* Ficam sempre no mesmo lugar; sem para onde ir, aparecem apagadas. */}
         <div className="setas-navegacao">
           <Button className="botao-icone" aria-label={`${textos.navegacao.voltar} (Alt + ←)`} isDisabled={!navegacao.podeVoltar} onPress={navegacao.voltar}>
