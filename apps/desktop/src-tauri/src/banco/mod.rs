@@ -10,6 +10,7 @@ pub mod etiquetas;
 pub mod eventos;
 pub mod itens;
 pub mod rotinas;
+pub mod saude;
 
 use std::path::Path;
 

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, anexos, energia, etiquetas, eventos, itens, rotinas};
+use crate::banco::{self, anexos, energia, etiquetas, eventos, itens, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1074,3 +1074,41 @@ pub async fn nuvem_concluir_recuperacao(estado: State<'_, Estado>, modo: ModoAbr
     Ok(modo)
 }
 
+
+// ---------- Saúde: medicação ----------
+
+#[tauri::command]
+pub async fn listar_remedios(estado: State<'_, Estado>) -> Result<Vec<saude::Remedio>, Erro> {
+    estado.com_sessao(|s| saude::listar(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_remedio(estado: State<'_, Estado>, remedio: saude::Remedio) -> Result<saude::Remedio, Erro> {
+    estado.com_sessao(|s| saude::salvar(&s.conn, remedio))
+}
+
+#[tauri::command]
+pub async fn excluir_remedio(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| saude::excluir(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn pausar_remedio(estado: State<'_, Estado>, id: String, pausado: bool) -> Result<(), Erro> {
+    estado.com_sessao(|s| saude::mudar_estado(&s.conn, &id, pausado))
+}
+
+#[tauri::command]
+pub async fn doses_do_dia(estado: State<'_, Estado>, data: String) -> Result<Vec<saude::DoseDoDia>, Erro> {
+    estado.com_sessao(|s| saude::doses_do_dia(&s.conn, &data))
+}
+
+#[tauri::command]
+pub async fn marcar_dose(estado: State<'_, Estado>, remedio_id: String, horario: String, data: String, tomada: bool) -> Result<(), Erro> {
+    estado.com_sessao(|s| saude::marcar_dose(&s.conn, &remedio_id, &horario, &data, tomada))
+}
+
+#[tauri::command]
+pub async fn alertas_saude(estado: State<'_, Estado>, hoje: String) -> Result<Vec<saude::AvisoSaude>, Erro> {
+    // Avisa com estoque de até 5 doses ou receita a vencer em até 7 dias.
+    estado.com_sessao(|s| saude::alertas(&s.conn, &hoje, 5, 7))
+}

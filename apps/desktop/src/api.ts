@@ -184,6 +184,45 @@ export interface TarefaSugerida {
   projeto: string;
 }
 
+/** Um remédio cadastrado no módulo de Saúde. */
+export interface Remedio {
+  /** Vazio ao criar. */
+  id: string;
+  nome: string;
+  /** Texto livre, por exemplo "1 comprimido" ou "10 gotas". */
+  dose: string;
+  /** Horários do dia ("HH:MM", 24h) de tomar. Vazio = sem horário fixo. */
+  horarios: string[];
+  /** Unidades em estoque; null = não controla estoque. */
+  estoque: number | null;
+  /** Unidades gastas por dose (para baixar o estoque). */
+  porDose: number;
+  /** Quando a receita vence ("AAAA-MM-DD"); null = sem receita. */
+  receita: string | null;
+  /** "ativo" ou "pausado". */
+  estado: string;
+  criadoEm: number;
+}
+
+/** Uma dose a tomar (ou já tomada) de um remédio num dia. */
+export interface DoseDoDia {
+  remedioId: string;
+  nome: string;
+  dose: string;
+  horario: string;
+  tomada: boolean;
+}
+
+/** Aviso calmo de estoque acabando ou receita vencendo. */
+export interface AvisoSaude {
+  remedioId: string;
+  nome: string;
+  /** "estoque" ou "receita". */
+  tipo: string;
+  /** Unidades restantes (estoque) ou dias até vencer (receita). */
+  quanto: number;
+}
+
 export interface SituacaoBackup {
   pasta: string | null;
   ultimo: number | null;
@@ -380,6 +419,14 @@ interface Api {
   definirBasicos(lista: string[]): Promise<void>;
   marcarBasico(data: string, texto: string, feito: boolean): Promise<void>;
   tarefasSugeridas(): Promise<TarefaSugerida[]>;
+  listarRemedios(): Promise<Remedio[]>;
+  salvarRemedio(remedio: Remedio): Promise<Remedio>;
+  excluirRemedio(id: string): Promise<void>;
+  pausarRemedio(id: string, pausado: boolean): Promise<void>;
+  dosesDoDia(data: string): Promise<DoseDoDia[]>;
+  marcarDose(remedioId: string, horario: string, data: string, tomada: boolean): Promise<void>;
+  /** `hoje`: "AAAA-MM-DD". Avisos de estoque acabando e receita vencendo. */
+  alertasSaude(hoje: string): Promise<AvisoSaude[]>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -511,6 +558,13 @@ const nativa: Api = {
   registrarEnergia: (nivel, nota) => chamar("registrar_energia", { nivel, nota }),
   listarEnergia: (de, ate) => chamar("listar_energia", { de, ate }),
   basicosDoDia: (data) => chamar("basicos_do_dia", { data }),
+  listarRemedios: () => chamar("listar_remedios"),
+  salvarRemedio: (remedio) => chamar("salvar_remedio", { remedio }),
+  excluirRemedio: (id) => chamar("excluir_remedio", { id }),
+  pausarRemedio: (id, pausado) => chamar("pausar_remedio", { id, pausado }),
+  dosesDoDia: (data) => chamar("doses_do_dia", { data }),
+  marcarDose: (remedioId, horario, data, tomada) => chamar("marcar_dose", { remedioId, horario, data, tomada }),
+  alertasSaude: (hoje) => chamar("alertas_saude", { hoje }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -904,6 +958,76 @@ function simularEnergia() {
   };
 }
 
+function simularSaude() {
+  const remedios: Remedio[] = [];
+  // Doses tomadas: chave "remedioId|horario|data".
+  const tomadas = new Set<string>();
+  const normalizar = (hs: string[]) =>
+    [...new Set(hs.map((h) => h.trim()).filter(Boolean))].filter((h) => /^\d{2}:\d{2}$/.test(h)).sort();
+  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+    remedios.push(
+      { id: "rem1", nome: "Metilfenidato", dose: "1 comprimido", horarios: ["08:00", "14:00"], estoque: 4, porDose: 1, receita: "2026-10-30", estado: "ativo", criadoEm: Date.now() },
+      { id: "rem2", nome: "Sertralina", dose: "1 comprimido", horarios: ["08:00"], estoque: 28, porDose: 1, receita: null, estado: "ativo", criadoEm: Date.now() },
+    );
+  }
+  const diasAte = (hoje: string, data: string) => Math.round((Date.parse(data) - Date.parse(hoje)) / 86_400_000);
+  return {
+    listarRemedios: async () =>
+      remedios
+        .map((r) => ({ ...r }))
+        .sort((a, b) => (a.estado === b.estado ? a.nome.localeCompare(b.nome) : a.estado === "ativo" ? -1 : 1)),
+    salvarRemedio: async (r: Remedio) => {
+      const nome = r.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "O remédio precisa de um nome.");
+      const limpo: Remedio = { ...r, nome, dose: r.dose.trim(), horarios: normalizar(r.horarios), porDose: Math.max(1, r.porDose), estado: r.estado === "pausado" ? "pausado" : "ativo" };
+      if (r.id) {
+        const i = remedios.findIndex((x) => x.id === r.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Remédio não encontrado.");
+        remedios[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      remedios.push(novo);
+      return { ...novo };
+    },
+    excluirRemedio: async (id: string) => {
+      const i = remedios.findIndex((r) => r.id === id);
+      if (i >= 0) remedios.splice(i, 1);
+    },
+    pausarRemedio: async (id: string, pausado: boolean) => {
+      const r = remedios.find((x) => x.id === id);
+      if (r) r.estado = pausado ? "pausado" : "ativo";
+    },
+    dosesDoDia: async (data: string) =>
+      remedios
+        .filter((r) => r.estado === "ativo")
+        .flatMap((r) => r.horarios.map((horario) => ({ remedioId: r.id, nome: r.nome, dose: r.dose, horario, tomada: tomadas.has(`${r.id}|${horario}|${data}`) })))
+        .sort((a, b) => a.horario.localeCompare(b.horario) || a.nome.localeCompare(b.nome)),
+    marcarDose: async (remedioId: string, horario: string, data: string, tomada: boolean) => {
+      const chave = `${remedioId}|${horario}|${data}`;
+      const r = remedios.find((x) => x.id === remedioId);
+      if (tomada && !tomadas.has(chave)) {
+        tomadas.add(chave);
+        if (r && r.estoque !== null) r.estoque = Math.max(0, r.estoque - Math.max(1, r.porDose));
+      } else if (!tomada && tomadas.has(chave)) {
+        tomadas.delete(chave);
+        if (r && r.estoque !== null) r.estoque = r.estoque + Math.max(1, r.porDose);
+      }
+    },
+    alertasSaude: async (hoje: string) => {
+      const avisos: AvisoSaude[] = [];
+      for (const r of remedios.filter((x) => x.estado === "ativo")) {
+        if (r.estoque !== null && r.estoque <= 5) avisos.push({ remedioId: r.id, nome: r.nome, tipo: "estoque", quanto: r.estoque });
+        if (r.receita) {
+          const dias = diasAte(hoje, r.receita);
+          if (Number.isFinite(dias) && dias <= 7) avisos.push({ remedioId: r.id, nome: r.nome, tipo: "receita", quanto: dias });
+        }
+      }
+      return avisos;
+    },
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
@@ -994,6 +1118,7 @@ function criarSimulacao(): Api {
     ...simularAgenda(),
     ...simularRotinas(comItens, comAnexos),
     ...simularEnergia(),
+    ...simularSaude(),
     ...comAnexos,
     fazerBackup: async () => {
       await espera();
