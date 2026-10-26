@@ -867,6 +867,8 @@ export const textos = {
     semPasta: "Fora de pasta",
     vazio: "Nenhum caderno ainda. Crie o primeiro.",
     abrir: "Abrir",
+    voltarEstante: "Voltar para a estante",
+    moverPara: "Mover para a pasta",
     editar: "Editar caderno",
     excluir: "Apagar caderno",
     confirmarExcluir: (nome: string) => `Apagar o caderno “${nome}” e todas as suas páginas? Não dá para desfazer.`,

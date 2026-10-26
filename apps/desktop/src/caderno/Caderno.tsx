@@ -5,7 +5,7 @@ import { api, CORES_ETIQUETA, type Capa, type Caderno, type PaginaCaderno, type 
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { ChevronLeft, LayoutGrid, Pencil, PenLine, Plus, Trash2 } from "../icones";
+import { ChevronLeft, FolderOpen, FolderPlus, LayoutGrid, Pencil, PenLine, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
 import { textos } from "../textos/pt-BR";
@@ -37,6 +37,7 @@ export function PaginaCaderno() {
   const [excluindo, setExcluindo] = useState<Caderno | null>(null);
   const [editandoPasta, setEditandoPasta] = useState<PastaCaderno | null>(null);
   const [excluindoPasta, setExcluindoPasta] = useState<PastaCaderno | null>(null);
+  const [pastaAberta, setPastaAberta] = useState<PastaCaderno | null>(null);
   const [aberto, setAberto] = useState<Caderno | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
@@ -64,42 +65,63 @@ export function PaginaCaderno() {
 
   const porPasta = (pastaId: string) => cadernos.filter((c) => c.pastaId === pastaId);
   const semPasta = cadernos.filter((c) => !c.pastaId || !pastas.some((p) => p.id === c.pastaId));
+  const novo = (pastaId: string): Caderno => ({ id: "", nome: "", modo: "caderno", capa: { tipo: "cor", valor: "mar" }, pastaId, criadoEm: 0 });
 
-  const novo = (): Caderno => ({ id: "", nome: "", modo: "caderno", capa: { tipo: "cor", valor: "mar" }, pastaId: "", criadoEm: 0 });
+  // Mantém a pasta aberta em dia (some se for apagada).
+  const dentro = pastaAberta ? pastas.find((p) => p.id === pastaAberta.id) ?? null : null;
+  const moverParaPasta = async (c: Caderno, pastaId: string) => {
+    try {
+      await api.salvarCaderno({ ...c, pastaId });
+      avisarMudanca();
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
 
   return (
     <div className="pagina">
-      <h1>{t.titulo}</h1>
-      <p className="pagina-intro">{t.intro}</p>
-
-      <div className="botoes">
-        <Button className="botao principal" onPress={() => setEditando(novo())}><Plus aria-hidden="true" size="1.1em" /> {t.novo}</Button>
-        <Button className="botao" onPress={() => setEditandoPasta({ id: "", nome: "", criadoEm: 0 })}><Plus aria-hidden="true" size="1.1em" /> {t.novaPasta}</Button>
-      </div>
-
-      {cadernos.length === 0 ? (
-        <section className="cartao largura-leitura esticado"><p className="texto-suave">{t.vazio}</p></section>
+      {dentro ? (
+        <>
+          <div className="linha-ajuste">
+            <Button className="botao com-icone" onPress={() => setPastaAberta(null)}><ChevronLeft aria-hidden="true" size="1.1em" /> {t.voltarEstante}</Button>
+            <span className="linha-ajuste">
+              <Button className="botao-icone" onPress={() => setEditandoPasta(dentro)} aria-label={`${t.pasta.editar}: ${dentro.nome}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
+              <Button className="botao-icone" onPress={() => setExcluindoPasta(dentro)} aria-label={`${t.pasta.excluir}: ${dentro.nome}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+            </span>
+          </div>
+          <h1><FolderOpen aria-hidden="true" size="1em" /> {dentro.nome}</h1>
+          <div className="botoes">
+            <Button className="botao principal" onPress={() => setEditando(novo(dentro.id))}><Plus aria-hidden="true" size="1.1em" /> {t.novo}</Button>
+          </div>
+          <GradeCadernos cadernos={porPasta(dentro.id)} aoAbrir={setAberto} aoEditar={setEditando} aoExcluir={setExcluindo} pastas={pastas} aoMover={moverParaPasta} />
+        </>
       ) : (
         <>
-          {pastas.map((p) => {
-            const lista = porPasta(p.id);
-            return (
-              <section key={p.id} className="caderno-grupo">
-                <div className="linha-ajuste">
-                  <h2 className="caderno-grupo-titulo">{p.nome} <span className="texto-suave">({lista.length})</span></h2>
-                  <span className="linha-ajuste">
-                    <Button className="botao-icone" onPress={() => setEditandoPasta(p)} aria-label={`${t.pasta.editar}: ${p.nome}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
-                    <Button className="botao-icone" onPress={() => setExcluindoPasta(p)} aria-label={`${t.pasta.excluir}: ${p.nome}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
-                  </span>
-                </div>
-                <GradeCadernos cadernos={lista} aoAbrir={setAberto} aoEditar={setEditando} aoExcluir={setExcluindo} />
-              </section>
-            );
-          })}
-          <section className="caderno-grupo">
-            {pastas.length > 0 && <h2 className="caderno-grupo-titulo">{t.semPasta} <span className="texto-suave">({semPasta.length})</span></h2>}
-            <GradeCadernos cadernos={semPasta} aoAbrir={setAberto} aoEditar={setEditando} aoExcluir={setExcluindo} />
-          </section>
+          <h1>{t.titulo}</h1>
+          <p className="pagina-intro">{t.intro}</p>
+          <div className="botoes">
+            <Button className="botao principal" onPress={() => setEditando(novo(""))}><Plus aria-hidden="true" size="1.1em" /> {t.novo}</Button>
+            <Button className="botao" onPress={() => setEditandoPasta({ id: "", nome: "", criadoEm: 0 })}><Plus aria-hidden="true" size="1.1em" /> {t.novaPasta}</Button>
+          </div>
+
+          {pastas.length > 0 && (
+            <ul className="caderno-pastas">
+              {pastas.map((p) => (
+                <li key={p.id}>
+                  <CartaoPasta pasta={p} quantidade={porPasta(p.id).length} aoAbrir={() => setPastaAberta(p)} aoEditar={() => setEditandoPasta(p)} aoExcluir={() => setExcluindoPasta(p)} />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {cadernos.length === 0 ? (
+            <section className="cartao largura-leitura esticado"><p className="texto-suave">{t.vazio}</p></section>
+          ) : (
+            <section className="caderno-grupo">
+              {pastas.length > 0 && <h2 className="caderno-grupo-titulo">{t.semPasta} <span className="texto-suave">({semPasta.length})</span></h2>}
+              <GradeCadernos cadernos={semPasta} aoAbrir={setAberto} aoEditar={setEditando} aoExcluir={setExcluindo} pastas={pastas} aoMover={moverParaPasta} />
+            </section>
+          )}
         </>
       )}
 
@@ -117,7 +139,24 @@ export function PaginaCaderno() {
   );
 }
 
-function GradeCadernos({ cadernos, aoAbrir, aoEditar, aoExcluir }: { cadernos: Caderno[]; aoAbrir: (c: Caderno) => void; aoEditar: (c: Caderno) => void; aoExcluir: (c: Caderno) => void }) {
+function CartaoPasta({ pasta, quantidade, aoAbrir, aoEditar, aoExcluir }: { pasta: PastaCaderno; quantidade: number; aoAbrir: () => void; aoEditar: () => void; aoExcluir: () => void }) {
+  return (
+    <div className="caderno-pasta">
+      <button className="caderno-pasta-fig" onClick={aoAbrir} aria-label={`${t.abrir}: ${pasta.nome}`}>
+        <span className="caderno-pasta-qtd">{quantidade}</span>
+      </button>
+      <div className="caderno-item-pe">
+        <strong className="quebra">{pasta.nome}</strong>
+        <span className="linha-ajuste">
+          <Button className="botao-icone pequeno" onPress={aoEditar} aria-label={`${t.pasta.editar}: ${pasta.nome}`}><Pencil aria-hidden="true" size="1em" /></Button>
+          <Button className="botao-icone pequeno" onPress={aoExcluir} aria-label={`${t.pasta.excluir}: ${pasta.nome}`}><Trash2 aria-hidden="true" size="1em" /></Button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function GradeCadernos({ cadernos, aoAbrir, aoEditar, aoExcluir, pastas, aoMover }: { cadernos: Caderno[]; aoAbrir: (c: Caderno) => void; aoEditar: (c: Caderno) => void; aoExcluir: (c: Caderno) => void; pastas: PastaCaderno[]; aoMover: (c: Caderno, pastaId: string) => void }) {
   if (cadernos.length === 0) return <p className="texto-suave pequeno">{t.vazio}</p>;
   return (
     <ul className="caderno-grade">
@@ -134,6 +173,13 @@ function GradeCadernos({ cadernos, aoAbrir, aoEditar, aoExcluir }: { cadernos: C
               <Button className="botao-icone pequeno" onPress={() => aoExcluir(c)} aria-label={`${t.excluir}: ${c.nome}`}><Trash2 aria-hidden="true" size="1em" /></Button>
             </span>
           </div>
+          <label className="caderno-mover">
+            <FolderPlus aria-hidden="true" size="0.95em" />
+            <select className="caderno-mover-select" value={c.pastaId} onChange={(e) => aoMover(c, e.target.value)} aria-label={`${t.moverPara}: ${c.nome}`}>
+              <option value="">{t.semPasta}</option>
+              {pastas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </label>
         </li>
       ))}
     </ul>
