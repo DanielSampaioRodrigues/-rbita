@@ -27,8 +27,8 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [ ] **Saúde** (começado na 0.30.0):
   - [x] Remédios com confirmação de dose, controle de estoque, aviso de receita vencendo e lembrete no horário (pela bandeja). Falta teste de Dan no Windows.
   - [x] Consultas e exames: por ora pela Agenda (um compromisso já avisa antes). Falta uma marcação própria de "consulta/exame" e o "resumo para a consulta".
-  - [ ] Registro curto de sono, sintomas e sobrecarga sensorial.
-  - [ ] Plano de crise acessível em 1 clique.
+  - [x] Registro curto de sono, sintomas e sobrecarga sensorial (0.31.0).
+  - [x] Plano de crise acessível em 1 clique e por atalho (Ctrl+Shift+C) (0.31.0).
   - [ ] Resumo para levar à consulta (junta registros, remédios e perguntas).
 - [ ] **Cuidado psicológico e psiquiátrico**: sessões, "o que levar para a sessão", registro pós-sessão, perguntas para o psiquiatra com histórico de doses.
 - [ ] **Trava extra opcional** para saúde e cuidado psicológico.

@@ -9,8 +9,10 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
-use super::{agora_ms, novo_id};
+use super::{agora_ms, gravar_config, ler_config, novo_id};
 use crate::erro::Erro;
+
+const CONFIG_PLANO: &str = "plano_de_crise";
 
 /// Um remédio cadastrado. Os campos próprios ficam em JSON na coluna `dados`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -363,6 +365,100 @@ fn hora_valida(h: &str) -> bool {
     matches!((hh.parse::<u32>(), mm.parse::<u32>()), (Ok(hh), Ok(mm)) if hh < 24 && mm < 60)
 }
 
+// ---------- Registros curtos: sono, sintomas e sobrecarga sensorial ----------
+
+const TIPOS_REGISTRO: [&str; 3] = ["sono", "sintoma", "sobrecarga"];
+
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RegistroSaude {
+    pub id: String,
+    /// "sono", "sintoma" ou "sobrecarga".
+    pub tipo: String,
+    pub momento: i64,
+    /// De 1 a 5 (horas de sono, força do sintoma, nível de sobrecarga). Opcional.
+    pub intensidade: Option<u8>,
+    pub nota: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ValorRegistro {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    intensidade: Option<u8>,
+}
+
+pub fn registrar(conn: &Connection, tipo: &str, intensidade: Option<u8>, nota: &str) -> Result<RegistroSaude, Erro> {
+    if !TIPOS_REGISTRO.contains(&tipo) {
+        return Err(Erro::Interno("tipo de registro de saúde desconhecido".into()));
+    }
+    if let Some(n) = intensidade {
+        if !(1..=5).contains(&n) {
+            return Err(Erro::Interno("a intensidade vai de 1 a 5".into()));
+        }
+    }
+    let r = RegistroSaude { id: novo_id(), tipo: tipo.to_string(), momento: agora_ms(), intensidade, nota: nota.trim().to_string() };
+    conn.execute(
+        "INSERT INTO registro (id, tipo, momento, valor, nota, criado_em, alterado_em) VALUES (?1, ?2, ?3, ?4, ?5, ?3, ?3)",
+        params![r.id, r.tipo, r.momento, serde_json::to_string(&ValorRegistro { intensidade }).unwrap(), r.nota],
+    )?;
+    Ok(r)
+}
+
+/// Os registros de sono, sintoma e sobrecarga no intervalo, dos mais novos aos mais antigos.
+pub fn listar_registros(conn: &Connection, de: i64, ate: i64) -> Result<Vec<RegistroSaude>, Erro> {
+    let mut c = conn.prepare(
+        "SELECT id, tipo, momento, valor, nota FROM registro
+         WHERE tipo IN ('sono', 'sintoma', 'sobrecarga') AND excluido_em IS NULL
+           AND momento >= ?1 AND momento < ?2 ORDER BY momento DESC",
+    )?;
+    let lista = c
+        .query_map(params![de, ate], |r| {
+            let v: ValorRegistro = serde_json::from_str(&r.get::<_, String>(3)?).unwrap_or(ValorRegistro { intensidade: None });
+            Ok(RegistroSaude { id: r.get(0)?, tipo: r.get(1)?, momento: r.get(2)?, intensidade: v.intensidade, nota: r.get(4)? })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(lista)
+}
+
+pub fn excluir_registro(conn: &Connection, id: &str) -> Result<(), Erro> {
+    conn.execute(
+        "UPDATE registro SET excluido_em = ?2, alterado_em = ?2
+         WHERE id = ?1 AND tipo IN ('sono', 'sintoma', 'sobrecarga')",
+        params![id, agora_ms()],
+    )?;
+    Ok(())
+}
+
+// ---------- Plano de crise ----------
+
+/// Escrito num momento bom, para ter à mão num momento ruim: sinais, o que
+/// ajuda e com quem falar. Guardado como configuração dentro do cofre.
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanoDeCrise {
+    #[serde(default)]
+    pub sinais: String,
+    #[serde(default)]
+    pub ajuda: String,
+    #[serde(default)]
+    pub contatos: String,
+    #[serde(default)]
+    pub atualizado_em: i64,
+}
+
+pub fn plano_de_crise(conn: &Connection) -> Result<PlanoDeCrise, Erro> {
+    Ok(ler_config(conn, CONFIG_PLANO)?.and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default())
+}
+
+pub fn salvar_plano_de_crise(conn: &Connection, mut plano: PlanoDeCrise) -> Result<PlanoDeCrise, Erro> {
+    plano.sinais = plano.sinais.trim().to_string();
+    plano.ajuda = plano.ajuda.trim().to_string();
+    plano.contatos = plano.contatos.trim().to_string();
+    plano.atualizado_em = agora_ms();
+    gravar_config(conn, CONFIG_PLANO, &serde_json::to_string(&plano).map_err(|e| Erro::Interno(e.to_string()))?)?;
+    Ok(plano)
+}
+
 #[cfg(test)]
 mod testes {
     use super::*;
@@ -462,5 +558,34 @@ mod testes {
         assert_eq!(dias_entre("2026-10-26", "2026-10-25"), Some(-1));
         assert_eq!(dias_entre("2026-02-28", "2026-03-01"), Some(1)); // 2026 não é bissexto
         assert_eq!(dias_entre("x", "2026-10-30"), None);
+    }
+
+    #[test]
+    fn registra_sono_sintoma_sobrecarga_e_valida() {
+        let (_p, conn) = banco();
+        registrar(&conn, "sono", Some(4), " dormi mal ").unwrap();
+        registrar(&conn, "sintoma", Some(3), "dor de cabeça").unwrap();
+        registrar(&conn, "sobrecarga", None, "barulho no ônibus").unwrap();
+        assert!(registrar(&conn, "outro", None, "").is_err());
+        assert!(registrar(&conn, "sono", Some(9), "").is_err());
+        let rs = listar_registros(&conn, 0, i64::MAX).unwrap();
+        assert_eq!(rs.len(), 3);
+        let mut tipos: Vec<&str> = rs.iter().map(|r| r.tipo.as_str()).collect();
+        tipos.sort_unstable();
+        assert_eq!(tipos, vec!["sintoma", "sobrecarga", "sono"]);
+        assert_eq!(rs.iter().find(|r| r.tipo == "sono").unwrap().nota, "dormi mal");
+        excluir_registro(&conn, &rs[0].id).unwrap();
+        assert_eq!(listar_registros(&conn, 0, i64::MAX).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn plano_de_crise_salva_e_volta() {
+        let (_p, conn) = banco();
+        assert_eq!(plano_de_crise(&conn).unwrap(), PlanoDeCrise::default());
+        let p = PlanoDeCrise { sinais: "  mãos suando ".into(), ajuda: "respirar".into(), contatos: "mãe".into(), atualizado_em: 0 };
+        let salvo = salvar_plano_de_crise(&conn, p).unwrap();
+        assert_eq!(salvo.sinais, "mãos suando");
+        assert!(salvo.atualizado_em > 0);
+        assert_eq!(plano_de_crise(&conn).unwrap().contatos, "mãe");
     }
 }

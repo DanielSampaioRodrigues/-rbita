@@ -176,6 +176,11 @@ pub fn run() {
             comandos::doses_do_dia,
             comandos::marcar_dose,
             comandos::alertas_saude,
+            comandos::registrar_saude,
+            comandos::listar_registros_saude,
+            comandos::excluir_registro_saude,
+            comandos::plano_de_crise,
+            comandos::salvar_plano_de_crise,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

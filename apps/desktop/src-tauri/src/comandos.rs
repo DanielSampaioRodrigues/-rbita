@@ -1112,3 +1112,30 @@ pub async fn alertas_saude(estado: State<'_, Estado>, hoje: String) -> Result<Ve
     // Avisa com estoque de até 5 doses ou receita a vencer em até 7 dias.
     estado.com_sessao(|s| saude::alertas(&s.conn, &hoje, 5, 7))
 }
+
+// ---------- Saúde: registros e plano de crise ----------
+
+#[tauri::command]
+pub async fn registrar_saude(estado: State<'_, Estado>, tipo: String, intensidade: Option<u8>, nota: String) -> Result<saude::RegistroSaude, Erro> {
+    estado.com_sessao(|s| saude::registrar(&s.conn, &tipo, intensidade, &nota))
+}
+
+#[tauri::command]
+pub async fn listar_registros_saude(estado: State<'_, Estado>, de: i64, ate: i64) -> Result<Vec<saude::RegistroSaude>, Erro> {
+    estado.com_sessao(|s| saude::listar_registros(&s.conn, de, ate))
+}
+
+#[tauri::command]
+pub async fn excluir_registro_saude(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| saude::excluir_registro(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn plano_de_crise(estado: State<'_, Estado>) -> Result<saude::PlanoDeCrise, Erro> {
+    estado.com_sessao(|s| saude::plano_de_crise(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_plano_de_crise(estado: State<'_, Estado>, plano: saude::PlanoDeCrise) -> Result<saude::PlanoDeCrise, Erro> {
+    estado.com_sessao(|s| saude::salvar_plano_de_crise(&s.conn, plano))
+}

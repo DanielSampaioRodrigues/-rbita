@@ -9,6 +9,7 @@ import { avisarMudanca, useMudancas } from "../dados";
 import { Check, Heart, Pencil, Pause, Play, Plus, Trash2, TriangleAlert } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { FormRemedio, novoRemedio } from "./FormRemedio";
+import { RegistrosSaude } from "./RegistrosSaude";
 
 const t = textos.saude;
 
@@ -58,7 +59,7 @@ export function CartaoRemediosHoje() {
   );
 }
 
-export function PaginaSaude() {
+export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () => void }) {
   const [remedios, setRemedios] = useState<Remedio[]>([]);
   const [alertas, setAlertas] = useState<AvisoSaude[]>([]);
   const [editando, setEditando] = useState<Remedio | null>(null);
@@ -148,6 +149,21 @@ export function PaginaSaude() {
             <Plus aria-hidden="true" size="1.1em" /> {t.adicionar}
           </Button>
         </div>
+      </section>
+
+      <section className="cartao largura-leitura esticado" aria-labelledby="como-esta">
+        <h2 id="como-esta">{textos.saude.registros.titulo}</h2>
+        <p className="texto-suave">{textos.saude.registros.intro}</p>
+        <RegistrosSaude />
+      </section>
+
+      <section className="cartao largura-leitura esticado" aria-labelledby="plano-crise">
+        <h2 id="plano-crise">{textos.saude.plano.titulo}</h2>
+        <p className="texto-suave">{textos.saude.plano.intro}</p>
+        <div className="botoes">
+          <Button className="botao principal" onPress={aoAbrirPlanoDeCrise}>{textos.saude.plano.abrir}</Button>
+        </div>
+        <p className="campo-ajuda">{textos.saude.plano.atalho}</p>
       </section>
 
       <Aviso>{erro}</Aviso>

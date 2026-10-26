@@ -19,6 +19,7 @@ import { BaixaEnergia } from "../energia/BaixaEnergia";
 import { PaginaEnergia } from "../energia/Energia";
 import { PaginaSaude } from "../saude/Saude";
 import { LembretesRemedio } from "../saude/LembretesRemedio";
+import { JanelaPlanoDeCrise } from "../saude/PlanoDeCrise";
 import { AvisosDeTransicao } from "./Avisos";
 import { Ideias } from "../paginas/Ideias";
 import { Inicio } from "../paginas/Inicio";
@@ -45,6 +46,7 @@ export function App() {
   const { secao, projeto: projetoAberto } = historico.lugares[historico.posicao];
   const [atalhosAbertos, setAtalhosAbertos] = useState(false);
   const [capturando, setCapturando] = useState(false);
+  const [planoCrise, setPlanoCrise] = useState(false);
   // Captura pedida com o Órbita bloqueado: abre logo depois de desbloquear.
   const capturaPendente = useRef(false);
 
@@ -139,6 +141,8 @@ export function App() {
       irRotinas: () => irPara("rotinas"),
       irFoco: () => irPara("foco"),
       irEnergia: () => irPara("energia"),
+      irSaude: () => irPara("saude"),
+      planoDeCrise: () => setPlanoCrise(true),
       alternarBaixaEnergia: () => mudar({ baixaEnergia: !prefs.baixaEnergia }),
       irAparencia: () => irPara("aparencia"),
       irAjustes: () => irPara("ajustes"),
@@ -187,7 +191,7 @@ export function App() {
       ) : (
         <Projetos aoAbrir={abrirProjeto} aoMudarLimite={() => irPara("ajustes")} />
       );
-    else if (secao === "saude") pagina = <PaginaSaude />;
+    else if (secao === "saude") pagina = <PaginaSaude aoAbrirPlanoDeCrise={() => setPlanoCrise(true)} />;
     else if (secao === "aparencia") pagina = <Aparencia />;
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} temSenha={situacao.temSenha} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
@@ -223,6 +227,7 @@ export function App() {
     <ProvedorRecado>
       {tela}
       <JanelaAtalhos aberta={atalhosAbertos} aoFechar={() => setAtalhosAbertos(false)} />
+      <JanelaPlanoDeCrise aberta={planoCrise && aberto} aoFechar={() => setPlanoCrise(false)} />
     </ProvedorRecado>
   );
 }

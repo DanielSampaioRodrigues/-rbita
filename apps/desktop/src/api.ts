@@ -223,6 +223,25 @@ export interface AvisoSaude {
   quanto: number;
 }
 
+/** Registro curto de sono, sintoma ou sobrecarga sensorial. */
+export interface RegistroSaude {
+  id: string;
+  /** "sono", "sintoma" ou "sobrecarga". */
+  tipo: string;
+  momento: number;
+  /** De 1 a 5; null quando não se aplica. */
+  intensidade: number | null;
+  nota: string;
+}
+
+/** Plano de crise, escrito num momento bom para ter à mão num momento ruim. */
+export interface PlanoDeCrise {
+  sinais: string;
+  ajuda: string;
+  contatos: string;
+  atualizadoEm: number;
+}
+
 export interface SituacaoBackup {
   pasta: string | null;
   ultimo: number | null;
@@ -427,6 +446,12 @@ interface Api {
   marcarDose(remedioId: string, horario: string, data: string, tomada: boolean): Promise<void>;
   /** `hoje`: "AAAA-MM-DD". Avisos de estoque acabando e receita vencendo. */
   alertasSaude(hoje: string): Promise<AvisoSaude[]>;
+  /** `tipo`: "sono", "sintoma" ou "sobrecarga". `intensidade`: 1 a 5 ou null. */
+  registrarSaude(tipo: string, intensidade: number | null, nota: string): Promise<RegistroSaude>;
+  listarRegistrosSaude(de: number, ate: number): Promise<RegistroSaude[]>;
+  excluirRegistroSaude(id: string): Promise<void>;
+  planoDeCrise(): Promise<PlanoDeCrise>;
+  salvarPlanoDeCrise(plano: PlanoDeCrise): Promise<PlanoDeCrise>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -565,6 +590,11 @@ const nativa: Api = {
   dosesDoDia: (data) => chamar("doses_do_dia", { data }),
   marcarDose: (remedioId, horario, data, tomada) => chamar("marcar_dose", { remedioId, horario, data, tomada }),
   alertasSaude: (hoje) => chamar("alertas_saude", { hoje }),
+  registrarSaude: (tipo, intensidade, nota) => chamar("registrar_saude", { tipo, intensidade, nota }),
+  listarRegistrosSaude: (de, ate) => chamar("listar_registros_saude", { de, ate }),
+  excluirRegistroSaude: (id) => chamar("excluir_registro_saude", { id }),
+  planoDeCrise: () => chamar("plano_de_crise"),
+  salvarPlanoDeCrise: (plano) => chamar("salvar_plano_de_crise", { plano }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -962,6 +992,8 @@ function simularSaude() {
   const remedios: Remedio[] = [];
   // Doses tomadas: chave "remedioId|horario|data".
   const tomadas = new Set<string>();
+  const registros: RegistroSaude[] = [];
+  let plano: PlanoDeCrise = { sinais: "", ajuda: "", contatos: "", atualizadoEm: 0 };
   const normalizar = (hs: string[]) =>
     [...new Set(hs.map((h) => h.trim()).filter(Boolean))].filter((h) => /^\d{2}:\d{2}$/.test(h)).sort();
   if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
@@ -1024,6 +1056,24 @@ function simularSaude() {
         }
       }
       return avisos;
+    },
+    registrarSaude: async (tipo: string, intensidade: number | null, nota: string) => {
+      if (!["sono", "sintoma", "sobrecarga"].includes(tipo)) throw new ErroOrbita("interno", "Tipo de registro desconhecido.");
+      if (intensidade !== null && (intensidade < 1 || intensidade > 5)) throw new ErroOrbita("interno", "A intensidade vai de 1 a 5.");
+      const r: RegistroSaude = { id: crypto.randomUUID(), tipo, momento: Date.now(), intensidade, nota: nota.trim() };
+      registros.push(r);
+      return { ...r };
+    },
+    listarRegistrosSaude: async (de: number, ate: number) =>
+      registros.filter((r) => r.momento >= de && r.momento < ate).sort((a, b) => b.momento - a.momento).map((r) => ({ ...r })),
+    excluirRegistroSaude: async (id: string) => {
+      const i = registros.findIndex((r) => r.id === id);
+      if (i >= 0) registros.splice(i, 1);
+    },
+    planoDeCrise: async () => ({ ...plano }),
+    salvarPlanoDeCrise: async (p: PlanoDeCrise) => {
+      plano = { sinais: p.sinais.trim(), ajuda: p.ajuda.trim(), contatos: p.contatos.trim(), atualizadoEm: Date.now() };
+      return { ...plano };
     },
   };
 }

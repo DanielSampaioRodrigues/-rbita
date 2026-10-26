@@ -62,3 +62,26 @@ describe("saúde: medicação (simulação)", () => {
     expect(a.find((x) => x.tipo === "receita")?.quanto).toBe(4);
   });
 });
+
+describe("saúde: registros e plano de crise (simulação)", () => {
+  it("registra sono/sintoma/sobrecarga, lista do mais novo e valida", async () => {
+    const agora = Date.now();
+    await api.registrarSaude("sono", 4, "dormi mal");
+    await api.registrarSaude("sobrecarga", null, "barulho");
+    await expect(api.registrarSaude("outro", null, "")).rejects.toThrow();
+    await expect(api.registrarSaude("sono", 9, "")).rejects.toThrow();
+    const rs = await api.listarRegistrosSaude(agora - 1000, agora + 60_000);
+    expect(rs).toHaveLength(2);
+    expect(rs.map((r) => r.tipo).sort()).toEqual(["sobrecarga", "sono"]);
+    await api.excluirRegistroSaude(rs[0].id);
+    expect(await api.listarRegistrosSaude(agora - 1000, agora + 60_000)).toHaveLength(1);
+  });
+
+  it("salva o plano de crise e carimba a data", async () => {
+    expect((await api.planoDeCrise()).sinais).toBe("");
+    const salvo = await api.salvarPlanoDeCrise({ sinais: "  mãos suando ", ajuda: "respirar", contatos: "mãe", atualizadoEm: 0 });
+    expect(salvo.sinais).toBe("mãos suando");
+    expect(salvo.atualizadoEm).toBeGreaterThan(0);
+    expect((await api.planoDeCrise()).contatos).toBe("mãe");
+  });
+});

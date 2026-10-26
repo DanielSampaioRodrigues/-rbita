@@ -1,3 +1,6 @@
+- **Saúde: como você está**: um registro rápido de sono, sintoma ou sobrecarga sensorial, com intensidade de 1 a 5 e uma nota. Os últimos registros ficam listados ali mesmo, para você enxergar padrões e contar na consulta.
+- **Plano de crise**: um espaço para escrever, num momento bom, os sinais de que a crise está chegando, o que ajuda e com quem falar. Fica a um clique na seção Saúde e também pelo atalho Ctrl + Shift + C, de qualquer tela.
+
 - **Saúde: seus remédios**: uma seção nova na barra lateral. Cadastre cada remédio com a dose, os horários de tomar, quantas doses você tem em estoque e até quando vale a receita.
 - **Remédios de hoje**: um cartão mostra as doses do dia. Um toque em "Tomei" confirma a dose e baixa o estoque; dá para desfazer. Nada fica em vermelho e pausar um remédio não apaga o histórico.
 - **Avisos calmos**: quando o estoque está acabando ou a receita está perto de vencer, aparece um aviso tranquilo na própria tela de Saúde.

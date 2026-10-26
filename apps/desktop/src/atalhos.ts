@@ -9,6 +9,8 @@ export type AcaoAtalho =
   | "irRotinas"
   | "irFoco"
   | "irEnergia"
+  | "irSaude"
+  | "planoDeCrise"
   | "alternarBaixaEnergia"
   | "capturar"
   | "irAparencia"
@@ -91,6 +93,18 @@ export const ATALHOS: Atalho[] = [
     combinacoes: [{ ctrl: true, shift: false, teclas: ["7"] }],
   },
   {
+    acao: "irSaude",
+    teclas: [["Ctrl", "9"]],
+    descricao: "Ir para a Saúde",
+    combinacoes: [{ ctrl: true, shift: false, teclas: ["9"] }],
+  },
+  {
+    acao: "planoDeCrise",
+    teclas: [["Ctrl", "Shift", "C"]],
+    descricao: "Abrir o plano de crise",
+    combinacoes: [{ ctrl: true, shift: true, teclas: ["c", "C"] }],
+  },
+  {
     acao: "alternarBaixaEnergia",
     teclas: [["Ctrl", "Shift", "E"]],
     descricao: "Ligar ou desligar o modo baixa energia",
@@ -159,7 +173,7 @@ export const ATALHOS: Atalho[] = [
 ];
 
 /** Ações que só fazem sentido com o Órbita aberto. */
-export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irIdeias", "irProjetos", "irAgenda", "irRotinas", "irFoco", "irEnergia", "irAparencia", "irAjustes", "voltar", "avancar", "bloquear", "capturar", "alternarBaixaEnergia"];
+export const SO_ABERTO: AcaoAtalho[] = ["irInicio", "irIdeias", "irProjetos", "irAgenda", "irRotinas", "irFoco", "irEnergia", "irSaude", "planoDeCrise", "irAparencia", "irAjustes", "voltar", "avancar", "bloquear", "capturar", "alternarBaixaEnergia"];
 
 /** Atalhos que não dependem do app, listados só para consulta. */
 export const ATALHOS_GERAIS: { teclas: string[][]; descricao: string }[] = [
