@@ -302,6 +302,21 @@ export interface Meta {
   criadoEm: number;
 }
 
+/** Um livro na estante, com status e diário de leitura. */
+export interface Livro {
+  id: string;
+  titulo: string;
+  autor: string;
+  /** "quero", "lendo", "lido" ou "pausado". */
+  status: string;
+  ondeParei: string;
+  impressoes: string;
+  /** "AAAA-MM-DD", opcionais. */
+  inicio: string;
+  fim: string;
+  criadoEm: number;
+}
+
 /** Um interesse ou hiperfoco. Imagens e links usam os anexos do item. */
 export interface Hobby {
   id: string;
@@ -582,6 +597,10 @@ interface Api {
   listarHobbies(): Promise<Hobby[]>;
   salvarHobby(hobby: Hobby): Promise<Hobby>;
   excluirHobby(id: string): Promise<void>;
+  listarLivros(): Promise<Livro[]>;
+  salvarLivro(livro: Livro): Promise<Livro>;
+  mudarStatusLivro(id: string, status: string): Promise<void>;
+  excluirLivro(id: string): Promise<void>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -757,6 +776,10 @@ const nativa: Api = {
   listarHobbies: () => chamar("listar_hobbies"),
   salvarHobby: (hobby) => chamar("salvar_hobby", { hobby }),
   excluirHobby: (id) => chamar("excluir_hobby", { id }),
+  listarLivros: () => chamar("listar_livros"),
+  salvarLivro: (livro) => chamar("salvar_livro", { livro }),
+  mudarStatusLivro: (id, status) => chamar("mudar_status_livro", { id, status }),
+  excluirLivro: (id) => chamar("excluir_livro", { id }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1443,6 +1466,42 @@ function simularHobbies() {
   };
 }
 
+function simularLeitura() {
+  const livros: Livro[] = [];
+  const ordem: Record<string, number> = { lendo: 0, quero: 1, pausado: 2, lido: 3 };
+  const STATUS = ["quero", "lendo", "lido", "pausado"];
+  return {
+    listarLivros: async () =>
+      livros
+        .map((l) => ({ ...l }))
+        .sort((a, b) => (ordem[a.status] - ordem[b.status]) || a.titulo.localeCompare(b.titulo)),
+    salvarLivro: async (l: Livro) => {
+      const titulo = l.titulo.trim();
+      if (!titulo) throw new ErroOrbita("texto_vazio", "O livro precisa de um título.");
+      const limpo: Livro = { ...l, titulo, autor: l.autor.trim(), status: STATUS.includes(l.status) ? l.status : "quero" };
+      if (l.id) {
+        const i = livros.findIndex((x) => x.id === l.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Livro não encontrado.");
+        livros[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      livros.push(novo);
+      return { ...novo };
+    },
+    mudarStatusLivro: async (id: string, status: string) => {
+      if (!STATUS.includes(status)) throw new ErroOrbita("interno", "Status de leitura desconhecido.");
+      const l = livros.find((x) => x.id === id);
+      if (!l) throw new ErroOrbita("nao_encontrado", "Livro não encontrado.");
+      l.status = status;
+    },
+    excluirLivro: async (id: string) => {
+      const i = livros.findIndex((l) => l.id === id);
+      if (i >= 0) livros.splice(i, 1);
+    },
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
@@ -1538,6 +1597,7 @@ function criarSimulacao(): Api {
     ...simularAcademico(),
     ...simularDinheiro(),
     ...simularHobbies(),
+    ...simularLeitura(),
     ...comAnexos,
     fazerBackup: async () => {
       await espera();

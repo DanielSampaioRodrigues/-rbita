@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, rotinas, saude};
+use crate::banco::{self, academico, anexos, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1306,4 +1306,26 @@ pub async fn salvar_hobby(estado: State<'_, Estado>, hobby: hobbies::Hobby) -> R
 #[tauri::command]
 pub async fn excluir_hobby(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| hobbies::excluir(&s.conn, &id))
+}
+
+// ---------- Leitura: estante e diário ----------
+
+#[tauri::command]
+pub async fn listar_livros(estado: State<'_, Estado>) -> Result<Vec<leitura::Livro>, Erro> {
+    estado.com_sessao(|s| leitura::listar(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_livro(estado: State<'_, Estado>, livro: leitura::Livro) -> Result<leitura::Livro, Erro> {
+    estado.com_sessao(|s| leitura::salvar(&s.conn, livro))
+}
+
+#[tauri::command]
+pub async fn mudar_status_livro(estado: State<'_, Estado>, id: String, status: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| leitura::mudar_status(&s.conn, &id, &status))
+}
+
+#[tauri::command]
+pub async fn excluir_livro(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| leitura::excluir(&s.conn, &id))
 }

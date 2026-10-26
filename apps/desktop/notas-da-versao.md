@@ -1,3 +1,5 @@
+- **Leitura — a estante**: a primeira parte do módulo de Leitura. Guarde seus livros com status (quero ler, lendo, lido, pausado — abandonar não é fracasso), mova um livro de prateleira com um toque, e mantenha o diário de leitura de cada um: onde parei, impressões e as datas de início e fim. O leitor de EPUB e PDF, com grifos e fichamentos, vem num próximo passo.
+
 - **Hobbies e interesses**: um lugar só seu para guardar interesses e hiperfocos, com notas, imagens e links. Sem metas e sem cobrança — é espaço de prazer.
 
 - **Dinheiro**: uma seção nova. Registre **gastos** por categoria (e marque os de interesse especial, sem julgamento), cadastre **contas que se repetem** com aviso de quando vencem, use a **lista de espera de compras** (anote e espere 1, 2, 3 dias ou uma semana antes de decidir) e acompanhe **metas de reserva** no seu ritmo. Tudo no computador, sem ligar com banco. Importar extrato do banco (OFX/CSV) fica para uma próxima versão.

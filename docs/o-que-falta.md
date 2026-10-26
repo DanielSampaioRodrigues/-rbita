@@ -41,7 +41,12 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [ ] Aulas ligadas à matéria na semana-modelo da Agenda (hoje a aula é um bloco comum da Agenda, sem vínculo com a matéria).
   - [ ] Leituras com status (a ler, lendo, fichada) e TCC/artigos como projeto — chegam com o módulo de Leitura.
 - [x] **Hobbies e interesses** (0.36.0): arquivo de interesses/hiperfocos com notas, imagens e links (pelos anexos), sem metas. Falta teste de Dan no Windows.
-- [ ] **Leitura**: pacote `packages/leitor` (EPUB e PDF), estante, leitor completo (fontes, cores, régua, voz alta, busca, sumário, dicionário), grifos com cores, notas, fichamentos com ABNT, diário de leitura, busca em todas as anotações, IA para explicar e resumir. Testar o pacote dentro do Escuta.
+- [ ] **Leitura** (começada na 0.37.0):
+  - [x] Estante com status (quero/lendo/lido/pausado) e diário de leitura (onde parei, impressões, datas). Falta teste de Dan no Windows.
+  - [ ] Pacote `packages/leitor` (sem React/Tauri, reaproveitável no Escuta) com o leitor de EPUB (epub.js) e PDF (PDF.js): fontes, cores, régua de leitura, voz alta, busca, sumário, dicionário. **Confirmar a escolha das bibliotecas com Dan antes de começar.**
+  - [ ] Grifos com cores de significado, notas na margem, marcadores.
+  - [ ] Fichamentos (citação, resumo, comentário, paráfrase) com ABNT; exportar Word/PDF/Markdown.
+  - [ ] Busca em todas as anotações; IA opcional para explicar/resumir. Testar o pacote dentro do Escuta.
 - [ ] **Caderno** com os dois modos completos (decisão de Dan): estante, capas e folhas personalizáveis, modo caderno no estilo Goodnotes com páginas, PDF para anotar, caneta com pressão e rejeição da palma, todas as ferramentas (lápis, pincel, marca-texto, borracha, laço, formas, texto, setas, notas adesivas, imagens) e quadro infinito. Cinco etapas no plano da Onda 2.
 - [ ] **Exportação em formatos abertos** de todos os módulos (CSV, Markdown, JSON, ICS para a agenda).
 - [ ] Remédio do modo baixa energia vindo da medicação cadastrada.
