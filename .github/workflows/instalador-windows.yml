@@ -1,4 +1,6 @@
-# Monta o instalador do Órbita para Windows a cada envio de código.
+# Monta o instalador do Órbita para Windows na branch principal ou sob demanda
+# (para poupar minutos do Actions; o runner Windows custa o dobro). Em toda
+# branch de trabalho, roda só o teste leve do Rust no Linux.
 # O instalador aparece em "Artifacts" na página da execução, no GitHub.
 name: Instalador Windows
 
@@ -40,7 +42,12 @@ jobs:
         working-directory: apps/desktop/src-tauri
         run: cargo test
 
+  # O instalador roda num runner Windows, que gasta minuto em dobro. Para
+  # poupar os minutos do Actions, ele só é montado na branch principal ou
+  # quando a gente pede à mão (workflow_dispatch). Em todo push de trabalho,
+  # roda só o teste leve do Rust no Linux (job acima), que é barato.
   windows:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     timeout-minutes: 45
     # Ditado: o whisper.cpp é compilado para processadores comuns (AVX2, de 2013
@@ -101,7 +108,7 @@ jobs:
       # público orbita-versoes o instalador, a assinatura e o latest.json que o
       # Órbita consulta. Versão que já existe lá não é publicada de novo.
       - name: Publicar versão nova
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.TOKEN_VERSOES }}
