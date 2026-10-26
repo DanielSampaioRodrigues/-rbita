@@ -10,12 +10,13 @@ import { textos } from "../textos/pt-BR";
 const tc = textos.cuidado;
 
 interface Props {
+  profissionalId: string;
   tipo: "pauta" | "pergunta";
   rotulos: { campo: string; adicionar: string; vazio: string; marcar: string; desmarcar: string };
 }
 
 /** Lista de anotações curtas de um tipo, com captura rápida, marcar e apagar. */
-export function ListaNotas({ tipo, rotulos }: Props) {
+export function ListaNotas({ profissionalId, tipo, rotulos }: Props) {
   const [notas, setNotas] = useState<Nota[]>([]);
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -23,15 +24,15 @@ export function ListaNotas({ tipo, rotulos }: Props) {
   const recado = useRecado();
 
   useEffect(() => {
-    api.listarNotasCuidado(tipo).then(setNotas, (e) => setErro(e instanceof Error ? e.message : String(e)));
-  }, [tipo, mudancas]);
+    api.listarNotasCuidado(profissionalId, tipo).then(setNotas, (e) => setErro(e instanceof Error ? e.message : String(e)));
+  }, [profissionalId, tipo, mudancas]);
 
   const adicionar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!texto.trim()) return;
     setErro(null);
     try {
-      await api.criarNotaCuidado(tipo, texto);
+      await api.criarNotaCuidado(profissionalId, tipo, texto);
       setTexto("");
       avisarMudanca();
       recado(tc.adicionada);

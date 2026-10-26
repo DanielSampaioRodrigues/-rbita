@@ -252,7 +252,20 @@ export interface PlanoSaude {
   atualizadoEm: number;
 }
 
-/** Anotação de cuidado: "pauta" (o que levar) ou "pergunta" (para o psiquiatra). */
+/** Um profissional de saúde que a pessoa acompanha (psiquiatra, psicólogo...). */
+export interface Profissional {
+  id: string;
+  nome: string;
+  /** Especialidade (texto livre). */
+  especialidade: string;
+  /** Descrição livre, em Markdown. */
+  sobre: string;
+  /** Próxima consulta ("AAAA-MM-DD") ou vazio. */
+  proximaConsulta: string;
+  criadoEm: number;
+}
+
+/** Anotação de cuidado: "pauta" (o que levar) ou "pergunta" (para o profissional). */
 export interface Nota {
   id: string;
   tipo: string;
@@ -261,11 +274,13 @@ export interface Nota {
   criadoEm: number;
 }
 
-/** Registro curto do que ficou de uma sessão. */
+/** Registro do que ficou de uma sessão (anotação em Markdown, com a data). */
 export interface RegistroSessao {
   id: string;
-  momento: number;
+  /** Data da sessão ("AAAA-MM-DD"). */
+  data: string;
   nota: string;
+  criadoEm: number;
 }
 
 /** Um gasto registrado (valor em centavos). */
@@ -684,13 +699,16 @@ interface Api {
   listarPlanos(): Promise<PlanoSaude[]>;
   salvarPlano(plano: PlanoSaude): Promise<PlanoSaude>;
   excluirPlano(id: string): Promise<void>;
-  /** `tipo`: "pauta" (o que levar) ou "pergunta" (para o psiquiatra). */
-  listarNotasCuidado(tipo: string): Promise<Nota[]>;
-  criarNotaCuidado(tipo: string, texto: string): Promise<Nota>;
+  listarProfissionais(): Promise<Profissional[]>;
+  salvarProfissional(profissional: Profissional): Promise<Profissional>;
+  excluirProfissional(id: string): Promise<void>;
+  /** `tipo`: "pauta" (o que levar) ou "pergunta" (para o profissional). */
+  listarNotasCuidado(profissionalId: string, tipo: string): Promise<Nota[]>;
+  criarNotaCuidado(profissionalId: string, tipo: string, texto: string): Promise<Nota>;
   marcarNotaCuidado(id: string, feita: boolean): Promise<void>;
   excluirNotaCuidado(id: string): Promise<void>;
-  registrarSessao(nota: string): Promise<RegistroSessao>;
-  listarSessoes(de: number, ate: number): Promise<RegistroSessao[]>;
+  registrarSessao(profissionalId: string, data: string, nota: string): Promise<RegistroSessao>;
+  listarSessoes(profissionalId: string): Promise<RegistroSessao[]>;
   excluirSessao(id: string): Promise<void>;
   listarMaterias(): Promise<Materia[]>;
   salvarMateria(materia: Materia): Promise<Materia>;
@@ -894,12 +912,15 @@ const nativa: Api = {
   listarPlanos: () => chamar("listar_planos"),
   salvarPlano: (plano) => chamar("salvar_plano", { plano }),
   excluirPlano: (id) => chamar("excluir_plano", { id }),
-  listarNotasCuidado: (tipo) => chamar("listar_notas_cuidado", { tipo }),
-  criarNotaCuidado: (tipo, texto) => chamar("criar_nota_cuidado", { tipo, texto }),
+  listarProfissionais: () => chamar("listar_profissionais"),
+  salvarProfissional: (profissional) => chamar("salvar_profissional", { profissional }),
+  excluirProfissional: (id) => chamar("excluir_profissional", { id }),
+  listarNotasCuidado: (profissionalId, tipo) => chamar("listar_notas_cuidado", { profissionalId, tipo }),
+  criarNotaCuidado: (profissionalId, tipo, texto) => chamar("criar_nota_cuidado", { profissionalId, tipo, texto }),
   marcarNotaCuidado: (id, feita) => chamar("marcar_nota_cuidado", { id, feita }),
   excluirNotaCuidado: (id) => chamar("excluir_nota_cuidado", { id }),
-  registrarSessao: (nota) => chamar("registrar_sessao", { nota }),
-  listarSessoes: (de, ate) => chamar("listar_sessoes", { de, ate }),
+  registrarSessao: (profissionalId, data, nota) => chamar("registrar_sessao", { profissionalId, data, nota }),
+  listarSessoes: (profissionalId) => chamar("listar_sessoes", { profissionalId }),
   excluirSessao: (id) => chamar("excluir_sessao", { id }),
   listarMaterias: () => chamar("listar_materias"),
   salvarMateria: (materia) => chamar("salvar_materia", { materia }),
@@ -1460,21 +1481,45 @@ function simularSaude() {
 }
 
 function simularCuidado() {
-  const notas: Nota[] = [];
-  const sessoes: RegistroSessao[] = [];
+  const profissionais: Profissional[] = [];
+  const notas: (Nota & { prof: string })[] = [];
+  const sessoes: (RegistroSessao & { prof: string })[] = [];
   return {
-    listarNotasCuidado: async (tipo: string) =>
+    listarProfissionais: async () => profissionais.map((p) => ({ ...p })).sort((a, b) => a.criadoEm - b.criadoEm),
+    salvarProfissional: async (p: Profissional) => {
+      const nome = p.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "O profissional precisa de um nome.");
+      const limpo: Profissional = { ...p, nome, especialidade: p.especialidade.trim(), sobre: p.sobre.trim(), proximaConsulta: p.proximaConsulta.trim() };
+      if (p.id) {
+        const i = profissionais.findIndex((x) => x.id === p.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Profissional não encontrado.");
+        profissionais[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      profissionais.push(novo);
+      return { ...novo };
+    },
+    excluirProfissional: async (id: string) => {
+      for (let i = notas.length - 1; i >= 0; i--) if (notas[i].prof === id) notas.splice(i, 1);
+      for (let i = sessoes.length - 1; i >= 0; i--) if (sessoes[i].prof === id) sessoes.splice(i, 1);
+      const pi = profissionais.findIndex((p) => p.id === id);
+      if (pi >= 0) profissionais.splice(pi, 1);
+    },
+    listarNotasCuidado: async (profissionalId: string, tipo: string) =>
       notas
-        .filter((n) => n.tipo === tipo)
+        .filter((n) => n.prof === profissionalId && n.tipo === tipo)
         .sort((a, b) => (a.feita === b.feita ? b.criadoEm - a.criadoEm : a.feita ? 1 : -1))
-        .map((n) => ({ ...n })),
-    criarNotaCuidado: async (tipo: string, texto: string) => {
+        .map(({ prof: _, ...n }) => n),
+    criarNotaCuidado: async (profissionalId: string, tipo: string, texto: string) => {
+      if (!profissionalId.trim()) throw new ErroOrbita("interno", "A anotação precisa de um profissional.");
       if (!["pauta", "pergunta"].includes(tipo)) throw new ErroOrbita("interno", "Tipo de anotação desconhecido.");
       const t = texto.trim();
       if (!t) throw new ErroOrbita("texto_vazio", "A anotação não pode ficar vazia.");
-      const nota: Nota = { id: crypto.randomUUID(), tipo, texto: t, feita: false, criadoEm: Date.now() };
+      const nota = { id: crypto.randomUUID(), tipo, texto: t, feita: false, criadoEm: Date.now(), prof: profissionalId };
       notas.push(nota);
-      return { ...nota };
+      const { prof: _, ...r } = nota;
+      return r;
     },
     marcarNotaCuidado: async (id: string, feita: boolean) => {
       const n = notas.find((x) => x.id === id);
@@ -1484,15 +1529,17 @@ function simularCuidado() {
       const i = notas.findIndex((n) => n.id === id);
       if (i >= 0) notas.splice(i, 1);
     },
-    registrarSessao: async (nota: string) => {
+    registrarSessao: async (profissionalId: string, data: string, nota: string) => {
+      if (!profissionalId.trim()) throw new ErroOrbita("interno", "A sessão precisa de um profissional.");
       const t = nota.trim();
       if (!t) throw new ErroOrbita("texto_vazio", "Escreva o que ficou da sessão.");
-      const r: RegistroSessao = { id: crypto.randomUUID(), momento: Date.now(), nota: t };
+      const r = { id: crypto.randomUUID(), data: data.trim(), nota: t, criadoEm: Date.now(), prof: profissionalId };
       sessoes.push(r);
-      return { ...r };
+      const { prof: _, ...s } = r;
+      return s;
     },
-    listarSessoes: async (de: number, ate: number) =>
-      sessoes.filter((s) => s.momento >= de && s.momento < ate).sort((a, b) => b.momento - a.momento).map((s) => ({ ...s })),
+    listarSessoes: async (profissionalId: string) =>
+      sessoes.filter((s) => s.prof === profissionalId).sort((a, b) => b.criadoEm - a.criadoEm).map(({ prof: _, ...s }) => s),
     excluirSessao: async (id: string) => {
       const i = sessoes.findIndex((s) => s.id === id);
       if (i >= 0) sessoes.splice(i, 1);

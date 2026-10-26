@@ -1,34 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { api } from "../api";
+import { api, type Profissional } from "../api";
 
-describe("cuidado psicológico (simulação)", () => {
-  it("pauta e perguntas são listas separadas; aberta vem antes da feita", async () => {
-    const a = await api.criarNotaCuidado("pauta", " falar do sono ");
-    await api.criarNotaCuidado("pauta", "contar da semana");
-    await api.criarNotaCuidado("pergunta", "trocar a dose?");
-    await expect(api.criarNotaCuidado("pauta", "   ")).rejects.toThrow();
-    await expect(api.criarNotaCuidado("outro", "x")).rejects.toThrow();
+const prof = (nome: string): Profissional => ({ id: "", nome, especialidade: "psiquiatra", sobre: "", proximaConsulta: "", criadoEm: 0 });
 
-    expect(a.texto).toBe("falar do sono");
-    expect(await api.listarNotasCuidado("pauta")).toHaveLength(2);
-    expect(await api.listarNotasCuidado("pergunta")).toHaveLength(1);
-
-    await api.marcarNotaCuidado(a.id, true);
-    const pautas = await api.listarNotasCuidado("pauta");
-    expect(pautas[0].feita).toBe(false);
-    expect(pautas[pautas.length - 1].feita).toBe(true);
-
-    await api.excluirNotaCuidado(a.id);
-    expect(await api.listarNotasCuidado("pauta")).toHaveLength(1);
+describe("cuidado — profissionais (simulação)", () => {
+  it("profissional guarda os campos e recusa nome vazio", async () => {
+    const p = await api.salvarProfissional({ ...prof(" Dra. Ana "), sobre: " atende online ", proximaConsulta: "2026-11-10" });
+    expect([p.nome, p.especialidade, p.sobre, p.proximaConsulta]).toEqual(["Dra. Ana", "psiquiatra", "atende online", "2026-11-10"]);
+    await expect(api.salvarProfissional(prof("  "))).rejects.toThrow();
   });
 
-  it("registra o que ficou da sessão e recusa vazio", async () => {
-    const agora = Date.now();
-    await expect(api.registrarSessao("   ")).rejects.toThrow();
-    const r = await api.registrarSessao("falamos sobre o trabalho");
-    const ss = await api.listarSessoes(agora - 1000, agora + 60_000);
-    expect(ss.some((s) => s.nota === "falamos sobre o trabalho")).toBe(true);
-    await api.excluirSessao(r.id);
-    expect(await api.listarSessoes(agora - 1000, agora + 60_000)).toHaveLength(0);
+  it("pautas, perguntas e sessões ficam por profissional, com cascata ao apagar", async () => {
+    for (const p of await api.listarProfissionais()) await api.excluirProfissional(p.id);
+    const a = await api.salvarProfissional(prof("Dra. Ana"));
+    const b = await api.salvarProfissional(prof("Dr. Beto"));
+
+    const n = await api.criarNotaCuidado(a.id, "pauta", " falar do sono ");
+    await api.criarNotaCuidado(a.id, "pergunta", "trocar a dose?");
+    await api.criarNotaCuidado(b.id, "pauta", "ansiedade");
+    await expect(api.criarNotaCuidado("", "pauta", "x")).rejects.toThrow();
+    await expect(api.criarNotaCuidado(a.id, "outro", "x")).rejects.toThrow();
+    expect(n.texto).toBe("falar do sono");
+    expect(await api.listarNotasCuidado(a.id, "pauta")).toHaveLength(1);
+    expect(await api.listarNotasCuidado(b.id, "pauta")).toHaveLength(1);
+
+    await api.registrarSessao(a.id, "2026-10-20", "falamos do trabalho");
+    await expect(api.registrarSessao(a.id, "2026-10-21", "  ")).rejects.toThrow();
+    expect(await api.listarSessoes(a.id)).toHaveLength(1);
+    expect(await api.listarSessoes(b.id)).toHaveLength(0);
+
+    await api.excluirProfissional(a.id);
+    expect(await api.listarNotasCuidado(a.id, "pauta")).toHaveLength(0);
+    expect(await api.listarSessoes(a.id)).toHaveLength(0);
+    expect(await api.listarProfissionais()).toHaveLength(1);
   });
 });

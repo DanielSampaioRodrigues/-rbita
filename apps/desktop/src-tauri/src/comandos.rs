@@ -1153,16 +1153,31 @@ pub async fn excluir_plano(estado: State<'_, Estado>, id: String) -> Result<(), 
     estado.com_sessao(|s| saude::excluir_plano(&s.conn, &id))
 }
 
-// ---------- Cuidado psicológico e psiquiátrico ----------
+// ---------- Cuidado — meus profissionais de saúde ----------
 
 #[tauri::command]
-pub async fn listar_notas_cuidado(estado: State<'_, Estado>, tipo: String) -> Result<Vec<cuidado::Nota>, Erro> {
-    estado.com_sessao(|s| cuidado::listar_notas(&s.conn, &tipo))
+pub async fn listar_profissionais(estado: State<'_, Estado>) -> Result<Vec<cuidado::Profissional>, Erro> {
+    estado.com_sessao(|s| cuidado::listar_profissionais(&s.conn))
 }
 
 #[tauri::command]
-pub async fn criar_nota_cuidado(estado: State<'_, Estado>, tipo: String, texto: String) -> Result<cuidado::Nota, Erro> {
-    estado.com_sessao(|s| cuidado::criar_nota(&s.conn, &tipo, &texto))
+pub async fn salvar_profissional(estado: State<'_, Estado>, profissional: cuidado::Profissional) -> Result<cuidado::Profissional, Erro> {
+    estado.com_sessao(|s| cuidado::salvar_profissional(&s.conn, profissional))
+}
+
+#[tauri::command]
+pub async fn excluir_profissional(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| cuidado::excluir_profissional(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_notas_cuidado(estado: State<'_, Estado>, profissional_id: String, tipo: String) -> Result<Vec<cuidado::Nota>, Erro> {
+    estado.com_sessao(|s| cuidado::listar_notas(&s.conn, &profissional_id, &tipo))
+}
+
+#[tauri::command]
+pub async fn criar_nota_cuidado(estado: State<'_, Estado>, profissional_id: String, tipo: String, texto: String) -> Result<cuidado::Nota, Erro> {
+    estado.com_sessao(|s| cuidado::criar_nota(&s.conn, &profissional_id, &tipo, &texto))
 }
 
 #[tauri::command]
@@ -1176,13 +1191,13 @@ pub async fn excluir_nota_cuidado(estado: State<'_, Estado>, id: String) -> Resu
 }
 
 #[tauri::command]
-pub async fn registrar_sessao(estado: State<'_, Estado>, nota: String) -> Result<cuidado::RegistroSessao, Erro> {
-    estado.com_sessao(|s| cuidado::registrar_sessao(&s.conn, &nota))
+pub async fn registrar_sessao(estado: State<'_, Estado>, profissional_id: String, data: String, nota: String) -> Result<cuidado::RegistroSessao, Erro> {
+    estado.com_sessao(|s| cuidado::registrar_sessao(&s.conn, &profissional_id, &data, &nota))
 }
 
 #[tauri::command]
-pub async fn listar_sessoes(estado: State<'_, Estado>, de: i64, ate: i64) -> Result<Vec<cuidado::RegistroSessao>, Erro> {
-    estado.com_sessao(|s| cuidado::listar_sessoes(&s.conn, de, ate))
+pub async fn listar_sessoes(estado: State<'_, Estado>, profissional_id: String) -> Result<Vec<cuidado::RegistroSessao>, Erro> {
+    estado.com_sessao(|s| cuidado::listar_sessoes(&s.conn, &profissional_id))
 }
 
 #[tauri::command]

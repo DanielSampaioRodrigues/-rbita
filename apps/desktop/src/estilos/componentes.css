@@ -698,6 +698,14 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .leitor-anotacao + .leitor-anotacao { border-top: 1px solid var(--cor-borda-suave); }
 .leitor-anotacao-topo { display: flex; align-items: center; gap: var(--espaco-2); }
 
+/* Cuidado: abas por profissional. */
+.cuidado-abas { display: flex; flex-wrap: wrap; gap: var(--espaco-2); margin-bottom: var(--espaco-3); }
+.cuidado-aba { display: inline-flex; align-items: baseline; gap: 0.2rem; padding: var(--espaco-2) var(--espaco-3); border: 1px solid var(--cor-borda-suave); border-radius: 999px; background: var(--cor-superficie); color: var(--cor-texto); cursor: pointer; font: inherit; }
+.cuidado-aba.ativa { background: var(--cor-destaque); border-color: var(--cor-destaque); color: var(--cor-texto-sobre-destaque); }
+.cuidado-aba.ativa .texto-suave { color: inherit; opacity: 0.85; }
+.cuidado-sessao { padding: var(--espaco-3) 0; }
+.cuidado-sessao + .cuidado-sessao { border-top: 1px solid var(--cor-borda-suave); }
+
 /* Minha organização: quadros (Trello) e listas. */
 .org-abrir { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--espaco-2); background: none; border: none; color: var(--cor-texto); font: inherit; text-align: left; cursor: pointer; padding: 0; }
 .org-tela { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--cor-fundo); }
