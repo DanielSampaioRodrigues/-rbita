@@ -32,7 +32,7 @@ describe("dinheiro (simulação)", () => {
   });
 
   it("conta valida o dia de vencimento", async () => {
-    const boa: Conta = { id: "", nome: "Luz", centavos: 12000, diaVencimento: 10, avisoDias: 3, criadoEm: 0 };
+    const boa: Conta = { id: "", nome: "Luz", centavos: 12000, diaVencimento: 10, avisoDias: 3, grupoId: "", criadoEm: 0 };
     const c = await api.salvarConta(boa);
     expect(c.id).not.toBe("");
     await expect(api.salvarConta({ ...boa, id: "", diaVencimento: 40 })).rejects.toThrow();

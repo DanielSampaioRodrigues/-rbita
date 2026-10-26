@@ -159,6 +159,9 @@ pub struct Conta {
     /// Com quantos dias de antecedência avisar.
     #[serde(default)]
     pub aviso_dias: u32,
+    /// Grupo (categoria) a que pertence; vazio = sem grupo. Mesmo sistema dos gastos.
+    #[serde(default)]
+    pub grupo_id: String,
     #[serde(default)]
     pub criado_em: i64,
 }
@@ -169,6 +172,8 @@ struct DadosConta {
     centavos: i64,
     dia_vencimento: u32,
     aviso_dias: u32,
+    #[serde(default)]
+    grupo_id: String,
 }
 
 pub fn listar_contas(conn: &Connection) -> Result<Vec<Conta>, Erro> {
@@ -177,8 +182,8 @@ pub fn listar_contas(conn: &Connection) -> Result<Vec<Conta>, Erro> {
     )?;
     let lista = c
         .query_map([], |r| {
-            let d: DadosConta = serde_json::from_str(&r.get::<_, String>(2)?).unwrap_or(DadosConta { centavos: 0, dia_vencimento: 1, aviso_dias: 0 });
-            Ok(Conta { id: r.get(0)?, nome: r.get(1)?, centavos: d.centavos, dia_vencimento: d.dia_vencimento, aviso_dias: d.aviso_dias, criado_em: r.get(3)? })
+            let d: DadosConta = serde_json::from_str(&r.get::<_, String>(2)?).unwrap_or(DadosConta { centavos: 0, dia_vencimento: 1, aviso_dias: 0, grupo_id: String::new() });
+            Ok(Conta { id: r.get(0)?, nome: r.get(1)?, centavos: d.centavos, dia_vencimento: d.dia_vencimento, aviso_dias: d.aviso_dias, grupo_id: d.grupo_id, criado_em: r.get(3)? })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
@@ -195,7 +200,7 @@ pub fn salvar_conta(conn: &Connection, mut conta: Conta) -> Result<Conta, Erro> 
     if conta.centavos < 0 {
         return Err(Erro::Interno("o valor não pode ser negativo".into()));
     }
-    let dados = serde_json::to_string(&DadosConta { centavos: conta.centavos, dia_vencimento: conta.dia_vencimento, aviso_dias: conta.aviso_dias })
+    let dados = serde_json::to_string(&DadosConta { centavos: conta.centavos, dia_vencimento: conta.dia_vencimento, aviso_dias: conta.aviso_dias, grupo_id: conta.grupo_id.trim().to_string() })
         .map_err(|e| Erro::Interno(e.to_string()))?;
     let agora = agora_ms();
     if conta.id.is_empty() {
@@ -401,9 +406,10 @@ mod testes {
     #[test]
     fn conta_valida_dia_e_salva() {
         let (_p, conn) = banco();
-        let c = salvar_conta(&conn, Conta { id: String::new(), nome: "Luz".into(), centavos: 12000, dia_vencimento: 10, aviso_dias: 3, criado_em: 0 }).unwrap();
+        let c = salvar_conta(&conn, Conta { id: String::new(), nome: "Luz".into(), centavos: 12000, dia_vencimento: 10, aviso_dias: 3, grupo_id: "g-casa".into(), criado_em: 0 }).unwrap();
+        assert_eq!(c.grupo_id, "g-casa");
         assert!(!c.id.is_empty());
-        assert!(salvar_conta(&conn, Conta { id: String::new(), nome: "X".into(), centavos: 0, dia_vencimento: 40, aviso_dias: 0, criado_em: 0 }).is_err());
+        assert!(salvar_conta(&conn, Conta { id: String::new(), nome: "X".into(), centavos: 0, dia_vencimento: 40, aviso_dias: 0, grupo_id: String::new(), criado_em: 0 }).is_err());
         assert_eq!(listar_contas(&conn).unwrap().len(), 1);
     }
 

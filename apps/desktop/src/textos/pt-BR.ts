@@ -975,7 +975,7 @@ export const textos = {
     },
     visao: {
       titulo: "Para onde vai o dinheiro",
-      intro: "Uma visão dos seus gastos por grupo e por mês, para você entender — sem cobrança.",
+      intro: "Uma visão dos seus gastos por grupo e por mês, para você entender — sem cobrança. Inclui os gastos do dia a dia e as contas que se repetem, para você ver o fixo e o variável juntos.",
       periodo: "Período",
       periodos: { 3: "3 meses", 6: "6 meses", 12: "12 meses" },
       grupoColuna: "Grupo",
@@ -1002,7 +1002,8 @@ export const textos = {
     },
     contas: {
       titulo: "Contas que se repetem",
-      intro: "Contas mensais, com aviso antes de vencer.",
+      intro: "Contas mensais, com aviso antes de vencer. Com um grupo, elas também entram na visão e nos gráficos lá de cima.",
+      grupoAjuda: "Mesmo sistema de grupos dos gastos. Com um grupo, a conta entra na tabela e nos gráficos todo mês.",
       proximas: "A vencer",
       venceDia: (dia: number) => `Todo dia ${dia}`,
       faltamDias: (n: number) => (n === 0 ? "Vence hoje" : n === 1 ? "Vence amanhã" : `Vence em ${n} dias`),

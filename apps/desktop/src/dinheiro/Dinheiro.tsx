@@ -82,7 +82,7 @@ export function PaginaDinheiro() {
       <h1>{t.titulo}</h1>
       <p className="pagina-intro">{t.intro}</p>
 
-      <VisaoGastos gastos={gastos} grupos={grupos} />
+      <VisaoGastos gastos={gastos} contas={contas} grupos={grupos} />
 
       <RegistrarGasto gastos={gastos} grupos={grupos} />
 
@@ -175,7 +175,7 @@ export function PaginaDinheiro() {
       <Aviso>{erro}</Aviso>
 
       <Janela titulo={editandoConta && editandoConta.id ? t.contas.editar : t.contas.novo} aberta={editandoConta !== null} aoFechar={() => setEditandoConta(null)}>
-        {editandoConta && <FormConta key={editandoConta.id || "novo"} inicial={editandoConta} aoFechar={() => setEditandoConta(null)} />}
+        {editandoConta && <FormConta key={editandoConta.id || "novo"} inicial={editandoConta} grupos={grupos} aoFechar={() => setEditandoConta(null)} />}
       </Janela>
       <Janela titulo={editandoMeta && editandoMeta.id ? t.metas.editar : t.metas.novo} aberta={editandoMeta !== null} aoFechar={() => setEditandoMeta(null)}>
         {editandoMeta && <FormMeta key={editandoMeta.id || "novo"} inicial={editandoMeta} aoFechar={() => setEditandoMeta(null)} />}
@@ -190,10 +190,10 @@ export function PaginaDinheiro() {
   );
 }
 
-function VisaoGastos({ gastos, grupos }: { gastos: Gasto[]; grupos: Grupo[] }) {
+function VisaoGastos({ gastos, contas, grupos }: { gastos: Gasto[]; contas: Conta[]; grupos: Grupo[] }) {
   const [periodo, setPeriodo] = useState<"3" | "6" | "12">("6");
   const meses = useMemo(() => mesesRecentes(new Date(), Number(periodo)), [periodo]);
-  const tabela = useMemo(() => tabelaPorMes(gastos, grupos, meses), [gastos, grupos, meses]);
+  const tabela = useMemo(() => tabelaPorMes(gastos, contas, grupos, meses), [gastos, contas, grupos, meses]);
 
   return (
     <section className="cartao largura-leitura esticado" aria-labelledby="visao">

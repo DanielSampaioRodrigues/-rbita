@@ -1,7 +1,7 @@
 // Agregação dos gastos por mês e por grupo, e a geometria da pizza. Tudo puro
 // (sem DOM, sem relógio além do que entra por parâmetro), para dar para testar.
 
-import type { Gasto, Grupo } from "../api";
+import type { Conta, Gasto, Grupo } from "../api";
 
 /** "AAAA-MM" do momento (ms), no horário local. */
 export function chaveMes(ms: number): string {
@@ -38,9 +38,11 @@ export interface Tabela {
 
 /**
  * Monta a tabela: uma linha por grupo (mais "Sem grupo" quando houver), com o
- * total de cada mês da lista `meses`. Só entram gastos desses meses.
+ * total de cada mês da lista `meses`. Entram os gastos esporádicos desses meses
+ * e também as contas fixas (cada conta soma o seu valor em todo mês a partir do
+ * mês em que foi criada), para a pessoa ver o fixo e o variável juntos.
  */
-export function tabelaPorMes(gastos: Gasto[], grupos: Grupo[], meses: string[]): Tabela {
+export function tabelaPorMes(gastos: Gasto[], contas: Conta[], grupos: Grupo[], meses: string[]): Tabela {
   const porId = new Map(grupos.map((g) => [g.id, g]));
   const linhas = new Map<string, LinhaTabela>();
   const totaisMes: Record<string, number> = Object.fromEntries(meses.map((m) => [m, 0]));
@@ -55,15 +57,26 @@ export function tabelaPorMes(gastos: Gasto[], grupos: Grupo[], meses: string[]):
     return linhas.get(id)!;
   };
 
-  for (const gasto of gastos) {
-    const mes = chaveMes(gasto.momento);
-    if (!(mes in totaisMes)) continue;
-    const id = porId.has(gasto.grupoId) ? gasto.grupoId : "";
+  const somar = (grupoId: string, mes: string, centavos: number) => {
+    if (!(mes in totaisMes) || centavos <= 0) return;
+    const id = porId.has(grupoId) ? grupoId : "";
     const linha = linhaDe(id);
-    linha.porMes[mes] += gasto.centavos;
-    linha.total += gasto.centavos;
-    totaisMes[mes] += gasto.centavos;
-    total += gasto.centavos;
+    linha.porMes[mes] += centavos;
+    linha.total += centavos;
+    totaisMes[mes] += centavos;
+    total += centavos;
+  };
+
+  for (const gasto of gastos) {
+    somar(gasto.grupoId, chaveMes(gasto.momento), gasto.centavos);
+  }
+
+  // Contas fixas: repetem todo mês, a partir do mês em que foram criadas.
+  for (const conta of contas) {
+    const desde = chaveMes(conta.criadoEm);
+    for (const mes of meses) {
+      if (mes >= desde) somar(conta.grupoId, mes, conta.centavos);
+    }
   }
 
   // Grupos com mais gasto primeiro; "Sem grupo" por último.

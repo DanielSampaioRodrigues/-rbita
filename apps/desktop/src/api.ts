@@ -289,6 +289,8 @@ export interface Conta {
   diaVencimento: number;
   /** Dias de antecedência do aviso. */
   avisoDias: number;
+  /** Grupo (categoria) a que pertence; vazio = sem grupo. Mesmo sistema dos gastos. */
+  grupoId: string;
   criadoEm: number;
 }
 
