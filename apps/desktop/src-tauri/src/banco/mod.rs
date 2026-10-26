@@ -12,6 +12,7 @@ pub mod dinheiro;
 pub mod energia;
 pub mod hobbies;
 pub mod leitura;
+pub mod quadro;
 pub mod etiquetas;
 pub mod eventos;
 pub mod itens;

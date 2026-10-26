@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, anotacoes, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, rotinas, saude};
+use crate::banco::{self, academico, anexos, anotacoes, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, quadro, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -802,7 +802,7 @@ pub async fn anexar_arquivo(estado: State<'_, Estado>, item: String, caminho: St
     let caminho = PathBuf::from(caminho);
     let tamanho = std::fs::metadata(&caminho)?.len() as usize;
     if tamanho > anexos::MAXIMO_BYTES {
-        return Err(Erro::Arquivo("o arquivo passa de 20 MB, o limite para anexos".into()));
+        return Err(Erro::Arquivo(format!("o arquivo passa de {} MB, o limite para anexos", anexos::MAXIMO_MB)));
     }
     let conteudo = std::fs::read(&caminho)?;
     let nome = caminho.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
@@ -812,6 +812,14 @@ pub async fn anexar_arquivo(estado: State<'_, Estado>, item: String, caminho: St
 #[tauri::command]
 pub async fn anexar_link(estado: State<'_, Estado>, item: String, nome: String, endereco: String) -> Result<anexos::Anexo, Erro> {
     estado.com_sessao(|s| anexos::anexar_link(&s.conn, &item, &nome, &endereco))
+}
+
+/// Anexa conteúdo vindo da memória (por exemplo, um áudio gravado no app), em base64.
+#[tauri::command]
+pub async fn anexar_bytes(estado: State<'_, Estado>, item: String, nome: String, base64: String) -> Result<anexos::Anexo, Erro> {
+    use base64::Engine;
+    let conteudo = base64::engine::general_purpose::STANDARD.decode(base64.as_bytes()).map_err(|e| Erro::Arquivo(e.to_string()))?;
+    estado.com_sessao(|s| anexos::anexar_arquivo(&s.conn, &item, &nome, &conteudo))
 }
 
 /// A imagem como endereço de dados, para mostrar na tela.
@@ -1397,4 +1405,24 @@ pub async fn salvar_anotacao(estado: State<'_, Estado>, anotacao: anotacoes::Ano
 #[tauri::command]
 pub async fn excluir_anotacao(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| anotacoes::excluir(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_cartoes(estado: State<'_, Estado>, hobby_id: String) -> Result<Vec<quadro::CartaoQuadro>, Erro> {
+    estado.com_sessao(|s| quadro::listar(&s.conn, &hobby_id))
+}
+
+#[tauri::command]
+pub async fn salvar_cartao(estado: State<'_, Estado>, cartao: quadro::CartaoQuadro) -> Result<quadro::CartaoQuadro, Erro> {
+    estado.com_sessao(|s| quadro::salvar(&s.conn, cartao))
+}
+
+#[tauri::command]
+pub async fn mover_cartao(estado: State<'_, Estado>, id: String, x: f64, y: f64) -> Result<(), Erro> {
+    estado.com_sessao(|s| quadro::mover(&s.conn, &id, x, y))
+}
+
+#[tauri::command]
+pub async fn excluir_cartao(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| quadro::excluir(&s.conn, &id))
 }

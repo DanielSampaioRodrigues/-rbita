@@ -384,6 +384,25 @@ export interface Hobby {
   criadoEm: number;
 }
 
+/** Tipo de cartão do quadro livre de um hobby. */
+export type TipoCartao = "texto" | "arquivo" | "imagem" | "link" | "audio";
+
+/** Um cartão solto no quadro de um hobby, posicionado onde a pessoa quiser. */
+export interface CartaoQuadro {
+  id: string;
+  hobbyId: string;
+  tipo: TipoCartao;
+  /** Texto livre (cartão de texto) ou legenda. */
+  texto: string;
+  /** Id do anexo ligado (arquivo, imagem, link ou áudio). */
+  anexoId: string;
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
+  criadoEm: number;
+}
+
 /** Matéria (disciplina) da vida acadêmica. */
 export interface Materia {
   /** Vazio ao criar. */
@@ -576,6 +595,8 @@ interface Api {
   /** Guarda uma cópia do arquivo dentro do cofre (até 20 MB). */
   anexarArquivo(item: string, caminho: string): Promise<Anexo>;
   anexarLink(item: string, nome: string, endereco: string): Promise<Anexo>;
+  /** Anexa conteúdo da memória (por exemplo, um áudio gravado), em base64. */
+  anexarBytes(item: string, nome: string, base64: string): Promise<Anexo>;
   /** A imagem como endereço de dados, para mostrar na tela. */
   imagemAnexo(id: string): Promise<string>;
   /** Link no navegador; arquivo no programa padrão do computador. */
@@ -659,6 +680,10 @@ interface Api {
   listarHobbies(): Promise<Hobby[]>;
   salvarHobby(hobby: Hobby): Promise<Hobby>;
   excluirHobby(id: string): Promise<void>;
+  listarCartoes(hobbyId: string): Promise<CartaoQuadro[]>;
+  salvarCartao(cartao: CartaoQuadro): Promise<CartaoQuadro>;
+  moverCartao(id: string, x: number, y: number): Promise<void>;
+  excluirCartao(id: string): Promise<void>;
   listarLivros(): Promise<Livro[]>;
   salvarLivro(livro: Livro): Promise<Livro>;
   mudarStatusLivro(id: string, status: string): Promise<void>;
@@ -775,6 +800,7 @@ const nativa: Api = {
   listarAnexos: (item) => chamar("listar_anexos", { item }),
   anexarArquivo: (item, caminho) => chamar("anexar_arquivo", { item, caminho }),
   anexarLink: (item, nome, endereco) => chamar("anexar_link", { item, nome, endereco }),
+  anexarBytes: (item, nome, base64) => chamar("anexar_bytes", { item, nome, base64 }),
   imagemAnexo: (id) => chamar("imagem_anexo", { id }),
   abrirAnexo: (id) => chamar("abrir_anexo", { id }),
   salvarAnexo: (id, caminho) => chamar("salvar_anexo", { id, caminho }),
@@ -851,6 +877,10 @@ const nativa: Api = {
   listarHobbies: () => chamar("listar_hobbies"),
   salvarHobby: (hobby) => chamar("salvar_hobby", { hobby }),
   excluirHobby: (id) => chamar("excluir_hobby", { id }),
+  listarCartoes: (hobbyId) => chamar("listar_cartoes", { hobbyId }),
+  salvarCartao: (cartao) => chamar("salvar_cartao", { cartao }),
+  moverCartao: (id, x, y) => chamar("mover_cartao", { id, x, y }),
+  excluirCartao: (id) => chamar("excluir_cartao", { id }),
   listarLivros: () => chamar("listar_livros"),
   salvarLivro: (livro) => chamar("salvar_livro", { livro }),
   mudarStatusLivro: (id, status) => chamar("mudar_status_livro", { id, status }),
@@ -1193,7 +1223,7 @@ function simularRotinas(itens: ReturnType<typeof simularItens>, anexos: ReturnTy
 }
 
 /** Anexos de mentira: guardados só na memória da página. */
-function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLink" | "imagemAnexo" | "abrirAnexo" | "salvarAnexo" | "excluirAnexo"> & { imagemDe: (item: string) => string | null } {
+function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLink" | "anexarBytes" | "imagemAnexo" | "abrirAnexo" | "salvarAnexo" | "excluirAnexo"> & { imagemDe: (item: string) => string | null } {
   const anexos: (Anexo & { item: string })[] = [];
   const desenho = (cor: string) =>
     `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320"><rect width="480" height="320" fill="${cor}"/><circle cx="360" cy="90" r="40" fill="#f3efe6" opacity="0.8"/><path d="M0 260 L120 150 L230 250 L320 180 L480 280 L480 320 L0 320 Z" fill="#2f4a3a"/></svg>`)}`;
@@ -1215,6 +1245,11 @@ function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLi
       if (!/^[a-z][a-z0-9+.-]*:/i.test(e)) e = `https://${e}`;
       if (!/^https?:\/\//i.test(e)) throw new ErroOrbita("arquivo", "Só dá para anexar links da internet (http ou https).");
       const a = { id: crypto.randomUUID(), tipo: "link" as const, nome: nome.trim() || e, endereco: e, tamanho: 0, criadoEm: Date.now(), item };
+      anexos.push(a);
+      return a;
+    },
+    anexarBytes: async (item, nome) => {
+      const a = { id: crypto.randomUUID(), tipo: tipoDe(nome), nome, endereco: "", tamanho: 24_000, criadoEm: Date.now(), item };
       anexos.push(a);
       return a;
     },
@@ -1546,7 +1581,35 @@ function simularDinheiro() {
 
 function simularHobbies() {
   const hobbies: Hobby[] = [];
+  const cartoes: CartaoQuadro[] = [];
+  const TIPOS = ["texto", "arquivo", "imagem", "link", "audio"];
   return {
+    listarCartoes: async (hobbyId: string) =>
+      cartoes.filter((c) => c.hobbyId === hobbyId).map((c) => ({ ...c })).sort((a, b) => a.criadoEm - b.criadoEm),
+    salvarCartao: async (c: CartaoQuadro) => {
+      if (!c.hobbyId.trim()) throw new ErroOrbita("interno", "O cartão precisa de um quadro.");
+      if (!TIPOS.includes(c.tipo)) throw new ErroOrbita("interno", "Tipo de cartão desconhecido.");
+      const limpo: CartaoQuadro = { ...c, texto: c.texto.trimEnd() };
+      if (c.id) {
+        const i = cartoes.findIndex((x) => x.id === c.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Cartão não encontrado.");
+        cartoes[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      cartoes.push(novo);
+      return { ...novo };
+    },
+    moverCartao: async (id: string, x: number, y: number) => {
+      const c = cartoes.find((x2) => x2.id === id);
+      if (!c) throw new ErroOrbita("nao_encontrado", "Cartão não encontrado.");
+      c.x = x;
+      c.y = y;
+    },
+    excluirCartao: async (id: string) => {
+      const i = cartoes.findIndex((c) => c.id === id);
+      if (i >= 0) cartoes.splice(i, 1);
+    },
     listarHobbies: async () => hobbies.map((h) => ({ ...h })).sort((a, b) => b.criadoEm - a.criadoEm),
     salvarHobby: async (h: Hobby) => {
       const nome = h.nome.trim();

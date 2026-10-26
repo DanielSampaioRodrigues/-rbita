@@ -228,6 +228,11 @@ pub fn run() {
             comandos::listar_anotacoes,
             comandos::salvar_anotacao,
             comandos::excluir_anotacao,
+            comandos::anexar_bytes,
+            comandos::listar_cartoes,
+            comandos::salvar_cartao,
+            comandos::mover_cartao,
+            comandos::excluir_cartao,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");
