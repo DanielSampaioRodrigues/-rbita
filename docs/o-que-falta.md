@@ -53,14 +53,17 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [ ] Encolher nota/média para detalhe opcional dentro da matéria.
   - [ ] Dependências: grifos por assunto precisam do Leitor pronto; páginas por assunto precisam do Caderno.
 - [x] **Hobbies e interesses** (0.36.0): arquivo de interesses/hiperfocos com notas, imagens e links (pelos anexos), sem metas. Falta teste de Dan no Windows.
+  - [x] **Quadro livre** por hobby (na branch, ainda não publicado): cartões soltos de texto, arquivo, imagem, link e áudio gravado, arrastáveis pelo mouse e pelo teclado; posição guardada. Áudio pelo microfone (MediaRecorder) salvo no cofre via `anexar_bytes`. **Falta teste de Dan no Windows — o microfone no WebView2 e a renderização não dá para validar na nuvem.**
+  - [ ] Redimensionar cartões; conectar cartões; fundo/cor do quadro.
 - [ ] **Leitura** (começada na 0.37.0):
   - [x] Estante com status (quero/lendo/lido/pausado) e diário de leitura (onde parei, impressões, datas). Falta teste de Dan no Windows.
   - [x] Pacote `packages/leitor` (sem React/Tauri, reaproveitável no Escuta) com o leitor de EPUB (epub.js) e PDF (PDF.js): fontes (inclusive dislexia), cores de papel, tamanho e modo páginas/rolagem; lembra onde parou (0.38.0). **Falta teste de Dan no Windows — a renderização não foi validada na nuvem.** Limite de 300 MB por arquivo (reusa os anexos do cofre) (0.39.0).
   - [x] Painel de ajustes do leitor com espaçamento entre linhas, margem e alinhamento; troca de fonte do EPUB corrigida (injeção de `@font-face` no iframe); PDF esconde os ajustes que são só do EPUB (0.41.0). Falta teste de Dan no Windows.
   - [x] Biblioteca em prateleiras (grupos) com cor por livro e selo de status; livro muda de prateleira por um seletor (0.41.0). Falta teste de Dan no Windows.
+  - [x] Marcadores, notas e grifos (grifo de texto no EPUB), caneta/marca-texto/borracha no PDF, com painel lateral de anotações (na branch, ainda não publicado). **Falta teste de Dan no Windows.**
+  - [x] Arrastar livros entre prateleiras com o mouse e pelo teclado (dnd-kit) (na branch, ainda não publicado).
   - [ ] No leitor: régua de leitura, leitura em voz alta, busca no livro, sumário navegável, dicionário.
-  - [ ] Arrastar livros entre prateleiras com o mouse e pelo teclado (dnd-kit).
-  - [ ] Grifos com cores de significado, notas na margem, marcadores; caneta (ink) para riscar no PDF.
+  - [ ] Grifo de texto no PDF (precisa da camada de texto no render do PDF, hoje só canvas).
   - [ ] Fichamentos (citação, resumo, comentário, paráfrase) com ABNT; exportar Word/PDF/Markdown.
   - [ ] Busca em todas as anotações; IA opcional para explicar/resumir. Testar o pacote dentro do Escuta.
 - [ ] **Caderno** com os dois modos completos (decisão de Dan): estante, capas e folhas personalizáveis, modo caderno no estilo Goodnotes com páginas, PDF para anotar, caneta com pressão e rejeição da palma, todas as ferramentas (lápis, pincel, marca-texto, borracha, laço, formas, texto, setas, notas adesivas, imagens) e quadro infinito. Cinco etapas no plano da Onda 2.
