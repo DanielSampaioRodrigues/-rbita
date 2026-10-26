@@ -1,3 +1,19 @@
+- **Minha organização (novo)**: uma seção só para organizar o dia a dia com **quadros e listas** — quantos você quiser. O **quadro** tem colunas (A fazer / Fazendo / Feito, que dá para renomear) e cartões que você **arrasta** de uma coluna para outra; a **lista** é mais direta, com caixinhas para marcar. Bom para quem se apoia em listas o dia todo.
+
+- **Cuidado agora é por profissional**: em vez de uma tela só, cada profissional que você acompanha (psiquiatra, psicólogo, neuro, nutri, TO, fono…) tem a **sua aba e o seu painel**: próxima consulta, um espaço "sobre" com formatação, o que levar, as perguntas, seus remédios atuais (puxados da Saúde) e o **diário de sessões** com data e texto formatado. O que você já tinha anotado foi movido para um profissional chamado "Acompanhamento".
+
+- **Saúde mais inteira (não só os dias difíceis)**: além de sono, sintoma e sobrecarga, agora você registra o que **vai bem** — uma coisa boa, uma potencialidade, um momento de regulação. O "Plano de crise" virou **"Planos de crise e estratégias"**: você cria vários, de crise ou de estratégia (o que te faz bem, o que te regula). E tem um painel **"Como você vem indo"**, com gráficos do período mostrando o difícil e o bom lado a lado — para você se ver por inteiro, sem alarme.
+
+- **Estudos com grade de horário**: monte sua **semana** com as aulas como blocos fixos por dia e matéria (cada uma com a sua cor), igual ao horário do caderno.
+
+- **Dinheiro: contas fixas nos gráficos**: as contas que se repetem agora entram na visão "Para onde vai o dinheiro" — é só dar um grupo a elas. Assim você vê o fixo (assinaturas, aluguel, contas) junto com o variável.
+
+- **Hobbies mais leves e com pré-visualização**: o quadro ficou **mais fluido** (sem travar ao arrastar). Clicar num arquivo abre uma **pré-visualização** dentro do app — imagem ampliada ou PDF para folhear — com botões de abrir no programa ou baixar. O cartão de texto virou **texto com formatação** e dá para **mudar o tamanho** dele. E, além de gravar áudio, agora dá para **anexar um áudio** que você já tem.
+
+---
+
+<!-- Abaixo: o que veio na 0.42.0. -->
+
 - **Hobbies viraram quadros livres**: cada interesse agora abre num **quadro** em tela cheia, onde você solta o que quiser — **texto, arquivos (PDF, docx…), imagens, links e áudios gravados na hora** pelo microfone — e **arrasta cada coisa** para o lugar que fizer sentido (dá para mover pelo teclado também: setas movem, Delete apaga). Imagem abre ampliada, arquivo e link abrem no programa ou navegador, o texto você escreve no próprio cartão e o áudio toca ali mesmo. Tudo fica guardado no cofre; nada sai do computador.
 
 - **Leitor com marcadores, notas e grifos**: dentro do leitor agora dá para **marcar a página** onde você está, escrever uma **nota** e, no **EPUB**, **grifar** um trecho selecionado escolhendo a cor (com uma nota opcional). Um **painel lateral** lista tudo, com "ir até aqui" e apagar.
