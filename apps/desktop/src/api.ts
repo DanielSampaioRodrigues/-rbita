@@ -336,6 +336,39 @@ export interface Livro {
   criadoEm: number;
 }
 
+/** Um ponto de um traço da caneta, relativo à página (x e y de 0 a 1). */
+export interface Ponto {
+  x: number;
+  y: number;
+}
+
+/** Tipo de anotação de leitura. */
+export type TipoAnotacao = "marcador" | "nota" | "grifo" | "traco";
+
+/** Anotação de leitura: marcador, nota, grifo (EPUB) ou traço da caneta (PDF). */
+export interface Anotacao {
+  id: string;
+  livroId: string;
+  tipo: TipoAnotacao;
+  /** EPUB: ponto (marcador/nota) — um CFI. */
+  epubCfi: string;
+  /** EPUB: intervalo grifado — um CFI de intervalo. */
+  epubCfiRange: string;
+  /** PDF: página (1 em diante). */
+  pdfPagina: number;
+  /** Cor do grifo ou do traço (nome da paleta de etiquetas). */
+  cor: string;
+  /** Texto da nota (ou nota presa a um grifo). */
+  texto: string;
+  /** Trecho grifado, guardado para listar sem abrir o livro. */
+  trecho: string;
+  /** Traço da caneta: pontos relativos à página. */
+  pontos: Ponto[];
+  /** Espessura do traço, relativa à largura da página. */
+  espessura: number;
+  criadoEm: number;
+}
+
 /** Prateleira (grupo) de livros. */
 export interface GrupoLivro {
   id: string;
@@ -637,6 +670,9 @@ interface Api {
   listarGruposLivro(): Promise<GrupoLivro[]>;
   salvarGrupoLivro(grupo: GrupoLivro): Promise<GrupoLivro>;
   excluirGrupoLivro(id: string): Promise<void>;
+  listarAnotacoes(livroId: string): Promise<Anotacao[]>;
+  salvarAnotacao(anotacao: Anotacao): Promise<Anotacao>;
+  excluirAnotacao(id: string): Promise<void>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -824,6 +860,9 @@ const nativa: Api = {
   listarGruposLivro: () => chamar("listar_grupos_livro"),
   salvarGrupoLivro: (grupo) => chamar("salvar_grupo_livro", { grupo }),
   excluirGrupoLivro: (id) => chamar("excluir_grupo_livro", { id }),
+  listarAnotacoes: (livroId) => chamar("listar_anotacoes", { livroId }),
+  salvarAnotacao: (anotacao) => chamar("salvar_anotacao", { anotacao }),
+  excluirAnotacao: (id) => chamar("excluir_anotacao", { id }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1533,6 +1572,8 @@ function simularHobbies() {
 function simularLeitura() {
   const livros: Livro[] = [];
   const gruposLivro: GrupoLivro[] = [];
+  const anotacoes: Anotacao[] = [];
+  const SUBTIPOS = ["marcador", "nota", "grifo", "traco"];
   const ordem: Record<string, number> = { lendo: 0, quero: 1, pausado: 2, lido: 3 };
   const STATUS = ["quero", "lendo", "lido", "pausado"];
   return {
@@ -1584,6 +1625,26 @@ function simularLeitura() {
     excluirGrupoLivro: async (id: string) => {
       const i = gruposLivro.findIndex((g) => g.id === id);
       if (i >= 0) gruposLivro.splice(i, 1);
+    },
+    listarAnotacoes: async (livroId: string) =>
+      anotacoes.filter((a) => a.livroId === livroId).map((a) => ({ ...a })).sort((a, b) => a.criadoEm - b.criadoEm),
+    salvarAnotacao: async (a: Anotacao) => {
+      if (!a.livroId.trim()) throw new ErroOrbita("interno", "A anotação precisa de um livro.");
+      if (!SUBTIPOS.includes(a.tipo)) throw new ErroOrbita("interno", "Tipo de anotação desconhecido.");
+      const limpo: Anotacao = { ...a, texto: a.texto.trim(), trecho: a.trecho.trim() };
+      if (a.id) {
+        const i = anotacoes.findIndex((x) => x.id === a.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Anotação não encontrada.");
+        anotacoes[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      anotacoes.push(novo);
+      return { ...novo };
+    },
+    excluirAnotacao: async (id: string) => {
+      const i = anotacoes.findIndex((a) => a.id === id);
+      if (i >= 0) anotacoes.splice(i, 1);
     },
   };
 }

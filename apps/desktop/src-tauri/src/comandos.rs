@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, rotinas, saude};
+use crate::banco::{self, academico, anexos, anotacoes, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1382,4 +1382,19 @@ pub async fn salvar_grupo_livro(estado: State<'_, Estado>, grupo: leitura::Grupo
 #[tauri::command]
 pub async fn excluir_grupo_livro(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| leitura::excluir_grupo(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_anotacoes(estado: State<'_, Estado>, livro_id: String) -> Result<Vec<anotacoes::Anotacao>, Erro> {
+    estado.com_sessao(|s| anotacoes::listar(&s.conn, &livro_id))
+}
+
+#[tauri::command]
+pub async fn salvar_anotacao(estado: State<'_, Estado>, anotacao: anotacoes::Anotacao) -> Result<anotacoes::Anotacao, Erro> {
+    estado.com_sessao(|s| anotacoes::salvar(&s.conn, anotacao))
+}
+
+#[tauri::command]
+pub async fn excluir_anotacao(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| anotacoes::excluir(&s.conn, &id))
 }

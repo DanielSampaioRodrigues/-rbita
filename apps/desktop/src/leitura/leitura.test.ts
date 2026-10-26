@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { api, type Livro } from "../api";
+import { api, type Anotacao, type Livro } from "../api";
+
+const anotacao = (livroId: string, tipo: Anotacao["tipo"]): Anotacao => ({
+  id: "", livroId, tipo, epubCfi: "", epubCfiRange: "", pdfPagina: 0, cor: "", texto: "", trecho: "", pontos: [], espessura: 0, criadoEm: 0,
+});
 
 const livro = (titulo: string, status = "quero"): Livro => ({
   id: "", titulo, autor: "Autor", status, ondeParei: "", impressoes: "", inicio: "", fim: "", formato: "", arquivoId: "", grupoId: "", cor: "mar", criadoEm: 0,
@@ -62,5 +66,26 @@ describe("leitura: prateleiras (simulação)", () => {
     expect((await api.listarGruposLivro())[0].nome).toBe("Lazer e hobbies");
     await api.excluirGrupoLivro(g.id);
     expect((await api.listarGruposLivro()).length).toBe(0);
+  });
+});
+
+describe("leitura: anotações (simulação)", () => {
+  it("guarda marcador, grifo e traço por livro, e apaga", async () => {
+    const atual = await api.listarAnotacoes("livro-1");
+    for (const a of atual) await api.excluirAnotacao(a.id);
+
+    await api.salvarAnotacao({ ...anotacao("livro-1", "marcador"), epubCfi: "epubcfi(/6/2)" });
+    const g = await api.salvarAnotacao({ ...anotacao("livro-1", "grifo"), epubCfiRange: "epubcfi(/6/2,/1:0,/1:9)", cor: "lavanda", trecho: " bom trecho " });
+    await api.salvarAnotacao({ ...anotacao("livro-2", "nota"), pdfPagina: 4, texto: "lembrar" });
+
+    const l1 = await api.listarAnotacoes("livro-1");
+    expect(l1.length).toBe(2);
+    expect(l1.find((a) => a.tipo === "grifo")!.trecho).toBe("bom trecho");
+    expect((await api.listarAnotacoes("livro-2")).length).toBe(1);
+
+    await expect(api.salvarAnotacao({ ...anotacao("", "marcador") })).rejects.toThrow();
+
+    await api.excluirAnotacao(g.id);
+    expect((await api.listarAnotacoes("livro-1")).length).toBe(1);
   });
 });
