@@ -258,6 +258,50 @@ export interface RegistroSessao {
   nota: string;
 }
 
+/** Um gasto registrado (valor em centavos). */
+export interface Gasto {
+  id: string;
+  centavos: number;
+  categoria: string;
+  /** Gasto com interesse especial / hiperfoco. Visível, sem julgamento. */
+  interesse: boolean;
+  descricao: string;
+  momento: number;
+}
+
+/** Conta recorrente (valor em centavos). */
+export interface Conta {
+  id: string;
+  nome: string;
+  centavos: number;
+  /** Dia do mês em que vence (1 a 31). */
+  diaVencimento: number;
+  /** Dias de antecedência do aviso. */
+  avisoDias: number;
+  criadoEm: number;
+}
+
+/** Item da lista de espera de compras. */
+export interface Desejo {
+  id: string;
+  nome: string;
+  centavos: number;
+  /** A partir de quando dá para decidir (ms). */
+  decidirEm: number;
+  /** "esperando" ou "resolvido". */
+  estado: string;
+  criadoEm: number;
+}
+
+/** Meta de reserva (valores em centavos). */
+export interface Meta {
+  id: string;
+  nome: string;
+  alvoCentavos: number;
+  guardadoCentavos: number;
+  criadoEm: number;
+}
+
 /** Matéria (disciplina) da vida acadêmica. */
 export interface Materia {
   /** Vazio ao criar. */
@@ -514,6 +558,19 @@ interface Api {
   excluirAtividade(id: string): Promise<void>;
   mediaAprovacao(): Promise<number>;
   definirMediaAprovacao(media: number): Promise<void>;
+  registrarGasto(centavos: number, categoria: string, descricao: string, interesse: boolean): Promise<Gasto>;
+  listarGastos(de: number, ate: number): Promise<Gasto[]>;
+  excluirGasto(id: string): Promise<void>;
+  listarContas(): Promise<Conta[]>;
+  salvarConta(conta: Conta): Promise<Conta>;
+  excluirConta(id: string): Promise<void>;
+  listarDesejos(): Promise<Desejo[]>;
+  criarDesejo(nome: string, centavos: number, esperaHoras: number): Promise<Desejo>;
+  resolverDesejo(id: string): Promise<void>;
+  excluirDesejo(id: string): Promise<void>;
+  listarMetas(): Promise<Meta[]>;
+  salvarMeta(meta: Meta): Promise<Meta>;
+  excluirMeta(id: string): Promise<void>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -673,6 +730,19 @@ const nativa: Api = {
   excluirAtividade: (id) => chamar("excluir_atividade", { id }),
   mediaAprovacao: () => chamar("media_aprovacao"),
   definirMediaAprovacao: (media) => chamar("definir_media_aprovacao", { media }),
+  registrarGasto: (centavos, categoria, descricao, interesse) => chamar("registrar_gasto", { centavos, categoria, descricao, interesse }),
+  listarGastos: (de, ate) => chamar("listar_gastos", { de, ate }),
+  excluirGasto: (id) => chamar("excluir_gasto", { id }),
+  listarContas: () => chamar("listar_contas"),
+  salvarConta: (conta) => chamar("salvar_conta", { conta }),
+  excluirConta: (id) => chamar("excluir_conta", { id }),
+  listarDesejos: () => chamar("listar_desejos"),
+  criarDesejo: (nome, centavos, esperaHoras) => chamar("criar_desejo", { nome, centavos, esperaHoras }),
+  resolverDesejo: (id) => chamar("resolver_desejo", { id }),
+  excluirDesejo: (id) => chamar("excluir_desejo", { id }),
+  listarMetas: () => chamar("listar_metas"),
+  salvarMeta: (meta) => chamar("salvar_meta", { meta }),
+  excluirMeta: (id) => chamar("excluir_meta", { id }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1254,6 +1324,86 @@ function simularAcademico() {
   };
 }
 
+function simularDinheiro() {
+  const gastos: Gasto[] = [];
+  const contas: Conta[] = [];
+  const desejos: Desejo[] = [];
+  const metas: Meta[] = [];
+  return {
+    registrarGasto: async (centavos: number, categoria: string, descricao: string, interesse: boolean) => {
+      if (centavos < 0) throw new ErroOrbita("interno", "O valor não pode ser negativo.");
+      const g: Gasto = { id: crypto.randomUUID(), centavos, categoria: categoria.trim(), interesse, descricao: descricao.trim(), momento: Date.now() };
+      gastos.push(g);
+      return { ...g };
+    },
+    listarGastos: async (de: number, ate: number) =>
+      gastos.filter((g) => g.momento >= de && g.momento < ate).sort((a, b) => b.momento - a.momento).map((g) => ({ ...g })),
+    excluirGasto: async (id: string) => {
+      const i = gastos.findIndex((g) => g.id === id);
+      if (i >= 0) gastos.splice(i, 1);
+    },
+    listarContas: async () => contas.map((c) => ({ ...c })).sort((a, b) => a.nome.localeCompare(b.nome)),
+    salvarConta: async (c: Conta) => {
+      const nome = c.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "A conta precisa de um nome.");
+      if (c.diaVencimento < 1 || c.diaVencimento > 31) throw new ErroOrbita("interno", "O dia de vencimento vai de 1 a 31.");
+      const limpo: Conta = { ...c, nome };
+      if (c.id) {
+        const i = contas.findIndex((x) => x.id === c.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Conta não encontrada.");
+        contas[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      contas.push(novo);
+      return { ...novo };
+    },
+    excluirConta: async (id: string) => {
+      const i = contas.findIndex((c) => c.id === id);
+      if (i >= 0) contas.splice(i, 1);
+    },
+    listarDesejos: async () =>
+      desejos
+        .map((d) => ({ ...d }))
+        .sort((a, b) => (a.estado === b.estado ? b.criadoEm - a.criadoEm : a.estado === "esperando" ? -1 : 1)),
+    criarDesejo: async (nome: string, centavos: number, esperaHoras: number) => {
+      const n = nome.trim();
+      if (!n) throw new ErroOrbita("texto_vazio", "Escreva o que você quer comprar.");
+      const agora = Date.now();
+      const d: Desejo = { id: crypto.randomUUID(), nome: n, centavos, decidirEm: agora + Math.max(0, esperaHoras) * 3_600_000, estado: "esperando", criadoEm: agora };
+      desejos.push(d);
+      return { ...d };
+    },
+    resolverDesejo: async (id: string) => {
+      const d = desejos.find((x) => x.id === id);
+      if (d) d.estado = "resolvido";
+    },
+    excluirDesejo: async (id: string) => {
+      const i = desejos.findIndex((d) => d.id === id);
+      if (i >= 0) desejos.splice(i, 1);
+    },
+    listarMetas: async () => metas.map((m) => ({ ...m })).sort((a, b) => b.criadoEm - a.criadoEm),
+    salvarMeta: async (m: Meta) => {
+      const nome = m.nome.trim();
+      if (!nome) throw new ErroOrbita("texto_vazio", "A meta precisa de um nome.");
+      const limpo: Meta = { ...m, nome };
+      if (m.id) {
+        const i = metas.findIndex((x) => x.id === m.id);
+        if (i < 0) throw new ErroOrbita("nao_encontrado", "Meta não encontrada.");
+        metas[i] = { ...limpo };
+        return { ...limpo };
+      }
+      const novo = { ...limpo, id: crypto.randomUUID(), criadoEm: Date.now() };
+      metas.push(novo);
+      return { ...novo };
+    },
+    excluirMeta: async (id: string) => {
+      const i = metas.findIndex((m) => m.id === id);
+      if (i >= 0) metas.splice(i, 1);
+    },
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
@@ -1347,6 +1497,7 @@ function criarSimulacao(): Api {
     ...simularSaude(),
     ...simularCuidado(),
     ...simularAcademico(),
+    ...simularDinheiro(),
     ...comAnexos,
     fazerBackup: async () => {
       await espera();

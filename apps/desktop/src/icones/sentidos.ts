@@ -67,6 +67,7 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   PenLine: "caneta inclinada com linha horizontal embaixo",
   Pencil: "lápis inclinado com ponta e borracha no topo",
   Pill: "cápsula de remédio diagonal, dividida ao meio",
+  Wallet: "carteira retangular fechada, com uma divisória e um botão",
   Play: "triângulo apontando para a direita",
   Plus: "sinal de mais, duas linhas cruzadas",
   Printer: "impressora com papel saindo na parte de cima",

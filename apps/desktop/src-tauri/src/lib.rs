@@ -197,6 +197,19 @@ pub fn run() {
             comandos::excluir_atividade,
             comandos::media_aprovacao,
             comandos::definir_media_aprovacao,
+            comandos::registrar_gasto,
+            comandos::listar_gastos,
+            comandos::excluir_gasto,
+            comandos::listar_contas,
+            comandos::salvar_conta,
+            comandos::excluir_conta,
+            comandos::listar_desejos,
+            comandos::criar_desejo,
+            comandos::resolver_desejo,
+            comandos::excluir_desejo,
+            comandos::listar_metas,
+            comandos::salvar_meta,
+            comandos::excluir_meta,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

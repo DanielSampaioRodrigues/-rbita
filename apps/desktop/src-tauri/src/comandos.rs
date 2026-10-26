@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, cuidado, energia, etiquetas, eventos, itens, rotinas, saude};
+use crate::banco::{self, academico, anexos, cuidado, dinheiro, energia, etiquetas, eventos, itens, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1222,4 +1222,71 @@ pub async fn media_aprovacao(estado: State<'_, Estado>) -> Result<f64, Erro> {
 #[tauri::command]
 pub async fn definir_media_aprovacao(estado: State<'_, Estado>, media: f64) -> Result<(), Erro> {
     estado.com_sessao(|s| academico::definir_media_aprovacao(&s.conn, media))
+}
+
+// ---------- Dinheiro ----------
+
+#[tauri::command]
+pub async fn registrar_gasto(estado: State<'_, Estado>, centavos: i64, categoria: String, descricao: String, interesse: bool) -> Result<dinheiro::Gasto, Erro> {
+    estado.com_sessao(|s| dinheiro::registrar_gasto(&s.conn, centavos, &categoria, &descricao, interesse))
+}
+
+#[tauri::command]
+pub async fn listar_gastos(estado: State<'_, Estado>, de: i64, ate: i64) -> Result<Vec<dinheiro::Gasto>, Erro> {
+    estado.com_sessao(|s| dinheiro::listar_gastos(&s.conn, de, ate))
+}
+
+#[tauri::command]
+pub async fn excluir_gasto(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| dinheiro::excluir_gasto(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_contas(estado: State<'_, Estado>) -> Result<Vec<dinheiro::Conta>, Erro> {
+    estado.com_sessao(|s| dinheiro::listar_contas(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_conta(estado: State<'_, Estado>, conta: dinheiro::Conta) -> Result<dinheiro::Conta, Erro> {
+    estado.com_sessao(|s| dinheiro::salvar_conta(&s.conn, conta))
+}
+
+#[tauri::command]
+pub async fn excluir_conta(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| dinheiro::excluir_conta(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_desejos(estado: State<'_, Estado>) -> Result<Vec<dinheiro::Desejo>, Erro> {
+    estado.com_sessao(|s| dinheiro::listar_desejos(&s.conn))
+}
+
+#[tauri::command]
+pub async fn criar_desejo(estado: State<'_, Estado>, nome: String, centavos: i64, espera_horas: i64) -> Result<dinheiro::Desejo, Erro> {
+    estado.com_sessao(|s| dinheiro::criar_desejo(&s.conn, &nome, centavos, espera_horas))
+}
+
+#[tauri::command]
+pub async fn resolver_desejo(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| dinheiro::resolver_desejo(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn excluir_desejo(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| dinheiro::excluir_desejo(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn listar_metas(estado: State<'_, Estado>) -> Result<Vec<dinheiro::Meta>, Erro> {
+    estado.com_sessao(|s| dinheiro::listar_metas(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_meta(estado: State<'_, Estado>, meta: dinheiro::Meta) -> Result<dinheiro::Meta, Erro> {
+    estado.com_sessao(|s| dinheiro::salvar_meta(&s.conn, meta))
+}
+
+#[tauri::command]
+pub async fn excluir_meta(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| dinheiro::excluir_meta(&s.conn, &id))
 }

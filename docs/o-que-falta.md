@@ -32,7 +32,10 @@ Plano em etapas em `docs/plano-onda-2.md`.
   - [x] Resumo para levar à consulta: junta remédios e registros do período, para copiar e colar (0.32.0). As perguntas entram com o módulo de Cuidado psicológico. Export direto em PDF/arquivo fica para a etapa de exportação (17).
 - [x] **Cuidado psicológico e psiquiátrico** (0.33.0): "o que levar para a sessão" e "perguntas para o psiquiatra" (com os remédios atuais ao lado), registro do que ficou de cada sessão. As sessões em si entram na Agenda. Falta: marcar um evento como "terapia/consulta" e puxar as perguntas para dentro do resumo da consulta. Falta teste de Dan no Windows.
 - [x] ~~Trava extra opcional para saúde e cuidado psicológico~~ — **descartada** (decisão de Dan, 26/10/2026): atrito desnecessário; o cofre já protege tudo.
-- [ ] **Dinheiro**: contas recorrentes com aviso, gastos por categoria, lista de espera de compras, gastos com interesses sem julgamento, metas de reserva, importar extrato (OFX ou CSV).
+- [ ] **Dinheiro** (começado na 0.35.0):
+  - [x] Gastos por categoria (com marca de interesse especial), contas recorrentes com dia de vencimento e aviso, lista de espera de compras (prazo antes de decidir), metas de reserva. Falta teste de Dan no Windows.
+  - [ ] Importar extrato do banco (OFX ou CSV) — parsing próprio, numa próxima versão.
+  - [ ] Avaliar notificar a conta a vencer (hoje aparece "a vencer" na própria tela; ainda não é notificação como a do remédio).
 - [ ] **Vida acadêmica** (começada na 0.34.0, pensada para escola e faculdade):
   - [x] Matérias, provas/trabalhos/deveres com data, "o que vem aí" e histórico, notas e média ponderada por matéria com média de aprovação ajustável (calma, sem punição). Falta teste de Dan no Windows.
   - [ ] Aulas ligadas à matéria na semana-modelo da Agenda (hoje a aula é um bloco comum da Agenda, sem vínculo com a matéria).

@@ -7,6 +7,7 @@
 pub mod academico;
 pub mod anexos;
 pub mod cuidado;
+pub mod dinheiro;
 pub mod energia;
 pub mod etiquetas;
 pub mod eventos;
