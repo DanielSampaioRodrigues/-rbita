@@ -10,6 +10,7 @@ import { Check, Heart, Pencil, Pause, Play, Plus, Trash2, TriangleAlert } from "
 import { textos } from "../textos/pt-BR";
 import { FormRemedio, novoRemedio } from "./FormRemedio";
 import { RegistrosSaude } from "./RegistrosSaude";
+import { GraficosSaude } from "./GraficosSaude";
 import { JanelaResumoConsulta } from "./ResumoConsulta";
 
 const t = textos.saude;
@@ -160,6 +161,12 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
         <div className="botoes">
           <Button className="botao" onPress={() => setResumoAberto(true)}>{textos.saude.resumo.abrir}</Button>
         </div>
+      </section>
+
+      <section className="cartao largura-leitura esticado" aria-labelledby="saude-graficos">
+        <h2 id="saude-graficos">{textos.saude.graficos.titulo}</h2>
+        <p className="texto-suave">{textos.saude.graficos.intro}</p>
+        <GraficosSaude />
       </section>
 
       <section className="cartao largura-leitura esticado" aria-labelledby="plano-crise">

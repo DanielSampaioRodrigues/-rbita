@@ -721,6 +721,18 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .quadro-audio { width: 100%; padding: var(--espaco-2); align-self: center; }
 .quadro-gravando { display: flex; align-items: center; gap: var(--espaco-2); color: var(--cor-destaque); }
 
+/* Painel de gráficos da Saúde. */
+.saude-graficos { display: flex; flex-direction: column; gap: var(--espaco-3); }
+.saude-barras-rolagem { overflow-x: auto; }
+.saude-barras { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--espaco-1); align-items: flex-end; min-height: 7rem; }
+.saude-barras > li { display: flex; flex-direction: column; gap: var(--espaco-1); align-items: center; min-width: 1.3rem; }
+.saude-coluna { display: flex; flex-direction: column; justify-content: flex-end; width: 1.3rem; height: 6rem; border-radius: var(--raio-1); background: var(--cor-superficie-alternativa); overflow: hidden; }
+.saude-barra { width: 100%; background: var(--etq); }
+.saude-barra:first-child { border-radius: var(--raio-1) var(--raio-1) 0 0; }
+.saude-barra-dia { font-size: 0.68rem; color: var(--cor-texto-suave); text-align: center; line-height: 1.1; white-space: nowrap; }
+.saude-legenda { display: flex; flex-wrap: wrap; gap: var(--espaco-2) var(--espaco-4); list-style: none; padding: 0; margin: 0; font-size: 0.85rem; }
+.saude-legenda li { display: inline-flex; align-items: center; gap: var(--espaco-2); }
+
 /* Pré-visualização de arquivo (imagem/PDF) dentro do app. */
 .previa-sobreposicao { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: var(--espaco-4); background: rgba(0, 0, 0, 0.5); }
 .previa-caixa { display: flex; flex-direction: column; width: min(92vw, 60rem); height: min(90vh, 50rem); background: var(--cor-superficie); border-radius: var(--raio-2); overflow: hidden; }
