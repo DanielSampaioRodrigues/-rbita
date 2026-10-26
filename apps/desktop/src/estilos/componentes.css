@@ -683,6 +683,11 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .graficos-lado-a-lado > div { flex: 1; min-width: 15rem; }
 .grafico-pizza { display: flex; gap: var(--espaco-4); align-items: center; flex-wrap: wrap; }
 .grafico-legenda { flex: 1; min-width: 10rem; }
+.grafico-linha { display: flex; flex-direction: column; gap: var(--espaco-1); }
+.grafico-linha svg { width: 100%; height: 7rem; }
+.grafico-linha-meses { list-style: none; margin: 0; padding: 0; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--cor-texto-suave); }
+.dinheiro-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--espaco-3) var(--espaco-4); margin: var(--espaco-3) 0 var(--espaco-1); }
+.dinheiro-filtros .campo { flex: 1; min-width: 12rem; margin: 0; }
 
 /* Painel de ajustes do leitor (abre abaixo da barra). */
 .leitor-ajustes { display: flex; flex-direction: column; gap: var(--espaco-3); padding: var(--espaco-3) var(--espaco-4); border-bottom: 1px solid var(--cor-borda-suave); background: var(--cor-superficie); max-height: 50vh; overflow: auto; }

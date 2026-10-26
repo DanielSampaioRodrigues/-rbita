@@ -84,6 +84,49 @@ export function tabelaPorMes(gastos: Gasto[], contas: Conta[], grupos: Grupo[], 
   return { linhas: ordenadas, totaisMes, total };
 }
 
+/**
+ * Filtra gastos e contas para a visão, por grupo e por "interesse especial".
+ * - `grupoId` "todos" deixa passar tudo; "" (string vazia) filtra o "sem grupo";
+ *   qualquer outro valor filtra por aquele grupo.
+ * - `soInteresse` deixa passar só os gastos marcados como interesse especial e
+ *   descarta as contas fixas (que não têm essa marca).
+ */
+export function filtrar(
+  gastos: Gasto[],
+  contas: Conta[],
+  { grupoId, soInteresse }: { grupoId: string; soInteresse: boolean },
+): { gastos: Gasto[]; contas: Conta[] } {
+  const casaGrupo = (id: string) => grupoId === "todos" || id === grupoId;
+  const g = gastos.filter((x) => casaGrupo(x.grupoId) && (!soInteresse || x.interesse));
+  const c = soInteresse ? [] : contas.filter((x) => casaGrupo(x.grupoId));
+  return { gastos: g, contas: c };
+}
+
+export interface Ponto {
+  mes: string;
+  centavos: number;
+  /** Coordenadas no viewBox 0..100 (x) × 0..100 (y, topo = 0). */
+  x: number;
+  y: number;
+}
+
+/**
+ * Pontos de um gráfico de linha do total por mês, num viewBox 0..100 × 0..100.
+ * O y é invertido (valor maior fica mais em cima). Com um mês só, o ponto fica
+ * no meio; sem valor nenhum, todos ficam na base.
+ */
+export function pontosLinha(meses: string[], totaisMes: Record<string, number>): Ponto[] {
+  const valores = meses.map((m) => totaisMes[m] ?? 0);
+  const max = Math.max(0, ...valores);
+  const n = meses.length;
+  return meses.map((mes, i) => {
+    const centavos = valores[i];
+    const x = n <= 1 ? 50 : (i / (n - 1)) * 100;
+    const y = max === 0 ? 100 : 100 - (centavos / max) * 100;
+    return { mes, centavos, x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) };
+  });
+}
+
 export interface Fatia {
   label: string;
   cor: string;

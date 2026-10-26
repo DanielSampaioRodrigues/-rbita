@@ -12,8 +12,8 @@ import { textos } from "../textos/pt-BR";
 import { formatarMoeda, reaisParaCentavos } from "./moeda";
 import { FormConta, novaConta } from "./FormConta";
 import { FormMeta, novaMeta } from "./FormMeta";
-import { Pizza, BarrasPorMes } from "./Graficos";
-import { mesesRecentes, tabelaPorMes } from "./visao";
+import { Pizza, BarrasPorMes, LinhaPorMes } from "./Graficos";
+import { filtrar, mesesRecentes, tabelaPorMes } from "./visao";
 import type { CorEtiqueta } from "../api";
 
 const t = textos.dinheiro;
@@ -192,8 +192,13 @@ export function PaginaDinheiro() {
 
 function VisaoGastos({ gastos, contas, grupos }: { gastos: Gasto[]; contas: Conta[]; grupos: Grupo[] }) {
   const [periodo, setPeriodo] = useState<"3" | "6" | "12">("6");
+  const [grupoId, setGrupoId] = useState("todos");
+  const [soInteresse, setSoInteresse] = useState(false);
+  const idFiltro = useId();
   const meses = useMemo(() => mesesRecentes(new Date(), Number(periodo)), [periodo]);
-  const tabela = useMemo(() => tabelaPorMes(gastos, contas, grupos, meses), [gastos, contas, grupos, meses]);
+  const filtrados = useMemo(() => filtrar(gastos, contas, { grupoId, soInteresse }), [gastos, contas, grupoId, soInteresse]);
+  const tabela = useMemo(() => tabelaPorMes(filtrados.gastos, filtrados.contas, grupos, meses), [filtrados, grupos, meses]);
+  const filtrando = grupoId !== "todos" || soInteresse;
 
   return (
     <section className="cartao largura-leitura esticado" aria-labelledby="visao">
@@ -210,8 +215,23 @@ function VisaoGastos({ gastos, contas, grupos }: { gastos: Gasto[]; contas: Cont
         ]}
       />
 
+      <div className="dinheiro-filtros">
+        <div className="campo">
+          <label className="campo-rotulo" htmlFor={idFiltro}>{t.visao.filtroGrupo}</label>
+          <select id={idFiltro} className="entrada-texto sozinha" value={grupoId} onChange={(e) => setGrupoId(e.target.value)} disabled={soInteresse}>
+            <option value="todos">{t.visao.todosGrupos}</option>
+            {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+            <option value="">{t.visao.semGrupoOpcao}</option>
+          </select>
+        </div>
+        <ToggleButton isSelected={soInteresse} onChange={setSoInteresse} className="etiqueta-alternar">
+          <Sparkles aria-hidden="true" size="1.1em" /> {t.visao.soInteresse}
+        </ToggleButton>
+      </div>
+      {soInteresse && <p className="campo-ajuda">{t.visao.soInteresseAjuda}</p>}
+
       {tabela.total === 0 ? (
-        <p className="texto-suave">{t.visao.semDados}</p>
+        <p className="texto-suave">{filtrando ? t.visao.semDadosFiltro : t.visao.semDados}</p>
       ) : (
         <>
           <div className="tabela-rolagem">
@@ -252,6 +272,10 @@ function VisaoGastos({ gastos, contas, grupos }: { gastos: Gasto[]; contas: Cont
             <div>
               <h3 className="campo-rotulo">{t.visao.barrasTitulo}</h3>
               <BarrasPorMes meses={meses} totaisMes={tabela.totaisMes} />
+            </div>
+            <div>
+              <h3 className="campo-rotulo">{t.visao.linhaTitulo}</h3>
+              <LinhaPorMes meses={meses} totaisMes={tabela.totaisMes} />
             </div>
           </div>
         </>

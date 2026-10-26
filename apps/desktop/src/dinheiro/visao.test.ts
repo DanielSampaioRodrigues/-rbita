@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Conta, Gasto, Grupo } from "../api";
-import { chaveMes, fatiasPizza, mesesRecentes, tabelaPorMes } from "./visao";
+import { chaveMes, fatiasPizza, filtrar, mesesRecentes, pontosLinha, tabelaPorMes } from "./visao";
 
-const gasto = (centavos: number, grupoId: string, ano: number, mes1: number): Gasto => ({
-  id: crypto.randomUUID(), centavos, grupoId, categoria: "", interesse: false, descricao: "", momento: new Date(ano, mes1 - 1, 15).getTime(),
+const gasto = (centavos: number, grupoId: string, ano: number, mes1: number, interesse = false): Gasto => ({
+  id: crypto.randomUUID(), centavos, grupoId, categoria: "", interesse, descricao: "", momento: new Date(ano, mes1 - 1, 15).getTime(),
 });
 const grupo = (id: string, nome: string, cor = "mar"): Grupo => ({ id, nome, cor, criadoEm: 0 });
 const conta = (centavos: number, grupoId: string, criadoEm: number): Conta => ({
@@ -51,6 +51,37 @@ describe("dinheiro: visão (puro)", () => {
     expect(casa.porMes["2026-09"]).toBe(12000);
     expect(casa.porMes["2026-10"]).toBe(12000 + 500);
     expect(tabela.total).toBe(12000 * 2 + 500);
+  });
+
+  it("filtra por grupo e por interesse especial", () => {
+    const gastos = [
+      gasto(1000, "g1", 2026, 10, true),
+      gasto(500, "g1", 2026, 10, false),
+      gasto(300, "g2", 2026, 10, false),
+    ];
+    const contas = [conta(12000, "g1", new Date(2026, 9, 1).getTime())];
+    // Todos: passa tudo.
+    expect(filtrar(gastos, contas, { grupoId: "todos", soInteresse: false })).toEqual({ gastos, contas });
+    // Um grupo: só g1 (gastos e contas).
+    const g1 = filtrar(gastos, contas, { grupoId: "g1", soInteresse: false });
+    expect(g1.gastos).toHaveLength(2);
+    expect(g1.contas).toHaveLength(1);
+    // Só interesse: um gasto, nenhuma conta.
+    const so = filtrar(gastos, contas, { grupoId: "todos", soInteresse: true });
+    expect(so.gastos).toHaveLength(1);
+    expect(so.contas).toHaveLength(0);
+  });
+
+  it("pontos da linha: x cresce, valor maior fica mais em cima, vazio na base", () => {
+    const meses = ["2026-08", "2026-09", "2026-10"];
+    const pts = pontosLinha(meses, { "2026-08": 100, "2026-09": 0, "2026-10": 200 });
+    expect(pts.map((p) => p.x)).toEqual([0, 50, 100]);
+    expect(pts[2].y).toBe(0); // maior valor, topo
+    expect(pts[1].y).toBe(100); // zero, base
+    // Sem valor nenhum: todos na base.
+    expect(pontosLinha(meses, {}).every((p) => p.y === 100)).toBe(true);
+    // Um mês só: fica no meio do x.
+    expect(pontosLinha(["2026-10"], { "2026-10": 50 })[0].x).toBe(50);
   });
 
   it("fatias da pizza: porcentagens e vazio", () => {

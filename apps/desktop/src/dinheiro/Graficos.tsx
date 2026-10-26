@@ -1,4 +1,4 @@
-import { fatiasPizza, type LinhaTabela } from "./visao";
+import { fatiasPizza, pontosLinha, type LinhaTabela } from "./visao";
 import { formatarMoeda } from "./moeda";
 import { textos } from "../textos/pt-BR";
 
@@ -32,6 +32,30 @@ export function Pizza({ linhas }: { linhas: LinhaTabela[] }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** Linha da evolução do total por mês, com os pontos marcados e rótulo falado. */
+export function LinhaPorMes({ meses, totaisMes }: { meses: string[]; totaisMes: Record<string, number> }) {
+  const pts = pontosLinha(meses, totaisMes);
+  if (pts.every((p) => p.centavos === 0)) return <p className="texto-suave">{t.semDados}</p>;
+  // viewBox com folga em cima (4) e embaixo (4) para os pontos não encostarem na borda.
+  const px = (p: { x: number }) => (4 + (p.x / 100) * 92).toFixed(2);
+  const py = (p: { y: number }) => (4 + (p.y / 100) * 92).toFixed(2);
+  const caminho = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${px(p)} ${py(p)}`).join(" ");
+  const resumo = pts.map((p) => `${nomeMes(p.mes)}: ${formatarMoeda(p.centavos)}`).join("; ");
+  return (
+    <div className="grafico-linha">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`${t.linhaRotulo}. ${resumo}`}>
+        <path d={caminho} fill="none" stroke="var(--cor-destaque)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        {pts.map((p) => (
+          <circle key={p.mes} cx={px(p)} cy={py(p)} r="1.8" fill="var(--cor-destaque)" vectorEffect="non-scaling-stroke" />
+        ))}
+      </svg>
+      <ol className="grafico-linha-meses" aria-hidden="true">
+        {pts.map((p) => <li key={p.mes}>{nomeMes(p.mes)}</li>)}
+      </ol>
     </div>
   );
 }
