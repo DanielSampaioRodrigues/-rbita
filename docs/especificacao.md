@@ -129,11 +129,14 @@ Mais que um registro de gastos: um lugar para **entender** para onde o dinheiro 
 
 ### 5. Saúde
 
+**A Saúde não é só carga negativa (decisão de Dan, 26/10/2026).** Hoje ela só coleta sintoma, crise e sobrecarga — isso ensina a pessoa a se ver como um conjunto de problemas. O módulo precisa dar peso igual ao que vai **bem**: potencialidades, o que faz bem, estratégias que funcionam. O objetivo é uma **visão holística de si**, com muitos gráficos, não um prontuário de queixas.
+
 - Medicação com confirmação de dose tomada, controle de estoque e aviso de receita vencendo.
 - Consultas e exames com lembrete.
-- Registro curto de sono, sintomas e sobrecarga sensorial.
+- **Registros**, negativos e positivos: sono, sintomas e sobrecarga sensorial, mas também **coisas boas** — o que fez bem, uma potencialidade exercida, um momento de regulação. Cada registro tem intensidade e nota.
+- **Planos de crise e estratégias**: a pessoa cria **vários** planos, não só um. Cada plano pode ser um **plano de crise** (meltdown/shutdown: sinais, o que ajuda, com quem falar) ou uma **estratégia de potencialidade / coisas que fazem bem** (o que me regula, o que me dá energia, meu kit de autocuidado). Escritos num momento bom. (O atalho de crise segue levando ao plano de crise.)
+- **Gráficos para uma visão holística**: ao longo do tempo, sono, crises, sintomas e também as **coisas positivas** — lado a lado, para a pessoa enxergar padrões e enxergar o que vai bem, não só o que pesa. Sem vermelho gritante, sem alarme; é percepção de si, nunca diagnóstico.
 - **Resumo para levar à consulta**, gerado a partir dos registros.
-- **Plano de crise** para meltdown ou shutdown, escrito pela pessoa num momento bom: sinais, o que ajuda, com quem falar.
 - **Integração com dados de saúde e relógios inteligentes** (Onda 3, só no app de celular):
   - **iPhone e Apple Watch**: Apple Saúde (HealthKit).
   - **Android** (Samsung, Xiaomi, Google, Fitbit e outros): Health Connect, que reúne os dados do Samsung Health, do Mi Fitness e de outros apps (compatibilidade de cada marca a confirmar). Garmin, se entrar, exige integração própria.
