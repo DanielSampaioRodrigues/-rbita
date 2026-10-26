@@ -273,7 +273,7 @@ Decisão de Dan (25/10/2026): a opção "Guardar na minha conta" precisa existir
 | Proton Drive | Esperar | Esperar | Esperar | Esperar | Ainda sem acesso aberto para apps de fora. Rever quando houver. |
 
 Regras para todas: só a pasta do app (nunca o resto da conta), login no navegador ou no sistema com PKCE, nada passa por servidor do Órbita, o limite honesto aparece na tela e as 6 palavras continuam como alternativa sem conta. Na Onda 3, a mesma base vira a sincronização entre aparelhos.
-- **Trava extra opcional** para os módulos de saúde e de cuidado psicológico.
+- **Sem trava extra por módulo.** Decidido por Dan (26/10/2026): o cofre já protege tudo; pedir senha de novo só para saúde ou cuidado psicológico é atrito que atrapalha, contra o princípio de baixo estímulo. Num app pessoal e local, não compensa.
 - **Backup** em arquivo único criptografado (`.orbita-backup`), que a pessoa guarda onde quiser (pendrive, Drive, iCloud). Abre com a senha ou com as 6 palavras, em qualquer computador; PIN e Windows Hello não viajam no backup.
   - **Na hora**, por Ajustes, ou **automático** (opcional, desligado por padrão): ao fechar ou bloquear, uma vez por dia, numa pasta escolhida, guardando os últimos 7. Se o automático falhar, Ajustes mostra o motivo.
   - **Restaurar** confere a senha e o arquivo inteiro antes de mexer em qualquer coisa. Os dados atuais vão para uma pasta de segurança (`anteriores`), nunca são apagados. Na primeira tela há "Já tenho um backup do Órbita", para computador novo.

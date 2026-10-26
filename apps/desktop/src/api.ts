@@ -242,6 +242,22 @@ export interface PlanoDeCrise {
   atualizadoEm: number;
 }
 
+/** Anotação de cuidado: "pauta" (o que levar) ou "pergunta" (para o psiquiatra). */
+export interface Nota {
+  id: string;
+  tipo: string;
+  texto: string;
+  feita: boolean;
+  criadoEm: number;
+}
+
+/** Registro curto do que ficou de uma sessão. */
+export interface RegistroSessao {
+  id: string;
+  momento: number;
+  nota: string;
+}
+
 export interface SituacaoBackup {
   pasta: string | null;
   ultimo: number | null;
@@ -452,6 +468,14 @@ interface Api {
   excluirRegistroSaude(id: string): Promise<void>;
   planoDeCrise(): Promise<PlanoDeCrise>;
   salvarPlanoDeCrise(plano: PlanoDeCrise): Promise<PlanoDeCrise>;
+  /** `tipo`: "pauta" (o que levar) ou "pergunta" (para o psiquiatra). */
+  listarNotasCuidado(tipo: string): Promise<Nota[]>;
+  criarNotaCuidado(tipo: string, texto: string): Promise<Nota>;
+  marcarNotaCuidado(id: string, feita: boolean): Promise<void>;
+  excluirNotaCuidado(id: string): Promise<void>;
+  registrarSessao(nota: string): Promise<RegistroSessao>;
+  listarSessoes(de: number, ate: number): Promise<RegistroSessao[]>;
+  excluirSessao(id: string): Promise<void>;
   definirPesoTarefa(id: string, peso: Peso | null): Promise<void>;
   definirDatasProjeto(id: string, inicio: string | null, prazo: string | null): Promise<void>;
   definirPrazoTarefa(id: string, prazo: string | null): Promise<void>;
@@ -595,6 +619,13 @@ const nativa: Api = {
   excluirRegistroSaude: (id) => chamar("excluir_registro_saude", { id }),
   planoDeCrise: () => chamar("plano_de_crise"),
   salvarPlanoDeCrise: (plano) => chamar("salvar_plano_de_crise", { plano }),
+  listarNotasCuidado: (tipo) => chamar("listar_notas_cuidado", { tipo }),
+  criarNotaCuidado: (tipo, texto) => chamar("criar_nota_cuidado", { tipo, texto }),
+  marcarNotaCuidado: (id, feita) => chamar("marcar_nota_cuidado", { id, feita }),
+  excluirNotaCuidado: (id) => chamar("excluir_nota_cuidado", { id }),
+  registrarSessao: (nota) => chamar("registrar_sessao", { nota }),
+  listarSessoes: (de, ate) => chamar("listar_sessoes", { de, ate }),
+  excluirSessao: (id) => chamar("excluir_sessao", { id }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
@@ -1078,6 +1109,47 @@ function simularSaude() {
   };
 }
 
+function simularCuidado() {
+  const notas: Nota[] = [];
+  const sessoes: RegistroSessao[] = [];
+  return {
+    listarNotasCuidado: async (tipo: string) =>
+      notas
+        .filter((n) => n.tipo === tipo)
+        .sort((a, b) => (a.feita === b.feita ? b.criadoEm - a.criadoEm : a.feita ? 1 : -1))
+        .map((n) => ({ ...n })),
+    criarNotaCuidado: async (tipo: string, texto: string) => {
+      if (!["pauta", "pergunta"].includes(tipo)) throw new ErroOrbita("interno", "Tipo de anotação desconhecido.");
+      const t = texto.trim();
+      if (!t) throw new ErroOrbita("texto_vazio", "A anotação não pode ficar vazia.");
+      const nota: Nota = { id: crypto.randomUUID(), tipo, texto: t, feita: false, criadoEm: Date.now() };
+      notas.push(nota);
+      return { ...nota };
+    },
+    marcarNotaCuidado: async (id: string, feita: boolean) => {
+      const n = notas.find((x) => x.id === id);
+      if (n) n.feita = feita;
+    },
+    excluirNotaCuidado: async (id: string) => {
+      const i = notas.findIndex((n) => n.id === id);
+      if (i >= 0) notas.splice(i, 1);
+    },
+    registrarSessao: async (nota: string) => {
+      const t = nota.trim();
+      if (!t) throw new ErroOrbita("texto_vazio", "Escreva o que ficou da sessão.");
+      const r: RegistroSessao = { id: crypto.randomUUID(), momento: Date.now(), nota: t };
+      sessoes.push(r);
+      return { ...r };
+    },
+    listarSessoes: async (de: number, ate: number) =>
+      sessoes.filter((s) => s.momento >= de && s.momento < ate).sort((a, b) => b.momento - a.momento).map((s) => ({ ...s })),
+    excluirSessao: async (id: string) => {
+      const i = sessoes.findIndex((s) => s.id === id);
+      if (i >= 0) sessoes.splice(i, 1);
+    },
+  };
+}
+
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 function criarSimulacao(): Api {
   const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
@@ -1169,6 +1241,7 @@ function criarSimulacao(): Api {
     ...simularRotinas(comItens, comAnexos),
     ...simularEnergia(),
     ...simularSaude(),
+    ...simularCuidado(),
     ...comAnexos,
     fazerBackup: async () => {
       await espera();

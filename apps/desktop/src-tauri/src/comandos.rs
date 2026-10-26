@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, anexos, energia, etiquetas, eventos, itens, rotinas, saude};
+use crate::banco::{self, anexos, cuidado, energia, etiquetas, eventos, itens, rotinas, saude};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1138,4 +1138,41 @@ pub async fn plano_de_crise(estado: State<'_, Estado>) -> Result<saude::PlanoDeC
 #[tauri::command]
 pub async fn salvar_plano_de_crise(estado: State<'_, Estado>, plano: saude::PlanoDeCrise) -> Result<saude::PlanoDeCrise, Erro> {
     estado.com_sessao(|s| saude::salvar_plano_de_crise(&s.conn, plano))
+}
+
+// ---------- Cuidado psicológico e psiquiátrico ----------
+
+#[tauri::command]
+pub async fn listar_notas_cuidado(estado: State<'_, Estado>, tipo: String) -> Result<Vec<cuidado::Nota>, Erro> {
+    estado.com_sessao(|s| cuidado::listar_notas(&s.conn, &tipo))
+}
+
+#[tauri::command]
+pub async fn criar_nota_cuidado(estado: State<'_, Estado>, tipo: String, texto: String) -> Result<cuidado::Nota, Erro> {
+    estado.com_sessao(|s| cuidado::criar_nota(&s.conn, &tipo, &texto))
+}
+
+#[tauri::command]
+pub async fn marcar_nota_cuidado(estado: State<'_, Estado>, id: String, feita: bool) -> Result<(), Erro> {
+    estado.com_sessao(|s| cuidado::marcar_nota(&s.conn, &id, feita))
+}
+
+#[tauri::command]
+pub async fn excluir_nota_cuidado(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| cuidado::excluir_nota(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn registrar_sessao(estado: State<'_, Estado>, nota: String) -> Result<cuidado::RegistroSessao, Erro> {
+    estado.com_sessao(|s| cuidado::registrar_sessao(&s.conn, &nota))
+}
+
+#[tauri::command]
+pub async fn listar_sessoes(estado: State<'_, Estado>, de: i64, ate: i64) -> Result<Vec<cuidado::RegistroSessao>, Erro> {
+    estado.com_sessao(|s| cuidado::listar_sessoes(&s.conn, de, ate))
+}
+
+#[tauri::command]
+pub async fn excluir_sessao(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| cuidado::excluir_sessao(&s.conn, &id))
 }

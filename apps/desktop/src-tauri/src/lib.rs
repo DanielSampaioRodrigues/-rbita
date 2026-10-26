@@ -181,6 +181,13 @@ pub fn run() {
             comandos::excluir_registro_saude,
             comandos::plano_de_crise,
             comandos::salvar_plano_de_crise,
+            comandos::listar_notas_cuidado,
+            comandos::criar_nota_cuidado,
+            comandos::marcar_nota_cuidado,
+            comandos::excluir_nota_cuidado,
+            comandos::registrar_sessao,
+            comandos::listar_sessoes,
+            comandos::excluir_sessao,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

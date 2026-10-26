@@ -1,3 +1,6 @@
+- **Cuidado psicológico e psiquiátrico**: uma seção nova. Anote durante a semana **o que levar para a sessão** e as **perguntas para o psiquiatra** (marcando o que já falou), guarde **o que ficou de cada sessão** e veja seus remédios atuais ao lado das perguntas. As sessões em si você marca na Agenda, como qualquer compromisso.
+- **Sem senha extra por módulo**: decidimos não pedir senha separada para Saúde ou Cuidado. O cofre já protege tudo e uma trava a mais só atrapalharia.
+
 - **Resumo para a consulta**: na seção Saúde, um botão monta um texto com seus remédios e os registros do período (7, 30 ou 90 dias) para levar ao médico. Você copia e cola num documento ou e-mail; nada sai do computador sozinho.
 
 - **Saúde: como você está**: um registro rápido de sono, sintoma ou sobrecarga sensorial, com intensidade de 1 a 5 e uma nota. Os últimos registros ficam listados ali mesmo, para você enxergar padrões e contar na consulta.
