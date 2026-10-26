@@ -6,6 +6,7 @@
 //! - quadro: tipo 'org_quadro', estado = estilo, titulo = nome.
 //! - coluna: tipo 'org_coluna', pai_id = quadro, titulo = nome. (Na lista, uma só.)
 //! - cartão: tipo 'org_cartao', pai_id = coluna, conteudo = texto, estado = 'feito' ou ''.
+//!   cor e prazo ("AAAA-MM-DD") ficam em `dados` (JSON).
 
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
@@ -48,10 +49,26 @@ pub struct Cartao {
     pub texto: String,
     #[serde(default)]
     pub feito: bool,
+    /// Cor da etiqueta do cartão (vazio = sem cor).
+    #[serde(default)]
+    pub cor: String,
+    /// Prazo opcional, em "AAAA-MM-DD" (vazio = sem prazo).
+    #[serde(default)]
+    pub prazo: String,
     #[serde(default)]
     pub ordem: f64,
     #[serde(default)]
     pub criado_em: i64,
+}
+
+/// Campos próprios do cartão guardados em JSON na coluna `dados`.
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DadosCartao {
+    #[serde(default)]
+    cor: String,
+    #[serde(default)]
+    prazo: String,
 }
 
 // ---------- Quadros ----------
@@ -176,14 +193,15 @@ pub fn excluir_coluna(conn: &Connection, id: &str) -> Result<(), Erro> {
 /// Todos os cartões de um quadro (de todas as suas colunas), na ordem.
 pub fn listar_cartoes(conn: &Connection, quadro_id: &str) -> Result<Vec<Cartao>, Erro> {
     let mut c = conn.prepare(
-        "SELECT c.id, c.pai_id, c.conteudo, c.estado, c.ordem, c.criado_em FROM item c
+        "SELECT c.id, c.pai_id, c.conteudo, c.estado, c.dados, c.ordem, c.criado_em FROM item c
          JOIN item col ON col.id = c.pai_id AND col.tipo = 'org_coluna' AND col.excluido_em IS NULL
          WHERE c.tipo = 'org_cartao' AND c.excluido_em IS NULL AND col.pai_id = ?1
          ORDER BY c.ordem, c.criado_em",
     )?;
     let lista = c
         .query_map([quadro_id], |r| {
-            Ok(Cartao { id: r.get(0)?, coluna_id: r.get(1)?, texto: r.get(2)?, feito: r.get::<_, String>(3)? == "feito", ordem: r.get(4)?, criado_em: r.get(5)? })
+            let d: DadosCartao = serde_json::from_str(&r.get::<_, String>(4)?).unwrap_or_default();
+            Ok(Cartao { id: r.get(0)?, coluna_id: r.get(1)?, texto: r.get(2)?, feito: r.get::<_, String>(3)? == "feito", cor: d.cor, prazo: d.prazo, ordem: r.get(5)?, criado_em: r.get(6)? })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
@@ -198,6 +216,7 @@ pub fn salvar_cartao(conn: &Connection, mut c: Cartao) -> Result<Cartao, Erro> {
         return Err(Erro::Interno("o cartão precisa de um texto".into()));
     }
     let estado = if c.feito { "feito" } else { "" };
+    let dados = serde_json::to_string(&DadosCartao { cor: c.cor.clone(), prazo: c.prazo.clone() }).map_err(|e| Erro::Interno(e.to_string()))?;
     let agora = agora_ms();
     if c.id.is_empty() {
         c.id = novo_id();
@@ -206,13 +225,13 @@ pub fn salvar_cartao(conn: &Connection, mut c: Cartao) -> Result<Cartao, Erro> {
             c.ordem = conn.query_row("SELECT coalesce(max(ordem), 0) + 1 FROM item WHERE tipo = 'org_cartao' AND pai_id = ?1 AND excluido_em IS NULL", params![c.coluna_id], |r| r.get(0))?;
         }
         conn.execute(
-            "INSERT INTO item (id, tipo, conteudo, estado, pai_id, ordem, criado_em, alterado_em) VALUES (?1, 'org_cartao', ?2, ?3, ?4, ?5, ?6, ?6)",
-            params![c.id, c.texto, estado, c.coluna_id, c.ordem, agora],
+            "INSERT INTO item (id, tipo, conteudo, estado, dados, pai_id, ordem, criado_em, alterado_em) VALUES (?1, 'org_cartao', ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
+            params![c.id, c.texto, estado, dados, c.coluna_id, c.ordem, agora],
         )?;
     } else {
         let n = conn.execute(
-            "UPDATE item SET conteudo = ?2, estado = ?3, pai_id = ?4, ordem = ?5, alterado_em = ?6 WHERE id = ?1 AND tipo = 'org_cartao' AND excluido_em IS NULL",
-            params![c.id, c.texto, estado, c.coluna_id, c.ordem, agora],
+            "UPDATE item SET conteudo = ?2, estado = ?3, dados = ?4, pai_id = ?5, ordem = ?6, alterado_em = ?7 WHERE id = ?1 AND tipo = 'org_cartao' AND excluido_em IS NULL",
+            params![c.id, c.texto, estado, dados, c.coluna_id, c.ordem, agora],
         )?;
         if n == 0 {
             return Err(Erro::Interno("cartão não encontrado".into()));
@@ -242,6 +261,20 @@ pub fn mover_cartao(conn: &Connection, id: &str, coluna_id: &str, ordem: f64) ->
     )?;
     if n == 0 {
         return Err(Erro::Interno("cartão não encontrado".into()));
+    }
+    Ok(())
+}
+
+/// Reordena os cartões de uma coluna: a ordem passa a ser a posição na lista
+/// `ids` (1, 2, 3...). Usado pelos botões de subir/descer. Ids de outras
+/// colunas ou inexistentes são ignorados em silêncio.
+pub fn reordenar_cartoes(conn: &Connection, ids: Vec<String>) -> Result<(), Erro> {
+    let agora = agora_ms();
+    for (i, id) in ids.iter().enumerate() {
+        conn.execute(
+            "UPDATE item SET ordem = ?2, alterado_em = ?3 WHERE id = ?1 AND tipo = 'org_cartao' AND excluido_em IS NULL",
+            params![id, (i + 1) as f64, agora],
+        )?;
     }
     Ok(())
 }
@@ -281,10 +314,10 @@ mod testes {
         let (_p, conn) = banco();
         let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "Projeto".into(), estilo: "quadro".into(), criado_em: 0 }).unwrap();
         let cols = listar_colunas(&conn, &q.id).unwrap();
-        let c1 = salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[0].id.clone(), texto: " comprar tinta ".into(), feito: false, ordem: 0.0, criado_em: 0 }).unwrap();
+        let c1 = salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[0].id.clone(), texto: " comprar tinta ".into(), feito: false, cor: String::new(), prazo: String::new(), ordem: 0.0, criado_em: 0 }).unwrap();
         assert_eq!(c1.texto, "comprar tinta");
-        salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[1].id.clone(), texto: "pintar".into(), feito: false, ordem: 0.0, criado_em: 0 }).unwrap();
-        assert!(salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[0].id.clone(), texto: "  ".into(), feito: false, ordem: 0.0, criado_em: 0 }).is_err());
+        salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[1].id.clone(), texto: "pintar".into(), feito: false, cor: String::new(), prazo: String::new(), ordem: 0.0, criado_em: 0 }).unwrap();
+        assert!(salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[0].id.clone(), texto: "  ".into(), feito: false, cor: String::new(), prazo: String::new(), ordem: 0.0, criado_em: 0 }).is_err());
         assert_eq!(listar_cartoes(&conn, &q.id).unwrap().len(), 2);
 
         // Mover o c1 para a coluna 3 (Feito) e marcar.
@@ -298,11 +331,31 @@ mod testes {
     }
 
     #[test]
+    fn cartao_guarda_cor_e_prazo_e_reordena() {
+        let (_p, conn) = banco();
+        let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "P".into(), estilo: "quadro".into(), criado_em: 0 }).unwrap();
+        let cols = listar_colunas(&conn, &q.id).unwrap();
+        let col = cols[0].id.clone();
+        // Cria com cor e prazo e confere que voltam.
+        let c1 = salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: col.clone(), texto: "um".into(), feito: false, cor: "ceu".into(), prazo: "2026-11-01".into(), ordem: 0.0, criado_em: 0 }).unwrap();
+        let c2 = salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: col.clone(), texto: "dois".into(), feito: false, cor: String::new(), prazo: String::new(), ordem: 0.0, criado_em: 0 }).unwrap();
+        let salvos = listar_cartoes(&conn, &q.id).unwrap();
+        let s1 = salvos.iter().find(|c| c.id == c1.id).unwrap();
+        assert_eq!((s1.cor.as_str(), s1.prazo.as_str()), ("ceu", "2026-11-01"));
+        // Ordem inicial: c1 antes de c2.
+        assert_eq!(salvos.iter().map(|c| c.id.clone()).collect::<Vec<_>>(), vec![c1.id.clone(), c2.id.clone()]);
+        // Reordena: c2 antes de c1.
+        reordenar_cartoes(&conn, vec![c2.id.clone(), c1.id.clone()]).unwrap();
+        let depois = listar_cartoes(&conn, &q.id).unwrap();
+        assert_eq!(depois.iter().map(|c| c.id.clone()).collect::<Vec<_>>(), vec![c2.id.clone(), c1.id.clone()]);
+    }
+
+    #[test]
     fn excluir_quadro_leva_colunas_e_cartoes() {
         let (_p, conn) = banco();
         let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "X".into(), estilo: "quadro".into(), criado_em: 0 }).unwrap();
         let cols = listar_colunas(&conn, &q.id).unwrap();
-        salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[0].id.clone(), texto: "a".into(), feito: false, ordem: 0.0, criado_em: 0 }).unwrap();
+        salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[0].id.clone(), texto: "a".into(), feito: false, cor: String::new(), prazo: String::new(), ordem: 0.0, criado_em: 0 }).unwrap();
         excluir_quadro(&conn, &q.id).unwrap();
         assert!(listar_quadros(&conn).unwrap().is_empty());
         assert!(listar_colunas(&conn, &q.id).unwrap().is_empty());

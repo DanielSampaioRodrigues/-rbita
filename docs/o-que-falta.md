@@ -40,7 +40,7 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [ ] **Dinheiro** (0.35.0; aprofundado na 0.40.0):
   - [x] Gastos, contas recorrentes, lista de espera, metas (0.35.0).
   - [x] Grupos de gasto personalizáveis com cor; tabela por mês (3/6/12 meses); gráficos de pizza (por grupo) e barras (por mês) (0.40.0). Falta teste de Dan no Windows.
-  - [ ] Gráfico de linha (evolução); filtro por grupo e por "interesse especial" na visão.
+  - [x] Gráfico de linha (evolução); filtro por grupo e por "interesse especial" na visão (na branch, ainda não publicado). Falta teste de Dan no Windows.
   - [ ] Importar extrato do banco (OFX ou CSV) — parsing próprio, numa próxima versão.
   - [ ] Avaliar notificar a conta a vencer.
 - [ ] **Vida acadêmica — reescrita como "mesa de estudos"** (visão acordada 26/10/2026; a 0.34.0 entregou só o cadastro, que Dan achou raso):
@@ -55,7 +55,9 @@ Plano em etapas em `docs/plano-onda-2.md`.
 - [x] **Hobbies e interesses** (0.36.0): arquivo de interesses/hiperfocos com notas, imagens e links (pelos anexos), sem metas. Falta teste de Dan no Windows.
   - [x] **Quadro livre** por hobby (na branch, ainda não publicado): cartões soltos de texto, arquivo, imagem, link e áudio gravado, arrastáveis pelo mouse e pelo teclado; posição guardada. Áudio pelo microfone (MediaRecorder) salvo no cofre via `anexar_bytes`. **Falta teste de Dan no Windows — o microfone no WebView2 e a renderização não dá para validar na nuvem.**
   - [ ] Redimensionar cartões; conectar cartões; fundo/cor do quadro.
-- [x] **Minha organização** (novo, decidido por Dan 26/10/2026; na branch, ainda não publicado): quadros estilo Trello (colunas com cartões arrastáveis) e listas (itens com caixinha), vários ao mesmo tempo. Falta teste de Dan no Windows. Evoluir: reordenar dentro da coluna, cor por cartão, prazo, ligação com Agenda/Projetos.
+- [x] **Minha organização** (novo, decidido por Dan 26/10/2026; na branch, ainda não publicado): quadros estilo Trello (colunas com cartões arrastáveis) e listas (itens com caixinha), vários ao mesmo tempo. Falta teste de Dan no Windows.
+  - [x] Renomear/excluir coluna corrigidos; editar cartão (texto, cor e prazo) num editor; reordenar dentro da coluna por botões de subir/descer (na branch, ainda não publicado). Falta teste de Dan no Windows.
+  - [ ] Evoluir: arrastar para reordenar dentro da coluna, ligação com Agenda/Projetos.
 - [ ] **Leitura** (começada na 0.37.0):
   - [x] Estante com status (quero/lendo/lido/pausado) e diário de leitura (onde parei, impressões, datas). Falta teste de Dan no Windows.
   - [x] Pacote `packages/leitor` (sem React/Tauri, reaproveitável no Escuta) com o leitor de EPUB (epub.js) e PDF (PDF.js): fontes (inclusive dislexia), cores de papel, tamanho e modo páginas/rolagem; lembra onde parou (0.38.0). **Falta teste de Dan no Windows — a renderização não foi validada na nuvem.** Limite de 300 MB por arquivo (reusa os anexos do cofre) (0.39.0).

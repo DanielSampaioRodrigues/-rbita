@@ -17,10 +17,10 @@ describe("organização: quadros e listas (simulação)", () => {
   it("cartões: cria, move entre colunas, marca e apaga", async () => {
     const q = await api.salvarQuadro(quadro("Projeto 2", "quadro"));
     const cols = await api.listarColunas(q.id);
-    const c1 = await api.salvarCartaoOrg({ id: "", colunaId: cols[0].id, texto: " comprar tinta ", feito: false, ordem: 0, criadoEm: 0 });
+    const c1 = await api.salvarCartaoOrg({ id: "", colunaId: cols[0].id, texto: " comprar tinta ", feito: false, cor: "", prazo: "", ordem: 0, criadoEm: 0 });
     expect(c1.texto).toBe("comprar tinta");
-    await api.salvarCartaoOrg({ id: "", colunaId: cols[1].id, texto: "pintar", feito: false, ordem: 0, criadoEm: 0 });
-    await expect(api.salvarCartaoOrg({ id: "", colunaId: cols[0].id, texto: "  ", feito: false, ordem: 0, criadoEm: 0 })).rejects.toThrow();
+    await api.salvarCartaoOrg({ id: "", colunaId: cols[1].id, texto: "pintar", feito: false, cor: "", prazo: "", ordem: 0, criadoEm: 0 });
+    await expect(api.salvarCartaoOrg({ id: "", colunaId: cols[0].id, texto: "  ", feito: false, cor: "", prazo: "", ordem: 0, criadoEm: 0 })).rejects.toThrow();
     expect(await api.listarCartoesOrg(q.id)).toHaveLength(2);
 
     await api.moverCartaoOrg(c1.id, cols[2].id, 1);
@@ -32,10 +32,23 @@ describe("organização: quadros e listas (simulação)", () => {
     expect(await api.listarCartoesOrg(q.id)).toHaveLength(1);
   });
 
+  it("cartão guarda cor e prazo e reordena", async () => {
+    const q = await api.salvarQuadro(quadro("Com cor", "quadro"));
+    const col = (await api.listarColunas(q.id))[0];
+    const a = await api.salvarCartaoOrg({ id: "", colunaId: col.id, texto: "a", feito: false, cor: "ceu", prazo: "2026-11-01", ordem: 0, criadoEm: 0 });
+    const b = await api.salvarCartaoOrg({ id: "", colunaId: col.id, texto: "b", feito: false, cor: "", prazo: "", ordem: 0, criadoEm: 0 });
+    const salvos = await api.listarCartoesOrg(q.id);
+    const sa = salvos.find((c) => c.id === a.id)!;
+    expect([sa.cor, sa.prazo]).toEqual(["ceu", "2026-11-01"]);
+    expect(salvos.map((c) => c.id)).toEqual([a.id, b.id]);
+    await api.reordenarCartoesOrg([b.id, a.id]);
+    expect((await api.listarCartoesOrg(q.id)).map((c) => c.id)).toEqual([b.id, a.id]);
+  });
+
   it("apagar o quadro leva colunas e cartões", async () => {
     const q = await api.salvarQuadro(quadro("Some tudo", "quadro"));
     const cols = await api.listarColunas(q.id);
-    await api.salvarCartaoOrg({ id: "", colunaId: cols[0].id, texto: "a", feito: false, ordem: 0, criadoEm: 0 });
+    await api.salvarCartaoOrg({ id: "", colunaId: cols[0].id, texto: "a", feito: false, cor: "", prazo: "", ordem: 0, criadoEm: 0 });
     await api.excluirQuadro(q.id);
     expect(await api.listarColunas(q.id)).toHaveLength(0);
     expect(await api.listarCartoesOrg(q.id)).toHaveLength(0);

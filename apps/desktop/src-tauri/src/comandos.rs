@@ -1515,6 +1515,11 @@ pub async fn mover_cartao_org(estado: State<'_, Estado>, id: String, coluna_id: 
 }
 
 #[tauri::command]
+pub async fn reordenar_cartoes_org(estado: State<'_, Estado>, ids: Vec<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| organizacao::reordenar_cartoes(&s.conn, ids))
+}
+
+#[tauri::command]
 pub async fn excluir_cartao_org(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| organizacao::excluir_cartao(&s.conn, &id))
 }

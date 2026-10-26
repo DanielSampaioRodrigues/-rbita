@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Form } from "react-aria-components";
+import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
 import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { api, type Coluna, type CartaoOrg, type Quadro } from "../api";
+import { api, CORES_ETIQUETA, type Coluna, type CartaoOrg, type Quadro } from "../api";
 import { useRecado } from "../app/Recado";
 import { pularEntreColunas } from "../componentes/tecladoColunas";
 import { Aviso, Campo } from "../componentes/Campo";
+import { CampoData } from "../componentes/CampoData";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Check, ChevronLeft, GripVertical, LayoutGrid, ListChecks, Pencil, Plus, Trash2 } from "../icones";
+import { ArrowDown, ArrowUp, CalendarDays, Check, ChevronLeft, GripVertical, LayoutGrid, ListChecks, Pencil, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 
@@ -140,28 +141,33 @@ function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => vo
   }, [quadro.id]);
   useEffect(() => void carregar(), [carregar]);
 
+  const [editandoCartao, setEditandoCartao] = useState<CartaoOrg | null>(null);
+
   const adicionarCartao = async (colunaId: string, texto: string) => {
-    await api.salvarCartaoOrg({ id: "", colunaId, texto, feito: false, ordem: 0, criadoEm: 0 });
+    await api.salvarCartaoOrg({ id: "", colunaId, texto, feito: false, cor: "", prazo: "", ordem: 0, criadoEm: 0 });
     await carregar();
   };
   const marcar = async (c: CartaoOrg, feito: boolean) => {
     setCartoes((cs) => cs.map((x) => (x.id === c.id ? { ...x, feito } : x)));
     await api.marcarCartaoOrg(c.id, feito);
   };
-  const editarCartao = async (c: CartaoOrg, texto: string) => {
-    const t2 = texto.trim();
-    if (!t2 || t2 === c.texto) return;
-    setCartoes((cs) => cs.map((x) => (x.id === c.id ? { ...x, texto: t2 } : x)));
-    try {
-      await api.salvarCartaoOrg({ ...c, texto: t2 });
-    } catch (e) {
-      setErro(mensagem(e));
-      await carregar();
-    }
+  const salvarCartao = async (c: CartaoOrg) => {
+    await api.salvarCartaoOrg(c);
+    setEditandoCartao(null);
+    await carregar();
   };
   const apagarCartao = async (c: CartaoOrg) => {
     await api.excluirCartaoOrg(c.id);
     await carregar();
+  };
+  const reordenar = async (ids: string[]) => {
+    setCartoes((cs) => cs.map((c) => { const i = ids.indexOf(c.id); return i >= 0 ? { ...c, ordem: i + 1 } : c; }));
+    try {
+      await api.reordenarCartoesOrg(ids);
+    } catch (e) {
+      setErro(mensagem(e));
+      await carregar();
+    }
   };
 
   return (
@@ -177,26 +183,43 @@ function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => vo
 
       <div className="org-corpo">
         {quadro.estilo === "quadro" ? (
-          <VisaoQuadro quadro={quadro} colunas={colunas} cartoes={cartoes} aoRecarregar={carregar} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={editarCartao} aoApagar={apagarCartao} aoErro={setErro} />
+          <VisaoQuadro quadro={quadro} colunas={colunas} cartoes={cartoes} aoRecarregar={carregar} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={setEditandoCartao} aoApagar={apagarCartao} aoReordenar={reordenar} aoErro={setErro} />
         ) : (
-          <VisaoLista coluna={colunas[0]} cartoes={cartoes} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={editarCartao} aoApagar={apagarCartao} aoRecarregar={carregar} />
+          <VisaoLista coluna={colunas[0]} cartoes={cartoes} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={setEditandoCartao} aoApagar={apagarCartao} aoReordenar={reordenar} aoRecarregar={carregar} />
         )}
       </div>
+
+      <Janela titulo={t.cartao.editar} aberta={editandoCartao !== null} aoFechar={() => setEditandoCartao(null)}>
+        {editandoCartao && <FormCartao key={editandoCartao.id} inicial={editandoCartao} aoSalvar={salvarCartao} aoFechar={() => setEditandoCartao(null)} />}
+      </Janela>
     </div>
   );
 }
 
+/** Estilo da faixa de cor na lateral do cartão (vazio = sem faixa). */
+function corEstilo(cor: string): React.CSSProperties {
+  return cor ? { borderLeftColor: `var(--etq-${cor})`, borderLeftWidth: "4px", borderLeftStyle: "solid" } : {};
+}
+
+/** Selo do prazo: dia/mês a partir de "AAAA-MM-DD". */
+function PrazoSelo({ prazo }: { prazo: string }) {
+  const [, m, d] = prazo.split("-");
+  if (!d || !m) return null;
+  return <span className="org-cartao-prazo" title={t.cartao.prazo}><CalendarDays aria-hidden="true" size="0.9em" /> {d}/{m}</span>;
+}
+
 // ---------- Estilo quadro (colunas + arrastar) ----------
 
-function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoErro }: {
+function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoErro }: {
   quadro: Quadro;
   colunas: Coluna[];
   cartoes: CartaoOrg[];
   aoRecarregar: () => Promise<void>;
   aoAdicionar: (colunaId: string, texto: string) => Promise<void>;
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
-  aoEditar: (c: CartaoOrg, texto: string) => void;
+  aoEditar: (c: CartaoOrg) => void;
   aoApagar: (c: CartaoOrg) => void;
+  aoReordenar: (ids: string[]) => void;
   aoErro: (m: string) => void;
 }) {
   const recado = useRecado();
@@ -265,6 +288,7 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
             aoMarcar={aoMarcar}
             aoEditar={aoEditar}
             aoApagar={aoApagar}
+            aoReordenar={aoReordenar}
             aoRenomear={(nome) => renomearColuna(col, nome)}
             aoExcluir={() => setExcluindoColuna(col)}
           />
@@ -280,14 +304,15 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
   );
 }
 
-function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoRenomear, aoExcluir }: {
+function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoRenomear, aoExcluir }: {
   coluna: Coluna;
   cartoes: CartaoOrg[];
   arrastou: React.MutableRefObject<boolean>;
   aoAdicionar: (texto: string) => Promise<void>;
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
-  aoEditar: (c: CartaoOrg, texto: string) => void;
+  aoEditar: (c: CartaoOrg) => void;
   aoApagar: (c: CartaoOrg) => void;
+  aoReordenar: (ids: string[]) => void;
   aoRenomear: (nome: string) => void;
   aoExcluir: () => void;
 }) {
@@ -295,6 +320,14 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEdit
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(coluna.nome);
   const confirmar = () => { setEditando(false); aoRenomear(nome); };
+  const ids = cartoes.map((c) => c.id);
+  const mover = (i: number, delta: number) => {
+    const j = i + delta;
+    if (j < 0 || j >= ids.length) return;
+    const novo = [...ids];
+    [novo[i], novo[j]] = [novo[j], novo[i]];
+    aoReordenar(novo);
+  };
   return (
     <section ref={setNodeRef} className={isOver ? "org-coluna sobre" : "org-coluna"} aria-label={coluna.nome || t.coluna.semNome}>
       <div className="org-coluna-topo">
@@ -323,8 +356,20 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEdit
         </span>
       </div>
       <ul className="org-cartoes">
-        {cartoes.map((c) => (
-          <li key={c.id}><CartaoArrastavel cartao={c} arrastou={arrastou} aoMarcar={aoMarcar} aoEditar={aoEditar} aoApagar={aoApagar} /></li>
+        {cartoes.map((c, i) => (
+          <li key={c.id}>
+            <CartaoArrastavel
+              cartao={c}
+              arrastou={arrastou}
+              aoMarcar={aoMarcar}
+              aoEditar={aoEditar}
+              aoApagar={aoApagar}
+              aoSubir={() => mover(i, -1)}
+              aoDescer={() => mover(i, 1)}
+              podeSubir={i > 0}
+              podeDescer={i < cartoes.length - 1}
+            />
+          </li>
         ))}
       </ul>
       <NovoCartao aoAdicionar={aoAdicionar} />
@@ -332,13 +377,19 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEdit
   );
 }
 
-function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoEditar, aoApagar }: { cartao: CartaoOrg; arrastou: React.MutableRefObject<boolean>; aoMarcar: (c: CartaoOrg, feito: boolean) => void; aoEditar: (c: CartaoOrg, texto: string) => void; aoApagar: (c: CartaoOrg) => void }) {
+function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoEditar, aoApagar, aoSubir, aoDescer, podeSubir, podeDescer }: {
+  cartao: CartaoOrg;
+  arrastou: React.MutableRefObject<boolean>;
+  aoMarcar: (c: CartaoOrg, feito: boolean) => void;
+  aoEditar: (c: CartaoOrg) => void;
+  aoApagar: (c: CartaoOrg) => void;
+  aoSubir: () => void;
+  aoDescer: () => void;
+  podeSubir: boolean;
+  podeDescer: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `${cartao.colunaId}|${cartao.id}` });
-  const [editando, setEditando] = useState(false);
-  const [txt, setTxt] = useState(cartao.texto);
-  const estilo = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
-
-  const confirmar = () => { setEditando(false); aoEditar(cartao, txt); };
+  const estilo = { ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : {}), ...corEstilo(cartao.cor) };
 
   return (
     <div ref={setNodeRef} className={isDragging ? "org-cartao arrastando" : cartao.feito ? "org-cartao feito" : "org-cartao"} style={estilo}>
@@ -348,26 +399,68 @@ function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoEditar, aoApagar }: { 
       <label className="org-cartao-check">
         <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={t.cartao.feito} />
       </label>
-      {editando ? (
-        <input
-          className="entrada-texto sozinha org-cartao-editar"
-          value={txt}
-          autoFocus
-          onChange={(e) => setTxt(e.target.value)}
-          onBlur={confirmar}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); confirmar(); }
-            else if (e.key === "Escape") { setTxt(cartao.texto); setEditando(false); }
-          }}
-          aria-label={t.cartao.editar}
-        />
-      ) : (
-        <button type="button" className="org-cartao-texto quebra" onClick={() => { setTxt(cartao.texto); setEditando(true); }} aria-label={`${t.cartao.editar}: ${cartao.texto}`}>
-          {cartao.texto}
-        </button>
-      )}
+      <button type="button" className="org-cartao-texto quebra" onClick={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}>
+        <span>{cartao.texto}</span>
+        {cartao.prazo && <PrazoSelo prazo={cartao.prazo} />}
+      </button>
+      <span className="org-cartao-ordenar">
+        <Button className="botao-icone pequeno" onPress={aoSubir} isDisabled={!podeSubir} aria-label={`${t.cartao.subir}: ${cartao.texto}`}><ArrowUp aria-hidden="true" size="1em" /></Button>
+        <Button className="botao-icone pequeno" onPress={aoDescer} isDisabled={!podeDescer} aria-label={`${t.cartao.descer}: ${cartao.texto}`}><ArrowDown aria-hidden="true" size="1em" /></Button>
+      </span>
       <Button className="botao-icone pequeno" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1em" /></Button>
     </div>
+  );
+}
+
+function EscolherCorCartao({ valor, aoMudar }: { valor: string; aoMudar: (c: string) => void }) {
+  return (
+    <RadioGroup className="campo" value={valor} onChange={aoMudar} orientation="horizontal">
+      <Label className="campo-rotulo">{t.cartao.cor}</Label>
+      <div className="cores-etiqueta">
+        <Radio value="" className="cor-opcao" aria-label={t.cartao.semCor}>
+          <span className="etiqueta-cor grande cor-nenhuma" aria-hidden="true" />
+          <span className="pequeno">{t.cartao.semCor}</span>
+        </Radio>
+        {CORES_ETIQUETA.map((c) => (
+          <Radio key={c} value={c} className="cor-opcao" aria-label={textos.ideias.cores[c]}>
+            <span className={`etiqueta-cor grande cor-${c}`} aria-hidden="true" />
+            <span className="pequeno">{textos.ideias.cores[c]}</span>
+          </Radio>
+        ))}
+      </div>
+    </RadioGroup>
+  );
+}
+
+function FormCartao({ inicial, aoSalvar, aoFechar }: { inicial: CartaoOrg; aoSalvar: (c: CartaoOrg) => Promise<void>; aoFechar: () => void }) {
+  const [texto, setTexto] = useState(inicial.texto);
+  const [cor, setCor] = useState(inicial.cor);
+  const [prazo, setPrazo] = useState(inicial.prazo);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const enviar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const txt = texto.trim();
+    if (!txt) { setErro(t.cartao.vazio); return; }
+    try {
+      await aoSalvar({ ...inicial, texto: txt, cor, prazo });
+    } catch (err) {
+      setErro(mensagem(err));
+    }
+  };
+
+  return (
+    <Form className="formulario" onSubmit={enviar}>
+      <Campo rotulo={t.cartao.texto} valor={texto} aoMudar={setTexto} autoFocus maximo={200} />
+      <EscolherCorCartao valor={cor} aoMudar={setCor} />
+      <CampoData rotulo={t.cartao.prazo} tipo="date" valor={prazo} aoMudar={setPrazo} />
+      {prazo && <Button className="botao pequeno com-icone" onPress={() => setPrazo("")}><Trash2 aria-hidden="true" size="1em" /> {t.cartao.semPrazo}</Button>}
+      <Aviso>{erro}</Aviso>
+      <div className="janela-acoes">
+        <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
+        <Button className="botao principal" type="submit">{t.cartao.salvar}</Button>
+      </div>
+    </Form>
   );
 }
 
@@ -389,18 +482,27 @@ function NovoCartao({ aoAdicionar }: { aoAdicionar: (texto: string) => Promise<v
 
 // ---------- Estilo lista (caixinhas) ----------
 
-function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoRecarregar }: {
+function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoRecarregar }: {
   coluna: Coluna | undefined;
   cartoes: CartaoOrg[];
   aoAdicionar: (colunaId: string, texto: string) => Promise<void>;
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
-  aoEditar: (c: CartaoOrg, texto: string) => void;
+  aoEditar: (c: CartaoOrg) => void;
   aoApagar: (c: CartaoOrg) => void;
+  aoReordenar: (ids: string[]) => void;
   aoRecarregar: () => Promise<void>;
 }) {
   const [texto, setTexto] = useState("");
   if (!coluna) return null;
   const feitos = cartoes.filter((c) => c.feito).length;
+  const ids = cartoes.map((c) => c.id);
+  const mover = (i: number, delta: number) => {
+    const j = i + delta;
+    if (j < 0 || j >= ids.length) return;
+    const novo = [...ids];
+    [novo[i], novo[j]] = [novo[j], novo[i]];
+    aoReordenar(novo);
+  };
 
   const adicionar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -430,8 +532,18 @@ function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoEditar, aoApagar
             {feitos > 0 && <Button className="botao pequeno com-icone" onPress={() => void limparFeitos()}><Check aria-hidden="true" size="1em" /> {t.lista.limparFeitos}</Button>}
           </div>
           <ul className="lista-simples sem-marcador org-itens">
-            {cartoes.map((c) => (
-              <ItemLista key={c.id} cartao={c} aoMarcar={aoMarcar} aoEditar={aoEditar} aoApagar={aoApagar} />
+            {cartoes.map((c, i) => (
+              <ItemLista
+                key={c.id}
+                cartao={c}
+                aoMarcar={aoMarcar}
+                aoEditar={aoEditar}
+                aoApagar={aoApagar}
+                aoSubir={() => mover(i, -1)}
+                aoDescer={() => mover(i, 1)}
+                podeSubir={i > 0}
+                podeDescer={i < cartoes.length - 1}
+              />
             ))}
           </ul>
         </>
@@ -440,33 +552,26 @@ function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoEditar, aoApagar
   );
 }
 
-function ItemLista({ cartao, aoMarcar, aoEditar, aoApagar }: { cartao: CartaoOrg; aoMarcar: (c: CartaoOrg, feito: boolean) => void; aoEditar: (c: CartaoOrg, texto: string) => void; aoApagar: (c: CartaoOrg) => void }) {
-  const [editando, setEditando] = useState(false);
-  const [txt, setTxt] = useState(cartao.texto);
-  const confirmar = () => { setEditando(false); aoEditar(cartao, txt); };
+function ItemLista({ cartao, aoMarcar, aoEditar, aoApagar, aoSubir, aoDescer, podeSubir, podeDescer }: {
+  cartao: CartaoOrg;
+  aoMarcar: (c: CartaoOrg, feito: boolean) => void;
+  aoEditar: (c: CartaoOrg) => void;
+  aoApagar: (c: CartaoOrg) => void;
+  aoSubir: () => void;
+  aoDescer: () => void;
+  podeSubir: boolean;
+  podeDescer: boolean;
+}) {
   return (
-    <li className={cartao.feito ? "org-item feito" : "org-item"}>
+    <li className={cartao.feito ? "org-item feito" : "org-item"} style={corEstilo(cartao.cor)}>
       <label className="org-item-check">
         <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={cartao.texto} />
-        {editando ? (
-          <input
-            className="entrada-texto sozinha"
-            value={txt}
-            autoFocus
-            onChange={(e) => setTxt(e.target.value)}
-            onBlur={confirmar}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); confirmar(); }
-              else if (e.key === "Escape") { setTxt(cartao.texto); setEditando(false); }
-            }}
-            aria-label={t.cartao.editar}
-          />
-        ) : (
-          <span className="quebra">{cartao.texto}</span>
-        )}
+        <span className="quebra">{cartao.texto}{cartao.prazo && <PrazoSelo prazo={cartao.prazo} />}</span>
       </label>
       <span className="linha-ajuste">
-        {!editando && <Button className="botao-icone" onPress={() => { setTxt(cartao.texto); setEditando(true); }} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1.1em" /></Button>}
+        <Button className="botao-icone" onPress={aoSubir} isDisabled={!podeSubir} aria-label={`${t.cartao.subir}: ${cartao.texto}`}><ArrowUp aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={aoDescer} isDisabled={!podeDescer} aria-label={`${t.cartao.descer}: ${cartao.texto}`}><ArrowDown aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
       </span>
     </li>

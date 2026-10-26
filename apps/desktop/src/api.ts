@@ -419,6 +419,10 @@ export interface CartaoOrg {
   colunaId: string;
   texto: string;
   feito: boolean;
+  /** Cor da etiqueta (vazio = sem cor). */
+  cor: string;
+  /** Prazo em "AAAA-MM-DD" (vazio = sem prazo). */
+  prazo: string;
   ordem: number;
   criadoEm: number;
 }
@@ -767,6 +771,7 @@ interface Api {
   salvarCartaoOrg(cartao: CartaoOrg): Promise<CartaoOrg>;
   marcarCartaoOrg(id: string, feito: boolean): Promise<void>;
   moverCartaoOrg(id: string, colunaId: string, ordem: number): Promise<void>;
+  reordenarCartoesOrg(ids: string[]): Promise<void>;
   excluirCartaoOrg(id: string): Promise<void>;
   listarLivros(): Promise<Livro[]>;
   salvarLivro(livro: Livro): Promise<Livro>;
@@ -982,6 +987,7 @@ const nativa: Api = {
   salvarCartaoOrg: (cartao) => chamar("salvar_cartao_org", { cartao }),
   marcarCartaoOrg: (id, feito) => chamar("marcar_cartao_org", { id, feito }),
   moverCartaoOrg: (id, colunaId, ordem) => chamar("mover_cartao_org", { id, colunaId, ordem }),
+  reordenarCartoesOrg: (ids) => chamar("reordenar_cartoes_org", { ids }),
   excluirCartaoOrg: (id) => chamar("excluir_cartao_org", { id }),
   listarLivros: () => chamar("listar_livros"),
   salvarLivro: (livro) => chamar("salvar_livro", { livro }),
@@ -1879,6 +1885,12 @@ function simularOrganizacao() {
       if (!c) throw new ErroOrbita("nao_encontrado", "Cartão não encontrado.");
       c.colunaId = colunaId;
       c.ordem = ordem;
+    },
+    reordenarCartoesOrg: async (ids: string[]) => {
+      ids.forEach((id, i) => {
+        const c = cartoes.find((x) => x.id === id);
+        if (c) c.ordem = i + 1;
+      });
     },
     excluirCartaoOrg: async (id: string) => {
       const i = cartoes.findIndex((c) => c.id === id);
