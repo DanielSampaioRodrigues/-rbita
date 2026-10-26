@@ -201,7 +201,6 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
 }) {
   const recado = useRecado();
   const arrastou = useRef(false);
-  const [editandoColuna, setEditandoColuna] = useState<Coluna | null>(null);
   const [excluindoColuna, setExcluindoColuna] = useState<Coluna | null>(null);
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -229,10 +228,15 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
     await api.salvarColuna({ id: "", quadroId: quadro.id, nome: t.coluna.semNome, ordem: 0 });
     await aoRecarregar();
   };
-  const salvarColuna = async (col: Coluna, nome: string) => {
-    await api.salvarColuna({ ...col, nome });
-    setEditandoColuna(null);
-    await aoRecarregar();
+  const renomearColuna = async (col: Coluna, nome: string) => {
+    const n = nome.trim();
+    if (!n || n === col.nome) return;
+    try {
+      await api.salvarColuna({ ...col, nome: n });
+      await aoRecarregar();
+    } catch (e) {
+      aoErro(mensagem(e));
+    }
   };
   const excluirColuna = async () => {
     if (!excluindoColuna) return;
@@ -242,6 +246,7 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
   };
 
   return (
+    <>
     <DndContext
       sensors={sensores}
       onDragStart={() => (arrastou.current = true)}
@@ -260,7 +265,7 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
             aoMarcar={aoMarcar}
             aoEditar={aoEditar}
             aoApagar={aoApagar}
-            aoRenomear={() => setEditandoColuna(col)}
+            aoRenomear={(nome) => renomearColuna(col, nome)}
             aoExcluir={() => setExcluindoColuna(col)}
           />
         ))}
@@ -268,12 +273,10 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
           <Button className="botao com-icone" onPress={() => void adicionarColuna()}><Plus aria-hidden="true" size="1.1em" /> {t.coluna.adicionar}</Button>
         </div>
       </div>
-
-      <Janela titulo={t.coluna.renomear} aberta={editandoColuna !== null} aoFechar={() => setEditandoColuna(null)}>
-        {editandoColuna && <FormColuna key={editandoColuna.id} inicial={editandoColuna} aoSalvar={salvarColuna} aoFechar={() => setEditandoColuna(null)} />}
-      </Janela>
-      <Confirmar titulo={t.coluna.excluir} texto={excluindoColuna ? t.coluna.confirmarExcluir(excluindoColuna.nome || t.coluna.semNome) : ""} confirmar={t.coluna.excluir} aberta={excluindoColuna !== null} aoCancelar={() => setExcluindoColuna(null)} aoConfirmar={() => void excluirColuna()} />
     </DndContext>
+
+    <Confirmar titulo={t.coluna.excluir} texto={excluindoColuna ? t.coluna.confirmarExcluir(excluindoColuna.nome || t.coluna.semNome) : ""} confirmar={t.coluna.excluir} aberta={excluindoColuna !== null} aoCancelar={() => setExcluindoColuna(null)} aoConfirmar={() => void excluirColuna()} />
+    </>
   );
 }
 
@@ -285,16 +288,37 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEdit
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
   aoEditar: (c: CartaoOrg, texto: string) => void;
   aoApagar: (c: CartaoOrg) => void;
-  aoRenomear: () => void;
+  aoRenomear: (nome: string) => void;
   aoExcluir: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: coluna.id });
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState(coluna.nome);
+  const confirmar = () => { setEditando(false); aoRenomear(nome); };
   return (
     <section ref={setNodeRef} className={isOver ? "org-coluna sobre" : "org-coluna"} aria-label={coluna.nome || t.coluna.semNome}>
       <div className="org-coluna-topo">
-        <h2 className="org-coluna-titulo">{coluna.nome || t.coluna.semNome} <span className="texto-suave">({cartoes.length})</span></h2>
+        {editando ? (
+          <input
+            className="entrada-texto sozinha org-coluna-editar"
+            value={nome}
+            autoFocus
+            onChange={(e) => setNome(e.target.value)}
+            onBlur={confirmar}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); confirmar(); }
+              else if (e.key === "Escape") { setNome(coluna.nome); setEditando(false); }
+            }}
+            aria-label={t.coluna.nome}
+            maxLength={60}
+          />
+        ) : (
+          <button type="button" className="org-coluna-titulo" onClick={() => { setNome(coluna.nome); setEditando(true); }} aria-label={`${t.coluna.renomear}: ${coluna.nome || t.coluna.semNome}`}>
+            {coluna.nome || t.coluna.semNome} <span className="texto-suave">({cartoes.length})</span>
+          </button>
+        )}
         <span className="linha-ajuste">
-          <Button className="botao-icone pequeno" onPress={aoRenomear} aria-label={`${t.coluna.renomear}: ${coluna.nome}`}><Pencil aria-hidden="true" size="1em" /></Button>
+          {!editando && <Button className="botao-icone pequeno" onPress={() => { setNome(coluna.nome); setEditando(true); }} aria-label={`${t.coluna.renomear}: ${coluna.nome}`}><Pencil aria-hidden="true" size="1em" /></Button>}
           <Button className="botao-icone pequeno" onPress={aoExcluir} aria-label={`${t.coluna.excluir}: ${coluna.nome}`}><Trash2 aria-hidden="true" size="1em" /></Button>
         </span>
       </div>
@@ -359,19 +383,6 @@ function NovoCartao({ aoAdicionar }: { aoAdicionar: (texto: string) => Promise<v
   return (
     <Form className="org-novo-cartao" onSubmit={enviar}>
       <input className="entrada-texto sozinha" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder={t.cartao.novo} aria-label={t.cartao.adicionar} />
-    </Form>
-  );
-}
-
-function FormColuna({ inicial, aoSalvar, aoFechar }: { inicial: Coluna; aoSalvar: (c: Coluna, nome: string) => void; aoFechar: () => void }) {
-  const [nome, setNome] = useState(inicial.nome);
-  return (
-    <Form className="formulario" onSubmit={(e) => { e.preventDefault(); aoSalvar(inicial, nome); }}>
-      <Campo rotulo={t.coluna.nome} valor={nome} aoMudar={setNome} autoFocus maximo={60} semDitado />
-      <div className="janela-acoes">
-        <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
-        <Button className="botao principal" type="submit">{t.coluna.salvar}</Button>
-      </div>
     </Form>
   );
 }
