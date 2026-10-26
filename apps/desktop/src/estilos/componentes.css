@@ -705,19 +705,31 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .quadro-dica { position: sticky; top: 0; z-index: 1; margin: 0; padding: var(--espaco-2) var(--espaco-4); background: var(--cor-fundo); border-bottom: 1px solid var(--cor-borda-suave); }
 .quadro-chao { position: relative; }
 .quadro-cartao-livre { position: absolute; display: flex; flex-direction: column; background: var(--cor-superficie); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-2); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); overflow: hidden; }
-.quadro-cartao-barra { display: flex; align-items: center; justify-content: space-between; background: var(--cor-superficie-alternativa); border-bottom: 1px solid var(--cor-borda-suave); }
+.quadro-cartao-barra { display: flex; align-items: center; justify-content: space-between; background: var(--cor-superficie-alternativa); border-bottom: 1px solid var(--cor-borda-suave); flex: none; }
+.quadro-cartao-corpo { flex: 1; min-height: 0; overflow: auto; display: flex; }
+.quadro-cartao-corpo > * { flex: 1; min-width: 0; }
 .quadro-alca { display: inline-flex; align-items: center; padding: 0.2rem 0.3rem; color: var(--cor-texto-suave); cursor: grab; touch-action: none; }
 .quadro-alca:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: -2px; }
-.quadro-texto { display: block; width: 100%; text-align: left; border: none; background: none; color: var(--cor-texto); padding: var(--espaco-3); cursor: text; font: inherit; }
-.quadro-texto-editor { display: flex; flex-direction: column; gap: var(--espaco-2); padding: var(--espaco-2); }
-.quadro-texto-editor textarea { width: 100%; resize: vertical; }
-.quadro-imagem { display: block; width: 100%; border: none; background: none; padding: 0; cursor: zoom-in; }
+.quadro-redimensiona { position: absolute; right: 0; bottom: 0; width: 1.1rem; height: 1.1rem; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, var(--cor-borda) 50%); border-bottom-right-radius: var(--raio-2); }
+.quadro-texto { display: block; width: 100%; text-align: left; border: none; background: none; color: var(--cor-texto); padding: var(--espaco-2) var(--espaco-3); cursor: text; font: inherit; }
+.quadro-texto-editor { display: flex; flex-direction: column; gap: var(--espaco-2); padding: var(--espaco-2); width: 100%; }
+.quadro-imagem { display: flex; align-items: flex-start; justify-content: center; width: 100%; border: none; background: none; padding: 0; cursor: zoom-in; }
 .quadro-imagem-mini { display: block; width: 100%; height: auto; }
 .quadro-arquivo { display: flex; align-items: center; gap: var(--espaco-2); width: 100%; text-align: left; border: none; background: none; color: var(--cor-texto); padding: var(--espaco-3); cursor: pointer; font: inherit; }
 .quadro-arquivo-icone { color: var(--cor-texto-suave); flex: none; }
 .quadro-arquivo-nome { flex: 1; min-width: 0; }
-.quadro-audio { width: 100%; padding: var(--espaco-2); }
+.quadro-audio { width: 100%; padding: var(--espaco-2); align-self: center; }
 .quadro-gravando { display: flex; align-items: center; gap: var(--espaco-2); color: var(--cor-destaque); }
+
+/* Pré-visualização de arquivo (imagem/PDF) dentro do app. */
+.previa-sobreposicao { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: var(--espaco-4); background: rgba(0, 0, 0, 0.5); }
+.previa-caixa { display: flex; flex-direction: column; width: min(92vw, 60rem); height: min(90vh, 50rem); background: var(--cor-superficie); border-radius: var(--raio-2); overflow: hidden; }
+.previa-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-3); padding: var(--espaco-2) var(--espaco-4); border-bottom: 1px solid var(--cor-borda-suave); }
+.previa-corpo { flex: 1; min-height: 0; overflow: auto; background: var(--cor-fundo); display: flex; justify-content: center; }
+.previa-imagem { max-width: 100%; height: auto; align-self: flex-start; }
+.previa-pdf { width: 100%; height: 100%; }
+.previa-semprevia { max-width: 28rem; margin: auto; text-align: center; padding: var(--espaco-4); }
+.previa-acoes { display: flex; flex-wrap: wrap; gap: var(--espaco-2); justify-content: flex-end; padding: var(--espaco-3) var(--espaco-4); border-top: 1px solid var(--cor-borda-suave); }
 
 /* Caixa flutuante para grifar o texto selecionado (EPUB). */
 .leitor-grifo-popup { position: absolute; left: 50%; bottom: var(--espaco-4); transform: translateX(-50%); width: min(94vw, 28rem); display: flex; flex-direction: column; gap: var(--espaco-3); padding: var(--espaco-4); background: var(--cor-superficie); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-2); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16); z-index: 3; }

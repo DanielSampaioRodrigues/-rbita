@@ -1,17 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Form } from "react-aria-components";
-import { api, escolherArquivoParaAnexar, type Anexo, type CartaoQuadro, type Hobby, type TipoCartao } from "../api";
+import { Leitor, CONFIG_PADRAO } from "@orbita/leitor";
+import { api, escolherArquivoParaAnexar, escolherOndeSalvarAnexo, type Anexo, type CartaoQuadro, type Hobby, type TipoCartao } from "../api";
 import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
+import { CampoRico } from "../componentes/CampoRico";
+import { TextoRico } from "../componentes/TextoRico";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { ImagemAnexo } from "../relacoes/Relacoes";
-import { ChevronLeft, Download, ExternalLink, FileText, GripVertical, ImagePlus, Link2, Mic, Pencil, Plus, Sparkles, StickyNote, Trash2, X } from "../icones";
+import { ChevronLeft, Download, ExternalLink, FileText, FileUp, GripVertical, ImagePlus, Link2, Mic, Pencil, Plus, Sparkles, StickyNote, Trash2, X } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.hobbies;
 const tq = t.quadro;
 const mensagem = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const EXT_AUDIO = ["mp3", "m4a", "wav", "ogg", "oga", "webm", "aac", "flac", "opus"];
+const ehNomePdf = (nome: string) => nome.toLowerCase().endsWith(".pdf");
+
+function base64ParaBytes(b64: string): ArrayBuffer {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+/** O tipo de cartão a partir do anexo: imagem, áudio (pela extensão) ou arquivo. */
+function tipoDoAnexo(anexo: Anexo): TipoCartao {
+  if (anexo.tipo === "imagem") return "imagem";
+  const ext = anexo.nome.split(".").pop()?.toLowerCase() ?? "";
+  return EXT_AUDIO.includes(ext) ? "audio" : "arquivo";
+}
 
 export function PaginaHobbies() {
   const [hobbies, setHobbies] = useState<Hobby[]>([]);
@@ -32,7 +51,6 @@ export function PaginaHobbies() {
     avisarMudanca();
   };
 
-  // Mantém o hobby aberto em sincronia com a lista (nome editado etc.).
   const abertoAtual = aberto ? hobbies.find((h) => h.id === aberto.id) ?? aberto : null;
   if (abertoAtual) return <QuadroHobby hobby={abertoAtual} aoFechar={() => setAberto(null)} />;
 
@@ -110,12 +128,13 @@ function FormHobby({ inicial, aoFechar }: { inicial: Hobby; aoFechar: () => void
 }
 
 const TAMANHO_PADRAO: Record<TipoCartao, { largura: number; altura: number }> = {
-  texto: { largura: 220, altura: 150 },
+  texto: { largura: 240, altura: 170 },
   imagem: { largura: 200, altura: 200 },
   arquivo: { largura: 210, altura: 92 },
   link: { largura: 210, altura: 92 },
   audio: { largura: 260, altura: 96 },
 };
+const REDIMENSIONAVEL: TipoCartao[] = ["texto", "imagem"];
 
 /** O quadro livre de um hobby: cartões soltos que a pessoa arrasta e organiza. */
 function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }) {
@@ -124,13 +143,12 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
   const [ocupado, setOcupado] = useState(false);
   const [link, setLink] = useState<{ nome: string; endereco: string } | null>(null);
   const [gravando, setGravando] = useState(false);
-  const [ampliando, setAmpliando] = useState<CartaoQuadro | null>(null);
+  const [prevendo, setPrevendo] = useState<CartaoQuadro | null>(null);
   const recado = useRecado();
 
   const carregar = useCallback(() => api.listarCartoes(hobby.id).then(setCartoes, (e) => setErro(mensagem(e))), [hobby.id]);
   useEffect(() => void carregar(), [carregar]);
 
-  // Posição escalonada para o próximo cartão, para não nascerem todos em cima.
   const proximaPos = () => {
     const n = cartoes.length;
     return { x: 40 + (n % 6) * 36, y: 40 + (n % 6) * 36 };
@@ -139,11 +157,8 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
   const criarCartao = async (tipo: TipoCartao, extra: Partial<CartaoQuadro>) => {
     const pos = proximaPos();
     const tam = TAMANHO_PADRAO[tipo];
-    const novo = await api.salvarCartao({
-      id: "", hobbyId: hobby.id, tipo, texto: "", anexoId: "", x: pos.x, y: pos.y, largura: tam.largura, altura: tam.altura, criadoEm: 0, ...extra,
-    });
+    await api.salvarCartao({ id: "", hobbyId: hobby.id, tipo, texto: "", anexoId: "", x: pos.x, y: pos.y, largura: tam.largura, altura: tam.altura, criadoEm: 0, ...extra });
     await carregar();
-    return novo;
   };
 
   const comOcupado = async (acao: () => Promise<unknown>) => {
@@ -163,7 +178,16 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
       const caminho = await escolherArquivoParaAnexar(soImagens);
       if (!caminho) return;
       const anexo = await api.anexarArquivo(hobby.id, caminho);
-      await criarCartao(anexo.tipo === "imagem" ? "imagem" : "arquivo", { anexoId: anexo.id, texto: anexo.nome });
+      await criarCartao(tipoDoAnexo(anexo), { anexoId: anexo.id, texto: anexo.nome });
+    });
+
+  const adicionarAudioExistente = () =>
+    comOcupado(async () => {
+      const caminho = await escolherArquivoParaAnexar(false);
+      if (!caminho) return;
+      const anexo = await api.anexarArquivo(hobby.id, caminho);
+      await criarCartao("audio", { anexoId: anexo.id, texto: anexo.nome });
+      setGravando(false);
     });
 
   const adicionarLinkConfirmar = (nome: string, endereco: string) =>
@@ -173,24 +197,30 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
       setLink(null);
     });
 
-  const adicionarAudio = (anexo: Anexo) =>
+  const adicionarAudioGravado = (anexo: Anexo) =>
     comOcupado(async () => {
       await criarCartao("audio", { anexoId: anexo.id, texto: anexo.nome });
       setGravando(false);
     });
 
-  const mover = async (id: string, x: number, y: number) => {
+  const mover = (id: string, x: number, y: number) => {
     setCartoes((cs) => cs.map((c) => (c.id === id ? { ...c, x, y } : c)));
-    try {
-      await api.moverCartao(id, x, y);
-    } catch (e) {
-      setErro(mensagem(e));
-    }
+    api.moverCartao(id, x, y).catch((e) => setErro(mensagem(e)));
+  };
+
+  const redimensionar = (c: CartaoQuadro, largura: number, altura: number) => {
+    setCartoes((cs) => cs.map((x) => (x.id === c.id ? { ...x, largura, altura } : x)));
+    api.salvarCartao({ ...c, largura, altura }).catch((e) => setErro(mensagem(e)));
   };
 
   const salvarTexto = async (c: CartaoQuadro, texto: string) => {
+    setCartoes((cs) => cs.map((x) => (x.id === c.id ? { ...x, texto } : x)));
     await api.salvarCartao({ ...c, texto });
-    await carregar();
+  };
+
+  const abrirCartao = (c: CartaoQuadro) => {
+    if (c.tipo === "link") void api.abrirAnexo(c.anexoId);
+    else setPrevendo(c);
   };
 
   const apagar = async (c: CartaoQuadro) => {
@@ -199,7 +229,6 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
     recado(tq.apagar);
   };
 
-  // O "chão" do quadro cresce com os cartões, para sempre caber e poder rolar.
   const largura = Math.max(1200, ...cartoes.map((c) => c.x + c.largura + 80), 0);
   const altura = Math.max(800, ...cartoes.map((c) => c.y + c.altura + 80), 0);
 
@@ -228,7 +257,7 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
         )}
         <div className="quadro-chao" style={{ width: largura, height: altura }}>
           {cartoes.map((c) => (
-            <CartaoView key={c.id} cartao={c} aoMover={mover} aoApagar={() => void apagar(c)} aoAmpliar={() => setAmpliando(c)} aoSalvarTexto={(txt) => void salvarTexto(c, txt)} />
+            <CartaoView key={c.id} cartao={c} aoMover={mover} aoRedimensionar={redimensionar} aoApagar={() => void apagar(c)} aoAbrir={() => abrirCartao(c)} aoSalvarTexto={(txt) => void salvarTexto(c, txt)} />
           ))}
         </div>
       </div>
@@ -247,68 +276,94 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
       </Janela>
 
       <Janela titulo={tq.audio.titulo} aberta={gravando} aoFechar={() => setGravando(false)}>
-        {gravando && <GravadorAudio hobbyId={hobby.id} aoGravado={adicionarAudio} aoFechar={() => setGravando(false)} />}
+        {gravando && <GravadorAudio hobbyId={hobby.id} aoGravado={adicionarAudioGravado} aoAnexarExistente={adicionarAudioExistente} aoFechar={() => setGravando(false)} />}
       </Janela>
 
-      <Janela titulo={ampliando?.texto || ""} aberta={ampliando !== null} aoFechar={() => setAmpliando(null)} larga>
-        {ampliando && <ImagemAnexo id={ampliando.anexoId} nome="" className="anexo-grande" />}
-      </Janela>
+      {prevendo && <PreviaArquivo cartao={prevendo} aoFechar={() => setPrevendo(null)} />}
     </div>
   );
 }
 
-/** Um cartão solto no quadro: arrastável pelo mouse e pelo teclado. */
-function CartaoView({ cartao, aoMover, aoApagar, aoAmpliar, aoSalvarTexto }: {
+/** Um cartão solto no quadro: arrastável (mouse/teclado) e redimensionável. */
+function CartaoView({ cartao, aoMover, aoRedimensionar, aoApagar, aoAbrir, aoSalvarTexto }: {
   cartao: CartaoQuadro;
   aoMover: (id: string, x: number, y: number) => void;
+  aoRedimensionar: (c: CartaoQuadro, largura: number, altura: number) => void;
   aoApagar: () => void;
-  aoAmpliar: () => void;
+  aoAbrir: () => void;
   aoSalvarTexto: (texto: string) => void;
 }) {
-  const [pos, setPos] = useState({ x: cartao.x, y: cartao.y });
+  const ref = useRef<HTMLDivElement>(null);
   const [editando, setEditando] = useState(false);
   const [rascunho, setRascunho] = useState(cartao.texto);
-  const arrasteRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
-  useEffect(() => setPos({ x: cartao.x, y: cartao.y }), [cartao.x, cartao.y]);
+  // Arraste e redimensionamento mexem direto no DOM (sem re-render a cada quadro).
+  const arraste = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
+  const tamanho = useRef<{ px: number; py: number; w: number; h: number } | null>(null);
 
-  const aoApontar = (e: React.PointerEvent) => {
+  const aoApontarMover = (e: React.PointerEvent) => {
     if (editando) return;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    arrasteRef.current = { px: e.clientX, py: e.clientY, ox: pos.x, oy: pos.y };
+    arraste.current = { px: e.clientX, py: e.clientY, ox: cartao.x, oy: cartao.y };
   };
   const aoMoverPonteiro = (e: React.PointerEvent) => {
-    const a = arrasteRef.current;
-    if (!a) return;
-    setPos({ x: Math.max(0, a.ox + (e.clientX - a.px)), y: Math.max(0, a.oy + (e.clientY - a.py)) });
+    const a = arraste.current;
+    const el = ref.current;
+    if (!a || !el) return;
+    el.style.left = `${Math.max(0, a.ox + (e.clientX - a.px))}px`;
+    el.style.top = `${Math.max(0, a.oy + (e.clientY - a.py))}px`;
   };
   const aoSoltar = () => {
-    if (!arrasteRef.current) return;
-    arrasteRef.current = null;
-    aoMover(cartao.id, pos.x, pos.y);
-  };
-  const aoTecla = (e: React.KeyboardEvent) => {
-    const passo = e.shiftKey ? 40 : 12;
-    const nova = { ...pos };
-    if (e.key === "ArrowLeft") nova.x = Math.max(0, pos.x - passo);
-    else if (e.key === "ArrowRight") nova.x = pos.x + passo;
-    else if (e.key === "ArrowUp") nova.y = Math.max(0, pos.y - passo);
-    else if (e.key === "ArrowDown") nova.y = pos.y + passo;
-    else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); aoApagar(); return; }
-    else return;
-    e.preventDefault();
-    setPos(nova);
-    aoMover(cartao.id, nova.x, nova.y);
+    const a = arraste.current;
+    const el = ref.current;
+    if (!a || !el) return;
+    arraste.current = null;
+    aoMover(cartao.id, parseFloat(el.style.left), parseFloat(el.style.top));
   };
 
+  const aoApontarTamanho = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    tamanho.current = { px: e.clientX, py: e.clientY, w: cartao.largura, h: cartao.altura };
+  };
+  const aoTamanhoPonteiro = (e: React.PointerEvent) => {
+    const r = tamanho.current;
+    const el = ref.current;
+    if (!r || !el) return;
+    el.style.width = `${Math.max(140, r.w + (e.clientX - r.px))}px`;
+    el.style.height = `${Math.max(90, r.h + (e.clientY - r.py))}px`;
+  };
+  const aoTamanhoSoltar = () => {
+    const r = tamanho.current;
+    const el = ref.current;
+    if (!r || !el) return;
+    tamanho.current = null;
+    aoRedimensionar(cartao, el.offsetWidth, el.offsetHeight);
+  };
+
+  const aoTecla = (e: React.KeyboardEvent) => {
+    const passo = e.shiftKey ? 40 : 12;
+    if (e.key === "ArrowLeft") aoMover(cartao.id, Math.max(0, cartao.x - passo), cartao.y);
+    else if (e.key === "ArrowRight") aoMover(cartao.id, cartao.x + passo, cartao.y);
+    else if (e.key === "ArrowUp") aoMover(cartao.id, cartao.x, Math.max(0, cartao.y - passo));
+    else if (e.key === "ArrowDown") aoMover(cartao.id, cartao.x, cartao.y + passo);
+    else if (e.key === "Delete" || e.key === "Backspace") aoApagar();
+    else return;
+    e.preventDefault();
+  };
+
+  const redimensionavel = REDIMENSIONAVEL.includes(cartao.tipo);
+  const estilo: React.CSSProperties = { left: cartao.x, top: cartao.y, width: cartao.largura };
+  if (redimensionavel) estilo.height = cartao.altura;
+
   return (
-    <div className="quadro-cartao-livre" style={{ left: pos.x, top: pos.y, width: cartao.largura }}>
+    <div ref={ref} className="quadro-cartao-livre" style={estilo}>
       <div className="quadro-cartao-barra">
         <span
           className="quadro-alca"
           role="button"
           tabIndex={0}
           aria-label={`${tq.mover}: ${cartao.texto || cartao.tipo}`}
-          onPointerDown={aoApontar}
+          onPointerDown={aoApontarMover}
           onPointerMove={aoMoverPonteiro}
           onPointerUp={aoSoltar}
           onPointerCancel={aoSoltar}
@@ -318,68 +373,146 @@ function CartaoView({ cartao, aoMover, aoApagar, aoAmpliar, aoSalvarTexto }: {
         </span>
         <Button className="botao-icone pequeno" onPress={aoApagar} aria-label={tq.apagar}><X aria-hidden="true" size="1em" /></Button>
       </div>
-      <ConteudoCartao cartao={cartao} editando={editando} rascunho={rascunho} setEditando={setEditando} setRascunho={setRascunho} aoAmpliar={aoAmpliar} aoSalvarTexto={aoSalvarTexto} />
+      <div className="quadro-cartao-corpo">
+        <ConteudoCartao cartao={cartao} editando={editando} rascunho={rascunho} setEditando={setEditando} setRascunho={setRascunho} aoAbrir={aoAbrir} aoSalvarTexto={aoSalvarTexto} />
+      </div>
+      {redimensionavel && (
+        <span
+          className="quadro-redimensiona"
+          role="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          onPointerDown={aoApontarTamanho}
+          onPointerMove={aoTamanhoPonteiro}
+          onPointerUp={aoTamanhoSoltar}
+          onPointerCancel={aoTamanhoSoltar}
+        />
+      )}
     </div>
   );
 }
 
-function ConteudoCartao({ cartao, editando, rascunho, setEditando, setRascunho, aoAmpliar, aoSalvarTexto }: {
+function ConteudoCartao({ cartao, editando, rascunho, setEditando, setRascunho, aoAbrir, aoSalvarTexto }: {
   cartao: CartaoQuadro;
   editando: boolean;
   rascunho: string;
   setEditando: (v: boolean) => void;
   setRascunho: (v: string) => void;
-  aoAmpliar: () => void;
+  aoAbrir: () => void;
   aoSalvarTexto: (texto: string) => void;
 }) {
   if (cartao.tipo === "texto") {
     if (editando) {
       return (
         <div className="quadro-texto-editor">
-          <textarea className="entrada-texto" value={rascunho} onChange={(e) => setRascunho(e.target.value)} aria-label={tq.editarTexto} autoFocus rows={4} />
+          <CampoRico rotulo={tq.editarTexto} valor={rascunho} aoMudar={setRascunho} autoFocus placeholder={tq.textoVazio} />
           <Button className="botao principal pequeno" onPress={() => { aoSalvarTexto(rascunho); setEditando(false); }}>{tq.salvarTexto}</Button>
         </div>
       );
     }
     return (
-      <Button className="quadro-texto" onPress={() => setEditando(true)}>
-        <span className="quebra">{cartao.texto || <span className="texto-suave">{tq.textoVazio}</span>}</span>
+      <Button className="quadro-texto" onPress={() => { setRascunho(cartao.texto); setEditando(true); }}>
+        {cartao.texto ? <TextoRico markdown={cartao.texto} /> : <span className="texto-suave">{tq.textoVazio}</span>}
       </Button>
     );
   }
   if (cartao.tipo === "imagem") {
     return (
-      <Button className="quadro-imagem" onPress={aoAmpliar} aria-label={tq.ampliar}>
+      <Button className="quadro-imagem" onPress={aoAbrir} aria-label={tq.ampliar}>
         <ImagemAnexo id={cartao.anexoId} nome="" className="quadro-imagem-mini" />
       </Button>
     );
   }
   if (cartao.tipo === "audio") {
-    return <AudioAnexo id={cartao.anexoId} />;
+    return <AudioAnexo id={cartao.anexoId} nome={cartao.texto} />;
   }
   // arquivo ou link.
   return (
-    <Button className="quadro-arquivo" onPress={() => void api.abrirAnexo(cartao.anexoId)}>
+    <Button className="quadro-arquivo" onPress={aoAbrir}>
       <span className="quadro-arquivo-icone" aria-hidden="true">{cartao.tipo === "link" ? <Link2 size="1.3em" /> : <FileText size="1.3em" />}</span>
       <span className="quebra quadro-arquivo-nome">{cartao.texto || tq.abrir}</span>
-      {cartao.tipo === "link" ? <ExternalLink aria-hidden="true" size="1em" /> : <Download aria-hidden="true" size="1em" />}
+      {cartao.tipo === "link" ? <ExternalLink aria-hidden="true" size="1em" /> : <ChevronLeft aria-hidden="true" size="1em" style={{ transform: "rotate(180deg)" }} />}
     </Button>
   );
 }
 
+/** Pré-visualização dentro do app: imagem ampliada ou PDF rolável; com baixar. */
+function PreviaArquivo({ cartao, aoFechar }: { cartao: CartaoQuadro; aoFechar: () => void }) {
+  const alvo = useRef<HTMLDivElement>(null);
+  const recado = useRecado();
+  const ehPdf = ehNomePdf(cartao.texto);
+  const ehImagem = cartao.tipo === "imagem";
+
+  useEffect(() => {
+    if (!ehPdf) return;
+    let vivo = true;
+    const cont = alvo.current;
+    if (!cont) return;
+    const leitor = new Leitor(cont);
+    (async () => {
+      try {
+        const b64 = await api.bytesAnexo(cartao.anexoId);
+        if (!vivo || !b64) return;
+        await leitor.abrir(base64ParaBytes(b64), "pdf", CONFIG_PADRAO);
+      } catch {
+        // Sem prévia; a pessoa abre no programa.
+      }
+    })();
+    return () => {
+      vivo = false;
+      leitor.destruir();
+    };
+  }, [cartao.anexoId, ehPdf]);
+
+  const baixar = async () => {
+    const caminho = await escolherOndeSalvarAnexo(cartao.texto || "arquivo");
+    if (caminho) {
+      await api.salvarAnexo(cartao.anexoId, caminho);
+      recado(textos.relacoes.salvo);
+    }
+  };
+
+  return (
+    <div className="previa-sobreposicao" role="dialog" aria-label={cartao.texto || tq.abrir}>
+      <div className="previa-caixa">
+        <div className="previa-topo">
+          <strong className="quebra">{cartao.texto || tq.abrir}</strong>
+          <Button className="botao-icone" onPress={aoFechar} aria-label={tq.fechar}><X aria-hidden="true" size="1.2em" /></Button>
+        </div>
+        <div className="previa-corpo">
+          {ehImagem ? (
+            <ImagemAnexo id={cartao.anexoId} nome={cartao.texto} className="previa-imagem" />
+          ) : ehPdf ? (
+            <div className="previa-pdf" ref={alvo} />
+          ) : (
+            <p className="texto-suave previa-semprevia">{tq.semPrevia}</p>
+          )}
+        </div>
+        <div className="previa-acoes">
+          <Button className="botao com-icone" onPress={() => void api.abrirAnexo(cartao.anexoId)}><ExternalLink aria-hidden="true" size="1em" /> {tq.abrirPrograma}</Button>
+          <Button className="botao com-icone" onPress={() => void baixar()}><Download aria-hidden="true" size="1em" /> {tq.baixar}</Button>
+          <Button className="botao principal" onPress={aoFechar}>{tq.fechar}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Tocador de um áudio guardado no cofre. */
-function AudioAnexo({ id }: { id: string }) {
+function AudioAnexo({ id, nome }: { id: string; nome: string }) {
   const [src, setSrc] = useState<string | null>(null);
+  const ext = (nome.split(".").pop() ?? "webm").toLowerCase();
+  const mime = ext === "mp3" ? "audio/mpeg" : ext === "m4a" || ext === "aac" ? "audio/mp4" : ext === "wav" ? "audio/wav" : ext === "ogg" || ext === "oga" || ext === "opus" ? "audio/ogg" : "audio/webm";
   useEffect(() => {
     let vivo = true;
-    api.bytesAnexo(id).then((b64) => vivo && b64 && setSrc(`data:audio/webm;base64,${b64}`), () => {});
+    api.bytesAnexo(id).then((b64) => vivo && b64 && setSrc(`data:${mime};base64,${b64}`), () => {});
     return () => void (vivo = false);
-  }, [id]);
+  }, [id, mime]);
   return src ? <audio className="quadro-audio" controls src={src} /> : <span className="texto-suave pequeno">{tq.audio.salvando}</span>;
 }
 
-/** Grava áudio pelo microfone (MediaRecorder) e guarda como anexo. */
-function GravadorAudio({ hobbyId, aoGravado, aoFechar }: { hobbyId: string; aoGravado: (a: Anexo) => void; aoFechar: () => void }) {
+/** Grava áudio pelo microfone (MediaRecorder) e guarda como anexo; ou anexa um áudio existente. */
+function GravadorAudio({ hobbyId, aoGravado, aoAnexarExistente, aoFechar }: { hobbyId: string; aoGravado: (a: Anexo) => void; aoAnexarExistente: () => void; aoFechar: () => void }) {
   const [estado, setEstado] = useState<"parado" | "gravando" | "salvando">("parado");
   const [segundos, setSegundos] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
@@ -401,6 +534,10 @@ function GravadorAudio({ hobbyId, aoGravado, aoFechar }: { hobbyId: string; aoGr
   const comecar = async () => {
     setErro(null);
     try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+        setErro(tq.audio.semMic);
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       fluxo.current = stream;
       pedacos.current = [];
@@ -411,6 +548,7 @@ function GravadorAudio({ hobbyId, aoGravado, aoFechar }: { hobbyId: string; aoGr
       setSegundos(0);
       setEstado("gravando");
     } catch {
+      pararFluxo();
       setErro(tq.audio.semMic);
     }
   };
@@ -460,6 +598,11 @@ function GravadorAudio({ hobbyId, aoGravado, aoFechar }: { hobbyId: string; aoGr
       {estado === "gravando" && <p className="quadro-gravando" aria-live="polite"><Mic aria-hidden="true" size="1.1em" /> {tq.audio.gravando} {mm}:{ss}</p>}
       {estado === "salvando" && <p className="texto-suave" aria-live="polite">{tq.audio.salvando}</p>}
       <Aviso>{erro}</Aviso>
+      {estado !== "gravando" && (
+        <Button className="botao com-icone" onPress={aoAnexarExistente} isDisabled={estado === "salvando"}>
+          <FileUp aria-hidden="true" size="1em" /> {tq.audio.anexar}
+        </Button>
+      )}
       <div className="janela-acoes">
         <Button className="botao" onPress={cancelar}>{tq.audio.cancelar}</Button>
         {estado === "gravando" ? (
