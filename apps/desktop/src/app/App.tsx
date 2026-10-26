@@ -24,6 +24,7 @@ import { PaginaCuidado } from "../cuidado/Cuidado";
 import { PaginaEstudos } from "../academico/Estudos";
 import { PaginaDinheiro } from "../dinheiro/Dinheiro";
 import { PaginaHobbies } from "../hobbies/Hobbies";
+import { PaginaOrganizacao } from "../organizacao/Organizacao";
 import { PaginaLeitura } from "../leitura/Leitura";
 import { AvisosDeTransicao } from "./Avisos";
 import { Ideias } from "../paginas/Ideias";
@@ -184,7 +185,8 @@ export function App() {
   else if (!situacao.aberto) tela = <Desbloquear key={situacao.modo} situacao={situacao} aoAbrir={aoAbrir} />;
   else {
     let pagina;
-    if (secao === "ideias") pagina = <Ideias />;
+    if (secao === "organizacao") pagina = <PaginaOrganizacao />;
+    else if (secao === "ideias") pagina = <Ideias />;
     else if (secao === "agenda") pagina = <Agenda aoAbrirProjeto={abrirProjeto} />;
     else if (secao === "rotinas") pagina = <Rotinas />;
     else if (secao === "foco") pagina = <PaginaFoco />;

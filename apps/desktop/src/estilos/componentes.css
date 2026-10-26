@@ -698,6 +698,33 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .leitor-anotacao + .leitor-anotacao { border-top: 1px solid var(--cor-borda-suave); }
 .leitor-anotacao-topo { display: flex; align-items: center; gap: var(--espaco-2); }
 
+/* Minha organização: quadros (Trello) e listas. */
+.org-abrir { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--espaco-2); background: none; border: none; color: var(--cor-texto); font: inherit; text-align: left; cursor: pointer; padding: 0; }
+.org-tela { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--cor-fundo); }
+.org-corpo { flex: 1; min-height: 0; overflow: auto; padding: var(--espaco-4); }
+.org-quadro { display: flex; gap: var(--espaco-3); align-items: flex-start; min-height: 100%; }
+.org-coluna { flex: 0 0 16rem; max-width: 16rem; display: flex; flex-direction: column; gap: var(--espaco-2); background: var(--cor-superficie); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-2); padding: var(--espaco-3); }
+.org-coluna.sobre { outline: 2px dashed var(--cor-destaque); outline-offset: 2px; }
+.org-coluna-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-2); }
+.org-coluna-titulo { font-size: 1rem; margin: 0; }
+.org-coluna-nova { flex: 0 0 12rem; padding-top: var(--espaco-2); }
+.org-cartoes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--espaco-2); }
+.org-cartao { display: flex; align-items: flex-start; gap: var(--espaco-1); background: var(--cor-fundo); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-1); padding: var(--espaco-2); }
+.org-cartao.arrastando { opacity: 0.6; }
+.org-cartao.feito .org-cartao-texto { text-decoration: line-through; color: var(--cor-texto-suave); }
+.org-alca { display: inline-flex; align-items: center; color: var(--cor-texto-suave); cursor: grab; touch-action: none; padding: 0.1rem; }
+.org-alca:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
+.org-cartao-check { display: inline-flex; align-items: center; }
+.org-cartao-texto { flex: 1; min-width: 0; }
+.org-novo-cartao { margin-top: var(--espaco-1); }
+.org-lista { display: flex; flex-direction: column; gap: var(--espaco-3); }
+.org-lista-nova { display: flex; gap: var(--espaco-2); align-items: center; }
+.org-lista-nova input { flex: 1; min-width: 0; }
+.org-itens { display: flex; flex-direction: column; gap: var(--espaco-1); }
+.org-item { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--espaco-2); padding: var(--espaco-2); border-bottom: 1px solid var(--cor-borda-suave); }
+.org-item-check { display: flex; align-items: flex-start; gap: var(--espaco-2); flex: 1; min-width: 0; cursor: pointer; }
+.org-item.feito .org-item-check span { text-decoration: line-through; color: var(--cor-texto-suave); }
+
 /* Quadro livre de um hobby. */
 .quadro-hobby { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--cor-fundo); }
 .quadro-rolagem { flex: 1; min-height: 0; overflow: auto; position: relative; }
