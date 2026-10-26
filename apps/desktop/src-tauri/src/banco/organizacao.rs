@@ -108,7 +108,8 @@ pub fn excluir_quadro(conn: &Connection, id: &str) -> Result<(), Erro> {
     let agora = agora_ms();
     let colunas: Vec<String> = {
         let mut c = conn.prepare("SELECT id FROM item WHERE tipo = 'org_coluna' AND pai_id = ?1 AND excluido_em IS NULL")?;
-        c.query_map([id], |r| r.get(0))?.collect::<Result<_, _>>()?
+        let v = c.query_map([id], |r| r.get::<_, String>(0))?.collect::<Result<Vec<String>, _>>()?;
+        v
     };
     for col in &colunas {
         conn.execute("UPDATE item SET excluido_em = ?2, alterado_em = ?2 WHERE tipo = 'org_cartao' AND pai_id = ?1", params![col, agora])?;

@@ -9,7 +9,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
-use super::{agora_ms, gravar_config, ler_config, novo_id};
+use super::{agora_ms, ler_config, novo_id};
 use crate::erro::Erro;
 
 const CONFIG_PLANO: &str = "plano_de_crise";
@@ -718,7 +718,7 @@ mod testes {
     #[test]
     fn migra_plano_de_crise_antigo_para_a_colecao() {
         let (_p, conn) = banco();
-        gravar_config(&conn, CONFIG_PLANO, r#"{"sinais":"aperto no peito","ajuda":"sair do barulho","contatos":"irmã"}"#).unwrap();
+        crate::banco::gravar_config(&conn, CONFIG_PLANO, r#"{"sinais":"aperto no peito","ajuda":"sair do barulho","contatos":"irmã"}"#).unwrap();
         let planos = listar_planos(&conn).unwrap();
         assert_eq!(planos.len(), 1);
         assert_eq!((planos[0].tipo.as_str(), planos[0].sinais.as_str(), planos[0].contatos.as_str()), ("crise", "aperto no peito", "irmã"));
