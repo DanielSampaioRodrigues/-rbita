@@ -1,3 +1,13 @@
+- **Caderno (começo): a estante**: uma seção nova para seus **cadernos**. Você cria quantos quiser, escolhendo o **modo** — *caderno* (com páginas A4, A5 ou carta) ou *quadro infinito* (um espaço sem bordas) — organiza em **pastas** e dá uma **capa** (uma cor ou uma da galeria). Por enquanto você monta e organiza os cadernos e as páginas; **a escrita e o desenho à mão, com caneta, vêm no próximo passo**. É a base do maior recurso do app.
+
+- **Resumo legível dos seus dados (.md)**: em *Ajustes → Exportar meus dados*, um botão novo gera um **documento de texto** com tudo o que você guardou, por seção (ideias, agenda, saúde, dinheiro, estudos…), para **ler ou imprimir** — diferente do JSON, que é mais técnico.
+
+- **Minha organização — correções**: os botões de **subir e descer** agora movem o cartão de verdade, e cada cartão do quadro ganhou um **lápis** bem visível para editar (texto, cor e prazo) — antes só abria clicando no texto, o que não era óbvio.
+
+---
+
+<!-- Abaixo: o que veio na 0.44.0. -->
+
 - **Exportar meus dados (novo)**: em Ajustes, um lugar para **levar seus dados para fora** em formatos que qualquer programa abre. A **agenda** sai em **.ics** (importa no Google Agenda e afins, com as repetições), os **gastos** e os **registros de saúde** em **.csv** (abrem no Excel ou no Google Planilhas) e **tudo** num **.json**, com todos os módulos. Diferente do backup, estes arquivos não são criptografados — guarde num lugar seguro. É o seu direito de nunca ficar preso ao app.
 
 - **Minha organização mais completa**: agora dá para **renomear e apagar as colunas** (o lápis e a lixeira funcionam), **editar cada cartão** num painel com **texto, cor e prazo** (a cor vira uma faixa na lateral e o prazo um selo com a data), e **reordenar** os cartões dentro da coluna com os botões de subir e descer — pelo mouse ou pelo teclado. O arrastar entre colunas continua igual.
