@@ -556,6 +556,13 @@
 .cor-opcao { display: inline-flex; align-items: center; gap: 0.4em; padding: var(--espaco-1) var(--espaco-2); border: 1px solid var(--cor-borda-controle); border-radius: var(--canto); cursor: pointer; }
 .cor-opcao[data-selected] { border-color: var(--cor-destaque); border-width: 2px; font-weight: 650; }
 .cor-opcao[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.cor-opcao.cor-livre { position: relative; }
+.cor-opcao.cor-livre.atual { border-color: var(--cor-destaque); border-width: 2px; }
+.cor-opcao.cor-livre .etiqueta-cor { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--cor-borda-controle); color: var(--cor-texto-suave); }
+.cor-opcao.cor-livre input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; padding: 0; border: none; cursor: pointer; }
+.caderno-intervalo { display: flex; gap: var(--espaco-4); flex-wrap: wrap; align-items: center; }
+.caderno-intervalo-campo { display: inline-flex; align-items: center; gap: 0.4em; }
+.caderno-intervalo-campo input { width: 4rem; padding: var(--espaco-1) var(--espaco-2); border: 1px solid var(--cor-borda-controle); border-radius: var(--canto); background: var(--cor-fundo); color: inherit; }
 .lista-ligadas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
 .lista-ligadas li { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-3); padding: var(--espaco-2) var(--espaco-3); border: 1px solid var(--cor-borda); border-radius: var(--canto); flex-wrap: wrap; }
 .pagina > .quadro-ideias, .pagina > .mural, .pagina > .barra-ideias { align-self: stretch; }

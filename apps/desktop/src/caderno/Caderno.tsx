@@ -375,10 +375,24 @@ const HEX_ETIQUETA: Record<string, string> = {
   musgo: "#5b7a4c", mar: "#2e7a80", ceu: "#44709f", lavanda: "#7c68a8",
   rosa: "#a95b7f", terra: "#94603d", areia: "#8f7738", cinza: "#6f747c",
 };
+/** Resolve uma cor da folha: hex livre (#rrggbb), nome da paleta, ou padrão. */
+function resolverCorFolha(valor: string, padrao: string): string {
+  if (!valor) return padrao;
+  if (valor.startsWith("#")) return valor;
+  return HEX_ETIQUETA[valor] ?? padrao;
+}
+/** Aplica opacidade a uma cor #rrggbb, virando rgba(); 1 mantém como está. */
+function corComAlfa(base: string, alfa: number): string {
+  if (alfa >= 1) return base;
+  const m = /^#([0-9a-fA-F]{6})$/.exec(base);
+  if (!m) return base;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${Math.max(0, alfa).toFixed(2)})`;
+}
 function coresDaFolha(papel: Papel): CoresPapel {
   return {
-    fundo: papel.corPapel ? HEX_ETIQUETA[papel.corPapel] ?? "#ffffff" : "#ffffff",
-    linha: papel.corLinha ? HEX_ETIQUETA[papel.corLinha] ?? "#c9ccd4" : "#c9ccd4",
+    fundo: corComAlfa(resolverCorFolha(papel.corPapel, "#ffffff"), papel.opacPapel ?? 1),
+    linha: corComAlfa(resolverCorFolha(papel.corLinha, "#c9ccd4"), papel.opacLinha ?? 1),
   };
 }
 function folhaDe(pagina: PaginaCaderno): Papel {
@@ -843,9 +857,12 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       setErro(mensagem(e));
     }
   };
-  const aplicarFolha = async (papel: Papel, todas: boolean) => {
+  const aplicarFolha = async (papel: Papel, alvo: AlvoFolha) => {
     setEditor(false);
-    const alvos = todas ? paginas : sel ? [sel] : [];
+    let alvos: PaginaCaderno[];
+    if (alvo === "todas") alvos = paginas;
+    else if (alvo === "atual") alvos = sel ? [sel] : [];
+    else alvos = paginas.slice(Math.max(0, alvo.de - 1), alvo.ate); // intervalo (1-based, inclusivo)
     try {
       for (const pg of alvos) await api.salvarPaginaCaderno({ ...pg, papel });
       await carregar();
@@ -972,7 +989,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       </Janela>
 
       <Janela titulo={t.folha.titulo} aberta={editor} aoFechar={() => setEditor(false)}>
-        {editor && <EditorFolha inicial={sel ? folhaDe(sel) : papelPadrao()} tamanho={sel?.tamanho ?? "a4"} varias={paginas.length > 1} aoAplicar={aplicarFolha} aoFechar={() => setEditor(false)} />}
+        {editor && <EditorFolha inicial={sel ? folhaDe(sel) : papelPadrao()} tamanho={sel?.tamanho ?? "a4"} total={paginas.length} atual={Math.max(1, paginas.findIndex((p) => p.id === selId) + 1)} aoAplicar={aplicarFolha} aoFechar={() => setEditor(false)} />}
       </Janela>
 
       <Janela titulo={t.barraCor.titulo} aberta={corBarraAberta} aoFechar={() => setCorBarraAberta(false)} pequena>
@@ -1616,8 +1633,9 @@ function AjustesBorracha({ tamanho, aoMudar, aoFechar }: { tamanho: number; aoMu
 }
 
 function PickCor({ rotulo, valor, aoMudar }: { rotulo: string; valor: string; aoMudar: (c: string) => void }) {
+  const livre = valor.startsWith("#");
   return (
-    <RadioGroup className="campo" value={valor} onChange={aoMudar} orientation="horizontal">
+    <RadioGroup className="campo" value={livre ? "" : valor} onChange={aoMudar} orientation="horizontal">
       <Label className="campo-rotulo">{rotulo}</Label>
       <div className="cores-etiqueta">
         <Radio value="" className="cor-opcao" aria-label={t.folha.padraoCor}>
@@ -1628,14 +1646,30 @@ function PickCor({ rotulo, valor, aoMudar }: { rotulo: string; valor: string; ao
             <span className={`etiqueta-cor grande cor-${c}`} aria-hidden="true" />
           </Radio>
         ))}
+        <label className={livre ? "cor-opcao cor-livre atual" : "cor-opcao cor-livre"} title={t.folha.corLivre}>
+          <input type="color" value={livre ? valor : "#000000"} onChange={(e) => aoMudar(e.target.value)} aria-label={t.folha.corLivre} />
+          <span className="etiqueta-cor grande" style={{ background: livre ? valor : undefined }} aria-hidden="true">{!livre && <Plus size="0.9em" aria-hidden="true" />}</span>
+        </label>
       </div>
     </RadioGroup>
   );
 }
 
-function EditorFolha({ inicial, tamanho, varias, aoAplicar, aoFechar }: { inicial: Papel; tamanho: string; varias: boolean; aoAplicar: (p: Papel, todas: boolean) => void; aoFechar: () => void }) {
+type AlvoFolha = "atual" | "todas" | { de: number; ate: number };
+function EditorFolha({ inicial, tamanho, total, atual, aoAplicar, aoFechar }: { inicial: Papel; tamanho: string; total: number; atual: number; aoAplicar: (p: Papel, alvo: AlvoFolha) => void; aoFechar: () => void }) {
   const [papel, setPapel] = useState<Papel>(inicial);
+  const varias = total > 1;
+  const [alvo, setAlvo] = useState<"atual" | "intervalo" | "todas">("atual");
+  const [de, setDe] = useState(atual);
+  const [ate, setAte] = useState(total);
   const mudar = (campo: Partial<Papel>) => setPapel((p) => ({ ...p, ...campo }));
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const aplicar = () => {
+    if (!varias || alvo === "atual") return aoAplicar(papel, "atual");
+    if (alvo === "todas") return aoAplicar(papel, "todas");
+    const d = Math.min(de, ate), a = Math.max(de, ate);
+    aoAplicar(papel, { de: Math.max(1, d), ate: Math.min(total, a) });
+  };
   return (
     <div className="formulario">
       <div className="caderno-folha-previa"><Folha papel={papel} tamanho={tamanho} className="caderno-folha" /></div>
@@ -1653,10 +1687,11 @@ function EditorFolha({ inicial, tamanho, varias, aoAplicar, aoFechar }: { inicia
       </div>
 
       <PickCor rotulo={t.folha.corPapel} valor={papel.corPapel} aoMudar={(corPapel) => mudar({ corPapel })} />
-      {papel.modelo !== "liso" && <PickCor rotulo={t.folha.corLinha} valor={papel.corLinha} aoMudar={(corLinha) => mudar({ corLinha })} />}
-
+      <Deslizante rotulo={t.folha.opacPapel} valor={papel.opacPapel ?? 1} min={0.1} max={1} passo={0.05} aoMudar={(n) => mudar({ opacPapel: n })} mostrar={pct} />
       {papel.modelo !== "liso" && (
         <>
+          <PickCor rotulo={t.folha.corLinha} valor={papel.corLinha} aoMudar={(corLinha) => mudar({ corLinha })} />
+          <Deslizante rotulo={t.folha.opacLinha} valor={papel.opacLinha ?? 1} min={0.1} max={1} passo={0.05} aoMudar={(n) => mudar({ opacLinha: n })} mostrar={pct} />
           <Segmentado rotulo={t.folha.espacamento} valor={String(papel.espacamento)} aoMudar={(v) => mudar({ espacamento: Number(v) })} opcoes={[{ valor: "24", nome: t.folha.espacamentos.apertado }, { valor: "32", nome: t.folha.espacamentos.normal }, { valor: "44", nome: t.folha.espacamentos.largo }]} />
           <Segmentado rotulo={t.folha.espessura} valor={String(papel.espessura)} aoMudar={(v) => mudar({ espessura: Number(v) })} opcoes={[{ valor: "0.6", nome: t.folha.espessuras.fina }, { valor: "1", nome: t.folha.espessuras.media }, { valor: "2", nome: t.folha.espessuras.grossa }]} />
         </>
@@ -1664,10 +1699,26 @@ function EditorFolha({ inicial, tamanho, varias, aoAplicar, aoFechar }: { inicia
       <Interruptor rotulo={t.folha.margem} ligado={papel.margem} aoMudar={(margem) => mudar({ margem })} />
       <Interruptor rotulo={t.folha.cabecalho} ligado={papel.cabecalho} aoMudar={(cabecalho) => mudar({ cabecalho })} />
 
+      {varias && (
+        <>
+          <Segmentado rotulo={t.folha.aplicarEm} valor={alvo} aoMudar={(v) => setAlvo(v as typeof alvo)}
+            opcoes={[{ valor: "atual", nome: t.folha.alvos.atual }, { valor: "intervalo", nome: t.folha.alvos.intervalo }, { valor: "todas", nome: t.folha.alvos.todas }]} />
+          {alvo === "intervalo" && (
+            <div className="caderno-intervalo">
+              <label className="caderno-intervalo-campo">{t.folha.intervaloDe}
+                <input type="number" min={1} max={total} value={de} onChange={(e) => setDe(Number(e.target.value))} aria-label={t.folha.intervaloDe} />
+              </label>
+              <label className="caderno-intervalo-campo">{t.folha.intervaloAte}
+                <input type="number" min={1} max={total} value={ate} onChange={(e) => setAte(Number(e.target.value))} aria-label={t.folha.intervaloAte} />
+              </label>
+            </div>
+          )}
+        </>
+      )}
+
       <div className="janela-acoes">
         <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
-        {varias && <Button className="botao" onPress={() => aoAplicar(papel, true)}>{t.folha.aplicarTodas}</Button>}
-        <Button className="botao principal" onPress={() => aoAplicar(papel, false)}>{t.folha.aplicar}</Button>
+        <Button className="botao principal" onPress={aplicar}>{t.folha.aplicar}</Button>
       </div>
     </div>
   );

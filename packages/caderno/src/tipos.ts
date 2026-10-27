@@ -25,9 +25,12 @@ export const MODELOS_PAPEL: ModeloPapel[] = ["liso", "pautado", "quadriculado", 
 /** A folha: fundo e linhas. Vale por página (cada página pode ter a sua). */
 export interface Papel {
   modelo: ModeloPapel;
-  /** Nome de cor da paleta, ou vazio para o padrão do tema. */
+  /** Nome de cor da paleta, um hex livre (#rrggbb), ou vazio para o padrão. */
   corPapel: string;
   corLinha: string;
+  /** Opacidade do fundo e das linhas (0..1). Ausente = 1 (cheio). */
+  opacPapel?: number;
+  opacLinha?: number;
   /** Distância entre linhas, em px. */
   espacamento: number;
   /** Espessura das linhas, em px. */

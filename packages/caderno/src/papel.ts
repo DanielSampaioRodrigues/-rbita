@@ -39,7 +39,9 @@ function linhasDoModelo(papel: Papel, largura: number, altura: number, cor: stri
       for (let x = x0 + esp; x < largura; x += esp) el.push(linhaV(x, y0, altura, cor, lw));
       break;
     case "pontilhado": {
-      const r = Math.max(0.6, lw);
+      // Pontos visíveis: antes ficavam minúsculos (0,6 px) e a folha parecia
+      // lisa. Agora acompanham a espessura, com um mínimo que se enxerga.
+      const r = Math.max(1.6, lw * 1.4);
       for (let y = y0 + esp; y < altura; y += esp)
         for (let x = x0 + esp; x < largura; x += esp) el.push(ponto(x, y, r, cor));
       break;
