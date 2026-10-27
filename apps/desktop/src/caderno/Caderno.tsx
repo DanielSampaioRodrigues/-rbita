@@ -64,6 +64,10 @@ export function PaginaCaderno() {
   const [excluindoPasta, setExcluindoPasta] = useState<PastaCaderno | null>(null);
   const [pastaAberta, setPastaAberta] = useState<PastaCaderno | null>(null);
   const [aberto, setAberto] = useState<Caderno | null>(null);
+  const [recentes, setRecentes] = useState<string[]>(() => {
+    try { const s = localStorage.getItem("caderno-recentes"); if (s) { const v = JSON.parse(s); if (Array.isArray(v)) return v; } } catch { /* ignora */ }
+    return [];
+  });
   const [erro, setErro] = useState<string | null>(null);
   const [ia, setIa] = useState<EstadoIa | null>(null);
   useEffect(() => { api.estadoIa().then(setIa, () => {}); }, []);
@@ -87,8 +91,20 @@ export function PaginaCaderno() {
     avisarMudanca();
   };
 
+  const abrir = (c: Caderno) => {
+    setRecentes((r) => {
+      const novo = [c.id, ...r.filter((x) => x !== c.id)].slice(0, 8);
+      try { localStorage.setItem("caderno-recentes", JSON.stringify(novo)); } catch { /* ignora */ }
+      return novo;
+    });
+    setAberto(c);
+  };
+
   const atual = aberto ? cadernos.find((c) => c.id === aberto.id) ?? aberto : null;
-  if (atual) return <CadernoAberto caderno={atual} aoFechar={() => setAberto(null)} />;
+  if (atual) {
+    const abas = recentes.map((id) => cadernos.find((c) => c.id === id)).filter((c): c is Caderno => !!c);
+    return <CadernoAberto key={atual.id} caderno={atual} abas={abas} aoTrocar={abrir} aoFechar={() => setAberto(null)} />;
+  }
 
   const porPasta = (pastaId: string) => cadernos.filter((c) => c.pastaId === pastaId);
   const semPasta = cadernos.filter((c) => !c.pastaId || !pastas.some((p) => p.id === c.pastaId));
@@ -120,7 +136,7 @@ export function PaginaCaderno() {
           <div className="botoes">
             <Button className="botao principal" onPress={() => setEditando(novo(dentro.id))}><Plus aria-hidden="true" size="1.1em" /> {t.novo}</Button>
           </div>
-          <GradeCadernos cadernos={porPasta(dentro.id)} aoAbrir={setAberto} aoEditar={setEditando} aoExcluir={setExcluindo} pastas={pastas} aoMover={moverParaPasta} />
+          <GradeCadernos cadernos={porPasta(dentro.id)} aoAbrir={abrir} aoEditar={setEditando} aoExcluir={setExcluindo} pastas={pastas} aoMover={moverParaPasta} />
         </>
       ) : (
         <>
@@ -146,7 +162,7 @@ export function PaginaCaderno() {
           ) : (
             <section className="caderno-grupo">
               {pastas.length > 0 && <h2 className="caderno-grupo-titulo">{t.semPasta} <span className="texto-suave">({semPasta.length})</span></h2>}
-              <GradeCadernos cadernos={semPasta} aoAbrir={setAberto} aoEditar={setEditando} aoExcluir={setExcluindo} pastas={pastas} aoMover={moverParaPasta} />
+              <GradeCadernos cadernos={semPasta} aoAbrir={abrir} aoEditar={setEditando} aoExcluir={setExcluindo} pastas={pastas} aoMover={moverParaPasta} />
             </section>
           )}
         </>
@@ -528,7 +544,7 @@ function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; c
   return <div className={className} style={{ aspectRatio: `${med.largura} / ${med.altura}`, backgroundImage: `url("${uri}")`, backgroundSize: "100% 100%", backgroundColor: coresDaFolha(papel).fundo }} />;
 }
 
-function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () => void }) {
+function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno; abas: Caderno[]; aoTrocar: (c: Caderno) => void; aoFechar: () => void }) {
   useEntrarImersivo();
   const [paginas, setPaginas] = useState<PaginaCaderno[]>([]);
   const [tamanho, setTamanho] = useState<"a4" | "a5" | "carta">("a4");
@@ -921,6 +937,19 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
           <Button className="botao-icone" onPress={() => setEditor(true)} aria-label={t.folha.abrir}><SlidersHorizontal aria-hidden="true" size="1.1em" /></Button>
         </span>
       </div>
+
+      {abas.length > 1 && (
+        <div className="caderno-abas" role="tablist" aria-label={t.abas}>
+          {abas.map((c) => (
+            <button key={c.id} type="button" role="tab" aria-selected={c.id === caderno.id}
+              className={c.id === caderno.id ? "caderno-aba atual" : "caderno-aba"}
+              onClick={() => c.id !== caderno.id && aoTrocar(c)}>
+              {c.modo === "infinito" ? <LayoutGrid aria-hidden="true" size="0.9em" /> : <PenLine aria-hidden="true" size="0.9em" />}
+              <span className="quebra">{c.nome}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {erro && <div className="leitor-aviso"><Aviso>{erro}</Aviso></div>}
 
