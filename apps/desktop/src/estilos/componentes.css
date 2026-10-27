@@ -916,8 +916,10 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .caderno-selecao-svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 .caderno-laco { fill: color-mix(in srgb, var(--cor-destaque) 14%, transparent); stroke: var(--cor-destaque); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .caderno-sel-caixa { fill: none; stroke: var(--cor-destaque); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.caderno-sel-alca { fill: var(--cor-superficie); stroke: var(--cor-destaque); stroke-width: 1.5; }
-.caderno-sel-apagar { position: absolute; transform: translate(-35%, -125%); background: var(--cor-superficie); border: 1px solid var(--cor-borda); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); z-index: 3; }
+.caderno-sel-alca { fill: var(--cor-superficie); stroke: var(--cor-destaque); stroke-width: 1.5; cursor: nwse-resize; }
+.caderno-sel-haste { stroke: var(--cor-destaque); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.caderno-sel-girar { fill: var(--cor-destaque); stroke: var(--cor-superficie); stroke-width: 1.5; cursor: grab; }
+.caderno-sel-acoes { position: absolute; transform: translate(-35%, -125%); display: inline-flex; gap: 0.15rem; padding: 0.15rem; background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: 999px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); z-index: 3; }
 
 /* Régua: faixa translúcida com traços e números. Só o corpo e as pontas
    capturam o toque; desenha-se encostando na borda de cima (a linha). */

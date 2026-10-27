@@ -29,7 +29,12 @@ export function pontosDoElemento(el: Elemento, alturaTexto: AlturaTexto): Ponto2
     return [[el.x, el.y], [el.x + el.largura, el.y], [el.x + el.largura, el.y + h], [el.x, el.y + h]];
   }
   if (el.tipo === "imagem") {
-    return [[el.x, el.y], [el.x + el.largura, el.y], [el.x + el.largura, el.y + el.altura], [el.x, el.y + el.altura]];
+    const cantos: Ponto2[] = [[el.x, el.y], [el.x + el.largura, el.y], [el.x + el.largura, el.y + el.altura], [el.x, el.y + el.altura]];
+    if (!el.rot) return cantos;
+    // Imagem girada: devolve os cantos já rotacionados (para a caixa envolver certo).
+    const cx = el.x + el.largura / 2, cy = el.y + el.altura / 2;
+    const r = (el.rot * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+    return cantos.map(([x, y]) => [cx + (x - cx) * co - (y - cy) * si, cy + (x - cx) * si + (y - cy) * co] as Ponto2);
   }
   // forma
   if (el.forma === "reta" || el.forma === "seta") return [[el.x1, el.y1], [el.x2, el.y2]];
@@ -88,4 +93,22 @@ export function escalar(el: Elemento, ax: number, ay: number, fator: number): El
   }
   const f = el as Forma;
   return { ...f, x1: ex(f.x1), y1: ey(f.y1), x2: ex(f.x2), y2: ey(f.y2), espessura: Math.max(0.5, f.espessura * fator) };
+}
+
+/** Gira o elemento por `graus` (horário) em torno do pivô (ax, ay). As imagens
+ *  guardam o giro (rot); traços e formas giram os próprios pontos. O texto não
+ *  gira (fica em pé), só acompanha o pivô se for o caso. Novo elemento. */
+export function rotacionar(el: Elemento, ax: number, ay: number, graus: number): Elemento {
+  const r = (graus * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+  const gx = (x: number, y: number) => ax + (x - ax) * co - (y - ay) * si;
+  const gy = (x: number, y: number) => ay + (x - ax) * si + (y - ay) * co;
+  if (el.tipo === "traco") return { ...el, pontos: el.pontos.map((p) => ({ ...p, x: gx(p.x, p.y), y: gy(p.x, p.y) })) };
+  if (el.tipo === "forma") return { ...el, x1: gx(el.x1, el.y1), y1: gy(el.x1, el.y1), x2: gx(el.x2, el.y2), y2: gy(el.x2, el.y2) };
+  if (el.tipo === "imagem") {
+    // Gira o centro em torno do pivô e soma ao giro próprio.
+    const cx = el.x + el.largura / 2, cy = el.y + el.altura / 2;
+    const ncx = gx(cx, cy), ncy = gy(cx, cy);
+    return { ...el, x: ncx - el.largura / 2, y: ncy - el.altura / 2, rot: ((el.rot ?? 0) + graus) };
+  }
+  return el; // texto: não gira
 }

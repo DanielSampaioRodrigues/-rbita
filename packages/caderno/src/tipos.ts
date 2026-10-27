@@ -126,6 +126,8 @@ export interface Imagem {
   altura: number;
   /** Id do anexo (no cofre) com os bytes da imagem. */
   anexoId: string;
+  /** Rotação em graus (horário), em torno do centro. Ausente = 0. */
+  rot?: number;
 }
 
 export type Elemento = Traco | Texto | Forma | Imagem;

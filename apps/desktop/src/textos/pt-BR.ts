@@ -1024,8 +1024,11 @@ export const textos = {
       ajuda: "Arraste de um canto ao outro para desenhar a forma. A borracha também apaga formas.",
     },
     laco: {
-      ajuda: "Contorne com um laço o que quer selecionar. Depois arraste para mover, toque numa cor para recolorir, ou use a lixeira para apagar.",
+      ajuda: "Toque num objeto para selecioná-lo, ou contorne vários com um laço. Depois arraste para mover, use as pontas para redimensionar, a alça de cima para girar, ou toque numa cor para recolorir.",
       apagar: "Apagar o que está selecionado",
+      paraFrente: "Trazer para a frente",
+      paraTras: "Enviar para trás",
+      girar: "Girar",
     },
     imagem: {
       inserir: "Inserir imagem",

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FERRAMENTAS, formaAtingida, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, TIPOS_FORMA, tracoAtingido, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type Papel, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
+import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FERRAMENTAS, formaAtingida, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, tracoAtingido, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type Papel, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
 import { reduzirImagem } from "../fundo";
 import { useReescrever } from "../ia/Reescrever";
@@ -11,7 +11,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Sticker, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Sticker, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { CapaEditor, RenderCapaCena } from "./CapaEditor";
 import { lerCenaCapa, serializarCenaCapa, temCapaCena, type CenaCapa } from "./capa";
@@ -742,6 +742,16 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     });
   const moverSelecao = (pid: string, ids: string[], dx: number, dy: number) => transformarSelecao(pid, ids, (el) => transladar(el, dx, dy));
   const escalarSelecao = (pid: string, ids: string[], ax: number, ay: number, fator: number) => transformarSelecao(pid, ids, (el) => escalar(el, ax, ay, fator));
+  const rotacionarSelecao = (pid: string, ids: string[], ax: number, ay: number, graus: number) => transformarSelecao(pid, ids, (el) => rotacionar(el, ax, ay, graus));
+  // Ordenar camadas: leva os selecionados para a frente (fim) ou para trás
+  // (início) da lista de elementos, preservando a ordem entre eles.
+  const ordenarSelecao = (pid: string, ids: string[], frente: boolean) =>
+    mudarCena(pid, (() => {
+      const els = cenas[pid]?.elementos ?? [];
+      const sel = els.filter((e) => ids.includes(e.id));
+      const resto = els.filter((e) => !ids.includes(e.id));
+      return { elementos: frente ? [...resto, ...sel] : [...sel, ...resto] };
+    })());
   const fimGestoSelecao = (pid: string) => registrarCena(pid, cenasRef.current[pid] ?? cenaVazia());
   const recolorirSelecao = (c: string) => {
     if (!selPid || !selIds.length) return;
@@ -931,6 +941,8 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
                   aoSelecionarLaco={(ids) => selecionarLaco(p.id, ids)}
                   aoMoverSelecao={(dx, dy) => moverSelecao(p.id, selIds, dx, dy)}
                   aoEscalarSelecao={(ax, ay, fa) => escalarSelecao(p.id, selIds, ax, ay, fa)}
+                  aoRotacionarSelecao={(ax, ay, g) => rotacionarSelecao(p.id, selIds, ax, ay, g)}
+                  aoOrdenarSelecao={(frente) => ordenarSelecao(p.id, selIds, frente)}
                   aoFimSelecao={() => fimGestoSelecao(p.id)}
                   aoApagarSelecao={apagarSelecao}
                   aoNovoTexto={(x, y) => aoNovoTexto(p.id, x, y, ferramenta === "nota")}
@@ -1009,7 +1021,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, selecionados, imagemUrl, regua, aoMudarRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarTracos, aoNovoTexto, aoPatchTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoFimSelecao, aoApagarSelecao, aoTitulo, aoMarcar, aoApagar }: {
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, selecionados, imagemUrl, regua, aoMudarRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarTracos, aoNovoTexto, aoPatchTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoFimSelecao, aoApagarSelecao, aoTitulo, aoMarcar, aoApagar }: {
   id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; editandoTexto: string; selecionados: string[]; imagemUrl: (id: string) => string | undefined;
   regua: Regua | null; aoMudarRegua: (r: Regua) => void;
@@ -1018,7 +1030,9 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
   aoMoverTexto: (id: string, x: number, y: number) => void; aoMoverFimTexto: () => void;
   aoFimTexto: (id: string) => void; aoApagarTexto: (id: string) => void; aoSelecionarTexto: (id: string) => void;
   aoSelecionarLaco: (ids: string[]) => void; aoMoverSelecao: (dx: number, dy: number) => void;
-  aoEscalarSelecao: (ax: number, ay: number, fator: number) => void; aoFimSelecao: () => void; aoApagarSelecao: () => void;
+  aoEscalarSelecao: (ax: number, ay: number, fator: number) => void;
+  aoRotacionarSelecao: (ax: number, ay: number, graus: number) => void; aoOrdenarSelecao: (frente: boolean) => void;
+  aoFimSelecao: () => void; aoApagarSelecao: () => void;
   aoTitulo: (t: string) => void; aoMarcar: () => void; aoApagar: () => void;
 }) {
   const [titulo, setTitulo] = useState(pagina.titulo);
@@ -1051,7 +1065,7 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
           aoNovo={aoNovoTexto} aoPatch={aoPatchTexto} aoMover={aoMoverTexto} aoMoverFim={aoMoverFimTexto}
           aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
         <CamadaSelecao elementos={cena.elementos} selecionados={selecionados} ativa={ferramenta === "laco"} escala={escala} largura={med.largura} altura={med.altura}
-          aoSelecionar={aoSelecionarLaco} aoMover={aoMoverSelecao} aoEscalar={aoEscalarSelecao} aoFim={aoFimSelecao} aoApagar={aoApagarSelecao} />
+          aoSelecionar={aoSelecionarLaco} aoMover={aoMoverSelecao} aoEscalar={aoEscalarSelecao} aoRotacionar={aoRotacionarSelecao} aoOrdenar={aoOrdenarSelecao} aoFim={aoFimSelecao} aoApagar={aoApagarSelecao} />
         {regua && <CamadaRegua regua={regua} escala={escala} largura={med.largura} altura={med.altura} aoMudar={aoMudarRegua} />}
       </div>
     </section>
@@ -1199,17 +1213,21 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
 
 /** A camada do laço de seleção, por cima de tudo. Desenha o laço, seleciona o
  *  que está inteiro dentro, e deixa mover, redimensionar e apagar em bloco. */
-function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura, aoSelecionar, aoMover, aoEscalar, aoFim, aoApagar }: {
+function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura, aoSelecionar, aoMover, aoEscalar, aoRotacionar, aoOrdenar, aoFim, aoApagar }: {
   elementos: Elemento[]; selecionados: string[]; ativa: boolean; escala: number; largura: number; altura: number;
   aoSelecionar: (ids: string[]) => void; aoMover: (dx: number, dy: number) => void;
-  aoEscalar: (ax: number, ay: number, fator: number) => void; aoFim: () => void; aoApagar: () => void;
+  aoEscalar: (ax: number, ay: number, fator: number) => void;
+  aoRotacionar: (ax: number, ay: number, graus: number) => void; aoOrdenar: (frente: boolean) => void;
+  aoFim: () => void; aoApagar: () => void;
 }) {
   const ref = useRef<SVGSVGElement>(null);
   const [laco, setLaco] = useState<Ponto2[] | null>(null);
-  const gesto = useRef<{ modo: "laco" | "mover" | "escala"; ax: number; ay: number; ux: number; uy: number; d0: number; fAplic: number } | null>(null);
+  const gesto = useRef<{ modo: "laco" | "mover" | "escala" | "girar"; ax: number; ay: number; ux: number; uy: number; d0: number; fAplic: number } | null>(null);
 
   const sel = elementos.filter((e) => selecionados.includes(e.id));
   const lim = limitesDe(sel, alturaTextoEstim);
+  const centro: Ponto2 | null = lim ? [lim.x + lim.largura / 2, lim.y + lim.altura / 2] : null;
+  const pGirar: Ponto2 | null = lim ? [lim.x + lim.largura / 2, lim.y - (escala ? 34 / escala : 34)] : null;
 
   const pt = (e: React.PointerEvent): Ponto2 => {
     const r = ref.current!.getBoundingClientRect();
@@ -1223,6 +1241,11 @@ function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura
     e.preventDefault();
     ref.current?.setPointerCapture(e.pointerId);
     const [x, y] = pt(e);
+    // Perto da alça de girar? Começa a rotação em torno do centro.
+    if (pGirar && centro && (x - pGirar[0]) ** 2 + (y - pGirar[1]) ** 2 <= (raioAlca * 1.6) ** 2) {
+      gesto.current = { modo: "girar", ax: centro[0], ay: centro[1], ux: x, uy: y, d0: Math.atan2(y - centro[1], x - centro[0]), fAplic: 0 };
+      return;
+    }
     const cs = cantos();
     // Perto de um canto? Então redimensiona em torno do canto oposto.
     for (let i = 0; i < cs.length; i++) {
@@ -1246,7 +1269,12 @@ function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura
     const [x, y] = pt(e);
     if (g.modo === "laco") setLaco((l) => (l ? [...l, [x, y]] : l));
     else if (g.modo === "mover") { aoMover(x - g.ux, y - g.uy); g.ux = x; g.uy = y; }
-    else {
+    else if (g.modo === "girar") {
+      const ang = Math.atan2(y - g.ay, x - g.ax);
+      const d = ((ang - g.d0) * 180) / Math.PI;
+      aoRotacionar(g.ax, g.ay, d);
+      g.d0 = ang;
+    } else {
       const d = Math.hypot(x - g.ax, y - g.ay);
       const fTotal = Math.max(0.1, d / g.d0);
       aoEscalar(g.ax, g.ay, fTotal / g.fAplic);
@@ -1303,13 +1331,21 @@ function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura
           <>
             <rect x={lim.x} y={lim.y} width={lim.largura} height={lim.altura} className="caderno-sel-caixa" vectorEffect="non-scaling-stroke" />
             {cantos().map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r={raioAlca} className="caderno-sel-alca" vectorEffect="non-scaling-stroke" />)}
+            {pGirar && (
+              <>
+                <line x1={lim.x + lim.largura / 2} y1={lim.y} x2={pGirar[0]} y2={pGirar[1]} className="caderno-sel-haste" vectorEffect="non-scaling-stroke" />
+                <circle cx={pGirar[0]} cy={pGirar[1]} r={raioAlca} className="caderno-sel-girar" vectorEffect="non-scaling-stroke" />
+              </>
+            )}
           </>
         )}
       </svg>
       {ativa && lim && (
-        <button type="button" className="botao-icone pequeno caderno-sel-apagar" style={{ left: (lim.x + lim.largura) * escala, top: lim.y * escala }} onClick={aoApagar} aria-label={t.laco.apagar}>
-          <Trash2 size="1em" aria-hidden="true" />
-        </button>
+        <div className="caderno-sel-acoes" style={{ left: (lim.x + lim.largura) * escala, top: lim.y * escala }}>
+          <button type="button" className="botao-icone pequeno" onClick={() => aoOrdenar(true)} aria-label={t.laco.paraFrente} title={t.laco.paraFrente}><ArrowUp size="1em" aria-hidden="true" /></button>
+          <button type="button" className="botao-icone pequeno" onClick={() => aoOrdenar(false)} aria-label={t.laco.paraTras} title={t.laco.paraTras}><ArrowDown size="1em" aria-hidden="true" /></button>
+          <button type="button" className="botao-icone pequeno" onClick={aoApagar} aria-label={t.laco.apagar} title={t.laco.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
+        </div>
       )}
     </div>
   );
@@ -1462,7 +1498,12 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largur
         if (escondidos.has(el.id)) return null;
         if (el.tipo === "traco") return <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={el.opacidade ?? FERRAMENTAS[el.ferramenta].opacidade} />;
         if (el.tipo === "forma") return <path key={el.id} d={caminhoDeForma(el)} fill="none" stroke={el.cor} strokeWidth={el.espessura} strokeLinecap="round" strokeLinejoin="round" />;
-        if (el.tipo === "imagem") { const u = imagemUrl(el.anexoId); return u ? <image key={el.id} href={u} x={el.x} y={el.y} width={el.largura} height={el.altura} preserveAspectRatio="none" /> : null; }
+        if (el.tipo === "imagem") {
+          const u = imagemUrl(el.anexoId);
+          if (!u) return null;
+          const giro = el.rot ? `rotate(${el.rot} ${el.x + el.largura / 2} ${el.y + el.altura / 2})` : undefined;
+          return <image key={el.id} href={u} x={el.x} y={el.y} width={el.largura} height={el.altura} preserveAspectRatio="none" transform={giro} />;
+        }
         return null;
       })}
       {vivo && <path d={caminhoDeTraco(vivo)} fill={vivo.cor} opacity={vivo.opacidade ?? FERRAMENTAS[vivo.ferramenta].opacidade} />}
