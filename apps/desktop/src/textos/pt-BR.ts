@@ -121,6 +121,8 @@ export const textos = {
     padroes: "Padrões",
     meus: "Seus",
     imagem: "Foto ou imagem",
+    trocarImagem: "Trocar a imagem",
+    imagemDica: "Melhor com uma imagem na horizontal, de uns 1920 × 1080 px (Full HD) ou maior. Imagens muito grandes são reduzidas para 1920 px, para não pesar.",
     svg: "Desenho em SVG",
     escolherImagem: "Escolher imagem",
     escolherSvg: "Escolher SVG",

@@ -44,6 +44,8 @@ export interface Preferencias {
   tema: string;
   /** null = o fundo sugerido pelo tema. */
   fundo: Fundo | null;
+  /** Última imagem de fundo enviada (data URI), guardada para a pessoa voltar nela mesmo depois de escolher outro fundo. "" = nenhuma. */
+  imagemFundo: string;
   /** Quanto o fundo aparece por trás dos painéis: 0 = automático (mais legível), 100 = o máximo que ainda passa no mínimo de leitura. */
   fundoVisivel: number;
   /** Trava de contraste liberada pela própria pessoa (o fundo pode aparecer inteiro e as cores ficam como ela quiser). */
@@ -76,6 +78,7 @@ export const PADRAO: Preferencias = {
   procurarAtualizacao: true,
   tema: "papel",
   fundo: null,
+  imagemFundo: "",
   fundoVisivel: 0,
   semTrava: false,
   fundoNatural: false,
@@ -114,6 +117,7 @@ export function validar(bruto: unknown): Preferencias {
     temasProprios,
     tema: [...TEMAS, ...temasProprios].some((t) => t.id === p.tema) ? (p.tema as string) : PADRAO.tema,
     fundo: validarFundo(p.fundo),
+    imagemFundo: typeof p.imagemFundo === "string" ? p.imagemFundo : PADRAO.imagemFundo,
     semTrava: p.semTrava === true,
     fundoNatural: p.fundoNatural === true,
     contornoLetras: p.contornoLetras !== false,

@@ -81,7 +81,11 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
     setErro(null);
     if (chave === "tema") return mudar({ fundo: null });
     if (chave === "cor") return mudar({ fundo: { tipo: "cor" } });
-    if (chave === "imagem") return entradaImagem.current?.click();
+    // Imagem: se já tem uma guardada, volta para ela; só abre o seletor se não houver nenhuma.
+    if (chave === "imagem") {
+      if (prefs.imagemFundo && fundo?.tipo !== "imagem") return mudar({ fundo: { tipo: "imagem", dados: prefs.imagemFundo, desfoque: 0, escurecimento: 0 } });
+      return entradaImagem.current?.click();
+    }
     if (chave === "svg") return entradaSvg.current?.click();
     const [tipo, nome] = chave.split(":");
     mudar({ fundo: { tipo: tipo as "gradiente" | "padrao", nome } });
@@ -95,8 +99,10 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
     {
       chave: "imagem",
       nome: t.imagem,
-      estilo: fundo?.tipo === "imagem" ? { backgroundImage: `url("${fundo.dados}")`, backgroundSize: "cover" } : undefined,
-      icone: fundo?.tipo === "imagem" ? undefined : <ImagePlus aria-hidden="true" size="1.4em" />,
+      estilo: (fundo?.tipo === "imagem" && fundo.dados) || prefs.imagemFundo
+        ? { backgroundImage: `url("${fundo?.tipo === "imagem" ? fundo.dados : prefs.imagemFundo}")`, backgroundSize: "cover" }
+        : undefined,
+      icone: (fundo?.tipo === "imagem" && fundo.dados) || prefs.imagemFundo ? undefined : <ImagePlus aria-hidden="true" size="1.4em" />,
     },
     {
       chave: "svg",
@@ -192,7 +198,7 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
           if (!arquivo) return;
           try {
             const dados = await prepararFoto(arquivo);
-            mudar({ fundo: { tipo: "imagem", dados, desfoque: 0, escurecimento: 0 } });
+            mudar({ fundo: { tipo: "imagem", dados, desfoque: 0, escurecimento: 0 }, imagemFundo: dados });
           } catch {
             setErro(t.erroImagem);
           }
@@ -216,6 +222,12 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
         }}
       />
 
+      {fundo?.tipo === "imagem" && (
+        <div className="formulario">
+          <p className="campo-ajuda">{t.imagemDica}</p>
+          <Button className="botao com-icone" onPress={() => entradaImagem.current?.click()}><Upload aria-hidden="true" size="1.1em" /> {t.trocarImagem}</Button>
+        </div>
+      )}
       {fundo?.tipo === "imagem" && !(prefs.semTrava && prefs.fundoNatural) && (
         <div className="formulario">
           <Controle rotulo={t.desfoque} valor={fundo.desfoque} min={0} max={20} passo={1} formatar={(v) => `${v} px`} aoMudar={(desfoque) => mudar({ fundo: { ...fundo, desfoque } })} />
