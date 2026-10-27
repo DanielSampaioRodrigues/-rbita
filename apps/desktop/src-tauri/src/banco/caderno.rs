@@ -42,6 +42,9 @@ pub struct Caderno {
     pub modo: String,
     #[serde(default)]
     pub capa: Capa,
+    /// Cena desenhada sobre a capa (título e traços), em JSON. Vazio = sem cena.
+    #[serde(default)]
+    pub capa_cena: String,
     /// Pasta a que pertence; vazio = fora de pasta.
     #[serde(default)]
     pub pasta_id: String,
@@ -54,6 +57,8 @@ pub struct Caderno {
 struct DadosCaderno {
     #[serde(default)]
     capa: Capa,
+    #[serde(default)]
+    capa_cena: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -156,7 +161,7 @@ pub fn listar_cadernos(conn: &Connection) -> Result<Vec<Caderno>, Erro> {
     let lista = c
         .query_map([], |r| {
             let d: DadosCaderno = serde_json::from_str(&r.get::<_, String>(4)?).unwrap_or_default();
-            Ok(Caderno { id: r.get(0)?, nome: r.get(1)?, modo: r.get(2)?, pasta_id: r.get(3)?, capa: d.capa, criado_em: r.get(5)? })
+            Ok(Caderno { id: r.get(0)?, nome: r.get(1)?, modo: r.get(2)?, pasta_id: r.get(3)?, capa: d.capa, capa_cena: d.capa_cena, criado_em: r.get(5)? })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
@@ -170,7 +175,7 @@ pub fn salvar_caderno(conn: &Connection, mut c: Caderno) -> Result<Caderno, Erro
     if !MODOS.contains(&c.modo.as_str()) {
         c.modo = "caderno".into();
     }
-    let dados = serde_json::to_string(&DadosCaderno { capa: c.capa.clone() }).map_err(|e| Erro::Interno(e.to_string()))?;
+    let dados = serde_json::to_string(&DadosCaderno { capa: c.capa.clone(), capa_cena: c.capa_cena.clone() }).map_err(|e| Erro::Interno(e.to_string()))?;
     let agora = agora_ms();
     if c.id.is_empty() {
         c.id = novo_id();
@@ -293,21 +298,21 @@ mod testes {
     #[test]
     fn caderno_nasce_com_uma_pagina_conforme_o_modo() {
         let (_p, conn) = banco();
-        let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: " Faculdade ".into(), modo: "caderno".into(), capa: Capa::default(), pasta_id: String::new(), criado_em: 0 }).unwrap();
+        let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: " Faculdade ".into(), modo: "caderno".into(), capa: Capa::default(), capa_cena: String::new(), pasta_id: String::new(), criado_em: 0 }).unwrap();
         assert_eq!(cad.nome, "Faculdade");
         let pgs = listar_paginas(&conn, &cad.id).unwrap();
         assert_eq!(pgs.len(), 1);
         assert_eq!(pgs[0].tamanho, "a4");
 
-        let inf = salvar_caderno(&conn, Caderno { id: String::new(), nome: "Mapa".into(), modo: "infinito".into(), capa: Capa::default(), pasta_id: String::new(), criado_em: 0 }).unwrap();
+        let inf = salvar_caderno(&conn, Caderno { id: String::new(), nome: "Mapa".into(), modo: "infinito".into(), capa: Capa::default(), capa_cena: String::new(), pasta_id: String::new(), criado_em: 0 }).unwrap();
         assert_eq!(listar_paginas(&conn, &inf.id).unwrap()[0].tamanho, "infinito");
-        assert!(salvar_caderno(&conn, Caderno { id: String::new(), nome: "  ".into(), modo: "caderno".into(), capa: Capa::default(), pasta_id: String::new(), criado_em: 0 }).is_err());
+        assert!(salvar_caderno(&conn, Caderno { id: String::new(), nome: "  ".into(), modo: "caderno".into(), capa: Capa::default(), capa_cena: String::new(), pasta_id: String::new(), criado_em: 0 }).is_err());
     }
 
     #[test]
     fn paginas_adicionam_salvam_cena_e_apagam() {
         let (_p, conn) = banco();
-        let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: "C".into(), modo: "caderno".into(), capa: Capa::default(), pasta_id: String::new(), criado_em: 0 }).unwrap();
+        let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: "C".into(), modo: "caderno".into(), capa: Capa::default(), capa_cena: String::new(), pasta_id: String::new(), criado_em: 0 }).unwrap();
         let p2 = salvar_pagina(&conn, Pagina { id: String::new(), caderno_id: cad.id.clone(), ordem: 0.0, tamanho: "a5".into(), papel: Value::Null, titulo: String::new(), marcado: false, criado_em: 0 }).unwrap();
         assert_eq!(listar_paginas(&conn, &cad.id).unwrap().len(), 2);
 
@@ -328,7 +333,7 @@ mod testes {
     fn pasta_move_cadernos_para_fora_ao_ser_apagada() {
         let (_p, conn) = banco();
         let pasta = salvar_pasta(&conn, PastaCaderno { id: String::new(), nome: "Faculdade".into(), criado_em: 0 }).unwrap();
-        let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: "C".into(), modo: "caderno".into(), capa: Capa::default(), pasta_id: pasta.id.clone(), criado_em: 0 }).unwrap();
+        let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: "C".into(), modo: "caderno".into(), capa: Capa::default(), capa_cena: String::new(), pasta_id: pasta.id.clone(), criado_em: 0 }).unwrap();
         assert_eq!(listar_cadernos(&conn).unwrap().iter().find(|x| x.id == cad.id).unwrap().pasta_id, pasta.id);
         excluir_pasta(&conn, &pasta.id).unwrap();
         assert!(listar_pastas(&conn).unwrap().is_empty());
@@ -338,7 +343,7 @@ mod testes {
     #[test]
     fn excluir_caderno_leva_as_paginas() {
         let (_p, conn) = banco();
-        let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: "C".into(), modo: "caderno".into(), capa: Capa::default(), pasta_id: String::new(), criado_em: 0 }).unwrap();
+        let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: "C".into(), modo: "caderno".into(), capa: Capa::default(), capa_cena: String::new(), pasta_id: String::new(), criado_em: 0 }).unwrap();
         excluir_caderno(&conn, &cad.id).unwrap();
         assert!(listar_cadernos(&conn).unwrap().is_empty());
         assert!(listar_paginas(&conn, &cad.id).unwrap().is_empty());

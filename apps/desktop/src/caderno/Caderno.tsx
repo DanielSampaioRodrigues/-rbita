@@ -13,6 +13,8 @@ import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
 import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Sticker, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
+import { CapaEditor, RenderCapaCena } from "./CapaEditor";
+import { lerCenaCapa, serializarCenaCapa, temCapaCena, type CenaCapa } from "./capa";
 import { FONTES } from "../preferencias";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
@@ -188,7 +190,7 @@ function GradeCadernos({ cadernos, aoAbrir, aoEditar, aoExcluir, pastas, aoMover
         <li key={c.id} className="caderno-item">
           <button className="caderno-capa" style={estiloCapa(c.capa)} onClick={() => aoAbrir(c)} aria-label={`${t.abrir}: ${c.nome}`}>
             <span className="caderno-capa-modo">{c.modo === "infinito" ? <LayoutGrid aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />}</span>
-            <span className="caderno-capa-nome">{c.nome}</span>
+            {temCapaCena(c.capaCena) ? <RenderCapaCena cena={lerCenaCapa(c.capaCena)} /> : <span className="caderno-capa-nome">{c.nome}</span>}
           </button>
           <div className="caderno-item-pe">
             <span className="livro-selo">{t.modos[c.modo]}</span>
@@ -291,6 +293,7 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
   const [nome, setNome] = useState(inicial.nome);
   const [modo, setModo] = useState<Caderno["modo"]>(inicial.modo);
   const [capa, setCapa] = useState<Capa>(inicial.capa);
+  const [cena, setCena] = useState<CenaCapa>(lerCenaCapa(inicial.capaCena));
   const [pastaId, setPastaId] = useState(inicial.pastaId);
   const [erro, setErro] = useState<string | null>(null);
   const editando = inicial.id !== "";
@@ -299,7 +302,7 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
     e.preventDefault();
     setErro(null);
     try {
-      await api.salvarCaderno({ ...inicial, nome, modo, capa, pastaId });
+      await api.salvarCaderno({ ...inicial, nome, modo, capa, capaCena: serializarCenaCapa(cena), pastaId });
       avisarMudanca();
       aoFechar();
     } catch (err) {
@@ -317,6 +320,7 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
         </>
       )}
       <EscolherCapa capa={capa} aoMudar={setCapa} ia={ia} aoMudarIa={aoMudarIa} />
+      <CapaEditor nome={nome} cena={cena} aoMudar={setCena} previa={<div className="capa-editor-fundo" style={estiloCapa(capa)} />} />
       {pastas.length > 0 && (
         <div className="campo">
           <label className="campo-rotulo" htmlFor="caderno-pasta">{t.form.pasta}</label>

@@ -808,7 +808,16 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .caderno-grupo-titulo { font-size: 1.1rem; margin: 0 0 var(--espaco-2); }
 .caderno-grade { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: var(--espaco-4); }
 .caderno-item { display: flex; flex-direction: column; gap: var(--espaco-1); }
-.caderno-capa { position: relative; display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 3 / 4; border: none; border-radius: var(--raio-2); padding: var(--espaco-3); cursor: pointer; color: #fff; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); overflow: hidden; }
+.caderno-capa { position: relative; container-type: size; display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 3 / 4; border: none; border-radius: var(--raio-2); padding: var(--espaco-3); cursor: pointer; color: #fff; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); overflow: hidden; }
+/* Título escrito na capa (estante e prévia do editor). Tamanho em cqh = fração da altura da capa. */
+.capa-titulo { position: absolute; transform: translate(-50%, -50%); max-width: 92%; margin: 0; line-height: 1.08; white-space: pre-wrap; overflow-wrap: break-word; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); pointer-events: none; }
+.capa-titulo.arrastavel { pointer-events: auto; cursor: move; touch-action: none; }
+.capa-editor { gap: var(--espaco-2); }
+.capa-editor-previa { container-type: size; position: relative; width: 10rem; aspect-ratio: 3 / 4; margin-inline: auto; border-radius: var(--raio-1); overflow: hidden; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.22); }
+.capa-editor-fundo { position: absolute; inset: 0; }
+.capa-editor-controles { gap: var(--espaco-2); }
+.capa-editor-linha { flex-wrap: wrap; gap: var(--espaco-2); }
+.caderno-cor-escolher.grande { width: 2rem; height: 2rem; border-style: solid; }
 .caderno-capa:hover { filter: brightness(1.06); }
 .caderno-capa:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
 .caderno-capa-modo { position: absolute; top: var(--espaco-2); right: var(--espaco-2); opacity: 0.85; }

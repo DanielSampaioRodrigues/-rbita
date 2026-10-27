@@ -439,6 +439,8 @@ export interface Caderno {
   nome: string;
   modo: "caderno" | "infinito";
   capa: Capa;
+  /** Cena desenhada sobre a capa (título e traços), em JSON. Vazio = sem cena. */
+  capaCena?: string;
   /** Pasta a que pertence; vazio = fora de pasta. */
   pastaId: string;
   criadoEm: number;
@@ -1997,7 +1999,7 @@ function simularCaderno() {
       if (c.id) {
         const i = cadernos.findIndex((x) => x.id === c.id);
         if (i < 0) throw new ErroOrbita("nao_encontrado", "Caderno não encontrado.");
-        cadernos[i] = { ...cadernos[i], nome: c.nome.trim(), capa: c.capa, pastaId: c.pastaId };
+        cadernos[i] = { ...cadernos[i], nome: c.nome.trim(), capa: c.capa, capaCena: c.capaCena, pastaId: c.pastaId };
         return { ...cadernos[i] };
       }
       const modo = c.modo === "infinito" ? "infinito" : "caderno";
