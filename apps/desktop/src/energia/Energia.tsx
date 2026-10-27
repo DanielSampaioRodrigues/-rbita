@@ -11,6 +11,7 @@ import { textos } from "../textos/pt-BR";
 const t = textos.energia;
 const fmtHora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const fmtDia = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric" });
+const fmtDiaLongo = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 
 /** Cinco botões com o nome do nível escrito. Um clique registra. */
 export function RegistroRapido() {
@@ -81,10 +82,12 @@ export function PaginaEnergia({ aoLigarBaixa, aoAbrirProjeto }: { aoLigarBaixa: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [diaAberto, setDiaAberto] = useState<string | null>(null);
   const mediaDo = (d: Date) => {
     const doDia = registros.filter((r) => chaveDia(new Date(r.momento)) === chaveDia(d));
     return doDia.length ? doDia.reduce((s, r) => s + r.nivel, 0) / doDia.length : null;
   };
+  const registrosDoDia = (chave: string) => registros.filter((r) => chaveDia(new Date(r.momento)) === chave).sort((a, b) => a.momento - b.momento);
 
   return (
     <div className="pagina">
@@ -108,17 +111,40 @@ export function PaginaEnergia({ aoLigarBaixa, aoAbrirProjeto }: { aoLigarBaixa: 
         <ol className="grafico-energia">
           {dias.map((d) => {
             const media = mediaDo(d);
+            const chave = chaveDia(d);
             const nome = media == null ? t.semRegistro : t.niveis[Math.round(media) - 1];
             return (
-              <li key={chaveDia(d)} aria-label={`${fmtDia.format(d)}: ${nome}`}>
-                <span className="grafico-coluna" aria-hidden="true">
-                  {media != null && <span className="grafico-barra" style={{ height: `${(media / 5) * 100}%` }} />}
-                </span>
-                <span className="grafico-dia" aria-hidden="true">{fmtDia.format(d).replace(".", "")}</span>
+              <li key={chave}>
+                <button
+                  type="button"
+                  className={`grafico-dia-botao${diaAberto === chave ? " aberto" : ""}`}
+                  aria-label={`${fmtDia.format(d)}: ${nome}`}
+                  aria-expanded={diaAberto === chave}
+                  disabled={media == null}
+                  onClick={() => setDiaAberto((a) => (a === chave ? null : chave))}
+                >
+                  <span className="grafico-coluna" aria-hidden="true">
+                    {media != null && <span className="grafico-barra" style={{ height: `${(media / 5) * 100}%` }} />}
+                  </span>
+                  <span className="grafico-dia" aria-hidden="true">{fmtDia.format(d).replace(".", "")}</span>
+                </button>
               </li>
             );
           })}
         </ol>
+        {diaAberto && (
+          <div className="energia-detalhe">
+            <h3 className="pequeno">{fmtDiaLongo.format(inicioDoDia(new Date(`${diaAberto}T00:00`)))}</h3>
+            <ul className="lista-simples sem-marcador energia-horarios">
+              {registrosDoDia(diaAberto).map((r) => (
+                <li key={r.id}>
+                  <strong>{fmtHora.format(r.momento)}</strong> — {t.niveis[r.nivel - 1]}
+                  {r.nota ? <span className="texto-suave"> · {r.nota}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section className="cartao largura-leitura esticado" aria-labelledby="para-agora">

@@ -311,6 +311,15 @@
 .grafico-energia li { display: grid; gap: var(--espaco-1); justify-items: center; }
 .grafico-coluna { display: flex; align-items: flex-end; width: 100%; max-width: 1.6rem; height: 6rem; border-radius: var(--canto-pequeno); background: var(--cor-superficie-alternativa); }
 .grafico-barra { width: 100%; border-radius: var(--canto-pequeno) var(--canto-pequeno) 0 0; background: var(--cor-destaque); }
+.grafico-dia-botao { display: grid; gap: var(--espaco-1); justify-items: center; width: 100%; background: none; border: none; padding: 0; cursor: pointer; color: inherit; border-radius: var(--canto-pequeno); }
+.grafico-dia-botao:disabled { cursor: default; }
+.grafico-dia-botao:not(:disabled):hover .grafico-coluna { filter: brightness(1.08); }
+.grafico-dia-botao.aberto .grafico-coluna { outline: 2px solid var(--cor-destaque); outline-offset: 2px; }
+.grafico-dia-botao:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
+.energia-detalhe { margin-top: var(--espaco-3); padding-top: var(--espaco-3); border-top: 1px solid var(--cor-borda-suave); }
+.energia-detalhe h3 { margin: 0 0 var(--espaco-1); }
+.energia-detalhe h3::first-letter { text-transform: uppercase; }
+.energia-horarios { display: flex; flex-direction: column; gap: 0.25rem; }
 .grafico-dia { font-size: 0.7rem; color: var(--cor-texto-suave); text-align: center; line-height: 1.2; }
 
 .sem-marcador { list-style: none; padding-left: 0; }
