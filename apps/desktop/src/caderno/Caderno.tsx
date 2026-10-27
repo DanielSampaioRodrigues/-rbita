@@ -660,6 +660,8 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
           ? <AjustesTexto tamanho={tamTexto} cor={cor} aoMudar={mudarTamTexto} aoFechar={() => setAjustando(null)} />
           : ajustando === "forma"
           ? <AjustesForma ajuste={ajusteForma} cor={cor} aoMudar={mudarForma} aoFechar={() => setAjustando(null)} />
+          : ajustando === "borracha"
+          ? <AjustesBorracha tamanho={ajustes.borracha.tamanho} aoMudar={(n) => mudarAjuste("borracha", { tamanho: n })} aoFechar={() => setAjustando(null)} />
           : <AjustesFerramenta ferramenta={ajustando} ajuste={ajustes[ajustando]} aoMudar={(patch) => mudarAjuste(ajustando, patch)} aoFechar={() => setAjustando(null)} />)}
       </Janela>
 
@@ -802,7 +804,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altu
     return { x: ((e.clientX - r.left) / r.width) * largura, y: ((e.clientY - r.top) / r.height) * altura, p: e.pressure > 0 ? e.pressure : 0.5 };
   };
   const apagarEm = (x: number, y: number) => {
-    const raio = FERRAMENTAS.borracha.tamanho / 2;
+    const raio = ajuste.tamanho / 2;
     let mudou = false;
     for (const el of cena.elementos) {
       if (apagados.current.has(el.id)) continue;
@@ -876,8 +878,8 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, fav
       <span className="caderno-barra-grupo">
         {FERRAMENTAS_UI.map(({ id, icone: Icone }) => (
           <Button key={id} className={ferramenta === id ? "caderno-ferramenta ativa" : "caderno-ferramenta"}
-            onPress={() => (ferramenta === id && id !== "borracha" ? aoAjustar(id) : aoFerramenta(id))}
-            aria-label={ferramenta === id && id !== "borracha" ? t.ferramentas.ajustesDe(t.ferramentas.nomes[id]) : t.ferramentas.nomes[id]} aria-pressed={ferramenta === id}>
+            onPress={() => (ferramenta === id ? aoAjustar(id) : aoFerramenta(id))}
+            aria-label={ferramenta === id ? t.ferramentas.ajustesDe(t.ferramentas.nomes[id]) : t.ferramentas.nomes[id]} aria-pressed={ferramenta === id}>
             <Icone aria-hidden="true" size="1.2em" />
           </Button>
         ))}
@@ -967,6 +969,24 @@ function AjustesForma({ ajuste, cor, aoMudar, aoFechar }: { ajuste: AjusteForma;
       <Segmentado rotulo={t.forma.qual} valor={ajuste.tipo} aoMudar={(v) => aoMudar({ tipo: v as TipoForma })} opcoes={TIPOS_FORMA.map((tf) => ({ valor: tf, nome: t.forma.nomes[tf] }))} />
       <Deslizante rotulo={t.forma.espessura} valor={ajuste.espessura} min={1} max={16} passo={0.5} aoMudar={(n) => aoMudar({ espessura: n })} mostrar={(n) => `${n.toFixed(1)} px`} />
       <p className="campo-ajuda">{t.forma.ajuda}</p>
+      <div className="janela-acoes">
+        <Button className="botao principal" onPress={aoFechar}>{textos.comum.fechar}</Button>
+      </div>
+    </div>
+  );
+}
+
+/** Ajustes da borracha: só o tamanho (a área que apaga), com prévia do círculo. */
+function AjustesBorracha({ tamanho, aoMudar, aoFechar }: { tamanho: number; aoMudar: (n: number) => void; aoFechar: () => void }) {
+  return (
+    <div className="formulario">
+      <div className="caderno-previa-traco">
+        <svg viewBox="0 0 300 80" preserveAspectRatio="xMidYMid meet" aria-label={t.ferramentas.previa}>
+          <circle cx="150" cy="40" r={Math.min(tamanho / 2, 38)} fill="none" stroke="#6f747c" strokeWidth="1.5" strokeDasharray="4 3" />
+        </svg>
+      </div>
+      <Deslizante rotulo={t.ferramentas.tamanho} valor={tamanho} min={8} max={60} passo={2} aoMudar={aoMudar} mostrar={(n) => `${n} px`} />
+      <p className="campo-ajuda">{t.ferramentas.borrachaAjuda}</p>
       <div className="janela-acoes">
         <Button className="botao principal" onPress={aoFechar}>{textos.comum.fechar}</Button>
       </div>

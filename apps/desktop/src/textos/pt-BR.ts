@@ -964,6 +964,7 @@ export const textos = {
       pressao: "Sensibilidade à pressão",
       pressaoAjuda: "Quanto a força da caneta afina ou engrossa o traço. “Nenhuma” mantém a espessura igual.",
       niveis: { nenhuma: "Nenhuma", pouca: "Pouca", baixa: "Baixa", media: "Média", alta: "Alta", muita: "Muita" },
+      borrachaAjuda: "O tamanho é a área que a borracha apaga. Por enquanto, apaga o traço ou a forma inteira que encostar.",
     },
     texto: {
       novoAjuda: "Toque numa área vazia da folha para começar uma caixa de texto; arraste a alça para mover.",
