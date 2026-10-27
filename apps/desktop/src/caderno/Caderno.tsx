@@ -6,12 +6,13 @@ import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FER
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
 import { reduzirImagem } from "../fundo";
 import { useReescrever } from "../ia/Reescrever";
+import { useDitar } from "../ditado/Ditar";
 import { CriarImagemIa } from "./CriarImagemIa";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Sticker, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, ListOrdered, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Sticker, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { CapaEditor, RenderCapaCena } from "./CapaEditor";
 import { lerCenaCapa, serializarCenaCapa, temCapaCena, type CenaCapa } from "./capa";
@@ -461,7 +462,7 @@ const textoVazio = (html: string) => html.replace(/<[^>]*>/g, "").replace(/&nbsp
 /** Extensões do editor da caixa: só marcas em linha (negrito, itálico,
  *  sublinhado) e parágrafos — nada de título, lista ou citação (é um rótulo). */
 const extensoesCaderno = [
-  StarterKit.configure({ heading: false, bulletList: false, orderedList: false, listItem: false, blockquote: false, codeBlock: false, code: false, horizontalRule: false, strike: false, link: false }),
+  StarterKit.configure({ heading: false, blockquote: false, codeBlock: false, code: false, horizontalRule: false, strike: false, link: false }),
 ];
 
 /** Fontes oferecidas na caixa ("" = padrão do app). */
@@ -992,7 +993,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       {!infinito && (
         <BarraFerramentas
           ferramenta={ferramenta} aoFerramenta={setFerramenta} aoAjustar={setAjustando}
-          cor={cor} aoCor={(c) => { usarCor(c); if (ferramenta === "laco" && selIds.length) recolorirSelecao(c); if (ferramenta === "texto" && editandoTexto) recolorTextoEditando(c); }} favoritos={favoritos}
+          cor={cor} aoCor={(c) => { usarCor(c); if (ferramenta === "laco" && selIds.length) recolorirSelecao(c); if ((ferramenta === "texto" || ferramenta === "nota") && editandoTexto) recolorTextoEditando(c); }} favoritos={favoritos}
           corBarra={corBarra} aoAbrirCorBarra={() => setCorBarraAberta(true)}
           aoInserirImagem={() => fileRef.current?.click()} aoCriarIa={() => setIaAberta(true)} aoAdesivos={() => setAdesivosAberto(true)}
           reguaLigada={regua !== null} aoRegua={alternarRegua}
@@ -1140,8 +1141,12 @@ function CaixaTexto({ caixa: tx, escala, editando, ativa, aoPatch, aoMover, aoMo
     alvo.addEventListener("pointerup", fim);
   };
   const ehNota = !!tx.fundo;
+  // A caixa abraça o texto (largura automática), com um limite para quebrar a
+  // linha e um mínimo para caber o cursor. Antes era sempre larga e parecia uma
+  // "caixa em volta" grande demais, com muito vazio.
   const estiloCaixa: React.CSSProperties = {
-    left: tx.x * escala, top: tx.y * escala, width: tx.largura * escala,
+    left: tx.x * escala, top: tx.y * escala, width: "max-content",
+    maxWidth: tx.largura * escala, minWidth: Math.max(40, tx.tamanho * escala * 2.5),
     ...(ehNota ? { background: tx.fundo, padding: `${7 * escala}px ${9 * escala}px`, borderRadius: `${5 * escala}px`, boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)" } : {}),
   };
   const estiloTexto: React.CSSProperties = { color: tx.cor, fontSize: `${tx.tamanho * escala}px`, fontFamily: fonteCss(tx.fonte), textAlign: ALINHAR_CSS[tx.alinhamento ?? "esquerda"] };
@@ -1184,14 +1189,17 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
     },
     onUpdate: ({ editor: e }) => aoPatch({ texto: e.getHTML() }),
   });
-  const [marcas, setMarcas] = useState({ b: false, i: false, u: false });
+  const [marcas, setMarcas] = useState({ b: false, i: false, u: false, lista: false, numerada: false });
   useEffect(() => {
     if (!editor) return;
-    const ler = () => setMarcas({ b: editor.isActive("bold"), i: editor.isActive("italic"), u: editor.isActive("underline") });
+    const ler = () => setMarcas({ b: editor.isActive("bold"), i: editor.isActive("italic"), u: editor.isActive("underline"), lista: editor.isActive("bulletList"), numerada: editor.isActive("orderedList") });
     editor.on("selectionUpdate", ler);
     editor.on("transaction", ler);
     return () => { editor.off("selectionUpdate", ler); editor.off("transaction", ler); };
   }, [editor]);
+  // Ditado por voz: insere o texto falado no ponto do cursor (só aparece com a
+  // transcrição local instalada).
+  const ditado = useDitar("", (texto) => editor?.chain().focus().insertContent(texto).run(), true);
   // ✨ Revisão de texto por IA (só aparece com uma IA de revisão configurada).
   const revisar = useReescrever(
     editor?.getText() ?? "",
@@ -1222,6 +1230,11 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
           <button type="button" className="caderno-fmt" onClick={() => mudarTam(2)} aria-label={t.texto.aumentar}>A+</button>
         </span>
         <button type="button" className="caderno-fmt" onClick={ciclarAlinho} aria-label={t.texto.alinhar[alinhoAtual]}><IconeAlinho size="1em" aria-hidden="true" /></button>
+        <span className="caderno-fmt-grupo">
+          <button type="button" className={marcas.lista ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => editor.chain().focus().toggleBulletList().run()} aria-label={textos.rico.lista} aria-pressed={marcas.lista}><List size="1em" aria-hidden="true" /></button>
+          <button type="button" className={marcas.numerada ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => editor.chain().focus().toggleOrderedList().run()} aria-label={textos.rico.numerada} aria-pressed={marcas.numerada}><ListOrdered size="1em" aria-hidden="true" /></button>
+        </span>
+        {ditado.botao && <span className="caderno-fmt-grupo caderno-fmt-ditado">{ditado.botao}</span>}
         {tx.fundo && (
           <button type="button" className="caderno-fmt" onClick={() => aoPatch({ fundo: FUNDOS_NOTA[(FUNDOS_NOTA.indexOf(tx.fundo!) + 1) % FUNDOS_NOTA.length] })} aria-label={t.texto.fundo}>
             <span className="caderno-fmt-fundo" style={{ background: tx.fundo }} aria-hidden="true" />
@@ -1231,6 +1244,7 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
         <button type="button" className="botao-icone pequeno" onClick={aoApagar} aria-label={t.texto.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
       </div>
       <div style={estilo} className="caderno-caixa-editor"><EditorContent editor={editor} /></div>
+      {ditado.situacao}
       {revisar.janelas}
     </>
   );
