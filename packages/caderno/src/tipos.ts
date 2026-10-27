@@ -70,7 +70,22 @@ export interface Traco {
   pontos: Ponto[];
 }
 
-export type Elemento = Traco;
+/** Uma caixa de texto digitado na página. A largura é fixa (a pessoa arrasta
+ *  para mover); a altura cresce com o conteúdo. Coordenadas em px de referência. */
+export interface Texto {
+  tipo: "texto";
+  id: string;
+  x: number;
+  y: number;
+  /** Largura da caixa, em px de referência. */
+  largura: number;
+  texto: string;
+  cor: string;
+  /** Tamanho da fonte, em px de referência. */
+  tamanho: number;
+}
+
+export type Elemento = Traco | Texto;
 
 /** A cena desenhável de uma página (ou do quadro infinito). */
 export interface Cena {

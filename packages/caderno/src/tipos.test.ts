@@ -12,6 +12,14 @@ describe("caderno: tipos e cena", () => {
     expect(lerCena(serializarCena(cena))).toEqual(cena);
   });
 
+  it("guarda cena com traço e caixa de texto juntos", () => {
+    const cena: Cena = { elementos: [
+      { tipo: "traco", id: "1", ferramenta: "caneta", cor: "#000", espessura: 2, pontos: [{ x: 0, y: 0, p: 1 }] },
+      { tipo: "texto", id: "2", x: 40, y: 60, largura: 240, texto: "oi", cor: "#1f2937", tamanho: 28 },
+    ] };
+    expect(lerCena(serializarCena(cena))).toEqual(cena);
+  });
+
   it("texto vazio ou inválido vira cena vazia, sem quebrar", () => {
     expect(lerCena("")).toEqual({ elementos: [] });
     expect(lerCena("{ não é json")).toEqual({ elementos: [] });

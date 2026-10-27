@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
-import { caminhoDeTraco, cenaVazia, FERRAMENTAS, lerCena, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, tracoAtingido, type Cena, type CoresPapel, type Ferramenta, type ModeloPapel, type Papel, type Traco } from "@orbita/caderno";
+import { caminhoDeTraco, cenaVazia, FERRAMENTAS, lerCena, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, tracoAtingido, type Cena, type CoresPapel, type Ferramenta, type ModeloPapel, type Papel, type Texto, type Traco } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type PaginaCaderno, type PastaCaderno } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, LayoutGrid, List, Pencil, PenLine, Plus, Redo2, SlidersHorizontal, Trash2, Undo2, Wand2 } from "../icones";
+import { Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, LayoutGrid, List, Pencil, PenLine, Plus, Redo2, SlidersHorizontal, Trash2, Type, Undo2, Wand2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
 import { textos } from "../textos/pt-BR";
@@ -327,6 +327,15 @@ function lerFavoritos(): string[] {
 type PosBarra = "baixo" | "cima" | "direita" | "esquerda";
 const POS_BARRA: PosBarra[] = ["baixo", "cima", "direita", "esquerda"];
 
+/** Ferramentas da barra: as de traço (do motor) mais a caixa de texto. */
+type FerramentaUI = Ferramenta | "texto";
+const TAM_TEXTO_PADRAO = 28; // px de referência
+const LARGURA_TEXTO_PADRAO = 300; // px de referência
+function lerTamTexto(): number {
+  try { const s = localStorage.getItem("caderno-tam-texto"); if (s) { const n = Number(s); if (n >= 12 && n <= 80) return n; } } catch { /* padrão */ }
+  return TAM_TEXTO_PADRAO;
+}
+
 type AjusteTraco = { tamanho: number; afinar: number; alisar: number; opacidade: number };
 function ajustesPadrao(): Record<Ferramenta, AjusteTraco> {
   const o = {} as Record<Ferramenta, AjusteTraco>;
@@ -359,7 +368,14 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   const [erro, setErro] = useState<string | null>(null);
   const area = useRef<HTMLDivElement>(null);
   // Desenho: ferramenta, cor e grossura ativas; cenas e histórico por página.
-  const [ferramenta, setFerramenta] = useState<Ferramenta>("caneta");
+  const [ferramenta, setFerramenta] = useState<FerramentaUI>("caneta");
+  const fTraco: Ferramenta = ferramenta === "texto" ? "caneta" : ferramenta;
+  const [tamTexto, setTamTexto] = useState<number>(lerTamTexto);
+  const [editandoTexto, setEditandoTexto] = useState("");
+  const mudarTamTexto = (n: number) => {
+    setTamTexto(n);
+    try { localStorage.setItem("caderno-tam-texto", String(n)); } catch { /* ignora */ }
+  };
   const [cor, setCor] = useState(CORES_PADRAO[0]);
   const [favoritos, setFavoritos] = useState<string[]>(lerFavoritos);
   const usarCor = (c: string) => {
@@ -372,7 +388,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     });
   };
   const [ajustes, setAjustes] = useState<Record<Ferramenta, AjusteTraco>>(lerAjustes);
-  const [ajustando, setAjustando] = useState<Ferramenta | null>(null);
+  const [ajustando, setAjustando] = useState<FerramentaUI | null>(null);
   const [posBarra, setPosBarra] = useState<PosBarra>(() => {
     try { const p = localStorage.getItem("caderno-pos-barra") as PosBarra; if (p && POS_BARRA.includes(p)) return p; } catch { /* padrão */ }
     return "baixo";
@@ -389,6 +405,8 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       return novo;
     });
   const [cenas, setCenas] = useState<Record<string, Cena>>({});
+  const cenasRef = useRef(cenas);
+  cenasRef.current = cenas;
   const [historia, setHistoria] = useState<Record<string, { pilha: Cena[]; i: number }>>({});
   const carregadas = useRef<Set<string>>(new Set());
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -439,6 +457,49 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   };
   const aoDesenhar = (id: string, traco: Traco) => mudarCena(id, { elementos: [...(cenas[id]?.elementos ?? []), traco] });
   const aoApagarTracos = (id: string, ids: string[]) => mudarCena(id, { elementos: (cenas[id]?.elementos ?? []).filter((e) => !ids.includes(e.id)) });
+
+  // Caixas de texto. Criar e apagar são um passo de desfazer; digitar e mover
+  // atualizam a cena ao vivo (sem encher o histórico) e registram um passo ao
+  // terminar. Caixa deixada vazia some sozinha.
+  const registrarCena = (pid: string, nova: Cena) =>
+    setHistoria((h) => {
+      const at = h[pid] ?? { pilha: [cenaVazia()], i: 0 };
+      const topo = at.pilha[at.i];
+      if (topo && serializarCena(topo) === serializarCena(nova)) return h;
+      const pilha = [...at.pilha.slice(0, at.i + 1), nova];
+      const corte = Math.max(0, pilha.length - 50);
+      return { ...h, [pid]: { pilha: pilha.slice(corte), i: pilha.length - 1 - corte } };
+    });
+  const aoNovoTexto = (pid: string, x: number, y: number) => {
+    const novo: Texto = { tipo: "texto", id: crypto.randomUUID(), x, y, largura: LARGURA_TEXTO_PADRAO, texto: "", cor, tamanho: tamTexto };
+    mudarCena(pid, { elementos: [...(cenas[pid]?.elementos ?? []), novo] });
+    setEditandoTexto(novo.id);
+  };
+  const atualizarTexto = (pid: string, id: string, patch: Partial<Texto>) =>
+    setCenas((m) => {
+      const c = m[pid] ?? cenaVazia();
+      const nova: Cena = { elementos: c.elementos.map((e) => (e.id === id && e.tipo === "texto" ? { ...e, ...patch } : e)) };
+      agendarSalvarCena(pid, nova);
+      return { ...m, [pid]: nova };
+    });
+  const aoFimTexto = (pid: string, id: string) => {
+    setEditandoTexto((a) => (a === id ? "" : a));
+    const c = cenasRef.current[pid];
+    if (!c) return;
+    const el = c.elementos.find((e) => e.id === id);
+    if (el && el.tipo === "texto" && el.texto.trim() === "") {
+      const nova: Cena = { elementos: c.elementos.filter((e) => e.id !== id) };
+      setCenas((m) => ({ ...m, [pid]: nova }));
+      registrarCena(pid, nova);
+      agendarSalvarCena(pid, nova);
+    } else {
+      registrarCena(pid, c);
+    }
+  };
+  const aoMoverFimTexto = (pid: string) => registrarCena(pid, cenasRef.current[pid] ?? cenaVazia());
+  const apagarElemento = (pid: string, id: string) => mudarCena(pid, { elementos: (cenas[pid]?.elementos ?? []).filter((e) => e.id !== id) });
+  // Ao sair da ferramenta de texto, tira o foco (fecha a edição; caixa vazia some).
+  useEffect(() => { if (ferramenta !== "texto") (document.activeElement as HTMLElement | null)?.blur?.(); }, [ferramenta]);
   const andar = (passo: number) => {
     const h = historia[selId];
     if (!h) return;
@@ -540,10 +601,18 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
             <>
               {paginas.map((p, i) => (
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId} podeApagar={paginas.length > 1}
-                  cena={cenas[p.id] ?? cenaVazia()} ferramenta={ferramenta} cor={cor} ajuste={ajustes[ferramenta]}
+                  cena={cenas[p.id] ?? cenaVazia()} ferramenta={ferramenta} cor={cor} ajuste={ajustes[fTraco]}
+                  editandoTexto={editandoTexto}
                   aoSelecionar={() => setSelId(p.id)}
                   aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
                   aoApagarTracos={(ids) => aoApagarTracos(p.id, ids)}
+                  aoNovoTexto={(x, y) => aoNovoTexto(p.id, x, y)}
+                  aoEditarTexto={(id, txt) => atualizarTexto(p.id, id, { texto: txt })}
+                  aoMoverTexto={(id, x, y) => atualizarTexto(p.id, id, { x, y })}
+                  aoMoverFimTexto={() => aoMoverFimTexto(p.id)}
+                  aoFimTexto={(id) => aoFimTexto(p.id, id)}
+                  aoApagarTexto={(id) => apagarElemento(p.id, id)}
+                  aoSelecionarTexto={setEditandoTexto}
                   aoTitulo={(titulo) => salvar({ ...p, titulo })}
                   aoMarcar={() => salvar({ ...p, marcado: !p.marcado })}
                   aoApagar={() => void apagar(p.id)} />
@@ -568,7 +637,9 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       </div>
 
       <Janela titulo={ajustando ? t.ferramentas.ajustesDe(t.ferramentas.nomes[ajustando]) : ""} aberta={ajustando !== null} aoFechar={() => setAjustando(null)} pequena>
-        {ajustando && <AjustesFerramenta ferramenta={ajustando} ajuste={ajustes[ajustando]} aoMudar={(patch) => mudarAjuste(ajustando, patch)} aoFechar={() => setAjustando(null)} />}
+        {ajustando && (ajustando === "texto"
+          ? <AjustesTexto tamanho={tamTexto} cor={cor} aoMudar={mudarTamTexto} aoFechar={() => setAjustando(null)} />
+          : <AjustesFerramenta ferramenta={ajustando} ajuste={ajustes[ajustando]} aoMudar={(patch) => mudarAjuste(ajustando, patch)} aoFechar={() => setAjustando(null)} />)}
       </Janela>
 
       <Janela titulo={t.folha.titulo} aberta={editor} aoFechar={() => setEditor(false)}>
@@ -578,15 +649,30 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, aoSelecionar, aoDesenhar, aoApagarTracos, aoTitulo, aoMarcar, aoApagar }: {
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, editandoTexto, aoSelecionar, aoDesenhar, aoApagarTracos, aoNovoTexto, aoEditarTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoTitulo, aoMarcar, aoApagar }: {
   id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
-  cena: Cena; ferramenta: Ferramenta; cor: string; ajuste: AjusteTraco;
+  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; editandoTexto: string;
   aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoApagarTracos: (ids: string[]) => void;
+  aoNovoTexto: (x: number, y: number) => void; aoEditarTexto: (id: string, txt: string) => void;
+  aoMoverTexto: (id: string, x: number, y: number) => void; aoMoverFimTexto: () => void;
+  aoFimTexto: (id: string) => void; aoApagarTexto: (id: string) => void; aoSelecionarTexto: (id: string) => void;
   aoTitulo: (t: string) => void; aoMarcar: () => void; aoApagar: () => void;
 }) {
   const [titulo, setTitulo] = useState(pagina.titulo);
   useEffect(() => setTitulo(pagina.titulo), [pagina.titulo]);
   const med = medidaDe(pagina.tamanho);
+  const areaRef = useRef<HTMLDivElement>(null);
+  const [larguraPx, setLarguraPx] = useState(0);
+  useEffect(() => {
+    const el = areaRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setLarguraPx(el.clientWidth));
+    ro.observe(el);
+    setLarguraPx(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+  const escala = larguraPx ? larguraPx / med.largura : 0;
+  const caixas = cena.elementos.filter((e): e is Texto => e.tipo === "texto");
   return (
     <section id={id} className={selecionada ? "caderno-folha-bloco atual" : "caderno-folha-bloco"}>
       <div className="caderno-folha-topo">
@@ -595,17 +681,92 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
         <Button className={pagina.marcado ? "botao-icone pequeno ativo" : "botao-icone pequeno"} onPress={aoMarcar} aria-label={pagina.marcado ? t.paginas.desmarcar : t.paginas.marcar} aria-pressed={pagina.marcado}><Bookmark aria-hidden="true" size="1em" /></Button>
         {podeApagar && <Button className="botao-icone pequeno" onPress={aoApagar} aria-label={t.paginas.excluir}><Trash2 aria-hidden="true" size="1em" /></Button>}
       </div>
-      <div className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
+      <div ref={areaRef} className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
         <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} largura={med.largura} altura={med.altura} aoDesenhar={aoDesenhar} aoApagarTracos={aoApagarTracos} />
+        <CamadaTexto caixas={caixas} ativa={ferramenta === "texto"} escala={escala} editandoId={editandoTexto}
+          aoNovo={aoNovoTexto} aoEditar={aoEditarTexto} aoMover={aoMoverTexto} aoMoverFim={aoMoverFimTexto}
+          aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
       </div>
     </section>
   );
 }
 
+/** A camada das caixas de texto, por cima do desenho. Só interage quando a
+ *  ferramenta de texto está ativa; nas outras, fica só mostrando (sem toque). */
+function CamadaTexto({ caixas, ativa, escala, editandoId, aoNovo, aoEditar, aoMover, aoMoverFim, aoFim, aoApagar, aoSelecionar }: {
+  caixas: Texto[]; ativa: boolean; escala: number; editandoId: string;
+  aoNovo: (x: number, y: number) => void; aoEditar: (id: string, txt: string) => void;
+  aoMover: (id: string, x: number, y: number) => void; aoMoverFim: () => void;
+  aoFim: (id: string) => void; aoApagar: (id: string) => void; aoSelecionar: (id: string) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const criarNoPonto = (e: React.PointerEvent) => {
+    if (e.target !== ref.current || escala <= 0) return; // só no fundo vazio
+    e.preventDefault(); // não deixa o clique roubar o foco da nova caixa
+    const r = ref.current.getBoundingClientRect();
+    aoNovo((e.clientX - r.left) / escala, (e.clientY - r.top) / escala);
+  };
+  return (
+    <div ref={ref} className={ativa ? "caderno-textos ativa" : "caderno-textos"} onPointerDown={ativa ? criarNoPonto : undefined}>
+      {caixas.map((tx) => (
+        <CaixaTexto key={tx.id} caixa={tx} escala={escala} editando={tx.id === editandoId} ativa={ativa}
+          aoEditar={(v) => aoEditar(tx.id, v)} aoMover={(x, y) => aoMover(tx.id, x, y)} aoMoverFim={aoMoverFim}
+          aoFim={() => aoFim(tx.id)} aoApagar={() => aoApagar(tx.id)} aoSelecionar={() => aoSelecionar(tx.id)} />
+      ))}
+    </div>
+  );
+}
+
+function CaixaTexto({ caixa: tx, escala, editando, ativa, aoEditar, aoMover, aoMoverFim, aoFim, aoApagar, aoSelecionar }: {
+  caixa: Texto; escala: number; editando: boolean; ativa: boolean;
+  aoEditar: (v: string) => void; aoMover: (x: number, y: number) => void; aoMoverFim: () => void;
+  aoFim: () => void; aoApagar: () => void; aoSelecionar: () => void;
+}) {
+  const area = useRef<HTMLTextAreaElement>(null);
+  const ajustarAltura = () => { const el = area.current; if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } };
+  useEffect(ajustarAltura, [tx.texto, tx.tamanho, escala]);
+  useEffect(() => {
+    if (!editando) return;
+    // Foco adiado para depois do clique que criou a caixa (senão o clique rouba o foco).
+    const r = requestAnimationFrame(() => {
+      const el = area.current;
+      if (el) { el.focus(); const n = el.value.length; el.setSelectionRange(n, n); }
+    });
+    return () => cancelAnimationFrame(r);
+  }, [editando]);
+
+  const arrastar = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const alvo = e.currentTarget as HTMLElement;
+    alvo.setPointerCapture(e.pointerId);
+    const x0 = e.clientX, y0 = e.clientY, px = tx.x, py = tx.y;
+    const mover = (ev: PointerEvent) => aoMover(px + (ev.clientX - x0) / escala, py + (ev.clientY - y0) / escala);
+    const fim = () => { alvo.removeEventListener("pointermove", mover); alvo.removeEventListener("pointerup", fim); aoMoverFim(); };
+    alvo.addEventListener("pointermove", mover);
+    alvo.addEventListener("pointerup", fim);
+  };
+
+  return (
+    <div className={editando ? "caderno-caixa editando" : "caderno-caixa"} style={{ left: tx.x * escala, top: tx.y * escala, width: tx.largura * escala }}
+      onPointerDown={ativa ? (e) => { e.stopPropagation(); aoSelecionar(); } : undefined}>
+      {ativa && (
+        <div className="caderno-caixa-barra">
+          <button type="button" className="caderno-caixa-alca" onPointerDown={arrastar} aria-label={t.texto.mover}><GripVertical size="1em" aria-hidden="true" /></button>
+          <button type="button" className="botao-icone pequeno" onClick={aoApagar} aria-label={t.texto.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
+        </div>
+      )}
+      <textarea ref={area} className="caderno-caixa-area" style={{ color: tx.cor, fontSize: `${tx.tamanho * escala}px` }}
+        value={tx.texto} placeholder={t.texto.vazio} aria-label={t.texto.campo} readOnly={!ativa} rows={1}
+        onPointerDown={(e) => e.stopPropagation()} onChange={(e) => aoEditar(e.target.value)} onBlur={aoFim} />
+    </div>
+  );
+}
+
 /** A camada onde a pessoa escreve/desenha, por cima da folha. */
 function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoDesenhar, aoApagarTracos }: {
-  cena: Cena; ferramenta: Ferramenta; cor: string; ajuste: AjusteTraco; largura: number; altura: number;
+  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; largura: number; altura: number;
   aoDesenhar: (t: Traco) => void; aoApagarTracos: (ids: string[]) => void;
 }) {
   const ref = useRef<SVGSVGElement>(null);
@@ -627,6 +788,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
     if (mudou) setEscondidos(new Set(apagados.current));
   };
   const inicio = (e: React.PointerEvent) => {
+    if (ferramenta === "texto") return; // texto é tratado na camada por cima
     if (e.button != null && e.button !== 0) return;
     e.preventDefault();
     ref.current?.setPointerCapture(e.pointerId);
@@ -654,7 +816,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
     }
   };
 
-  const classe = ferramenta === "borracha" ? "caderno-desenho borracha" : "caderno-desenho";
+  const classe = ferramenta === "texto" ? "caderno-desenho sem-toque" : ferramenta === "borracha" ? "caderno-desenho borracha" : "caderno-desenho";
   return (
     <svg ref={ref} className={classe} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
       onPointerDown={inicio} onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
@@ -666,12 +828,12 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
   );
 }
 
-const FERRAMENTAS_UI: { id: Ferramenta; icone: typeof PenLine }[] = [
-  { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser },
+const FERRAMENTAS_UI: { id: FerramentaUI; icone: typeof PenLine }[] = [
+  { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type },
 ];
 
 function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
-  ferramenta: Ferramenta; aoFerramenta: (f: Ferramenta) => void; aoAjustar: (f: Ferramenta) => void;
+  ferramenta: FerramentaUI; aoFerramenta: (f: FerramentaUI) => void; aoAjustar: (f: FerramentaUI) => void;
   cor: string; aoCor: (c: string) => void; favoritos: string[];
   vertical: boolean; aoMover: () => void;
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
@@ -736,6 +898,22 @@ function AjustesFerramenta({ ferramenta, ajuste, aoMudar, aoFechar }: { ferramen
       <p className="campo-ajuda">{t.ferramentas.estabilizacaoAjuda}</p>
       <Deslizante rotulo={t.ferramentas.pressao} valor={ajuste.afinar} min={0} max={0.9} passo={0.05} aoMudar={(n) => aoMudar({ afinar: n })} mostrar={pct} />
       <p className="campo-ajuda">{t.ferramentas.pressaoAjuda}</p>
+      <div className="janela-acoes">
+        <Button className="botao principal" onPress={aoFechar}>{textos.comum.fechar}</Button>
+      </div>
+    </div>
+  );
+}
+
+/** Ajustes da caixa de texto: por ora, o tamanho da letra das novas caixas. */
+function AjustesTexto({ tamanho, cor, aoMudar, aoFechar }: { tamanho: number; cor: string; aoMudar: (n: number) => void; aoFechar: () => void }) {
+  return (
+    <div className="formulario">
+      <div className="caderno-previa-traco">
+        <span style={{ color: /^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#1f2937", fontSize: `${Math.min(tamanho, 40)}px`, lineHeight: 1.2 }}>Aa Bb</span>
+      </div>
+      <Deslizante rotulo={t.texto.tamanho} valor={tamanho} min={12} max={80} passo={2} aoMudar={aoMudar} mostrar={(n) => `${n} px`} />
+      <p className="campo-ajuda">{t.texto.novoAjuda}</p>
       <div className="janela-acoes">
         <Button className="botao principal" onPress={aoFechar}>{textos.comum.fechar}</Button>
       </div>

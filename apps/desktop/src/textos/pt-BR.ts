@@ -947,7 +947,7 @@ export const textos = {
     },
     ferramentas: {
       titulo: "Ferramentas de desenho",
-      nomes: { caneta: "Caneta", lapis: "Lápis", pincel: "Pincel", marcatexto: "Marca-texto", borracha: "Borracha" },
+      nomes: { caneta: "Caneta", lapis: "Lápis", pincel: "Pincel", marcatexto: "Marca-texto", borracha: "Borracha", texto: "Texto" },
       cor: "Cor",
       grossura: "Grossura",
       grossuras: { fina: "Fina", media: "Média", grossa: "Grossa" },
@@ -964,6 +964,14 @@ export const textos = {
       pressao: "Sensibilidade à pressão",
       pressaoAjuda: "Quanto a força da caneta afina ou engrossa o traço. “Nenhuma” mantém a espessura igual.",
       niveis: { nenhuma: "Nenhuma", pouca: "Pouca", baixa: "Baixa", media: "Média", alta: "Alta", muita: "Muita" },
+    },
+    texto: {
+      novoAjuda: "Toque numa área vazia da folha para começar uma caixa de texto; arraste a alça para mover.",
+      tamanho: "Tamanho da letra",
+      mover: "Mover a caixa de texto",
+      apagar: "Apagar a caixa de texto",
+      campo: "Caixa de texto",
+      vazio: "Escreva aqui…",
     },
     infinitoEmBreve: "O quadro infinito — com rolagem e zoom livres e as mesmas ferramentas — chega na próxima etapa. Por enquanto, use o modo caderno para escrever e desenhar.",
   },
