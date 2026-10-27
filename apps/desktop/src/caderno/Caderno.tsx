@@ -2,13 +2,13 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FERRAMENTAS, formaAtingida, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, TIPOS_FORMA, tracoAtingido, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type ModeloPapel, type Papel, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
+import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FERRAMENTAS, formaAtingida, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, TIPOS_FORMA, tracoAtingido, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type Papel, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type PaginaCaderno, type PastaCaderno } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
 import { FONTES } from "../preferencias";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
@@ -368,6 +368,23 @@ const ALINHAR_CSS: Record<AlinharTexto, "left" | "center" | "right"> = { esquerd
 
 /** Lista vazia estável (evita re-render das páginas sem seleção). */
 const vazio: string[] = [];
+
+/** Lê um arquivo/blob como base64 (sem o prefixo data:). */
+const blobParaBase64 = (b: Blob) => new Promise<string>((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(String(r.result).split(",")[1] ?? "");
+  r.onerror = () => rej(r.error);
+  r.readAsDataURL(b);
+});
+/** Descobre o tamanho natural (px) de uma imagem em blob. */
+const tamanhoImagem = (b: Blob) => new Promise<{ w: number; h: number }>((res) => {
+  const u = URL.createObjectURL(b);
+  const im = new Image();
+  im.onload = () => { res({ w: im.naturalWidth || 4, h: im.naturalHeight || 3 }); URL.revokeObjectURL(u); };
+  im.onerror = () => { res({ w: 4, h: 3 }); URL.revokeObjectURL(u); };
+  im.src = u;
+});
+const extDeMime = (t: string) => (t.includes("png") ? "png" : t.includes("gif") ? "gif" : t.includes("webp") ? "webp" : t.includes("svg") ? "svg" : "jpg");
 const TAM_TEXTO_PADRAO = 28; // px de referência
 const LARGURA_TEXTO_PADRAO = 300; // px de referência
 function lerTamTexto(): number {
@@ -473,6 +490,9 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   const [cenas, setCenas] = useState<Record<string, Cena>>({});
   const cenasRef = useRef(cenas);
   cenasRef.current = cenas;
+  const [imagemUrls, setImagemUrls] = useState<Record<string, string>>({});
+  const carregandoImg = useRef<Set<string>>(new Set());
+  const fileRef = useRef<HTMLInputElement>(null);
   const [historia, setHistoria] = useState<Record<string, { pilha: Cena[]; i: number }>>({});
   const carregadas = useRef<Set<string>>(new Set());
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -601,6 +621,52 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     mudarCena(selPid, { elementos: (cenas[selPid]?.elementos ?? []).filter((e) => !selIds.includes(e.id)) });
     limparSelecao();
   };
+
+  // Imagens: carrega os bytes do cofre (data URL) de cada imagem das cenas.
+  useEffect(() => {
+    const ids = new Set<string>();
+    for (const c of Object.values(cenas)) for (const el of c.elementos) if (el.tipo === "imagem") ids.add(el.anexoId);
+    for (const id of ids) {
+      if (!id || imagemUrls[id] || carregandoImg.current.has(id)) continue;
+      carregandoImg.current.add(id);
+      api.imagemAnexo(id).then((url) => setImagemUrls((u) => ({ ...u, [id]: url })), () => carregandoImg.current.delete(id));
+    }
+  }, [cenas, imagemUrls]);
+
+  const inserirImagem = async (b: Blob, nome: string) => {
+    const pid = selId || paginas[0]?.id;
+    if (!pid) return;
+    try {
+      const base64 = await blobParaBase64(b);
+      if (!base64) return;
+      const { w, h } = await tamanhoImagem(b);
+      const anexo = await api.anexarBytes(pid, nome, base64);
+      const pg = paginas.find((p) => p.id === pid);
+      const m = medidaDe(pg?.tamanho ?? "a4");
+      let largura = m.largura * 0.5;
+      let altura = largura * (h / w);
+      const maxAlt = m.altura * 0.6;
+      if (altura > maxAlt) { altura = maxAlt; largura = altura * (w / h); }
+      const img: Imagem = { tipo: "imagem", id: crypto.randomUUID(), x: (m.largura - largura) / 2, y: 90, largura, altura, anexoId: anexo.id };
+      setImagemUrls((u) => ({ ...u, [anexo.id]: `data:${b.type || "image/png"};base64,${base64}` }));
+      mudarCena(pid, { elementos: [...(cenasRef.current[pid]?.elementos ?? []), img] });
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
+  const inserirRef = useRef(inserirImagem);
+  inserirRef.current = inserirImagem;
+  // Colar imagem (Ctrl + V) com o caderno aberto.
+  useEffect(() => {
+    const aoColar = (e: ClipboardEvent) => {
+      const it = [...(e.clipboardData?.items ?? [])].find((x) => x.type.startsWith("image/"));
+      const b = it?.getAsFile();
+      if (b) { e.preventDefault(); void inserirRef.current(b, `colado.${extDeMime(b.type)}`); }
+    };
+    document.addEventListener("paste", aoColar);
+    return () => document.removeEventListener("paste", aoColar);
+  }, []);
+
   const andar = (passo: number) => {
     const h = historia[selId];
     if (!h) return;
@@ -703,7 +769,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
               {paginas.map((p, i) => (
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId} podeApagar={paginas.length > 1}
                   cena={cenas[p.id] ?? cenaVazia()} ferramenta={ferramenta} cor={cor} ajuste={ajustes[fTraco]}
-                  forma={ajusteForma} editandoTexto={editandoTexto} selecionados={p.id === selPid ? selIds : vazio}
+                  forma={ajusteForma} editandoTexto={editandoTexto} selecionados={p.id === selPid ? selIds : vazio} imagemUrl={(id) => imagemUrls[id]}
                   aoSelecionar={() => setSelId(p.id)}
                   aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
                   aoNovaForma={(fm) => aoNovaForma(p.id, fm)}
@@ -738,11 +804,14 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
           ferramenta={ferramenta} aoFerramenta={setFerramenta} aoAjustar={setAjustando}
           cor={cor} aoCor={(c) => { usarCor(c); if (ferramenta === "laco" && selIds.length) recolorirSelecao(c); if (ferramenta === "texto" && editandoTexto) recolorTextoEditando(c); }} favoritos={favoritos}
           corBarra={corBarra} aoAbrirCorBarra={() => setCorBarraAberta(true)}
+          aoInserirImagem={() => fileRef.current?.click()}
           vertical={posBarra === "direita" || posBarra === "esquerda"} aoMover={ciclarBarra}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
         />
       )}
       </div>
+
+      <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void inserirImagem(f, f.name); e.target.value = ""; }} />
 
       <Janela titulo={ajustando ? t.ferramentas.ajustesDe(t.ferramentas.nomes[ajustando]) : ""} aberta={ajustando !== null} aoFechar={() => setAjustando(null)} pequena>
         {ajustando && (ajustando === "texto"
@@ -777,9 +846,9 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, selecionados, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarTracos, aoNovoTexto, aoPatchTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoFimSelecao, aoApagarSelecao, aoTitulo, aoMarcar, aoApagar }: {
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, selecionados, imagemUrl, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarTracos, aoNovoTexto, aoPatchTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoFimSelecao, aoApagarSelecao, aoTitulo, aoMarcar, aoApagar }: {
   id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
-  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; editandoTexto: string; selecionados: string[];
+  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; editandoTexto: string; selecionados: string[]; imagemUrl: (id: string) => string | undefined;
   aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void; aoApagarTracos: (ids: string[]) => void;
   aoNovoTexto: (x: number, y: number) => void; aoPatchTexto: (id: string, patch: Partial<Texto>) => void;
   aoMoverTexto: (id: string, x: number, y: number) => void; aoMoverFimTexto: () => void;
@@ -813,7 +882,7 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
       </div>
       <div ref={areaRef} className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
-        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} forma={forma} largura={med.largura} altura={med.altura} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarTracos={aoApagarTracos} />
+        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} forma={forma} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarTracos={aoApagarTracos} />
         <CamadaTexto caixas={caixas} ativa={ferramenta === "texto"} escala={escala} editandoId={editandoTexto}
           aoNovo={aoNovoTexto} aoPatch={aoPatchTexto} aoMover={aoMoverTexto} aoMoverFim={aoMoverFimTexto}
           aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
@@ -1005,8 +1074,23 @@ function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura
     if (!g) return;
     if (g.modo === "laco") {
       setLaco((l) => {
-        if (l && l.length >= 3) aoSelecionar(elementos.filter((el) => elementoDentro(el, l, alturaTextoEstim)).map((el) => el.id));
-        else aoSelecionar([]);
+        if (l && l.length >= 3) {
+          let ids = elementos.filter((el) => elementoDentro(el, l, alturaTextoEstim)).map((el) => el.id);
+          // Nada ficou inteiro dentro: "pega" o elemento sob o centro do laço
+          // (útil para imagens grandes, que seriam difíceis de contornar todas).
+          if (!ids.length) {
+            const cx = l.reduce((s, p) => s + p[0], 0) / l.length;
+            const cy = l.reduce((s, p) => s + p[1], 0) / l.length;
+            const sob = [...elementos].reverse().find((el) => {
+              const b = limitesDe([el], alturaTextoEstim);
+              return b && cx >= b.x && cx <= b.x + b.largura && cy >= b.y && cy <= b.y + b.altura;
+            });
+            if (sob) ids = [sob.id];
+          }
+          aoSelecionar(ids);
+        } else {
+          aoSelecionar([]);
+        }
         return null;
       });
     } else {
@@ -1037,8 +1121,9 @@ function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura
 }
 
 /** A camada onde a pessoa escreve/desenha, por cima da folha. */
-function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altura, aoDesenhar, aoNovaForma, aoApagarTracos }: {
+function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altura, imagemUrl, aoDesenhar, aoNovaForma, aoApagarTracos }: {
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; largura: number; altura: number;
+  imagemUrl: (id: string) => string | undefined;
   aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void; aoApagarTracos: (ids: string[]) => void;
 }) {
   const ref = useRef<SVGSVGElement>(null);
@@ -1103,6 +1188,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altu
         if (escondidos.has(el.id)) return null;
         if (el.tipo === "traco") return <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={el.opacidade ?? FERRAMENTAS[el.ferramenta].opacidade} />;
         if (el.tipo === "forma") return <path key={el.id} d={caminhoDeForma(el)} fill="none" stroke={el.cor} strokeWidth={el.espessura} strokeLinecap="round" strokeLinejoin="round" />;
+        if (el.tipo === "imagem") { const u = imagemUrl(el.anexoId); return u ? <image key={el.id} href={u} x={el.x} y={el.y} width={el.largura} height={el.altura} preserveAspectRatio="none" /> : null; }
         return null;
       })}
       {vivo && <path d={caminhoDeTraco(vivo)} fill={vivo.cor} opacity={vivo.opacidade ?? FERRAMENTAS[vivo.ferramenta].opacidade} />}
@@ -1115,10 +1201,10 @@ const FERRAMENTAS_UI: { id: FerramentaUI; icone: typeof PenLine }[] = [
   { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "forma", icone: Shapes }, { id: "laco", icone: Lasso },
 ];
 
-function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
+function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
   ferramenta: FerramentaUI; aoFerramenta: (f: FerramentaUI) => void; aoAjustar: (f: FerramentaUI) => void;
   cor: string; aoCor: (c: string) => void; favoritos: string[];
-  corBarra: string; aoAbrirCorBarra: () => void;
+  corBarra: string; aoAbrirCorBarra: () => void; aoInserirImagem: () => void;
   vertical: boolean; aoMover: () => void;
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
 }) {
@@ -1148,6 +1234,7 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, fav
       <span className="caderno-barra-grupo">
         <Button className="botao-icone" onPress={aoDesfazer} isDisabled={!podeDesfazer} aria-label={t.ferramentas.desfazer}><Undo2 aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={t.ferramentas.refazer}><Redo2 aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={aoInserirImagem} aria-label={t.imagem.inserir}><ImagePlus aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoAbrirCorBarra} aria-label={t.barraCor.abrir}><Palette aria-hidden="true" size="1.1em" /></Button>
       </span>
     </div>

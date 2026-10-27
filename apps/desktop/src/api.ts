@@ -1420,8 +1420,12 @@ function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLi
       anexos.push(a);
       return a;
     },
-    anexarBytes: async (item, nome) => {
-      const a = { id: crypto.randomUUID(), tipo: tipoDe(nome), nome, endereco: "", tamanho: 24_000, criadoEm: Date.now(), item };
+    anexarBytes: async (item, nome, base64) => {
+      const a = { id: crypto.randomUUID(), tipo: tipoDe(nome), nome, endereco: "", tamanho: Math.round((base64.length * 3) / 4), criadoEm: Date.now(), item };
+      if (a.tipo === "imagem") {
+        const mime = /\.png$/i.test(nome) ? "image/png" : /\.gif$/i.test(nome) ? "image/gif" : /\.webp$/i.test(nome) ? "image/webp" : /\.svg$/i.test(nome) ? "image/svg+xml" : "image/jpeg";
+        imagens.set(a.id, `data:${mime};base64,${base64}`);
+      }
       anexos.push(a);
       return a;
     },

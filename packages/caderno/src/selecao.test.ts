@@ -37,6 +37,15 @@ describe("caderno: seleção por laço", () => {
     expect(t.espessura).toBe(4);
   });
 
+  it("imagem entra no laço, move e escala pela caixa", () => {
+    const img: Elemento = { tipo: "imagem", id: "im", x: 10, y: 10, largura: 40, altura: 30, anexoId: "a1" };
+    expect(elementoDentro(img, quadrado, alturaTexto)).toBe(true);
+    const m = transladar(img, 5, 5) as Extract<Elemento, { tipo: "imagem" }>;
+    expect([m.x, m.y]).toEqual([15, 15]);
+    const e = escalar(img, 10, 10, 2) as Extract<Elemento, { tipo: "imagem" }>;
+    expect([e.largura, e.altura]).toEqual([80, 60]);
+  });
+
   it("escalar caixa de texto cresce largura e fonte", () => {
     const txt: Elemento = { tipo: "texto", id: "x", x: 10, y: 10, largura: 100, texto: "oi", cor: "#000", tamanho: 20 };
     const e = escalar(txt, 0, 0, 1.5) as Extract<Elemento, { tipo: "texto" }>;

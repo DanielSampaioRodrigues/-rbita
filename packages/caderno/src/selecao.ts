@@ -28,6 +28,9 @@ export function pontosDoElemento(el: Elemento, alturaTexto: AlturaTexto): Ponto2
     const h = alturaTexto(el);
     return [[el.x, el.y], [el.x + el.largura, el.y], [el.x + el.largura, el.y + h], [el.x, el.y + h]];
   }
+  if (el.tipo === "imagem") {
+    return [[el.x, el.y], [el.x + el.largura, el.y], [el.x + el.largura, el.y + el.altura], [el.x, el.y + el.altura]];
+  }
   // forma
   if (el.forma === "reta" || el.forma === "seta") return [[el.x1, el.y1], [el.x2, el.y2]];
   return [[el.x1, el.y1], [el.x2, el.y1], [el.x2, el.y2], [el.x1, el.y2]];
@@ -64,7 +67,7 @@ export function limitesDe(els: Elemento[], alturaTexto: AlturaTexto): Limites | 
 /** Move o elemento por (dx, dy). Devolve um novo elemento. */
 export function transladar(el: Elemento, dx: number, dy: number): Elemento {
   if (el.tipo === "traco") return { ...el, pontos: el.pontos.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy })) };
-  if (el.tipo === "texto") return { ...el, x: el.x + dx, y: el.y + dy };
+  if (el.tipo === "texto" || el.tipo === "imagem") return { ...el, x: el.x + dx, y: el.y + dy };
   return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
 }
 
@@ -79,6 +82,9 @@ export function escalar(el: Elemento, ax: number, ay: number, fator: number): El
   if (el.tipo === "texto") {
     const t = el as Texto;
     return { ...t, x: ex(t.x), y: ey(t.y), largura: Math.max(20, t.largura * fator), tamanho: Math.max(8, Math.round(t.tamanho * fator)) };
+  }
+  if (el.tipo === "imagem") {
+    return { ...el, x: ex(el.x), y: ey(el.y), largura: Math.max(16, el.largura * fator), altura: Math.max(16, el.altura * fator) };
   }
   const f = el as Forma;
   return { ...f, x1: ex(f.x1), y1: ey(f.y1), x2: ex(f.x2), y2: ey(f.y2), espessura: Math.max(0.5, f.espessura * fator) };

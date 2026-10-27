@@ -110,7 +110,20 @@ export interface Forma {
   espessura: number;
 }
 
-export type Elemento = Traco | Texto | Forma;
+/** Uma imagem colada ou inserida na página. Os bytes ficam no cofre (anexo);
+ *  aqui guardamos só a referência e a caixa (posição e tamanho). */
+export interface Imagem {
+  tipo: "imagem";
+  id: string;
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
+  /** Id do anexo (no cofre) com os bytes da imagem. */
+  anexoId: string;
+}
+
+export type Elemento = Traco | Texto | Forma | Imagem;
 
 /** A cena desenhável de uma página (ou do quadro infinito). */
 export interface Cena {

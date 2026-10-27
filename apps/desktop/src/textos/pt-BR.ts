@@ -989,6 +989,10 @@ export const textos = {
       ajuda: "Contorne com um laço o que quer selecionar. Depois arraste para mover, toque numa cor para recolorir, ou use a lixeira para apagar.",
       apagar: "Apagar o que está selecionado",
     },
+    imagem: {
+      inserir: "Inserir imagem",
+      ajuda: "Cole uma imagem (Ctrl + V) ou use o botão de imagem. Depois selecione-a com o laço para mover, redimensionar ou apagar.",
+    },
     barraCor: {
       abrir: "Cor da barra de ferramentas",
       titulo: "Cor da barra",
