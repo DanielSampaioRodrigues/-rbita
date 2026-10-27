@@ -1023,6 +1023,10 @@ export const textos = {
       previa: "Prévia",
       inserir: "Inserir na página",
     },
+    regua: {
+      titulo: "Régua (desenhar reto)",
+      ajuda: "Arraste a régua para posicionar e as pontas para girar. Desenhe perto dela e o traço sai reto.",
+    },
     barraCor: {
       abrir: "Cor da barra de ferramentas",
       titulo: "Cor da barra",

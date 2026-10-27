@@ -11,7 +11,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Sparkles, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
 import { FONTES } from "../preferencias";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
@@ -404,6 +404,20 @@ type FerramentaUI = Ferramenta | "texto" | "nota" | "forma" | "laco";
 /** Cores pastel das notas adesivas (a primeira é o padrão). */
 const FUNDOS_NOTA = ["#fff3b0", "#ffd6e0", "#d9f2d0", "#cfe8ff", "#e6d9ff", "#ffe0c2"];
 
+/** Régua: uma guia (segmento) para desenhar reto. Em px de referência. */
+type Regua = { x1: number; y1: number; x2: number; y2: number };
+const LIMIAR_REGUA = 46; // px de referência: perto da régua, o traço gruda nela
+function projetarNaRegua(px: number, py: number, r: Regua): { x: number; y: number } {
+  const dx = r.x2 - r.x1, dy = r.y2 - r.y1;
+  const comp = dx * dx + dy * dy || 1;
+  const t = ((px - r.x1) * dx + (py - r.y1) * dy) / comp;
+  return { x: r.x1 + t * dx, y: r.y1 + t * dy };
+}
+function distDaRegua(px: number, py: number, r: Regua): number {
+  const p = projetarNaRegua(px, py, r);
+  return Math.hypot(px - p.x, py - p.y);
+}
+
 /** Número aproximado de linhas de um conteúdo HTML (parágrafos e quebras). */
 const linhasDeHtml = (html: string) => Math.max(1, (html.match(/<(p|br|div)\b/gi)?.length ?? 1));
 /** Altura estimada de uma caixa de texto (em px de referência), pelas linhas. */
@@ -535,6 +549,13 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   };
   const [corBarra, setCorBarra] = useState<string>(lerCorBarra);
   const [corBarraAberta, setCorBarraAberta] = useState(false);
+  const [regua, setRegua] = useState<Regua | null>(null);
+  const alternarRegua = () => setRegua((r) => {
+    if (r) return null;
+    const pg = paginas.find((p) => p.id === selId);
+    const m = medidaDe(pg?.tamanho ?? "a4");
+    return { x1: m.largura * 0.12, y1: m.altura * 0.22, x2: m.largura * 0.88, y2: m.altura * 0.22 };
+  });
   const mudarCorBarra = (c: string) => {
     setCorBarra(c);
     try { if (c) localStorage.setItem("caderno-cor-barra", c); else localStorage.removeItem("caderno-cor-barra"); } catch { /* ignora */ }
@@ -854,6 +875,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId} podeApagar={paginas.length > 1}
                   cena={cenas[p.id] ?? cenaVazia()} ferramenta={ferramenta} cor={cor} ajuste={ajustes[fTraco]}
                   forma={ajusteForma} editandoTexto={editandoTexto} selecionados={p.id === selPid ? selIds : vazio} imagemUrl={(id) => imagemUrls[id]}
+                  regua={p.id === selId ? regua : null} aoMudarRegua={setRegua}
                   aoSelecionar={() => setSelId(p.id)}
                   aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
                   aoNovaForma={(fm) => aoNovaForma(p.id, fm)}
@@ -889,6 +911,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
           cor={cor} aoCor={(c) => { usarCor(c); if (ferramenta === "laco" && selIds.length) recolorirSelecao(c); if (ferramenta === "texto" && editandoTexto) recolorTextoEditando(c); }} favoritos={favoritos}
           corBarra={corBarra} aoAbrirCorBarra={() => setCorBarraAberta(true)}
           aoInserirImagem={() => fileRef.current?.click()} aoCriarIa={() => setIaAberta(true)}
+          reguaLigada={regua !== null} aoRegua={alternarRegua}
           vertical={posBarra === "direita" || posBarra === "esquerda"} aoMover={ciclarBarra}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
         />
@@ -934,9 +957,10 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, selecionados, imagemUrl, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarTracos, aoNovoTexto, aoPatchTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoFimSelecao, aoApagarSelecao, aoTitulo, aoMarcar, aoApagar }: {
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, selecionados, imagemUrl, regua, aoMudarRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarTracos, aoNovoTexto, aoPatchTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoFimSelecao, aoApagarSelecao, aoTitulo, aoMarcar, aoApagar }: {
   id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; editandoTexto: string; selecionados: string[]; imagemUrl: (id: string) => string | undefined;
+  regua: Regua | null; aoMudarRegua: (r: Regua) => void;
   aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void; aoApagarTracos: (ids: string[]) => void;
   aoNovoTexto: (x: number, y: number) => void; aoPatchTexto: (id: string, patch: Partial<Texto>) => void;
   aoMoverTexto: (id: string, x: number, y: number) => void; aoMoverFimTexto: () => void;
@@ -970,12 +994,13 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
       </div>
       <div ref={areaRef} className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
-        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} forma={forma} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarTracos={aoApagarTracos} />
+        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} forma={forma} regua={regua} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarTracos={aoApagarTracos} />
         <CamadaTexto caixas={caixas} ativa={ferramenta === "texto" || ferramenta === "nota"} escala={escala} editandoId={editandoTexto}
           aoNovo={aoNovoTexto} aoPatch={aoPatchTexto} aoMover={aoMoverTexto} aoMoverFim={aoMoverFimTexto}
           aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
         <CamadaSelecao elementos={cena.elementos} selecionados={selecionados} ativa={ferramenta === "laco"} escala={escala} largura={med.largura} altura={med.altura}
           aoSelecionar={aoSelecionarLaco} aoMover={aoMoverSelecao} aoEscalar={aoEscalarSelecao} aoFim={aoFimSelecao} aoApagar={aoApagarSelecao} />
+        {regua && <CamadaRegua regua={regua} escala={escala} largura={med.largura} altura={med.altura} aoMudar={aoMudarRegua} />}
       </div>
     </section>
   );
@@ -1228,9 +1253,48 @@ function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura
   );
 }
 
+/** A régua: uma guia que a pessoa arrasta e gira. Desenhar perto dela faz o
+ *  traço sair reto (o encaixe fica na SuperficieDesenho). */
+function CamadaRegua({ regua, escala, largura, altura, aoMudar }: {
+  regua: Regua; escala: number; largura: number; altura: number; aoMudar: (r: Regua) => void;
+}) {
+  const ref = useRef<SVGSVGElement>(null);
+  const gesto = useRef<{ modo: "mover" | "a" | "b"; ux: number; uy: number } | null>(null);
+  const pt = (e: React.PointerEvent): [number, number] => {
+    const r = ref.current!.getBoundingClientRect();
+    return [((e.clientX - r.left) / r.width) * largura, ((e.clientY - r.top) / r.height) * altura];
+  };
+  const inicio = (modo: "mover" | "a" | "b") => (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    ref.current?.setPointerCapture(e.pointerId);
+    const [x, y] = pt(e);
+    gesto.current = { modo, ux: x, uy: y };
+  };
+  const mover = (e: React.PointerEvent) => {
+    const g = gesto.current;
+    if (!g) return;
+    const [x, y] = pt(e);
+    if (g.modo === "mover") { const dx = x - g.ux, dy = y - g.uy; aoMudar({ x1: regua.x1 + dx, y1: regua.y1 + dy, x2: regua.x2 + dx, y2: regua.y2 + dy }); g.ux = x; g.uy = y; }
+    else if (g.modo === "a") aoMudar({ ...regua, x1: x, y1: y });
+    else aoMudar({ ...regua, x2: x, y2: y });
+  };
+  const fim = () => { gesto.current = null; };
+  const raio = escala ? 12 / escala : 12;
+  return (
+    <svg ref={ref} className="caderno-regua-svg" viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
+      onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
+      <line x1={regua.x1} y1={regua.y1} x2={regua.x2} y2={regua.y2} className="caderno-regua-banda" onPointerDown={inicio("mover")} />
+      <line x1={regua.x1} y1={regua.y1} x2={regua.x2} y2={regua.y2} className="caderno-regua-linha" vectorEffect="non-scaling-stroke" />
+      <circle cx={regua.x1} cy={regua.y1} r={raio} className="caderno-regua-alca" vectorEffect="non-scaling-stroke" onPointerDown={inicio("a")} />
+      <circle cx={regua.x2} cy={regua.y2} r={raio} className="caderno-regua-alca" vectorEffect="non-scaling-stroke" onPointerDown={inicio("b")} />
+    </svg>
+  );
+}
+
 /** A camada onde a pessoa escreve/desenha, por cima da folha. */
-function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altura, imagemUrl, aoDesenhar, aoNovaForma, aoApagarTracos }: {
-  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; largura: number; altura: number;
+function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largura, altura, imagemUrl, aoDesenhar, aoNovaForma, aoApagarTracos }: {
+  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; regua: Regua | null; largura: number; altura: number;
   imagemUrl: (id: string) => string | undefined;
   aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void; aoApagarTracos: (ids: string[]) => void;
 }) {
@@ -1239,7 +1303,9 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altu
   const [formaViva, setFormaViva] = useState<Forma | null>(null);
   const [escondidos, setEscondidos] = useState<Set<string>>(new Set());
   const desenhando = useRef(false);
+  const naRegua = useRef(false);
   const apagados = useRef<Set<string>>(new Set());
+  const comRegua = (p: { x: number; y: number; p: number }) => (naRegua.current && regua ? { ...p, ...projetarNaRegua(p.x, p.y, regua) } : p);
 
   const ponto = (e: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect();
@@ -1264,14 +1330,17 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altu
     const pt = ponto(e);
     if (ferramenta === "borracha") { apagados.current = new Set(); setEscondidos(new Set()); apagarEm(pt.x, pt.y); }
     else if (ferramenta === "forma") setFormaViva({ tipo: "forma", id: crypto.randomUUID(), forma: forma.tipo, x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y, cor, espessura: forma.espessura });
-    else setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta, cor, espessura: Math.round(ajuste.tamanho), afinar: ajuste.afinar, alisar: ajuste.alisar, opacidade: ajuste.opacidade, pontos: [pt] });
+    else {
+      naRegua.current = regua != null && distDaRegua(pt.x, pt.y, regua) <= LIMIAR_REGUA;
+      setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta, cor, espessura: Math.round(ajuste.tamanho), afinar: ajuste.afinar, alisar: ajuste.alisar, opacidade: ajuste.opacidade, pontos: [comRegua(pt)] });
+    }
   };
   const mover = (e: React.PointerEvent) => {
     if (!desenhando.current) return;
     const pt = ponto(e);
     if (ferramenta === "borracha") apagarEm(pt.x, pt.y);
     else if (ferramenta === "forma") setFormaViva((v) => (v ? { ...v, x2: pt.x, y2: pt.y } : v));
-    else setVivo((v) => (v ? { ...v, pontos: [...v.pontos, pt] } : v));
+    else setVivo((v) => (v ? { ...v, pontos: [...v.pontos, comRegua(pt)] } : v));
   };
   const fim = () => {
     if (!desenhando.current) return;
@@ -1284,6 +1353,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altu
     } else if (ferramenta === "forma") {
       setFormaViva((v) => { if (v && (Math.abs(v.x2 - v.x1) > 3 || Math.abs(v.y2 - v.y1) > 3)) aoNovaForma(v); return null; });
     } else {
+      naRegua.current = false;
       setVivo((v) => { if (v && v.pontos.length) aoDesenhar(v); return null; });
     }
   };
@@ -1309,10 +1379,11 @@ const FERRAMENTAS_UI: { id: FerramentaUI; icone: typeof PenLine }[] = [
   { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "nota", icone: StickyNote }, { id: "forma", icone: Shapes }, { id: "laco", icone: Lasso },
 ];
 
-function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, aoCriarIa, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
+function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, aoCriarIa, reguaLigada, aoRegua, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
   ferramenta: FerramentaUI; aoFerramenta: (f: FerramentaUI) => void; aoAjustar: (f: FerramentaUI) => void;
   cor: string; aoCor: (c: string) => void; favoritos: string[];
   corBarra: string; aoAbrirCorBarra: () => void; aoInserirImagem: () => void; aoCriarIa: () => void;
+  reguaLigada: boolean; aoRegua: () => void;
   vertical: boolean; aoMover: () => void;
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
 }) {
@@ -1342,6 +1413,7 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, fav
       <span className="caderno-barra-grupo">
         <Button className="botao-icone" onPress={aoDesfazer} isDisabled={!podeDesfazer} aria-label={t.ferramentas.desfazer}><Undo2 aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={t.ferramentas.refazer}><Redo2 aria-hidden="true" size="1.1em" /></Button>
+        <Button className={reguaLigada ? "botao-icone ativo" : "botao-icone"} onPress={aoRegua} aria-label={t.regua.titulo} aria-pressed={reguaLigada}><Ruler aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoInserirImagem} aria-label={t.imagem.inserir}><ImagePlus aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoCriarIa} aria-label={t.imagemIa.abrir}><Sparkles aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoAbrirCorBarra} aria-label={t.barraCor.abrir}><Palette aria-hidden="true" size="1.1em" /></Button>

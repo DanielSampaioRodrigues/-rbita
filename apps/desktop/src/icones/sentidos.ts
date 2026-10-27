@@ -72,6 +72,7 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   AlignLeft: "linhas de texto alinhadas à esquerda",
   AlignCenter: "linhas de texto centralizadas",
   AlignRight: "linhas de texto alinhadas à direita",
+  Ruler: "uma régua inclinada com marcas de medida",
   Pencil: "lápis inclinado com ponta e borracha no topo",
   Pill: "cápsula de remédio diagonal, dividida ao meio",
   Books: "três livros lado a lado em pé, como numa estante",

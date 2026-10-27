@@ -896,6 +896,13 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .caderno-sel-alca { fill: var(--cor-superficie); stroke: var(--cor-destaque); stroke-width: 1.5; }
 .caderno-sel-apagar { position: absolute; transform: translate(-35%, -125%); background: var(--cor-superficie); border: 1px solid var(--cor-borda); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); z-index: 3; }
 
+/* Régua: guia para desenhar reto. Só a banda e as pontas capturam o toque. */
+.caderno-regua-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.caderno-regua-banda { stroke: color-mix(in srgb, var(--cor-destaque) 20%, transparent); stroke-width: 34; stroke-linecap: round; pointer-events: stroke; cursor: move; }
+.caderno-regua-linha { stroke: var(--cor-destaque); stroke-width: 2; pointer-events: none; }
+.caderno-regua-alca { fill: var(--cor-superficie); stroke: var(--cor-destaque); stroke-width: 2; pointer-events: all; cursor: grab; }
+.caderno-regua-alca:active { cursor: grabbing; }
+
 /* Barra de ferramentas de desenho (rodapé do caderno). */
 .caderno-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--espaco-2) var(--espaco-4); padding: var(--espaco-2) var(--espaco-3); border-top: 1px solid var(--cor-borda); background: var(--cor-superficie); }
 .caderno-barra-grupo { display: inline-flex; align-items: center; gap: var(--espaco-1); }
