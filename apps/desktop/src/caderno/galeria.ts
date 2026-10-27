@@ -68,6 +68,20 @@ export const ADESIVOS: { grupo: string; itens: ItemGaleria[] }[] = [
     ],
   },
   {
+    grupo: "Pop",
+    itens: [
+      { id: "pop-boca", nome: "Boca" },
+      { id: "pop-coracao", nome: "Coração pop" },
+      { id: "pop-estrela", nome: "Estrela pop" },
+      { id: "pop-coroa", nome: "Coroa" },
+      { id: "pop-diamante", nome: "Diamante" },
+      { id: "pop-raio", nome: "Raio pop" },
+      { id: "pop-bola", nome: "Bola 5" },
+      { id: "pop-fita", nome: "Fita cassete" },
+      { id: "pop-paz", nome: "Paz" },
+    ],
+  },
+  {
     grupo: "Rock",
     itens: [
       { id: "caveira", nome: "Caveira" },
