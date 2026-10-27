@@ -2,7 +2,11 @@
 // pessoa escreve na capa). Guardada em JSON no caderno (campo capaCena). As
 // coordenadas são frações 0..1 da capa, para render em qualquer tamanho.
 import { FONTES } from "../preferencias";
-import type { AlinharTexto } from "@orbita/caderno";
+import type { AlinharTexto, Traco } from "@orbita/caderno";
+
+/** Espaço de referência da capa (proporção 3:4). Os traços guardam coordenadas
+ *  neste espaço; o título usa frações 0..1. Tudo escala junto na proporção. */
+export const CAPA_REF = { largura: 300, altura: 400 } as const;
 
 export interface TituloCapa {
   texto: string;
@@ -20,6 +24,8 @@ export interface TituloCapa {
 
 export interface CenaCapa {
   titulo?: TituloCapa;
+  /** Traços à mão desenhados na capa (coordenadas no espaço CAPA_REF). */
+  tracos?: Traco[];
 }
 
 export function lerCenaCapa(json?: string): CenaCapa {
@@ -33,11 +39,15 @@ export function lerCenaCapa(json?: string): CenaCapa {
 }
 
 export function serializarCenaCapa(cena: CenaCapa): string {
-  return cena.titulo?.texto.trim() ? JSON.stringify(cena) : "";
+  const tem = cena.titulo?.texto.trim() || (cena.tracos?.length ?? 0) > 0;
+  return tem ? JSON.stringify(cena) : "";
 }
 
-/** Há algo desenhado na capa (hoje: um título com texto). */
-export const temCapaCena = (json?: string) => !!lerCenaCapa(json).titulo?.texto.trim();
+/** Há algo desenhado na capa (título ou traços). */
+export function temCapaCena(json?: string): boolean {
+  const c = lerCenaCapa(json);
+  return !!c.titulo?.texto.trim() || (c.tracos?.length ?? 0) > 0;
+}
 
 /** Título inicial, centralizado, a partir do nome do caderno. */
 export function tituloPadrao(nome: string): TituloCapa {

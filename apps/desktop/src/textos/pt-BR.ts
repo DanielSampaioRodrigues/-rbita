@@ -912,6 +912,12 @@ export const textos = {
       remover: "Tirar o nome da capa",
       tamanho: "Tamanho",
       ajuda: "Arraste o texto na prévia para posicionar.",
+      pincel: "Pincel",
+      corPincel: "Cor do pincel",
+      espessura: "Espessura",
+      desfazer: "Desfazer traço",
+      limpar: "Apagar o desenho",
+      ajudaPincel: "Desenhe sobre a capa. Toque no pincel de novo para voltar a mover o título.",
     },
     pasta: {
       nome: "Nome da pasta",
