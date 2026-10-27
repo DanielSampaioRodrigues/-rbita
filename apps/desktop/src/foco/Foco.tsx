@@ -177,6 +177,19 @@ export function PaginaFoco() {
                 opcoes={DURACOES[estado.modo].map((m) => ({ valor: String(m), nome: t.min(m) }))}
                 aoMudar={(m) => configurar({ minutos: Number(m) })}
               />
+              <div className="campo">
+                <label className="campo-rotulo" htmlFor="foco-outra">{t.outraDuracao}</label>
+                <input
+                  id="foco-outra"
+                  type="number"
+                  className="entrada-texto sozinha"
+                  min={1}
+                  max={180}
+                  value={estado.minutos}
+                  onChange={(e) => configurar({ minutos: Math.min(180, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
+                />
+                <p className="campo-ajuda">{t.outraDuracaoAjuda}</p>
+              </div>
               {estado.modo === "foco" && <Campo rotulo={t.assunto} valor={estado.assunto} aoMudar={(assunto) => configurar({ assunto })} />}
               <div className="botoes">
                 <Button className="botao principal" type="submit"><Play aria-hidden="true" size="1.1em" /> {t.comecar}</Button>
