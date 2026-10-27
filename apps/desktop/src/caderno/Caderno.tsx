@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FERRAMENTAS, formaAtingida, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, tracoAtingido, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type Papel, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
+import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type Papel, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
 import { reduzirImagem } from "../fundo";
 import { useReescrever } from "../ia/Reescrever";
@@ -659,7 +659,30 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   };
   const aoDesenhar = (id: string, traco: Traco) => mudarCena(id, { elementos: [...(cenas[id]?.elementos ?? []), traco] });
   const aoNovaForma = (id: string, forma: Forma) => mudarCena(id, { elementos: [...(cenas[id]?.elementos ?? []), forma] });
-  const aoApagarTracos = (id: string, ids: string[]) => mudarCena(id, { elementos: (cenas[id]?.elementos ?? []).filter((e) => !ids.includes(e.id)) });
+  // Borracha "de verdade": apaga o pedaço do traço por onde passa (parte os
+  // traços em fragmentos) e apaga formas por inteiro ao encostar. Ao vivo não
+  // mexe no histórico; registra um passo quando a pessoa solta.
+  const apagarParcial = (pid: string, x: number, y: number, raio: number) =>
+    setCenas((m) => {
+      const c = m[pid] ?? cenaVazia();
+      const novos: Elemento[] = [];
+      let mudou = false;
+      for (const el of c.elementos) {
+        if (el.tipo === "traco") {
+          const frags = fragmentosAoApagar(el, x, y, raio);
+          if (frags === null) { novos.push(el); continue; }
+          mudou = true;
+          frags.forEach((pontos, i) => novos.push({ ...el, id: i === 0 ? el.id : crypto.randomUUID(), pontos }));
+        } else if (el.tipo === "forma") {
+          if (formaAtingida(el, x, y, raio)) mudou = true; else novos.push(el);
+        } else novos.push(el); // imagem e texto não são apagados pela borracha
+      }
+      if (!mudou) return m;
+      const nova: Cena = { elementos: novos };
+      agendarSalvarCena(pid, nova);
+      return { ...m, [pid]: nova };
+    });
+  const apagarParcialFim = (pid: string) => registrarCena(pid, cenasRef.current[pid] ?? cenaVazia());
 
   // Caixas de texto. Criar e apagar são um passo de desfazer; digitar e mover
   // atualizam a cena ao vivo (sem encher o histórico) e registram um passo ao
@@ -937,7 +960,8 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
                   aoSelecionar={() => setSelId(p.id)}
                   aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
                   aoNovaForma={(fm) => aoNovaForma(p.id, fm)}
-                  aoApagarTracos={(ids) => aoApagarTracos(p.id, ids)}
+                  aoApagarParcial={(x, y, raio) => apagarParcial(p.id, x, y, raio)}
+                  aoApagarFim={() => apagarParcialFim(p.id)}
                   aoSelecionarLaco={(ids) => selecionarLaco(p.id, ids)}
                   aoMoverSelecao={(dx, dy) => moverSelecao(p.id, selIds, dx, dy)}
                   aoEscalarSelecao={(ax, ay, fa) => escalarSelecao(p.id, selIds, ax, ay, fa)}
@@ -1021,11 +1045,12 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, selecionados, imagemUrl, regua, aoMudarRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarTracos, aoNovoTexto, aoPatchTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoFimSelecao, aoApagarSelecao, aoTitulo, aoMarcar, aoApagar }: {
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, selecionados, imagemUrl, regua, aoMudarRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoFimSelecao, aoApagarSelecao, aoTitulo, aoMarcar, aoApagar }: {
   id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; editandoTexto: string; selecionados: string[]; imagemUrl: (id: string) => string | undefined;
   regua: Regua | null; aoMudarRegua: (r: Regua) => void;
-  aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void; aoApagarTracos: (ids: string[]) => void;
+  aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void;
+  aoApagarParcial: (x: number, y: number, raio: number) => void; aoApagarFim: () => void;
   aoNovoTexto: (x: number, y: number) => void; aoPatchTexto: (id: string, patch: Partial<Texto>) => void;
   aoMoverTexto: (id: string, x: number, y: number) => void; aoMoverFimTexto: () => void;
   aoFimTexto: (id: string) => void; aoApagarTexto: (id: string) => void; aoSelecionarTexto: (id: string) => void;
@@ -1060,7 +1085,7 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
       </div>
       <div ref={areaRef} className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
-        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} forma={forma} regua={regua} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarTracos={aoApagarTracos} />
+        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} forma={forma} regua={regua} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarParcial={aoApagarParcial} aoApagarFim={aoApagarFim} />
         <CamadaTexto caixas={caixas} ativa={ferramenta === "texto" || ferramenta === "nota"} escala={escala} editandoId={editandoTexto}
           aoNovo={aoNovoTexto} aoPatch={aoPatchTexto} aoMover={aoMoverTexto} aoMoverFim={aoMoverFimTexto}
           aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
@@ -1425,33 +1450,25 @@ function CamadaRegua({ regua, escala, largura, altura, aoMudar }: {
 }
 
 /** A camada onde a pessoa escreve/desenha, por cima da folha. */
-function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largura, altura, imagemUrl, aoDesenhar, aoNovaForma, aoApagarTracos }: {
+function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largura, altura, imagemUrl, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim }: {
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; regua: Regua | null; largura: number; altura: number;
   imagemUrl: (id: string) => string | undefined;
-  aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void; aoApagarTracos: (ids: string[]) => void;
+  aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void;
+  aoApagarParcial: (x: number, y: number, raio: number) => void; aoApagarFim: () => void;
 }) {
   const ref = useRef<SVGSVGElement>(null);
   const [vivo, setVivo] = useState<Traco | null>(null);
   const [formaViva, setFormaViva] = useState<Forma | null>(null);
-  const [escondidos, setEscondidos] = useState<Set<string>>(new Set());
+  const [apagador, setApagador] = useState<{ x: number; y: number } | null>(null);
   const desenhando = useRef(false);
+  const apagouAlgo = useRef(false);
   const naRegua = useRef(false);
-  const apagados = useRef<Set<string>>(new Set());
+  const raioApagador = Math.max(4, ajuste.tamanho / 2);
   const comRegua = (p: { x: number; y: number; p: number }) => (naRegua.current && regua ? { ...p, ...projetarNaRegua(p.x, p.y, regua) } : p);
 
   const ponto = (e: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect();
     return { x: ((e.clientX - r.left) / r.width) * largura, y: ((e.clientY - r.top) / r.height) * altura, p: e.pressure > 0 ? e.pressure : 0.5 };
-  };
-  const apagarEm = (x: number, y: number) => {
-    const raio = ajuste.tamanho / 2;
-    let mudou = false;
-    for (const el of cena.elementos) {
-      if (apagados.current.has(el.id)) continue;
-      const acerta = (el.tipo === "traco" && tracoAtingido(el, x, y, raio)) || (el.tipo === "forma" && formaAtingida(el, x, y, raio));
-      if (acerta) { apagados.current.add(el.id); mudou = true; }
-    }
-    if (mudou) setEscondidos(new Set(apagados.current));
   };
   const inicio = (e: React.PointerEvent) => {
     if (ferramenta === "texto" || ferramenta === "nota" || ferramenta === "laco") return; // tratados nas camadas por cima
@@ -1460,7 +1477,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largur
     ref.current?.setPointerCapture(e.pointerId);
     desenhando.current = true;
     const pt = ponto(e);
-    if (ferramenta === "borracha") { apagados.current = new Set(); setEscondidos(new Set()); apagarEm(pt.x, pt.y); }
+    if (ferramenta === "borracha") { apagouAlgo.current = false; setApagador({ x: pt.x, y: pt.y }); aoApagarParcial(pt.x, pt.y, raioApagador); apagouAlgo.current = true; }
     else if (ferramenta === "forma") setFormaViva({ tipo: "forma", id: crypto.randomUUID(), forma: forma.tipo, x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y, cor, espessura: forma.espessura });
     else {
       naRegua.current = regua != null && distDaRegua(pt.x, pt.y, regua) <= LIMIAR_REGUA;
@@ -1470,7 +1487,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largur
   const mover = (e: React.PointerEvent) => {
     if (!desenhando.current) return;
     const pt = ponto(e);
-    if (ferramenta === "borracha") apagarEm(pt.x, pt.y);
+    if (ferramenta === "borracha") { setApagador({ x: pt.x, y: pt.y }); aoApagarParcial(pt.x, pt.y, raioApagador); }
     else if (ferramenta === "forma") setFormaViva((v) => (v ? { ...v, x2: pt.x, y2: pt.y } : v));
     else setVivo((v) => (v ? { ...v, pontos: [...v.pontos, comRegua(pt)] } : v));
   };
@@ -1478,10 +1495,8 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largur
     if (!desenhando.current) return;
     desenhando.current = false;
     if (ferramenta === "borracha") {
-      const ids = [...apagados.current];
-      apagados.current = new Set();
-      setEscondidos(new Set());
-      if (ids.length) aoApagarTracos(ids);
+      setApagador(null);
+      if (apagouAlgo.current) aoApagarFim();
     } else if (ferramenta === "forma") {
       setFormaViva((v) => { if (v && (Math.abs(v.x2 - v.x1) > 3 || Math.abs(v.y2 - v.y1) > 3)) aoNovaForma(v); return null; });
     } else {
@@ -1495,7 +1510,6 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largur
     <svg ref={ref} className={classe} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
       onPointerDown={inicio} onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
       {cena.elementos.map((el) => {
-        if (escondidos.has(el.id)) return null;
         if (el.tipo === "traco") return <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={el.opacidade ?? FERRAMENTAS[el.ferramenta].opacidade} />;
         if (el.tipo === "forma") return <path key={el.id} d={caminhoDeForma(el)} fill="none" stroke={el.cor} strokeWidth={el.espessura} strokeLinecap="round" strokeLinejoin="round" />;
         if (el.tipo === "imagem") {
@@ -1508,6 +1522,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, regua, largur
       })}
       {vivo && <path d={caminhoDeTraco(vivo)} fill={vivo.cor} opacity={vivo.opacidade ?? FERRAMENTAS[vivo.ferramenta].opacidade} />}
       {formaViva && <path d={caminhoDeForma(formaViva)} fill="none" stroke={formaViva.cor} strokeWidth={formaViva.espessura} strokeLinecap="round" strokeLinejoin="round" />}
+      {apagador && <circle cx={apagador.x} cy={apagador.y} r={raioApagador} className="caderno-apagador" vectorEffect="non-scaling-stroke" />}
     </svg>
   );
 }

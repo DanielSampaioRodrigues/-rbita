@@ -75,6 +75,26 @@ function distanciaSeg2(x: number, y: number, a: Ponto, b: Ponto): number {
   return (x - px) ** 2 + (y - py) ** 2;
 }
 
+/** Fragmentos de um traço depois de apagar os pontos a menos de `raio` de
+ *  (x,y): devolve as sequências de pontos que sobraram (cada uma vira um traço).
+ *  Null quando nada foi apagado. É a borracha "de verdade", que come só o
+ *  pedaço tocado em vez do traço inteiro. */
+export function fragmentosAoApagar(traco: Traco, x: number, y: number, raio: number): Ponto[][] | null {
+  const r2 = raio * raio;
+  const runs: Ponto[][] = [];
+  let atual: Ponto[] = [];
+  let apagou = false;
+  for (const p of traco.pontos) {
+    if ((x - p.x) ** 2 + (y - p.y) ** 2 <= r2) {
+      apagou = true;
+      if (atual.length) { runs.push(atual); atual = []; }
+    } else atual.push(p);
+  }
+  if (atual.length) runs.push(atual);
+  if (!apagou) return null;
+  return runs.filter((r) => r.length >= 2);
+}
+
 /** O traço passa a menos de `raio` do ponto (x,y)? Usado pela borracha. */
 export function tracoAtingido(traco: Traco, x: number, y: number, raio: number): boolean {
   const r2 = raio * raio;
