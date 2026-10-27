@@ -114,15 +114,19 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
           </Button>
         )}
         {imersivo && menuAberto && <Button className="imersivo-fundo" aria-label={textos.comum.fechar} onPress={() => setMenuAberto(false)} />}
-        {/* Ficam sempre no mesmo lugar; sem para onde ir, aparecem apagadas. */}
-        <div className="setas-navegacao">
-          <Button className="botao-icone" aria-label={`${textos.navegacao.voltar} (Alt + ←)`} isDisabled={!navegacao.podeVoltar} onPress={navegacao.voltar}>
-            <ArrowLeft aria-hidden="true" size="1.1em" />
-          </Button>
-          <Button className="botao-icone" aria-label={`${textos.navegacao.avancar} (Alt + →)`} isDisabled={!navegacao.podeAvancar} onPress={navegacao.avancar}>
-            <ArrowRight aria-hidden="true" size="1.1em" />
-          </Button>
-        </div>
+        {/* Ficam sempre no mesmo lugar; sem para onde ir, aparecem apagadas.
+            No modo imersivo (caderno aberto) somem, para não ficar por cima da
+            barra do caderno e bloquear o botão de voltar. */}
+        {!imersivo && (
+          <div className="setas-navegacao">
+            <Button className="botao-icone" aria-label={`${textos.navegacao.voltar} (Alt + ←)`} isDisabled={!navegacao.podeVoltar} onPress={navegacao.voltar}>
+              <ArrowLeft aria-hidden="true" size="1.1em" />
+            </Button>
+            <Button className="botao-icone" aria-label={`${textos.navegacao.avancar} (Alt + →)`} isDisabled={!navegacao.podeAvancar} onPress={navegacao.avancar}>
+              <ArrowRight aria-hidden="true" size="1.1em" />
+            </Button>
+          </div>
+        )}
         {children}
       </main>
     </div>
