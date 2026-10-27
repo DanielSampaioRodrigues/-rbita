@@ -3,12 +3,14 @@ import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FERRAMENTAS, formaAtingida, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, TIPOS_FORMA, tracoAtingido, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type Papel, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
-import { api, CORES_ETIQUETA, type Capa, type Caderno, type PaginaCaderno, type PastaCaderno } from "../api";
+import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
+import { reduzirImagem } from "../fundo";
+import { CriarImagemIa } from "./CriarImagemIa";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
 import { FONTES } from "../preferencias";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
@@ -493,6 +495,9 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   const [imagemUrls, setImagemUrls] = useState<Record<string, string>>({});
   const carregandoImg = useRef<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
+  const [ia, setIa] = useState<EstadoIa | null>(null);
+  const [iaAberta, setIaAberta] = useState(false);
+  useEffect(() => { api.estadoIa().then(setIa, () => {}); }, []);
   const [historia, setHistoria] = useState<Record<string, { pilha: Cena[]; i: number }>>({});
   const carregadas = useRef<Set<string>>(new Set());
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -633,7 +638,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     }
   }, [cenas, imagemUrls]);
 
-  const inserirImagem = async (b: Blob, nome: string) => {
+  const inserirImagem = async (b: Blob, nome: string, fracao = 0.5) => {
     const pid = selId || paginas[0]?.id;
     if (!pid) return;
     try {
@@ -643,7 +648,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       const anexo = await api.anexarBytes(pid, nome, base64);
       const pg = paginas.find((p) => p.id === pid);
       const m = medidaDe(pg?.tamanho ?? "a4");
-      let largura = m.largura * 0.5;
+      let largura = m.largura * fracao;
       let altura = largura * (h / w);
       const maxAlt = m.altura * 0.6;
       if (altura > maxAlt) { altura = maxAlt; largura = altura * (w / h); }
@@ -653,6 +658,14 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     } catch (e) {
       setErro(mensagem(e));
     }
+  };
+  // Insere o que a IA criou: imagem normal é reduzida (JPEG); adesivo mantém o
+  // PNG original para preservar a transparência, e entra menor.
+  const inserirDaIa = async (dataUrl: string, tipo: "imagem" | "adesivo") => {
+    const url = tipo === "imagem" ? await reduzirImagem(dataUrl, 1280) : dataUrl;
+    const blob = await (await fetch(url)).blob();
+    await inserirImagem(blob, tipo === "adesivo" ? "adesivo.png" : "imagem.jpg", tipo === "adesivo" ? 0.28 : 0.5);
+    setIaAberta(false);
   };
   const inserirRef = useRef(inserirImagem);
   inserirRef.current = inserirImagem;
@@ -804,7 +817,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
           ferramenta={ferramenta} aoFerramenta={setFerramenta} aoAjustar={setAjustando}
           cor={cor} aoCor={(c) => { usarCor(c); if (ferramenta === "laco" && selIds.length) recolorirSelecao(c); if (ferramenta === "texto" && editandoTexto) recolorTextoEditando(c); }} favoritos={favoritos}
           corBarra={corBarra} aoAbrirCorBarra={() => setCorBarraAberta(true)}
-          aoInserirImagem={() => fileRef.current?.click()}
+          aoInserirImagem={() => fileRef.current?.click()} aoCriarIa={() => setIaAberta(true)}
           vertical={posBarra === "direita" || posBarra === "esquerda"} aoMover={ciclarBarra}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
         />
@@ -812,6 +825,10 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void inserirImagem(f, f.name); e.target.value = ""; }} />
+
+      <Janela titulo={t.imagemIa.titulo} aberta={iaAberta} aoFechar={() => setIaAberta(false)}>
+        {iaAberta && <CriarImagemIa ia={ia} aoMudarIa={setIa} aoInserir={inserirDaIa} />}
+      </Janela>
 
       <Janela titulo={ajustando ? t.ferramentas.ajustesDe(t.ferramentas.nomes[ajustando]) : ""} aberta={ajustando !== null} aoFechar={() => setAjustando(null)} pequena>
         {ajustando && (ajustando === "texto"
@@ -1201,10 +1218,10 @@ const FERRAMENTAS_UI: { id: FerramentaUI; icone: typeof PenLine }[] = [
   { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "forma", icone: Shapes }, { id: "laco", icone: Lasso },
 ];
 
-function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
+function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, aoCriarIa, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
   ferramenta: FerramentaUI; aoFerramenta: (f: FerramentaUI) => void; aoAjustar: (f: FerramentaUI) => void;
   cor: string; aoCor: (c: string) => void; favoritos: string[];
-  corBarra: string; aoAbrirCorBarra: () => void; aoInserirImagem: () => void;
+  corBarra: string; aoAbrirCorBarra: () => void; aoInserirImagem: () => void; aoCriarIa: () => void;
   vertical: boolean; aoMover: () => void;
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
 }) {
@@ -1235,6 +1252,7 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, fav
         <Button className="botao-icone" onPress={aoDesfazer} isDisabled={!podeDesfazer} aria-label={t.ferramentas.desfazer}><Undo2 aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={t.ferramentas.refazer}><Redo2 aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoInserirImagem} aria-label={t.imagem.inserir}><ImagePlus aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={aoCriarIa} aria-label={t.imagemIa.abrir}><Sparkles aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoAbrirCorBarra} aria-label={t.barraCor.abrir}><Palette aria-hidden="true" size="1.1em" /></Button>
       </span>
     </div>
