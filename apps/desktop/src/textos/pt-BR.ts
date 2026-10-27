@@ -973,6 +973,11 @@ export const textos = {
       apagar: "Apagar a caixa de texto",
       campo: "Caixa de texto",
       vazio: "Escreva aqui…",
+      fonte: "Fonte",
+      fontePadrao: "Padrão",
+      alinhar: { esquerda: "Alinhar à esquerda", centro: "Centralizar", direita: "Alinhar à direita" },
+      diminuir: "Diminuir a letra",
+      aumentar: "Aumentar a letra",
     },
     forma: {
       qual: "Qual forma",

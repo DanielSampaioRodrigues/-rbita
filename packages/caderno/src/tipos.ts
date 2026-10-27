@@ -72,6 +72,8 @@ export interface Traco {
 
 /** Uma caixa de texto digitado na página. A largura é fixa (a pessoa arrasta
  *  para mover); a altura cresce com o conteúdo. Coordenadas em px de referência. */
+export type AlinharTexto = "esquerda" | "centro" | "direita";
+
 export interface Texto {
   tipo: "texto";
   id: string;
@@ -79,10 +81,15 @@ export interface Texto {
   y: number;
   /** Largura da caixa, em px de referência. */
   largura: number;
+  /** Conteúdo em HTML simples (negrito, itálico, sublinhado e quebras). */
   texto: string;
   cor: string;
   /** Tamanho da fonte, em px de referência. */
   tamanho: number;
+  /** Chave da fonte ("" ou ausente = fonte padrão do app). */
+  fonte?: string;
+  /** Alinhamento do texto na caixa (ausente = à esquerda). */
+  alinhamento?: AlinharTexto;
 }
 
 /** Formas que se desenham arrastando (traçadas de um canto a outro). */
