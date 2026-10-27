@@ -68,6 +68,7 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   Pause: "dois traços verticais paralelos",
   PenLine: "caneta inclinada com linha horizontal embaixo",
   Type: "a letra T maiúscula, como símbolo de texto digitado",
+  Lasso: "um laço de corda tracejado, como a ferramenta de seleção livre",
   Pencil: "lápis inclinado com ponta e borracha no topo",
   Pill: "cápsula de remédio diagonal, dividida ao meio",
   Books: "três livros lado a lado em pé, como numa estante",

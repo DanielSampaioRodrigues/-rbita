@@ -947,7 +947,7 @@ export const textos = {
     },
     ferramentas: {
       titulo: "Ferramentas de desenho",
-      nomes: { caneta: "Caneta", lapis: "Lápis", pincel: "Pincel", marcatexto: "Marca-texto", borracha: "Borracha", texto: "Texto", forma: "Formas" },
+      nomes: { caneta: "Caneta", lapis: "Lápis", pincel: "Pincel", marcatexto: "Marca-texto", borracha: "Borracha", texto: "Texto", forma: "Formas", laco: "Selecionar" },
       cor: "Cor",
       grossura: "Grossura",
       grossuras: { fina: "Fina", media: "Média", grossa: "Grossa" },
@@ -979,6 +979,10 @@ export const textos = {
       nomes: { reta: "Reta", retangulo: "Retângulo", elipse: "Elipse", seta: "Seta" },
       espessura: "Espessura",
       ajuda: "Arraste de um canto ao outro para desenhar a forma. A borracha também apaga formas.",
+    },
+    laco: {
+      ajuda: "Contorne com um laço o que quer selecionar. Depois arraste para mover, toque numa cor para recolorir, ou use a lixeira para apagar.",
+      apagar: "Apagar o que está selecionado",
     },
     infinitoEmBreve: "O quadro infinito — com rolagem e zoom livres e as mesmas ferramentas — chega na próxima etapa. Por enquanto, use o modo caderno para escrever e desenhar.",
   },
