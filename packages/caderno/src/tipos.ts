@@ -150,13 +150,14 @@ export function lerCena(texto: string): Cena {
   }
 }
 
-/** Tipo da capa do caderno. Na etapa 12: cor e galeria pronta. Imagem/SVG
- *  próprios entram depois. */
-export type TipoCapa = "cor" | "galeria";
+/** Tipo da capa do caderno: cor da paleta, capa pronta da galeria, ou uma
+ *  imagem da própria pessoa (enviada ou criada com IA). */
+export type TipoCapa = "cor" | "galeria" | "imagem";
 
 export interface Capa {
   tipo: TipoCapa;
-  /** Cor da paleta (tipo "cor") ou id de uma capa pronta (tipo "galeria"). */
+  /** Cor da paleta ("cor"), id de uma capa pronta ("galeria"), ou o endereço
+   *  de dados (data URI, já reduzido) da imagem ("imagem"). */
   valor: string;
 }
 

@@ -28,9 +28,20 @@ const CAPAS_GALERIA: { id: string; nome: string; css: string }[] = [
   { id: "areia", nome: "Areia", css: "linear-gradient(135deg, #8f7738, #dcc48c)" },
   { id: "lavanda", nome: "Lavanda", css: "linear-gradient(135deg, #7c68a8, #b9a6e0)" },
   { id: "carvao", nome: "Carvão", css: "linear-gradient(135deg, #2a2d33, #4a4f58)" },
+  { id: "oceano", nome: "Oceano", css: "linear-gradient(135deg, #1b4a5a, #2e8a99)" },
+  { id: "cereja", nome: "Cereja", css: "linear-gradient(135deg, #7a2746, #c05d7e)" },
+  { id: "menta", nome: "Menta", css: "linear-gradient(135deg, #2f6b57, #7fc4a8)" },
+  { id: "grafite", nome: "Grafite", css: "linear-gradient(135deg, #3a3f47, #6f747c)" },
+  { id: "amanhecer", nome: "Amanhecer", css: "linear-gradient(135deg, #b2533e, #e0a56a)" },
+  { id: "indigo", nome: "Índigo", css: "linear-gradient(135deg, #3a3a7a, #6f68c0)" },
+  { id: "floresta", nome: "Floresta", css: "linear-gradient(160deg, #22402e, #4a7a52 70%, #86b06a)" },
+  { id: "uva", nome: "Uva", css: "linear-gradient(135deg, #4a2a63, #8a5fa8)" },
 ];
 
 function estiloCapa(capa: Capa): React.CSSProperties {
+  if (capa.tipo === "imagem") {
+    return capa.valor ? { backgroundImage: `url("${capa.valor}")`, backgroundSize: "cover", backgroundPosition: "center" } : { background: "var(--cor-superficie-alternativa)" };
+  }
   if (capa.tipo === "galeria") {
     return { background: CAPAS_GALERIA.find((x) => x.id === capa.valor)?.css ?? "var(--cor-superficie-alternativa)" };
   }
@@ -47,6 +58,8 @@ export function PaginaCaderno() {
   const [pastaAberta, setPastaAberta] = useState<PastaCaderno | null>(null);
   const [aberto, setAberto] = useState<Caderno | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [ia, setIa] = useState<EstadoIa | null>(null);
+  useEffect(() => { api.estadoIa().then(setIa, () => {}); }, []);
   const mudancas = useMudancas();
 
   useEffect(() => {
@@ -135,7 +148,7 @@ export function PaginaCaderno() {
       <Aviso>{erro}</Aviso>
 
       <Janela titulo={editando && editando.id ? t.form.editarTitulo : t.form.novoTitulo} aberta={editando !== null} aoFechar={() => setEditando(null)}>
-        {editando && <FormCaderno key={editando.id || "novo"} inicial={editando} pastas={pastas} aoFechar={() => setEditando(null)} />}
+        {editando && <FormCaderno key={editando.id || "novo"} inicial={editando} pastas={pastas} ia={ia} aoMudarIa={setIa} aoFechar={() => setEditando(null)} />}
       </Janela>
       <Janela titulo={editandoPasta && editandoPasta.id ? t.pasta.editar : t.pasta.nova} aberta={editandoPasta !== null} aoFechar={() => setEditandoPasta(null)}>
         {editandoPasta && <FormPasta key={editandoPasta.id || "novo"} inicial={editandoPasta} aoFechar={() => setEditandoPasta(null)} />}
@@ -193,37 +206,75 @@ function GradeCadernos({ cadernos, aoAbrir, aoEditar, aoExcluir, pastas, aoMover
   );
 }
 
-function EscolherCapa({ capa, aoMudar }: { capa: Capa; aoMudar: (c: Capa) => void }) {
-  const valor = `${capa.tipo}:${capa.valor}`;
-  const mudar = (v: string) => {
-    const [tipo, val] = v.split(":");
-    aoMudar({ tipo: tipo as Capa["tipo"], valor: val });
+function EscolherCapa({ capa, aoMudar, ia, aoMudarIa }: { capa: Capa; aoMudar: (c: Capa) => void; ia: EstadoIa | null; aoMudarIa: (e: EstadoIa) => void }) {
+  const [modo, setModo] = useState<Capa["tipo"]>(capa.tipo);
+  const [iaAberta, setIaAberta] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [ocupado, setOcupado] = useState(false);
+
+  const usarImagem = async (origem: string | File) => {
+    setOcupado(true);
+    const u = typeof origem === "string" ? origem : URL.createObjectURL(origem);
+    try {
+      const red = await reduzirImagem(u, 700);
+      aoMudar({ tipo: "imagem", valor: red });
+    } catch { /* ignora imagem inválida */ } finally {
+      if (typeof origem !== "string") URL.revokeObjectURL(u);
+      setOcupado(false);
+    }
   };
+
   return (
-    <RadioGroup className="campo" value={valor} onChange={mudar}>
-      <Label className="campo-rotulo">{t.form.capa}</Label>
-      <span className="campo-rotulo pequeno texto-suave">{t.capas.cores}</span>
-      <div className="cores-etiqueta">
-        {CORES_ETIQUETA.map((c) => (
-          <Radio key={c} value={`cor:${c}`} className="cor-opcao" aria-label={textos.ideias.cores[c]}>
-            <span className={`etiqueta-cor grande cor-${c}`} aria-hidden="true" />
-          </Radio>
-        ))}
-      </div>
-      <span className="campo-rotulo pequeno texto-suave">{t.capas.galeria}</span>
-      <div className="caderno-galeria">
-        {CAPAS_GALERIA.map((g) => (
-          <Radio key={g.id} value={`galeria:${g.id}`} className="caderno-galeria-opcao" aria-label={g.nome}>
-            <span className="caderno-galeria-amostra" style={{ background: g.css }} aria-hidden="true" />
-            <span className="pequeno">{g.nome}</span>
-          </Radio>
-        ))}
-      </div>
-    </RadioGroup>
+    <div className="campo">
+      <span className="campo-rotulo">{t.form.capa}</span>
+      <Segmentado<Capa["tipo"]> rotulo={t.capas.tipo} rotuloOculto valor={modo} aoMudar={setModo}
+        opcoes={[{ valor: "cor", nome: t.capas.cores }, { valor: "galeria", nome: t.capas.galeria }, { valor: "imagem", nome: t.capas.imagem }]} />
+
+      {modo === "cor" && (
+        <RadioGroup className="campo" value={capa.tipo === "cor" ? capa.valor : ""} onChange={(v) => aoMudar({ tipo: "cor", valor: v })} orientation="horizontal" aria-label={t.capas.cores}>
+          <div className="cores-etiqueta">
+            {CORES_ETIQUETA.map((c) => (
+              <Radio key={c} value={c} className="cor-opcao" aria-label={textos.ideias.cores[c]}>
+                <span className={`etiqueta-cor grande cor-${c}`} aria-hidden="true" />
+              </Radio>
+            ))}
+          </div>
+        </RadioGroup>
+      )}
+
+      {modo === "galeria" && (
+        <RadioGroup className="campo" value={capa.tipo === "galeria" ? capa.valor : ""} onChange={(v) => aoMudar({ tipo: "galeria", valor: v })} aria-label={t.capas.galeria}>
+          <div className="caderno-galeria">
+            {CAPAS_GALERIA.map((g) => (
+              <Radio key={g.id} value={g.id} className="caderno-galeria-opcao" aria-label={g.nome}>
+                <span className="caderno-galeria-amostra" style={{ background: g.css }} aria-hidden="true" />
+                <span className="pequeno">{g.nome}</span>
+              </Radio>
+            ))}
+          </div>
+        </RadioGroup>
+      )}
+
+      {modo === "imagem" && (
+        <div className="caderno-capa-imagem">
+          {capa.tipo === "imagem" && capa.valor
+            ? <div className="caderno-capa-previa" role="img" aria-label={t.capas.preview} style={estiloCapa(capa)} />
+            : <p className="campo-ajuda">{t.capas.semImagem}</p>}
+          <div className="botoes">
+            <Button className="botao com-icone" isDisabled={ocupado} onPress={() => fileRef.current?.click()}><ImagePlus aria-hidden="true" size="1em" /> {capa.tipo === "imagem" && capa.valor ? t.capas.trocar : t.capas.enviar}</Button>
+            <Button className="botao com-icone" isDisabled={ocupado} onPress={() => setIaAberta(true)}><Sparkles aria-hidden="true" size="1em" /> {t.capas.criarIa}</Button>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void usarImagem(f); e.target.value = ""; }} />
+          <Janela titulo={t.imagemIa.titulo} aberta={iaAberta} aoFechar={() => setIaAberta(false)}>
+            {iaAberta && <CriarImagemIa ia={ia} aoMudarIa={aoMudarIa} aoInserir={async (dataUrl) => { await usarImagem(dataUrl); setIaAberta(false); }} />}
+          </Janela>
+        </div>
+      )}
+    </div>
   );
 }
 
-function FormCaderno({ inicial, pastas, aoFechar }: { inicial: Caderno; pastas: PastaCaderno[]; aoFechar: () => void }) {
+function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Caderno; pastas: PastaCaderno[]; ia: EstadoIa | null; aoMudarIa: (e: EstadoIa) => void; aoFechar: () => void }) {
   const [nome, setNome] = useState(inicial.nome);
   const [modo, setModo] = useState<Caderno["modo"]>(inicial.modo);
   const [capa, setCapa] = useState<Capa>(inicial.capa);
@@ -252,7 +303,7 @@ function FormCaderno({ inicial, pastas, aoFechar }: { inicial: Caderno; pastas: 
           <p className="campo-ajuda">{t.modoAjuda[modo]}</p>
         </>
       )}
-      <EscolherCapa capa={capa} aoMudar={setCapa} />
+      <EscolherCapa capa={capa} aoMudar={setCapa} ia={ia} aoMudarIa={aoMudarIa} />
       {pastas.length > 0 && (
         <div className="campo">
           <label className="campo-rotulo" htmlFor="caderno-pasta">{t.form.pasta}</label>

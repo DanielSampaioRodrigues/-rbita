@@ -429,7 +429,7 @@ export interface CartaoOrg {
 
 /** Capa do caderno: cor da paleta ou id de uma capa pronta. */
 export interface Capa {
-  tipo: "cor" | "galeria";
+  tipo: "cor" | "galeria" | "imagem";
   valor: string;
 }
 

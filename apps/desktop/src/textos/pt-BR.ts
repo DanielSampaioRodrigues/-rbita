@@ -861,7 +861,7 @@ export const textos = {
   },
   caderno: {
     titulo: "Caderno",
-    intro: "Sua estante de cadernos. Cada caderno é um espaço seu, no modo caderno (com páginas) ou no quadro infinito (sem bordas). Por enquanto você monta e organiza os cadernos; a escrita e o desenho à mão chegam no próximo passo.",
+    intro: "Sua estante de cadernos. Cada caderno é um espaço seu, no modo caderno (com páginas) ou no quadro infinito (sem bordas). Escreva e desenhe à mão, com caneta, texto, formas, imagens e o laço de seleção. O quadro infinito chega num próximo passo.",
     novo: "Novo caderno",
     novaPasta: "Nova pasta",
     semPasta: "Fora de pasta",
@@ -890,8 +890,15 @@ export const textos = {
       novoTitulo: "Novo caderno",
     },
     capas: {
+      tipo: "Tipo de capa",
       cores: "Cores",
       galeria: "Galeria",
+      imagem: "Imagem",
+      enviar: "Enviar imagem",
+      trocar: "Trocar imagem",
+      criarIa: "Criar com IA",
+      preview: "Capa escolhida",
+      semImagem: "Envie uma imagem ou crie uma com IA.",
     },
     pasta: {
       nome: "Nome da pasta",

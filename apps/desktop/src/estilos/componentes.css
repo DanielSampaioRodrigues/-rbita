@@ -818,6 +818,8 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .caderno-galeria-opcao { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: var(--raio-1); }
 .caderno-galeria-opcao[data-selected] { outline: 2px solid var(--cor-destaque); }
 .caderno-galeria-amostra { width: 2.6rem; height: 3.3rem; border-radius: var(--raio-1); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
+.caderno-capa-imagem { display: flex; flex-direction: column; gap: var(--espaco-2); }
+.caderno-capa-previa { width: 7rem; height: 9rem; border-radius: var(--raio-1); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.22); }
 
 .caderno-tela { display: flex; flex-direction: column; height: 100%; }
 .caderno-corpo { flex: 1; overflow: auto; padding: var(--espaco-4); display: flex; flex-direction: column; gap: var(--espaco-4); }
