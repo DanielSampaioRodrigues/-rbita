@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
-import { caminhoDeTraco, cenaVazia, FERRAMENTAS, lerCena, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, tracoAtingido, type Cena, type CoresPapel, type Ferramenta, type ModeloPapel, type Papel, type Texto, type Traco } from "@orbita/caderno";
+import { caminhoDeForma, caminhoDeTraco, cenaVazia, FERRAMENTAS, formaAtingida, lerCena, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, TIPOS_FORMA, tracoAtingido, type Cena, type CoresPapel, type Ferramenta, type Forma, type ModeloPapel, type Papel, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type PaginaCaderno, type PastaCaderno } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, LayoutGrid, List, Pencil, PenLine, Plus, Redo2, SlidersHorizontal, Trash2, Type, Undo2, Wand2 } from "../icones";
+import { Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, LayoutGrid, List, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Trash2, Type, Undo2, Wand2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
 import { textos } from "../textos/pt-BR";
@@ -327,13 +327,22 @@ function lerFavoritos(): string[] {
 type PosBarra = "baixo" | "cima" | "direita" | "esquerda";
 const POS_BARRA: PosBarra[] = ["baixo", "cima", "direita", "esquerda"];
 
-/** Ferramentas da barra: as de traço (do motor) mais a caixa de texto. */
-type FerramentaUI = Ferramenta | "texto";
+/** Ferramentas da barra: as de traço (do motor) mais a caixa de texto e as formas. */
+type FerramentaUI = Ferramenta | "texto" | "forma";
 const TAM_TEXTO_PADRAO = 28; // px de referência
 const LARGURA_TEXTO_PADRAO = 300; // px de referência
 function lerTamTexto(): number {
   try { const s = localStorage.getItem("caderno-tam-texto"); if (s) { const n = Number(s); if (n >= 12 && n <= 80) return n; } } catch { /* padrão */ }
   return TAM_TEXTO_PADRAO;
+}
+
+type AjusteForma = { tipo: TipoForma; espessura: number };
+function lerAjusteForma(): AjusteForma {
+  try {
+    const s = localStorage.getItem("caderno-forma");
+    if (s) { const v = JSON.parse(s); if (v && TIPOS_FORMA.includes(v.tipo) && typeof v.espessura === "number") return v; }
+  } catch { /* padrão */ }
+  return { tipo: "reta", espessura: 3 };
 }
 
 type AjusteTraco = { tamanho: number; afinar: number; alisar: number; opacidade: number };
@@ -369,12 +378,20 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   const area = useRef<HTMLDivElement>(null);
   // Desenho: ferramenta, cor e grossura ativas; cenas e histórico por página.
   const [ferramenta, setFerramenta] = useState<FerramentaUI>("caneta");
-  const fTraco: Ferramenta = ferramenta === "texto" ? "caneta" : ferramenta;
+  const fTraco: Ferramenta = ferramenta === "texto" || ferramenta === "forma" ? "caneta" : ferramenta;
   const [tamTexto, setTamTexto] = useState<number>(lerTamTexto);
   const [editandoTexto, setEditandoTexto] = useState("");
   const mudarTamTexto = (n: number) => {
     setTamTexto(n);
     try { localStorage.setItem("caderno-tam-texto", String(n)); } catch { /* ignora */ }
+  };
+  const [ajusteForma, setAjusteForma] = useState<AjusteForma>(lerAjusteForma);
+  const mudarForma = (patch: Partial<AjusteForma>) => {
+    setAjusteForma((a) => {
+      const novo = { ...a, ...patch };
+      try { localStorage.setItem("caderno-forma", JSON.stringify(novo)); } catch { /* ignora */ }
+      return novo;
+    });
   };
   const [cor, setCor] = useState(CORES_PADRAO[0]);
   const [favoritos, setFavoritos] = useState<string[]>(lerFavoritos);
@@ -456,6 +473,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     agendarSalvarCena(id, nova);
   };
   const aoDesenhar = (id: string, traco: Traco) => mudarCena(id, { elementos: [...(cenas[id]?.elementos ?? []), traco] });
+  const aoNovaForma = (id: string, forma: Forma) => mudarCena(id, { elementos: [...(cenas[id]?.elementos ?? []), forma] });
   const aoApagarTracos = (id: string, ids: string[]) => mudarCena(id, { elementos: (cenas[id]?.elementos ?? []).filter((e) => !ids.includes(e.id)) });
 
   // Caixas de texto. Criar e apagar são um passo de desfazer; digitar e mover
@@ -602,9 +620,10 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
               {paginas.map((p, i) => (
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId} podeApagar={paginas.length > 1}
                   cena={cenas[p.id] ?? cenaVazia()} ferramenta={ferramenta} cor={cor} ajuste={ajustes[fTraco]}
-                  editandoTexto={editandoTexto}
+                  forma={ajusteForma} editandoTexto={editandoTexto}
                   aoSelecionar={() => setSelId(p.id)}
                   aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
+                  aoNovaForma={(fm) => aoNovaForma(p.id, fm)}
                   aoApagarTracos={(ids) => aoApagarTracos(p.id, ids)}
                   aoNovoTexto={(x, y) => aoNovoTexto(p.id, x, y)}
                   aoEditarTexto={(id, txt) => atualizarTexto(p.id, id, { texto: txt })}
@@ -639,6 +658,8 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       <Janela titulo={ajustando ? t.ferramentas.ajustesDe(t.ferramentas.nomes[ajustando]) : ""} aberta={ajustando !== null} aoFechar={() => setAjustando(null)} pequena>
         {ajustando && (ajustando === "texto"
           ? <AjustesTexto tamanho={tamTexto} cor={cor} aoMudar={mudarTamTexto} aoFechar={() => setAjustando(null)} />
+          : ajustando === "forma"
+          ? <AjustesForma ajuste={ajusteForma} cor={cor} aoMudar={mudarForma} aoFechar={() => setAjustando(null)} />
           : <AjustesFerramenta ferramenta={ajustando} ajuste={ajustes[ajustando]} aoMudar={(patch) => mudarAjuste(ajustando, patch)} aoFechar={() => setAjustando(null)} />)}
       </Janela>
 
@@ -649,10 +670,10 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, editandoTexto, aoSelecionar, aoDesenhar, aoApagarTracos, aoNovoTexto, aoEditarTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoTitulo, aoMarcar, aoApagar }: {
+function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferramenta, cor, ajuste, forma, editandoTexto, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarTracos, aoNovoTexto, aoEditarTexto, aoMoverTexto, aoMoverFimTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoTitulo, aoMarcar, aoApagar }: {
   id: string; pagina: PaginaCaderno; numero: number; selecionada: boolean; podeApagar: boolean;
-  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; editandoTexto: string;
-  aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoApagarTracos: (ids: string[]) => void;
+  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; editandoTexto: string;
+  aoSelecionar: () => void; aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void; aoApagarTracos: (ids: string[]) => void;
   aoNovoTexto: (x: number, y: number) => void; aoEditarTexto: (id: string, txt: string) => void;
   aoMoverTexto: (id: string, x: number, y: number) => void; aoMoverFimTexto: () => void;
   aoFimTexto: (id: string) => void; aoApagarTexto: (id: string) => void; aoSelecionarTexto: (id: string) => void;
@@ -683,7 +704,7 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
       </div>
       <div ref={areaRef} className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
-        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} largura={med.largura} altura={med.altura} aoDesenhar={aoDesenhar} aoApagarTracos={aoApagarTracos} />
+        <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} forma={forma} largura={med.largura} altura={med.altura} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarTracos={aoApagarTracos} />
         <CamadaTexto caixas={caixas} ativa={ferramenta === "texto"} escala={escala} editandoId={editandoTexto}
           aoNovo={aoNovoTexto} aoEditar={aoEditarTexto} aoMover={aoMoverTexto} aoMoverFim={aoMoverFimTexto}
           aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
@@ -765,12 +786,13 @@ function CaixaTexto({ caixa: tx, escala, editando, ativa, aoEditar, aoMover, aoM
 }
 
 /** A camada onde a pessoa escreve/desenha, por cima da folha. */
-function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoDesenhar, aoApagarTracos }: {
-  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; largura: number; altura: number;
-  aoDesenhar: (t: Traco) => void; aoApagarTracos: (ids: string[]) => void;
+function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altura, aoDesenhar, aoNovaForma, aoApagarTracos }: {
+  cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; forma: AjusteForma; largura: number; altura: number;
+  aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void; aoApagarTracos: (ids: string[]) => void;
 }) {
   const ref = useRef<SVGSVGElement>(null);
   const [vivo, setVivo] = useState<Traco | null>(null);
+  const [formaViva, setFormaViva] = useState<Forma | null>(null);
   const [escondidos, setEscondidos] = useState<Set<string>>(new Set());
   const desenhando = useRef(false);
   const apagados = useRef<Set<string>>(new Set());
@@ -783,7 +805,9 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
     const raio = FERRAMENTAS.borracha.tamanho / 2;
     let mudou = false;
     for (const el of cena.elementos) {
-      if (el.tipo === "traco" && !apagados.current.has(el.id) && tracoAtingido(el, x, y, raio)) { apagados.current.add(el.id); mudou = true; }
+      if (apagados.current.has(el.id)) continue;
+      const acerta = (el.tipo === "traco" && tracoAtingido(el, x, y, raio)) || (el.tipo === "forma" && formaAtingida(el, x, y, raio));
+      if (acerta) { apagados.current.add(el.id); mudou = true; }
     }
     if (mudou) setEscondidos(new Set(apagados.current));
   };
@@ -795,12 +819,14 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
     desenhando.current = true;
     const pt = ponto(e);
     if (ferramenta === "borracha") { apagados.current = new Set(); setEscondidos(new Set()); apagarEm(pt.x, pt.y); }
+    else if (ferramenta === "forma") setFormaViva({ tipo: "forma", id: crypto.randomUUID(), forma: forma.tipo, x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y, cor, espessura: forma.espessura });
     else setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta, cor, espessura: Math.round(ajuste.tamanho), afinar: ajuste.afinar, alisar: ajuste.alisar, opacidade: ajuste.opacidade, pontos: [pt] });
   };
   const mover = (e: React.PointerEvent) => {
     if (!desenhando.current) return;
     const pt = ponto(e);
     if (ferramenta === "borracha") apagarEm(pt.x, pt.y);
+    else if (ferramenta === "forma") setFormaViva((v) => (v ? { ...v, x2: pt.x, y2: pt.y } : v));
     else setVivo((v) => (v ? { ...v, pontos: [...v.pontos, pt] } : v));
   };
   const fim = () => {
@@ -811,6 +837,8 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
       apagados.current = new Set();
       setEscondidos(new Set());
       if (ids.length) aoApagarTracos(ids);
+    } else if (ferramenta === "forma") {
+      setFormaViva((v) => { if (v && (Math.abs(v.x2 - v.x1) > 3 || Math.abs(v.y2 - v.y1) > 3)) aoNovaForma(v); return null; });
     } else {
       setVivo((v) => { if (v && v.pontos.length) aoDesenhar(v); return null; });
     }
@@ -820,16 +848,20 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
   return (
     <svg ref={ref} className={classe} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
       onPointerDown={inicio} onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
-      {cena.elementos.map((el) =>
-        el.tipo === "traco" && !escondidos.has(el.id) ? <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={el.opacidade ?? FERRAMENTAS[el.ferramenta].opacidade} /> : null,
-      )}
+      {cena.elementos.map((el) => {
+        if (escondidos.has(el.id)) return null;
+        if (el.tipo === "traco") return <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={el.opacidade ?? FERRAMENTAS[el.ferramenta].opacidade} />;
+        if (el.tipo === "forma") return <path key={el.id} d={caminhoDeForma(el)} fill="none" stroke={el.cor} strokeWidth={el.espessura} strokeLinecap="round" strokeLinejoin="round" />;
+        return null;
+      })}
       {vivo && <path d={caminhoDeTraco(vivo)} fill={vivo.cor} opacity={vivo.opacidade ?? FERRAMENTAS[vivo.ferramenta].opacidade} />}
+      {formaViva && <path d={caminhoDeForma(formaViva)} fill="none" stroke={formaViva.cor} strokeWidth={formaViva.espessura} strokeLinecap="round" strokeLinejoin="round" />}
     </svg>
   );
 }
 
 const FERRAMENTAS_UI: { id: FerramentaUI; icone: typeof PenLine }[] = [
-  { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type },
+  { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "forma", icone: Shapes },
 ];
 
 function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
@@ -914,6 +946,27 @@ function AjustesTexto({ tamanho, cor, aoMudar, aoFechar }: { tamanho: number; co
       </div>
       <Deslizante rotulo={t.texto.tamanho} valor={tamanho} min={12} max={80} passo={2} aoMudar={aoMudar} mostrar={(n) => `${n} px`} />
       <p className="campo-ajuda">{t.texto.novoAjuda}</p>
+      <div className="janela-acoes">
+        <Button className="botao principal" onPress={aoFechar}>{textos.comum.fechar}</Button>
+      </div>
+    </div>
+  );
+}
+
+/** Ajustes das formas: qual forma e a espessura da linha, com prévia. */
+function AjustesForma({ ajuste, cor, aoMudar, aoFechar }: { ajuste: AjusteForma; cor: string; aoMudar: (p: Partial<AjusteForma>) => void; aoFechar: () => void }) {
+  const corValida = /^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#1f2937";
+  const previa: Forma = { tipo: "forma", id: "p", forma: ajuste.tipo, x1: 40, y1: 24, x2: 260, y2: 56, cor: corValida, espessura: ajuste.espessura };
+  return (
+    <div className="formulario">
+      <div className="caderno-previa-traco">
+        <svg viewBox="0 0 300 80" preserveAspectRatio="xMidYMid meet" aria-label={t.ferramentas.previa}>
+          <path d={caminhoDeForma(previa)} fill="none" stroke={corValida} strokeWidth={ajuste.espessura} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <Segmentado rotulo={t.forma.qual} valor={ajuste.tipo} aoMudar={(v) => aoMudar({ tipo: v as TipoForma })} opcoes={TIPOS_FORMA.map((tf) => ({ valor: tf, nome: t.forma.nomes[tf] }))} />
+      <Deslizante rotulo={t.forma.espessura} valor={ajuste.espessura} min={1} max={16} passo={0.5} aoMudar={(n) => aoMudar({ espessura: n })} mostrar={(n) => `${n.toFixed(1)} px`} />
+      <p className="campo-ajuda">{t.forma.ajuda}</p>
       <div className="janela-acoes">
         <Button className="botao principal" onPress={aoFechar}>{textos.comum.fechar}</Button>
       </div>

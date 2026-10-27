@@ -85,7 +85,25 @@ export interface Texto {
   tamanho: number;
 }
 
-export type Elemento = Traco | Texto;
+/** Formas que se desenham arrastando (traçadas de um canto a outro). */
+export type TipoForma = "reta" | "retangulo" | "elipse" | "seta";
+export const TIPOS_FORMA: TipoForma[] = ["reta", "retangulo", "elipse", "seta"];
+
+/** Uma forma geométrica. Guarda o retângulo que a contém (dois cantos), em px
+ *  de referência; a reta e a seta usam esses dois pontos como extremos. */
+export interface Forma {
+  tipo: "forma";
+  id: string;
+  forma: TipoForma;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  cor: string;
+  espessura: number;
+}
+
+export type Elemento = Traco | Texto | Forma;
 
 /** A cena desenhável de uma página (ou do quadro infinito). */
 export interface Cena {

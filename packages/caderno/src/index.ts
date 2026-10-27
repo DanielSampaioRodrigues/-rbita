@@ -4,3 +4,4 @@
 export * from "./tipos";
 export * from "./papel";
 export * from "./tracos";
+export * from "./formas";
