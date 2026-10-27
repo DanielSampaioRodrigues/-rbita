@@ -13,7 +13,7 @@ import { formatarMoeda, reaisParaCentavos } from "./moeda";
 import { FormConta, novaConta } from "./FormConta";
 import { FormMeta, novaMeta } from "./FormMeta";
 import { Pizza, BarrasPorMes, LinhaPorMes } from "./Graficos";
-import { filtrar, mesesRecentes, tabelaPorMes } from "./visao";
+import { filtrar, mesesEntre, mesesRecentes, tabelaPorMes } from "./visao";
 import type { CorEtiqueta } from "../api";
 
 const t = textos.dinheiro;
@@ -190,12 +190,22 @@ export function PaginaDinheiro() {
   );
 }
 
+const chaveMesDe = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
 function VisaoGastos({ gastos, contas, grupos }: { gastos: Gasto[]; contas: Conta[]; grupos: Grupo[] }) {
-  const [periodo, setPeriodo] = useState<"3" | "6" | "12">("6");
+  const [periodo, setPeriodo] = useState<"3" | "6" | "12" | "custom">("6");
+  const hoje = useMemo(() => new Date(), []);
+  const mesMax = chaveMesDe(hoje);
+  const mesMin = chaveMesDe(new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1));
+  const [inicioMes, setInicioMes] = useState(() => chaveMesDe(new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1)));
+  const [fimMes, setFimMes] = useState(mesMax);
   const [grupoId, setGrupoId] = useState("todos");
   const [soInteresse, setSoInteresse] = useState(false);
   const idFiltro = useId();
-  const meses = useMemo(() => mesesRecentes(new Date(), Number(periodo)), [periodo]);
+  const meses = useMemo(
+    () => (periodo === "custom" ? mesesEntre(inicioMes, fimMes) : mesesRecentes(new Date(), Number(periodo))),
+    [periodo, inicioMes, fimMes],
+  );
   const filtrados = useMemo(() => filtrar(gastos, contas, { grupoId, soInteresse }), [gastos, contas, grupoId, soInteresse]);
   const tabela = useMemo(() => tabelaPorMes(filtrados.gastos, filtrados.contas, grupos, meses), [filtrados, grupos, meses]);
   const filtrando = grupoId !== "todos" || soInteresse;
@@ -212,8 +222,21 @@ function VisaoGastos({ gastos, contas, grupos }: { gastos: Gasto[]; contas: Cont
           { valor: "3", nome: t.visao.periodos[3] },
           { valor: "6", nome: t.visao.periodos[6] },
           { valor: "12", nome: t.visao.periodos[12] },
+          { valor: "custom", nome: t.visao.periodoCustom },
         ]}
       />
+      {periodo === "custom" && (
+        <div className="dinheiro-intervalo">
+          <div className="campo">
+            <label className="campo-rotulo" htmlFor="dinheiro-de">{t.visao.de}</label>
+            <input id="dinheiro-de" type="month" className="entrada-texto sozinha" min={mesMin} max={fimMes} value={inicioMes} onChange={(e) => setInicioMes(e.target.value || mesMin)} />
+          </div>
+          <div className="campo">
+            <label className="campo-rotulo" htmlFor="dinheiro-ate">{t.visao.ate}</label>
+            <input id="dinheiro-ate" type="month" className="entrada-texto sozinha" min={inicioMes} max={mesMax} value={fimMes} onChange={(e) => setFimMes(e.target.value || mesMax)} />
+          </div>
+        </div>
+      )}
 
       <div className="dinheiro-filtros">
         <div className="campo">

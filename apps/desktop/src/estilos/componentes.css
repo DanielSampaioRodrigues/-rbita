@@ -686,6 +686,8 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .grafico-linha { display: flex; flex-direction: column; gap: var(--espaco-1); }
 .grafico-linha svg { width: 100%; height: 7rem; }
 .grafico-linha-meses { list-style: none; margin: 0; padding: 0; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--cor-texto-suave); }
+.dinheiro-intervalo { display: flex; flex-wrap: wrap; gap: var(--espaco-3); margin: var(--espaco-2) 0; }
+.dinheiro-intervalo .campo { flex: 1; min-width: 9rem; margin: 0; }
 .dinheiro-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--espaco-3) var(--espaco-4); margin: var(--espaco-3) 0 var(--espaco-1); }
 .dinheiro-filtros .campo { flex: 1; min-width: 12rem; margin: 0; }
 

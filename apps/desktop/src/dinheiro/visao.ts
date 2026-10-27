@@ -19,6 +19,19 @@ export function mesesRecentes(ate: Date, n: number): string[] {
   return out;
 }
 
+/** Lista de meses "YYYY-MM" de `inicio` a `fim` (inclusive); limitada a `max` meses. */
+export function mesesEntre(inicio: string, fim: string, max = 24): string[] {
+  let [a, b] = inicio <= fim ? [inicio, fim] : [fim, inicio];
+  const out: string[] = [];
+  const mais = (m: string) => {
+    const [y, mm] = m.split("-").map(Number);
+    const d = new Date(y, mm, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+  while (a <= b && out.length < max) { out.push(a); a = mais(a); }
+  return out;
+}
+
 const SEM_GRUPO = { id: "", nome: "Sem grupo", cor: "cinza" };
 
 export interface LinhaTabela {
