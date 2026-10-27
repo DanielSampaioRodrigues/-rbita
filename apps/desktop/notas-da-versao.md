@@ -1,3 +1,17 @@
+- **Escrever e desenhar à mão no caderno**: agora dá para **escrever e desenhar** com **caneta, lápis, pincel e marca-texto**, apagar com a **borracha** e **desfazer/refazer**. Cada ferramenta tem ajustes (tamanho, opacidade, estabilização e pressão) com prévia. A **barra de ferramentas** você **move** para onde quiser (baixo, cima ou lados) e pode **escolher a cor dela**. (A caneta com pressão de verdade aparece quando você desenhar com uma caneta no Windows.)
+
+- **Texto, formas, laço, imagens e régua**: toque na folha para **escrever um texto** — com **negrito, itálico, sublinhado**, **fonte**, **tamanho**, **cor** e **alinhamento**; desenhe **formas** (reta, retângulo, elipse e seta); use o **laço** para pegar vários itens e **mover, redimensionar, recolorir ou apagar** de uma vez; **cole ou insira imagens** (Ctrl + V ou pelo botão). Ainda tem **notas adesivas** (post-it) e uma **régua** que ajuda a desenhar reto.
+
+- **IA no caderno (opcional, com a sua chave)**: um painel ✨ cria **imagens** e **adesivos** (figurinhas recortadas) com a sua IA — você só insere depois de ver a prévia. Na caixa de texto, o ✨ também **revisa o texto** (mais claro, mais curto, em tópicos, mudar o tom…), sempre mostrando o antes-e-depois para você aceitar.
+
+- **Galeria de capas e adesivos prontos**: a capa do caderno ganhou uma **galeria de artes** (paisagens, pastéis, formas, Memphis e molduras), além das cores, gradientes, **imagem sua** ou **criada por IA**. E chegou uma coleção de **adesivos prontos** (bichos, plantas, céu, retrô, pop, rock, papel, vintage, 3D e balões) para colar nas páginas.
+
+- **Capa do seu jeito**: dá para **escrever o nome na capa** (escolhendo fonte, cor, tamanho, negrito, alinhamento e arrastando para posicionar) e **pincelar à mão** por cima dela.
+
+---
+
+<!-- Abaixo: o que veio na 0.44.2. -->
+
 - **Caderno — folhas, modo imersivo e pastas**: abrir um caderno agora ocupa a **tela toda** (estilo GoodNotes); um botão de menu no canto traz a barra do app de volta quando você precisar. Cada página mostra a **folha de verdade** — você escolhe o modelo (**liso, pautado, quadriculado, pontilhado, isométrico, planner ou pauta musical**), a cor do papel e das linhas, o espaçamento, a espessura, a margem e o cabeçalho, com prévia. Cada página pode ter **título** (que aparece num **índice** lateral) e **marcador**. E as **pastas** agora têm cara de pasta mesmo: clique para abrir e organize seus cadernos dentro. **A escrita e o desenho à mão, com caneta, vêm no próximo passo.**
 
 ---
