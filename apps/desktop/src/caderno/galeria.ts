@@ -18,6 +18,8 @@ export const CAPAS_ARTE: ItemGaleria[] = [
   { id: "formas-organicas", nome: "Formas orgânicas" },
   { id: "traco-boho", nome: "Traço boho" },
   { id: "gradiente-colorido", nome: "Gradiente colorido" },
+  { id: "quadro-verde", nome: "Quadro verde" },
+  { id: "quadro-rosa", nome: "Quadro rosa" },
 ];
 
 /** Adesivos prontos, agrupados por tema (o grupo ajuda a achar). */
