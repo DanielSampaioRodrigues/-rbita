@@ -54,6 +54,31 @@ export const ADESIVOS: { grupo: string; itens: ItemGaleria[] }[] = [
       { id: "sol", nome: "Planeta azul" },
     ],
   },
+  {
+    grupo: "Retrô",
+    itens: [
+      { id: "arcoiris", nome: "Arco-íris" },
+      { id: "arcoiris-retro", nome: "Arco-íris retrô" },
+      { id: "flor-groovy", nome: "Flor groovy" },
+      { id: "flor-coracao", nome: "Flor coração" },
+      { id: "flor-sorriso", nome: "Flor sorriso" },
+      { id: "florzinha", nome: "Florzinha" },
+      { id: "carinha", nome: "Carinha de óculos" },
+      { id: "paz", nome: "Paz e amor" },
+    ],
+  },
+  {
+    grupo: "Rock",
+    itens: [
+      { id: "caveira", nome: "Caveira" },
+      { id: "caveira-rock", nome: "Caveira rock" },
+      { id: "raio", nome: "Raio" },
+      { id: "raio-asas", nome: "Raio com asas" },
+      { id: "palheta", nome: "Palheta de guitarra" },
+      { id: "estrela-cadente", nome: "Estrela cadente" },
+      { id: "estrela-ninja", nome: "Estrela ninja" },
+    ],
+  },
 ];
 
 const base = import.meta.env.BASE_URL || "/";
