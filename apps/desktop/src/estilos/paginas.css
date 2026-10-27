@@ -563,6 +563,7 @@
 .caderno-intervalo { display: flex; gap: var(--espaco-4); flex-wrap: wrap; align-items: center; }
 .caderno-intervalo-campo { display: inline-flex; align-items: center; gap: 0.4em; }
 .caderno-intervalo-campo input { width: 4rem; padding: var(--espaco-1) var(--espaco-2); border: 1px solid var(--cor-borda-controle); border-radius: var(--canto); background: var(--cor-fundo); color: inherit; }
+.caderno-custom-tam { display: flex; gap: var(--espaco-3); flex-wrap: wrap; align-items: center; }
 .lista-ligadas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
 .lista-ligadas li { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-3); padding: var(--espaco-2) var(--espaco-3); border: 1px solid var(--cor-borda); border-radius: var(--canto); flex-wrap: wrap; }
 .pagina > .quadro-ideias, .pagina > .mural, .pagina > .barra-ideias { align-self: stretch; }

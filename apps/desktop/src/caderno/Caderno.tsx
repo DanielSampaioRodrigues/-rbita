@@ -415,7 +415,16 @@ function coresDaFolha(papel: Papel): CoresPapel {
 function folhaDe(pagina: PaginaCaderno): Papel {
   return { ...papelPadrao(), ...((pagina.papel as Partial<Papel>) || {}) };
 }
+/** Limites do tamanho personalizado, em px de referência (96 dpi). */
+const CUSTOM_MIN = 300, CUSTOM_MAX_LARG = 1360, CUSTOM_MAX_ALT = 1900;
 function medidaDe(tamanho: string) {
+  if (tamanho.startsWith("custom:")) {
+    const m = /^custom:(\d+)x(\d+)$/.exec(tamanho);
+    if (m) return {
+      largura: Math.min(CUSTOM_MAX_LARG, Math.max(CUSTOM_MIN, +m[1])),
+      altura: Math.min(CUSTOM_MAX_ALT, Math.max(CUSTOM_MIN, +m[2])),
+    };
+  }
   return TAMANHOS[tamanho as keyof typeof TAMANHOS] ?? TAMANHOS.a4;
 }
 
@@ -547,7 +556,11 @@ function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; c
 function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno; abas: Caderno[]; aoTrocar: (c: Caderno) => void; aoFechar: () => void }) {
   useEntrarImersivo();
   const [paginas, setPaginas] = useState<PaginaCaderno[]>([]);
-  const [tamanho, setTamanho] = useState<"a4" | "a5" | "carta">("a4");
+  const [tamanho, setTamanho] = useState<string>("a4");
+  // Tamanho personalizado, em centímetros (com limites para não exagerar).
+  const [custLarg, setCustLarg] = useState(16);
+  const [custAlt, setCustAlt] = useState(22);
+  const tamanhoParaCriar = () => (tamanho === "personalizado" ? `custom:${Math.round(custLarg * PX_CM)}x${Math.round(custAlt * PX_CM)}` : tamanho);
   const [selId, setSelId] = useState<string>("");
   const [painel, setPainel] = useState(false);
   const [editor, setEditor] = useState(false);
@@ -893,7 +906,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     try {
       // Nova página herda a folha da última (mantém o estilo do caderno).
       const papel = paginas.length ? folhaDe(paginas[paginas.length - 1]) : papelPadrao();
-      await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem: 0, tamanho, papel, titulo: "", marcado: false, criadoEm: 0 });
+      await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem: 0, tamanho: tamanhoParaCriar(), papel, titulo: "", marcado: false, criadoEm: 0 });
       await carregar();
     } catch (e) {
       setErro(mensagem(e));
@@ -1011,7 +1024,17 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
                   aoApagar={() => void apagar(p.id)} />
               ))}
               <div className="caderno-adicionar">
-                <Segmentado rotulo={t.paginas.tamanho} valor={tamanho} aoMudar={(v) => setTamanho(v as typeof tamanho)} opcoes={[{ valor: "a4", nome: t.paginas.tamanhos.a4 }, { valor: "a5", nome: t.paginas.tamanhos.a5 }, { valor: "carta", nome: t.paginas.tamanhos.carta }]} />
+                <Segmentado rotulo={t.paginas.tamanho} valor={tamanho} aoMudar={setTamanho} opcoes={[{ valor: "a4", nome: t.paginas.tamanhos.a4 }, { valor: "a5", nome: t.paginas.tamanhos.a5 }, { valor: "carta", nome: t.paginas.tamanhos.carta }, { valor: "personalizado", nome: t.paginas.tamanhos.personalizado }]} />
+                {tamanho === "personalizado" && (
+                  <div className="caderno-custom-tam">
+                    <label className="caderno-intervalo-campo">{t.paginas.largura}
+                      <input type="number" min={8} max={36} value={custLarg} onChange={(e) => setCustLarg(Math.min(36, Math.max(8, Number(e.target.value) || 8)))} aria-label={t.paginas.largura} /> cm
+                    </label>
+                    <label className="caderno-intervalo-campo">{t.paginas.altura}
+                      <input type="number" min={8} max={50} value={custAlt} onChange={(e) => setCustAlt(Math.min(50, Math.max(8, Number(e.target.value) || 8)))} aria-label={t.paginas.altura} /> cm
+                    </label>
+                  </div>
+                )}
                 <Button className="botao com-icone" onPress={() => void adicionar()}><Plus aria-hidden="true" size="1.1em" /> {t.paginas.adicionar}</Button>
               </div>
             </>
