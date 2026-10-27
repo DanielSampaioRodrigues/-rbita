@@ -954,7 +954,7 @@ export const textos = {
     },
     ferramentas: {
       titulo: "Ferramentas de desenho",
-      nomes: { caneta: "Caneta", lapis: "Lápis", pincel: "Pincel", marcatexto: "Marca-texto", borracha: "Borracha", texto: "Texto", forma: "Formas", laco: "Selecionar" },
+      nomes: { caneta: "Caneta", lapis: "Lápis", pincel: "Pincel", marcatexto: "Marca-texto", borracha: "Borracha", texto: "Texto", nota: "Nota adesiva", forma: "Formas", laco: "Selecionar" },
       cor: "Cor",
       grossura: "Grossura",
       grossuras: { fina: "Fina", media: "Média", grossa: "Grossa" },
@@ -985,6 +985,7 @@ export const textos = {
       alinhar: { esquerda: "Alinhar à esquerda", centro: "Centralizar", direita: "Alinhar à direita" },
       diminuir: "Diminuir a letra",
       aumentar: "Aumentar a letra",
+      fundo: "Cor do fundo (nota)",
     },
     forma: {
       qual: "Qual forma",

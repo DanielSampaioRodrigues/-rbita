@@ -90,6 +90,8 @@ export interface Texto {
   fonte?: string;
   /** Alinhamento do texto na caixa (ausente = à esquerda). */
   alinhamento?: AlinharTexto;
+  /** Cor de fundo (nota adesiva/post-it). Ausente = caixa sem fundo. */
+  fundo?: string;
 }
 
 /** Formas que se desenham arrastando (traçadas de um canto a outro). */

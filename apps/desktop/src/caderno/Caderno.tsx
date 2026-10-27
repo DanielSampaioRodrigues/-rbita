@@ -11,7 +11,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Sparkles, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
 import { FONTES } from "../preferencias";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
@@ -398,8 +398,11 @@ function lerCorBarra(): string {
   return "";
 }
 
-/** Ferramentas da barra: as de traço (do motor) mais texto, formas e o laço. */
-type FerramentaUI = Ferramenta | "texto" | "forma" | "laco";
+/** Ferramentas da barra: as de traço (do motor) mais texto, nota adesiva,
+ *  formas e o laço. */
+type FerramentaUI = Ferramenta | "texto" | "nota" | "forma" | "laco";
+/** Cores pastel das notas adesivas (a primeira é o padrão). */
+const FUNDOS_NOTA = ["#fff3b0", "#ffd6e0", "#d9f2d0", "#cfe8ff", "#e6d9ff", "#ffe0c2"];
 
 /** Número aproximado de linhas de um conteúdo HTML (parágrafos e quebras). */
 const linhasDeHtml = (html: string) => Math.max(1, (html.match(/<(p|br|div)\b/gi)?.length ?? 1));
@@ -488,7 +491,8 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   const area = useRef<HTMLDivElement>(null);
   // Desenho: ferramenta, cor e grossura ativas; cenas e histórico por página.
   const [ferramenta, setFerramenta] = useState<FerramentaUI>("caneta");
-  const fTraco: Ferramenta = ferramenta === "texto" || ferramenta === "forma" || ferramenta === "laco" ? "caneta" : ferramenta;
+  const ehTexto = ferramenta === "texto" || ferramenta === "nota";
+  const fTraco: Ferramenta = ehTexto || ferramenta === "forma" || ferramenta === "laco" ? "caneta" : ferramenta;
   const [tamTexto, setTamTexto] = useState<number>(lerTamTexto);
   const [editandoTexto, setEditandoTexto] = useState("");
   const mudarTamTexto = (n: number) => {
@@ -614,8 +618,11 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       const corte = Math.max(0, pilha.length - 50);
       return { ...h, [pid]: { pilha: pilha.slice(corte), i: pilha.length - 1 - corte } };
     });
-  const aoNovoTexto = (pid: string, x: number, y: number) => {
-    const novo: Texto = { tipo: "texto", id: crypto.randomUUID(), x, y, largura: LARGURA_TEXTO_PADRAO, texto: "", cor, tamanho: tamTexto };
+  const aoNovoTexto = (pid: string, x: number, y: number, nota = false) => {
+    const largura = nota ? 240 : LARGURA_TEXTO_PADRAO;
+    const novo: Texto = nota
+      ? { tipo: "texto", id: crypto.randomUUID(), x, y, largura, texto: "", cor: "#1f2937", tamanho: tamTexto, fundo: FUNDOS_NOTA[0] }
+      : { tipo: "texto", id: crypto.randomUUID(), x, y, largura, texto: "", cor, tamanho: tamTexto };
     mudarCena(pid, { elementos: [...(cenas[pid]?.elementos ?? []), novo] });
     setEditandoTexto(novo.id);
   };
@@ -652,8 +659,8 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       }
     }
   };
-  // Ao sair da ferramenta de texto, fecha a edição (caixa vazia some).
-  useEffect(() => { if (ferramenta !== "texto") setEditandoTexto(""); }, [ferramenta]);
+  // Ao sair das ferramentas de texto/nota, fecha a edição (caixa vazia some).
+  useEffect(() => { if (!ehTexto) setEditandoTexto(""); }, [ehTexto]);
   // Quando a caixa em edição muda, finaliza a anterior (vazia some; senão vira
   // um passo de desfazer). Assim o menu da IA não encerra a edição ao abrir.
   const anteriorEdit = useRef("");
@@ -856,7 +863,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
                   aoEscalarSelecao={(ax, ay, fa) => escalarSelecao(p.id, selIds, ax, ay, fa)}
                   aoFimSelecao={() => fimGestoSelecao(p.id)}
                   aoApagarSelecao={apagarSelecao}
-                  aoNovoTexto={(x, y) => aoNovoTexto(p.id, x, y)}
+                  aoNovoTexto={(x, y) => aoNovoTexto(p.id, x, y, ferramenta === "nota")}
                   aoPatchTexto={(id, patch) => atualizarTexto(p.id, id, patch)}
                   aoMoverTexto={(id, x, y) => atualizarTexto(p.id, id, { x, y })}
                   aoMoverFimTexto={() => aoMoverFimTexto(p.id)}
@@ -895,7 +902,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       </Janela>
 
       <Janela titulo={ajustando ? t.ferramentas.ajustesDe(t.ferramentas.nomes[ajustando]) : ""} aberta={ajustando !== null} aoFechar={() => setAjustando(null)} pequena>
-        {ajustando && (ajustando === "texto"
+        {ajustando && (ajustando === "texto" || ajustando === "nota"
           ? <AjustesTexto tamanho={tamTexto} cor={cor} aoMudar={mudarTamTexto} aoFechar={() => setAjustando(null)} />
           : ajustando === "forma"
           ? <AjustesForma ajuste={ajusteForma} cor={cor} aoMudar={mudarForma} aoFechar={() => setAjustando(null)} />
@@ -964,7 +971,7 @@ function PaginaView({ id, pagina, numero, selecionada, podeApagar, cena, ferrame
       <div ref={areaRef} className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}` }} onPointerDownCapture={aoSelecionar}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
         <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} forma={forma} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarTracos={aoApagarTracos} />
-        <CamadaTexto caixas={caixas} ativa={ferramenta === "texto"} escala={escala} editandoId={editandoTexto}
+        <CamadaTexto caixas={caixas} ativa={ferramenta === "texto" || ferramenta === "nota"} escala={escala} editandoId={editandoTexto}
           aoNovo={aoNovoTexto} aoPatch={aoPatchTexto} aoMover={aoMoverTexto} aoMoverFim={aoMoverFimTexto}
           aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
         <CamadaSelecao elementos={cena.elementos} selecionados={selecionados} ativa={ferramenta === "laco"} escala={escala} largura={med.largura} altura={med.altura}
@@ -1016,19 +1023,24 @@ function CaixaTexto({ caixa: tx, escala, editando, ativa, aoPatch, aoMover, aoMo
     alvo.addEventListener("pointermove", mover);
     alvo.addEventListener("pointerup", fim);
   };
-  const estiloCaixa = { left: tx.x * escala, top: tx.y * escala, width: tx.largura * escala };
+  const ehNota = !!tx.fundo;
+  const estiloCaixa: React.CSSProperties = {
+    left: tx.x * escala, top: tx.y * escala, width: tx.largura * escala,
+    ...(ehNota ? { background: tx.fundo, padding: `${7 * escala}px ${9 * escala}px`, borderRadius: `${5 * escala}px`, boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)" } : {}),
+  };
   const estiloTexto: React.CSSProperties = { color: tx.cor, fontSize: `${tx.tamanho * escala}px`, fontFamily: fonteCss(tx.fonte), textAlign: ALINHAR_CSS[tx.alinhamento ?? "esquerda"] };
+  const classeCaixa = ehNota ? "caderno-caixa nota" : "caderno-caixa";
 
   if (editando && ativa) {
     return (
-      <div className="caderno-caixa editando" style={estiloCaixa}>
+      <div className={`${classeCaixa} editando`} style={estiloCaixa}>
         <CaixaEditor tx={tx} estilo={estiloTexto} aoPatch={aoPatch} aoFim={aoFim} aoArrastar={arrastar} aoApagar={aoApagar} />
       </div>
     );
   }
   const miolo = textoVazio(tx.texto) ? `<span class="caderno-caixa-vazio">${t.texto.vazio}</span>` : tx.texto;
   return (
-    <div className="caderno-caixa" style={estiloCaixa} onPointerDown={ativa ? (e) => { e.stopPropagation(); aoSelecionar(); } : undefined}>
+    <div className={classeCaixa} style={estiloCaixa} onPointerDown={ativa ? (e) => { e.stopPropagation(); aoSelecionar(); } : undefined}>
       {ativa && (
         <div className="caderno-caixa-barra">
           <button type="button" className="caderno-caixa-alca" onPointerDown={arrastar} aria-label={t.texto.mover}><GripVertical size="1em" aria-hidden="true" /></button>
@@ -1094,6 +1106,11 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
           <button type="button" className="caderno-fmt" onClick={() => mudarTam(2)} aria-label={t.texto.aumentar}>A+</button>
         </span>
         <button type="button" className="caderno-fmt" onClick={ciclarAlinho} aria-label={t.texto.alinhar[alinhoAtual]}><IconeAlinho size="1em" aria-hidden="true" /></button>
+        {tx.fundo && (
+          <button type="button" className="caderno-fmt" onClick={() => aoPatch({ fundo: FUNDOS_NOTA[(FUNDOS_NOTA.indexOf(tx.fundo!) + 1) % FUNDOS_NOTA.length] })} aria-label={t.texto.fundo}>
+            <span className="caderno-fmt-fundo" style={{ background: tx.fundo }} aria-hidden="true" />
+          </button>
+        )}
         {revisar.botao && <span className="caderno-fmt-grupo">{revisar.botao}</span>}
         <button type="button" className="botao-icone pequeno" onClick={aoApagar} aria-label={t.texto.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
       </div>
@@ -1239,7 +1256,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altu
     if (mudou) setEscondidos(new Set(apagados.current));
   };
   const inicio = (e: React.PointerEvent) => {
-    if (ferramenta === "texto" || ferramenta === "laco") return; // tratados nas camadas por cima
+    if (ferramenta === "texto" || ferramenta === "nota" || ferramenta === "laco") return; // tratados nas camadas por cima
     if (e.button != null && e.button !== 0) return;
     e.preventDefault();
     ref.current?.setPointerCapture(e.pointerId);
@@ -1271,7 +1288,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altu
     }
   };
 
-  const classe = ferramenta === "texto" || ferramenta === "laco" ? "caderno-desenho sem-toque" : ferramenta === "borracha" ? "caderno-desenho borracha" : "caderno-desenho";
+  const classe = ferramenta === "texto" || ferramenta === "nota" || ferramenta === "laco" ? "caderno-desenho sem-toque" : ferramenta === "borracha" ? "caderno-desenho borracha" : "caderno-desenho";
   return (
     <svg ref={ref} className={classe} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
       onPointerDown={inicio} onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
@@ -1289,7 +1306,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, forma, largura, altu
 }
 
 const FERRAMENTAS_UI: { id: FerramentaUI; icone: typeof PenLine }[] = [
-  { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "forma", icone: Shapes }, { id: "laco", icone: Lasso },
+  { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "nota", icone: StickyNote }, { id: "forma", icone: Shapes }, { id: "laco", icone: Lasso },
 ];
 
 function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, aoCriarIa, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
