@@ -6,7 +6,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, Highlighter, LayoutGrid, List, Pencil, PenLine, Plus, Redo2, SlidersHorizontal, Trash2, Undo2, Wand2 } from "../icones";
+import { Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, LayoutGrid, List, Pencil, PenLine, Plus, Redo2, SlidersHorizontal, Trash2, Undo2, Wand2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
 import { textos } from "../textos/pt-BR";
@@ -324,10 +324,13 @@ function lerFavoritos(): string[] {
   return CORES_PADRAO;
 }
 
-type AjusteTraco = { tamanho: number; afinar: number; alisar: number };
+type PosBarra = "baixo" | "cima" | "direita" | "esquerda";
+const POS_BARRA: PosBarra[] = ["baixo", "cima", "direita", "esquerda"];
+
+type AjusteTraco = { tamanho: number; afinar: number; alisar: number; opacidade: number };
 function ajustesPadrao(): Record<Ferramenta, AjusteTraco> {
   const o = {} as Record<Ferramenta, AjusteTraco>;
-  (Object.keys(FERRAMENTAS) as Ferramenta[]).forEach((f) => (o[f] = { tamanho: FERRAMENTAS[f].tamanho, afinar: FERRAMENTAS[f].afinar, alisar: FERRAMENTAS[f].alisar }));
+  (Object.keys(FERRAMENTAS) as Ferramenta[]).forEach((f) => (o[f] = { tamanho: FERRAMENTAS[f].tamanho, afinar: FERRAMENTAS[f].afinar, alisar: FERRAMENTAS[f].alisar, opacidade: FERRAMENTAS[f].opacidade }));
   return o;
 }
 /** Lê os ajustes salvos (estabilização e pressão por ferramenta). */
@@ -370,6 +373,15 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   };
   const [ajustes, setAjustes] = useState<Record<Ferramenta, AjusteTraco>>(lerAjustes);
   const [ajustando, setAjustando] = useState<Ferramenta | null>(null);
+  const [posBarra, setPosBarra] = useState<PosBarra>(() => {
+    try { const p = localStorage.getItem("caderno-pos-barra") as PosBarra; if (p && POS_BARRA.includes(p)) return p; } catch { /* padrão */ }
+    return "baixo";
+  });
+  const ciclarBarra = () => {
+    const prox = POS_BARRA[(POS_BARRA.indexOf(posBarra) + 1) % POS_BARRA.length];
+    setPosBarra(prox);
+    try { localStorage.setItem("caderno-pos-barra", prox); } catch { /* ignora */ }
+  };
   const mudarAjuste = (f: Ferramenta, patch: Partial<AjusteTraco>) =>
     setAjustes((a) => {
       const novo = { ...a, [f]: { ...a[f], ...patch } };
@@ -497,6 +509,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
 
       {erro && <div className="leitor-aviso"><Aviso>{erro}</Aviso></div>}
 
+      <div className={`caderno-miolo pos-${posBarra}`}>
       <div className="caderno-area">
         {painel && !infinito && (
           <aside className="caderno-indice">
@@ -548,9 +561,11 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
         <BarraFerramentas
           ferramenta={ferramenta} aoFerramenta={setFerramenta} aoAjustar={setAjustando}
           cor={cor} aoCor={usarCor} favoritos={favoritos}
+          vertical={posBarra === "direita" || posBarra === "esquerda"} aoMover={ciclarBarra}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
         />
       )}
+      </div>
 
       <Janela titulo={ajustando ? t.ferramentas.ajustesDe(t.ferramentas.nomes[ajustando]) : ""} aberta={ajustando !== null} aoFechar={() => setAjustando(null)} pequena>
         {ajustando && <AjustesFerramenta ferramenta={ajustando} ajuste={ajustes[ajustando]} aoMudar={(patch) => mudarAjuste(ajustando, patch)} aoFechar={() => setAjustando(null)} />}
@@ -618,7 +633,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
     desenhando.current = true;
     const pt = ponto(e);
     if (ferramenta === "borracha") { apagados.current = new Set(); setEscondidos(new Set()); apagarEm(pt.x, pt.y); }
-    else setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta, cor, espessura: Math.round(ajuste.tamanho), afinar: ajuste.afinar, alisar: ajuste.alisar, pontos: [pt] });
+    else setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta, cor, espessura: Math.round(ajuste.tamanho), afinar: ajuste.afinar, alisar: ajuste.alisar, opacidade: ajuste.opacidade, pontos: [pt] });
   };
   const mover = (e: React.PointerEvent) => {
     if (!desenhando.current) return;
@@ -644,9 +659,9 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, largura, altura, aoD
     <svg ref={ref} className={classe} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
       onPointerDown={inicio} onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
       {cena.elementos.map((el) =>
-        el.tipo === "traco" && !escondidos.has(el.id) ? <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={FERRAMENTAS[el.ferramenta].opacidade} /> : null,
+        el.tipo === "traco" && !escondidos.has(el.id) ? <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={el.opacidade ?? FERRAMENTAS[el.ferramenta].opacidade} /> : null,
       )}
-      {vivo && <path d={caminhoDeTraco(vivo)} fill={vivo.cor} opacity={FERRAMENTAS[vivo.ferramenta].opacidade} />}
+      {vivo && <path d={caminhoDeTraco(vivo)} fill={vivo.cor} opacity={vivo.opacidade ?? FERRAMENTAS[vivo.ferramenta].opacidade} />}
     </svg>
   );
 }
@@ -655,13 +670,15 @@ const FERRAMENTAS_UI: { id: Ferramenta; icone: typeof PenLine }[] = [
   { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser },
 ];
 
-function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
+function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
   ferramenta: Ferramenta; aoFerramenta: (f: Ferramenta) => void; aoAjustar: (f: Ferramenta) => void;
   cor: string; aoCor: (c: string) => void; favoritos: string[];
+  vertical: boolean; aoMover: () => void;
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
 }) {
   return (
-    <div className="caderno-barra" role="toolbar" aria-label={t.ferramentas.titulo}>
+    <div className={vertical ? "caderno-barra vertical" : "caderno-barra"} role="toolbar" aria-label={t.ferramentas.titulo}>
+      <Button className="botao-icone caderno-mover-barra" onPress={aoMover} aria-label={t.ferramentas.moverBarra}><GripVertical aria-hidden="true" size="1.1em" /></Button>
       <span className="caderno-barra-grupo">
         {FERRAMENTAS_UI.map(({ id, icone: Icone }) => (
           <Button key={id} className={ferramenta === id ? "caderno-ferramenta ativa" : "caderno-ferramenta"}
@@ -702,7 +719,7 @@ function Deslizante({ rotulo, valor, min, max, passo, aoMudar, mostrar }: { rotu
 /** Ajustes da ferramenta: tamanho, estabilização e pressão (sliders), com prévia. */
 function AjustesFerramenta({ ferramenta, ajuste, aoMudar, aoFechar }: { ferramenta: Ferramenta; ajuste: AjusteTraco; aoMudar: (p: Partial<AjusteTraco>) => void; aoFechar: () => void }) {
   const amostra: Traco = {
-    tipo: "traco", id: "amostra", ferramenta, cor: "#1f2937", espessura: Math.round(ajuste.tamanho * 1.15), afinar: ajuste.afinar, alisar: ajuste.alisar,
+    tipo: "traco", id: "amostra", ferramenta, cor: "#1f2937", espessura: Math.round(ajuste.tamanho * 1.15), afinar: ajuste.afinar, alisar: ajuste.alisar, opacidade: ajuste.opacidade,
     pontos: Array.from({ length: 44 }, (_x, i) => ({ x: 12 + i * 6.3, y: 40 + Math.sin(i / 5) * 16, p: 0.15 + 0.85 * Math.sin((i / 43) * Math.PI) })),
   };
   const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -710,10 +727,11 @@ function AjustesFerramenta({ ferramenta, ajuste, aoMudar, aoFechar }: { ferramen
     <div className="formulario">
       <div className="caderno-previa-traco">
         <svg viewBox="0 0 300 80" preserveAspectRatio="xMidYMid meet" aria-label={t.ferramentas.previa}>
-          <path d={caminhoDeTraco(amostra)} fill={amostra.cor} opacity={FERRAMENTAS[ferramenta].opacidade} />
+          <path d={caminhoDeTraco(amostra)} fill={amostra.cor} opacity={ajuste.opacidade} />
         </svg>
       </div>
       <Deslizante rotulo={t.ferramentas.tamanho} valor={ajuste.tamanho} min={1} max={30} passo={0.5} aoMudar={(n) => aoMudar({ tamanho: n })} mostrar={(n) => `${n.toFixed(1)} px`} />
+      <Deslizante rotulo={t.ferramentas.opacidade} valor={ajuste.opacidade} min={0.1} max={1} passo={0.05} aoMudar={(n) => aoMudar({ opacidade: n })} mostrar={pct} />
       <Deslizante rotulo={t.ferramentas.estabilizacao} valor={ajuste.alisar} min={0} max={0.9} passo={0.05} aoMudar={(n) => aoMudar({ alisar: n })} mostrar={pct} />
       <p className="campo-ajuda">{t.ferramentas.estabilizacaoAjuda}</p>
       <Deslizante rotulo={t.ferramentas.pressao} valor={ajuste.afinar} min={0} max={0.9} passo={0.05} aoMudar={(n) => aoMudar({ afinar: n })} mostrar={pct} />

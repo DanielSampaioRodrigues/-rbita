@@ -886,3 +886,17 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .deslizante-rotulo { display: flex; justify-content: space-between; align-items: baseline; gap: var(--espaco-2); }
 .caderno-cor-escolher { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px dashed var(--cor-borda); cursor: pointer; color: var(--cor-texto-suave); overflow: hidden; }
 .caderno-cor-escolher input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: none; padding: 0; cursor: pointer; }
+
+/* Barra de ferramentas móvel: cima, baixo ou nas laterais. */
+.caderno-miolo { flex: 1; display: flex; min-height: 0; }
+.caderno-miolo.pos-baixo { flex-direction: column; }
+.caderno-miolo.pos-cima { flex-direction: column-reverse; }
+.caderno-miolo.pos-direita { flex-direction: row; }
+.caderno-miolo.pos-esquerda { flex-direction: row-reverse; }
+.caderno-miolo > .caderno-area { flex: 1; min-height: 0; min-width: 0; }
+.caderno-mover-barra { cursor: pointer; }
+.caderno-barra.vertical { flex-direction: column; align-items: center; justify-content: flex-start; flex-wrap: nowrap; border-top: none; border-left: 1px solid var(--cor-borda); overflow-y: auto; min-width: 3.6rem; }
+.pos-cima .caderno-barra { border-top: none; border-bottom: 1px solid var(--cor-borda); }
+.pos-esquerda .caderno-barra.vertical { border-left: none; border-right: 1px solid var(--cor-borda); }
+.caderno-barra.vertical .caderno-barra-grupo { flex-direction: column; }
+.caderno-barra.vertical .caderno-cores { flex-wrap: wrap; max-width: 3.6rem; justify-content: center; }

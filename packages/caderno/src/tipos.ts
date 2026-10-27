@@ -65,6 +65,8 @@ export interface Traco {
   afinar?: number;
   /** Estabilização do traço (0..1). Omisso = padrão da ferramenta. */
   alisar?: number;
+  /** Opacidade (0..1). Omisso = padrão da ferramenta. */
+  opacidade?: number;
   pontos: Ponto[];
 }
 
