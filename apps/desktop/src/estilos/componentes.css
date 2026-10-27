@@ -765,6 +765,13 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .quadro-vazio { max-width: 34rem; margin: var(--espaco-5) auto; text-align: center; padding: 0 var(--espaco-4); }
 .quadro-dica { position: sticky; top: 0; z-index: 1; margin: 0; padding: var(--espaco-2) var(--espaco-4); background: var(--cor-fundo); border-bottom: 1px solid var(--cor-borda-suave); }
 .quadro-chao { position: relative; }
+/* Camada de desenho sobre o quadro: por cima dos cartões; só captura o toque no
+   modo desenho (senão deixa os cartões funcionarem). */
+.quadro-desenho-svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 6; touch-action: none; }
+.quadro-chao.desenhando .quadro-cartao-livre { pointer-events: none; }
+.quadro-desenho-barra { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espaco-2); padding: var(--espaco-2) var(--espaco-3); border-bottom: 1px solid var(--cor-borda-suave); background: var(--cor-superficie); }
+.quadro-desenho-cores { display: inline-flex; align-items: center; gap: var(--espaco-1); flex-wrap: wrap; }
+.quadro-desenho-tam { width: 7rem; }
 .quadro-cartao-livre { position: absolute; display: flex; flex-direction: column; background: var(--cor-superficie); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-2); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); overflow: hidden; }
 .quadro-cartao-barra { display: flex; align-items: center; justify-content: space-between; background: var(--cor-superficie-alternativa); border-bottom: 1px solid var(--cor-borda-suave); flex: none; }
 .quadro-cartao-corpo { flex: 1; min-height: 0; overflow: auto; display: flex; }

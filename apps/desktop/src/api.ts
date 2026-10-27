@@ -484,7 +484,7 @@ export interface Hobby {
 }
 
 /** Tipo de cartão do quadro livre de um hobby. */
-export type TipoCartao = "texto" | "arquivo" | "imagem" | "link" | "audio";
+export type TipoCartao = "texto" | "arquivo" | "imagem" | "link" | "audio" | "desenho";
 
 /** Um cartão solto no quadro de um hobby, posicionado onde a pessoa quiser. */
 export interface CartaoQuadro {
@@ -1825,7 +1825,7 @@ function simularDinheiro() {
 function simularHobbies() {
   const hobbies: Hobby[] = [];
   const cartoes: CartaoQuadro[] = [];
-  const TIPOS = ["texto", "arquivo", "imagem", "link", "audio"];
+  const TIPOS = ["texto", "arquivo", "imagem", "link", "audio", "desenho"];
   return {
     listarCartoes: async (hobbyId: string) =>
       cartoes.filter((c) => c.hobbyId === hobbyId).map((c) => ({ ...c })).sort((a, b) => a.criadoEm - b.criadoEm),

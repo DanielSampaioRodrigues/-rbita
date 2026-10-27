@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { Leitor, CONFIG_PADRAO } from "@orbita/leitor";
+import { caminhoDeTraco, cenaVazia, FERRAMENTAS, fragmentosAoApagar, lerCena, serializarCena, type Cena, type Ponto, type Traco } from "@orbita/caderno";
 import { api, escolherArquivoParaAnexar, escolherOndeSalvarAnexo, type Anexo, type CartaoQuadro, type Hobby, type TipoCartao } from "../api";
 import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
@@ -8,7 +9,7 @@ import { CampoRico } from "../componentes/CampoRico";
 import { TextoRico } from "../componentes/TextoRico";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { ImagemAnexo } from "../relacoes/Relacoes";
-import { ChevronLeft, Download, ExternalLink, FileText, FileUp, GripVertical, ImagePlus, Link2, Mic, Pencil, Plus, Sparkles, StickyNote, Trash2, X } from "../icones";
+import { Check, ChevronLeft, Download, Eraser, ExternalLink, FileText, FileUp, GripVertical, ImagePlus, Link2, Mic, Pencil, PenLine, Plus, Sparkles, StickyNote, Trash2, Undo2, X } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 
@@ -133,7 +134,9 @@ const TAMANHO_PADRAO: Record<TipoCartao, { largura: number; altura: number }> = 
   arquivo: { largura: 210, altura: 92 },
   link: { largura: 210, altura: 92 },
   audio: { largura: 260, altura: 96 },
+  desenho: { largura: 0, altura: 0 },
 };
+const CORES_DESENHO = ["#1f2937", "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04"];
 const REDIMENSIONAVEL: TipoCartao[] = ["texto", "imagem"];
 
 /** O quadro livre de um hobby: cartões soltos que a pessoa arrasta e organiza. */
@@ -144,10 +147,52 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
   const [link, setLink] = useState<{ nome: string; endereco: string } | null>(null);
   const [gravando, setGravando] = useState(false);
   const [prevendo, setPrevendo] = useState<CartaoQuadro | null>(null);
+  // Camada de desenho sobre o quadro todo (rabisco à mão, tipo quadro branco).
+  const [cena, setCena] = useState<Cena>(cenaVazia());
+  const [desenhando, setDesenhando] = useState(false);
+  const [ferrD, setFerrD] = useState<"caneta" | "borracha">("caneta");
+  const [corD, setCorD] = useState("#1f2937");
+  const [tamD, setTamD] = useState(3);
+  const cenaId = useRef("");
+  const cenaCarregada = useRef(false);
+  const timerCena = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const histCena = useRef<Cena[]>([]);
   const recado = useRecado();
 
-  const carregar = useCallback(() => api.listarCartoes(hobby.id).then(setCartoes, (e) => setErro(mensagem(e))), [hobby.id]);
+  const carregar = useCallback(
+    () =>
+      api.listarCartoes(hobby.id).then((cs) => {
+        setCartoes(cs.filter((c) => c.tipo !== "desenho"));
+        const d = cs.find((c) => c.tipo === "desenho");
+        if (d) {
+          cenaId.current = d.id;
+          if (!cenaCarregada.current) { setCena(lerCena(d.texto)); cenaCarregada.current = true; }
+        }
+      }, (e) => setErro(mensagem(e))),
+    [hobby.id],
+  );
   useEffect(() => void carregar(), [carregar]);
+
+  const persistirCena = (nova: Cena) => {
+    if (timerCena.current) clearTimeout(timerCena.current);
+    timerCena.current = setTimeout(() => {
+      api.salvarCartao({ id: cenaId.current, hobbyId: hobby.id, tipo: "desenho", texto: serializarCena(nova), anexoId: "", x: 0, y: 0, largura: 0, altura: 0, criadoEm: 0 })
+        .then((c) => { cenaId.current = c.id; })
+        .catch((e) => setErro(mensagem(e)));
+    }, 600);
+  };
+  const mudarCena = (nova: Cena) => {
+    histCena.current = [...histCena.current.slice(-30), cena];
+    setCena(nova);
+    persistirCena(nova);
+  };
+  const desfazerCena = () => {
+    const ant = histCena.current.pop();
+    if (!ant) return;
+    setCena(ant);
+    persistirCena(ant);
+  };
+  const limparCena = () => { if (cena.elementos.length) mudarCena(cenaVazia()); };
 
   const proximaPos = () => {
     const n = cartoes.length;
@@ -243,8 +288,29 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
           <Button className="botao pequeno com-icone" onPress={() => void adicionarArquivo(true)} isDisabled={ocupado}><ImagePlus aria-hidden="true" size="1em" /> {tq.adicionarImagem}</Button>
           <Button className="botao pequeno com-icone" onPress={() => (setErro(null), setLink({ nome: "", endereco: "" }))} isDisabled={ocupado}><Link2 aria-hidden="true" size="1em" /> {tq.adicionarLink}</Button>
           <Button className="botao pequeno com-icone" onPress={() => (setErro(null), setGravando(true))} isDisabled={ocupado}><Mic aria-hidden="true" size="1em" /> {tq.adicionarAudio}</Button>
+          <Button className={desenhando ? "botao pequeno com-icone principal" : "botao pequeno com-icone"} onPress={() => setDesenhando((v) => !v)} aria-pressed={desenhando}><PenLine aria-hidden="true" size="1em" /> {tq.desenhar}</Button>
         </div>
       </div>
+
+      {desenhando && (
+        <div className="quadro-desenho-barra" role="toolbar" aria-label={tq.desenhar}>
+          <Button className={ferrD === "caneta" ? "botao-icone ativo" : "botao-icone"} onPress={() => setFerrD("caneta")} aria-label={tq.caneta} aria-pressed={ferrD === "caneta"}><PenLine aria-hidden="true" size="1.1em" /></Button>
+          <Button className={ferrD === "borracha" ? "botao-icone ativo" : "botao-icone"} onPress={() => setFerrD("borracha")} aria-label={tq.borracha} aria-pressed={ferrD === "borracha"}><Eraser aria-hidden="true" size="1.1em" /></Button>
+          <span className="quadro-desenho-cores" role="group" aria-label={tq.cor}>
+            {CORES_DESENHO.map((c) => (
+              <button key={c} type="button" className={corD.toLowerCase() === c.toLowerCase() ? "caderno-cor atual" : "caderno-cor"} style={{ background: c }} onClick={() => { setCorD(c); setFerrD("caneta"); }} aria-label={c} aria-pressed={corD.toLowerCase() === c.toLowerCase()} />
+            ))}
+            <label className="caderno-cor-escolher" title={tq.cor}>
+              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(corD) ? corD : "#000000"} onChange={(e) => { setCorD(e.target.value); setFerrD("caneta"); }} aria-label={tq.cor} />
+              <Plus aria-hidden="true" size="1em" />
+            </label>
+          </span>
+          <input type="range" min={1} max={14} step={1} value={tamD} onChange={(e) => setTamD(Number(e.target.value))} aria-label={tq.tamanho} className="quadro-desenho-tam" />
+          <Button className="botao-icone" onPress={desfazerCena} aria-label={tq.desfazer}><Undo2 aria-hidden="true" size="1.1em" /></Button>
+          <Button className="botao-icone" onPress={limparCena} aria-label={tq.limpar}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+          <Button className="botao pequeno com-icone principal" onPress={() => setDesenhando(false)}><Check aria-hidden="true" size="1em" /> {tq.pronto}</Button>
+        </div>
+      )}
 
       {erro && <div className="leitor-aviso"><Aviso>{erro}</Aviso></div>}
       {ocupado && <p className="leitor-aviso texto-suave">{tq.anexando}</p>}
@@ -255,10 +321,13 @@ function QuadroHobby({ hobby, aoFechar }: { hobby: Hobby; aoFechar: () => void }
         ) : (
           <p className="texto-suave pequeno quadro-dica">{tq.dica}</p>
         )}
-        <div className="quadro-chao" style={{ width: largura, height: altura }}>
+        <div className={desenhando ? "quadro-chao desenhando" : "quadro-chao"} style={{ width: largura, height: altura }}>
           {cartoes.map((c) => (
             <CartaoView key={c.id} cartao={c} aoMover={mover} aoRedimensionar={redimensionar} aoApagar={() => void apagar(c)} aoAbrir={() => abrirCartao(c)} aoSalvarTexto={(txt) => void salvarTexto(c, txt)} />
           ))}
+          <CamadaDesenhoQuadro cena={cena} largura={largura} altura={altura} ativo={desenhando} ferramenta={ferrD} cor={corD} tamanho={tamD}
+            aoDesenhar={(tr) => mudarCena({ elementos: [...cena.elementos, tr] })}
+            aoApagarCena={(nova) => mudarCena(nova)} />
         </div>
       </div>
 
@@ -509,6 +578,67 @@ function AudioAnexo({ id, nome }: { id: string; nome: string }) {
     return () => void (vivo = false);
   }, [id, mime]);
   return src ? <audio className="quadro-audio" controls src={src} /> : <span className="texto-suave pequeno">{tq.audio.salvando}</span>;
+}
+
+/** Camada de desenho à mão sobre todo o quadro do hobby (tipo quadro branco).
+ *  Reaproveita o traço do caderno (perfect-freehand). Quando ativa, captura o
+ *  toque e desenha/apaga; quando não, só mostra o desenho (deixa os cartões
+ *  funcionarem por baixo). */
+function CamadaDesenhoQuadro({ cena, largura, altura, ativo, ferramenta, cor, tamanho, aoDesenhar, aoApagarCena }: {
+  cena: Cena; largura: number; altura: number; ativo: boolean; ferramenta: "caneta" | "borracha"; cor: string; tamanho: number;
+  aoDesenhar: (t: Traco) => void; aoApagarCena: (nova: Cena) => void;
+}) {
+  const ref = useRef<SVGSVGElement>(null);
+  const [vivo, setVivo] = useState<Traco | null>(null);
+  const [apagarLocal, setApagarLocal] = useState<Cena | null>(null);
+  const desenhando = useRef(false);
+  const raioBorracha = Math.max(7, tamanho * 2);
+
+  const ponto = (e: React.PointerEvent): Ponto => {
+    const r = ref.current!.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * largura, y: ((e.clientY - r.top) / r.height) * altura, p: e.pressure > 0 ? e.pressure : 0.5 };
+  };
+  const apagarEm = (base: Cena, x: number, y: number): Cena => {
+    const novos = [];
+    for (const el of base.elementos) {
+      if (el.tipo !== "traco") { novos.push(el); continue; }
+      const frags = fragmentosAoApagar(el, x, y, raioBorracha);
+      if (frags === null) { novos.push(el); continue; }
+      frags.forEach((pontos, i) => novos.push({ ...el, id: i === 0 ? el.id : crypto.randomUUID(), pontos }));
+    }
+    return { elementos: novos };
+  };
+  const inicio = (e: React.PointerEvent) => {
+    if (!ativo || (e.button != null && e.button !== 0)) return;
+    e.preventDefault();
+    ref.current?.setPointerCapture(e.pointerId);
+    desenhando.current = true;
+    const pt = ponto(e);
+    if (ferramenta === "borracha") setApagarLocal(apagarEm(cena, pt.x, pt.y));
+    else setVivo({ tipo: "traco", id: crypto.randomUUID(), ferramenta: "caneta", cor, espessura: Math.round(tamanho), pontos: [pt] });
+  };
+  const mover = (e: React.PointerEvent) => {
+    if (!desenhando.current) return;
+    const pt = ponto(e);
+    if (ferramenta === "borracha") setApagarLocal((c) => apagarEm(c ?? cena, pt.x, pt.y));
+    else setVivo((v) => (v ? { ...v, pontos: [...v.pontos, pt] } : v));
+  };
+  const fim = () => {
+    if (!desenhando.current) return;
+    desenhando.current = false;
+    if (ferramenta === "borracha") { setApagarLocal((c) => { if (c) aoApagarCena(c); return null; }); }
+    else setVivo((v) => { if (v && v.pontos.length) aoDesenhar(v); return null; });
+  };
+
+  const mostra = apagarLocal ?? cena;
+  return (
+    <svg ref={ref} className="quadro-desenho-svg" viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
+      style={{ pointerEvents: ativo ? "auto" : "none", cursor: ativo ? "crosshair" : undefined }}
+      onPointerDown={inicio} onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
+      {mostra.elementos.map((el) => (el.tipo === "traco" ? <path key={el.id} d={caminhoDeTraco(el)} fill={el.cor} opacity={el.opacidade ?? FERRAMENTAS[el.ferramenta].opacidade} /> : null))}
+      {vivo && <path d={caminhoDeTraco(vivo)} fill={vivo.cor} opacity={FERRAMENTAS.caneta.opacidade} />}
+    </svg>
+  );
 }
 
 /** Grava áudio pelo microfone (MediaRecorder) e guarda como anexo; ou anexa um áudio existente. */

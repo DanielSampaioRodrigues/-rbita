@@ -12,7 +12,9 @@ use serde::{Deserialize, Serialize};
 use super::{agora_ms, novo_id};
 use crate::erro::Erro;
 
-const TIPOS: [&str; 5] = ["texto", "arquivo", "imagem", "link", "audio"];
+// "desenho" guarda a cena desenhada sobre o quadro (JSON no campo texto); não
+// é um cartão visível, é a camada de rabisco do quadro inteiro.
+const TIPOS: [&str; 6] = ["texto", "arquivo", "imagem", "link", "audio", "desenho"];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
