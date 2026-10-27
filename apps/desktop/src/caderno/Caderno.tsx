@@ -5,6 +5,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { caminhoDeForma, caminhoDeTraco, cenaVazia, elementoDentro, escalar, FERRAMENTAS, formaAtingida, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, serializarCena, TAMANHOS, TIPOS_FORMA, tracoAtingido, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type Papel, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
 import { reduzirImagem } from "../fundo";
+import { useReescrever } from "../ia/Reescrever";
 import { CriarImagemIa } from "./CriarImagemIa";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
@@ -600,8 +601,20 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
       }
     }
   };
-  // Ao sair da ferramenta de texto, tira o foco (fecha a edição; caixa vazia some).
-  useEffect(() => { if (ferramenta !== "texto") (document.activeElement as HTMLElement | null)?.blur?.(); }, [ferramenta]);
+  // Ao sair da ferramenta de texto, fecha a edição (caixa vazia some).
+  useEffect(() => { if (ferramenta !== "texto") setEditandoTexto(""); }, [ferramenta]);
+  // Quando a caixa em edição muda, finaliza a anterior (vazia some; senão vira
+  // um passo de desfazer). Assim o menu da IA não encerra a edição ao abrir.
+  const anteriorEdit = useRef("");
+  useEffect(() => {
+    const ant = anteriorEdit.current;
+    anteriorEdit.current = editandoTexto;
+    if (!ant || ant === editandoTexto) return;
+    for (const [pid, c] of Object.entries(cenasRef.current)) {
+      if (c.elementos.some((e) => e.id === ant)) { aoFimTexto(pid, ant); break; }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editandoTexto]);
   // Ao sair do laço, limpa a seleção.
   useEffect(() => { if (ferramenta !== "laco") limparSelecao(); }, [ferramenta]);
 
@@ -986,9 +999,11 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
     extensions: extensoesCaderno,
     content: tx.texto || "",
     autofocus: "end",
-    editorProps: { attributes: { class: "caderno-caixa-area", "aria-label": t.texto.campo } },
+    editorProps: {
+      attributes: { class: "caderno-caixa-area", "aria-label": t.texto.campo },
+      handleKeyDown: (_v, ev) => { if (ev.key === "Escape") { aoFim(); return true; } return false; },
+    },
     onUpdate: ({ editor: e }) => aoPatch({ texto: e.getHTML() }),
-    onBlur: () => aoFim(),
   });
   const [marcas, setMarcas] = useState({ b: false, i: false, u: false });
   useEffect(() => {
@@ -998,8 +1013,14 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
     editor.on("transaction", ler);
     return () => { editor.off("selectionUpdate", ler); editor.off("transaction", ler); };
   }, [editor]);
+  // ✨ Revisão de texto por IA (só aparece com uma IA de revisão configurada).
+  const revisar = useReescrever(
+    editor?.getText() ?? "",
+    (novo) => { if (editor) { editor.chain().focus().setContent(novo.replace(/\n/g, "<br>")).run(); aoPatch({ texto: editor.getHTML() }); } },
+    true,
+    () => editor?.commands.focus(),
+  );
   if (!editor) return null;
-  const segurar = (e: React.PointerEvent) => e.preventDefault(); // mantém o foco no texto
   const fonteAtual = tx.fonte ?? "";
   const ciclarFonte = () => { const i = FONTES_CADERNO.indexOf(fonteAtual as (typeof FONTES_CADERNO)[number]); aoPatch({ fonte: FONTES_CADERNO[(i + 1) % FONTES_CADERNO.length] }); };
   const mudarTam = (d: number) => aoPatch({ tamanho: Math.min(80, Math.max(12, tx.tamanho + d)) });
@@ -1009,7 +1030,7 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
   const nomeFonte = fonteAtual && fonteAtual in FONTES ? FONTES[fonteAtual as keyof typeof FONTES].nome : t.texto.fontePadrao;
   return (
     <>
-      <div className="caderno-caixa-barra formatar" onPointerDown={segurar}>
+      <div className="caderno-caixa-barra formatar">
         <button type="button" className="caderno-caixa-alca" onPointerDown={aoArrastar} aria-label={t.texto.mover}><GripVertical size="1em" aria-hidden="true" /></button>
         <span className="caderno-fmt-grupo">
           <button type="button" className={marcas.b ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => editor.chain().focus().toggleBold().run()} aria-label={textos.rico.negrito} aria-pressed={marcas.b}><Bold size="1em" aria-hidden="true" /></button>
@@ -1022,9 +1043,11 @@ function CaixaEditor({ tx, estilo, aoPatch, aoFim, aoArrastar, aoApagar }: {
           <button type="button" className="caderno-fmt" onClick={() => mudarTam(2)} aria-label={t.texto.aumentar}>A+</button>
         </span>
         <button type="button" className="caderno-fmt" onClick={ciclarAlinho} aria-label={t.texto.alinhar[alinhoAtual]}><IconeAlinho size="1em" aria-hidden="true" /></button>
+        {revisar.botao && <span className="caderno-fmt-grupo">{revisar.botao}</span>}
         <button type="button" className="botao-icone pequeno" onClick={aoApagar} aria-label={t.texto.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
       </div>
       <div style={estilo} className="caderno-caixa-editor"><EditorContent editor={editor} /></div>
+      {revisar.janelas}
     </>
   );
 }
