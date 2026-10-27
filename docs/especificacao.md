@@ -192,6 +192,7 @@ Serve do ensino fundamental e médio à faculdade e à pós. O vocabulário e as
 ### 8. Hobbies e interesses
 
 - Arquivo de interesses e hiperfocos, com notas, imagens e links.
+- Cada interesse abre num **quadro livre** com cartões soltos (texto, arquivo, imagem, link, áudio) que a pessoa arrasta, e uma **camada de desenho à mão** sobre o quadro todo (modo quadro branco: caneta com cores e espessura, borracha que apaga por partes, desfazer, limpar), reaproveitando o motor de traços do caderno.
 - Espaço de prazer, sem metas nem cobrança de produtividade.
 
 ### 9. Caderno infinito

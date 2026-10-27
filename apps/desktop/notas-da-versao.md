@@ -1,3 +1,23 @@
+- **Caderno — selecionar, girar e organizar ficou fácil**: agora **basta tocar** numa imagem, figurinha, forma ou traço para **selecionar** (não precisa mais contornar com o laço). Com a seleção vêm as **alças para redimensionar**, uma **alça para girar** (imagens e figurinhas) e botões para **trazer para a frente** ou **enviar para trás** (camadas).
+
+- **Borracha de verdade**: a borracha agora **apaga só o pedaço** por onde você passa, em vez do objeto inteiro — com um círculo mostrando o tamanho dela.
+
+- **Régua de verdade**: a régua virou uma **faixa translúcida com traços e números em centímetros**, e você **controla a opacidade** dela. Desenhar encostando na borda continua saindo reto.
+
+- **Texto no caderno melhor**: ganhou **lista** e **lista numerada**, **ditado por voz** (quando a transcrição no computador está instalada) e a **caixa abraça o texto** (sem aquele caixão vazio em volta). Nas **notas adesivas**, tocar numa cor agora **muda a cor do texto** de verdade.
+
+- **Folha da página**: o modelo **pontilhado voltou a aparecer**, dá para escolher a **cor livre (qualquer cor)** do papel e das linhas, ajustar a **opacidade** de cada um, e **aplicar a folha a um intervalo de páginas** (não só a uma ou a todas).
+
+- **Tamanho de página do seu jeito**: além de A4, A5 e Carta, você cria a página num **tamanho próprio em centímetros** (com limite), inclusive em paisagem.
+
+- **Abas dos cadernos recentes** no topo, para **trocar de caderno** rápido, e o **botão de voltar** à estante voltou a funcionar.
+
+- **Hobbies — desenhar no quadro**: um botão **Desenhar** liga um modo **quadro branco** no quadro do hobby: rabisque e escreva à mão por cima de tudo, com **caneta (cores e espessura)**, **borracha que apaga por partes**, desfazer e limpar. E os botões de **Link** e **Gravar áudio** voltaram a abrir (estavam abrindo atrás do quadro).
+
+---
+
+<!-- Abaixo: o que veio na 0.44.3. -->
+
 - **Escrever e desenhar à mão no caderno**: agora dá para **escrever e desenhar** com **caneta, lápis, pincel e marca-texto**, apagar com a **borracha** e **desfazer/refazer**. Cada ferramenta tem ajustes (tamanho, opacidade, estabilização e pressão) com prévia. A **barra de ferramentas** você **move** para onde quiser (baixo, cima ou lados) e pode **escolher a cor dela**. (A caneta com pressão de verdade aparece quando você desenhar com uma caneta no Windows.)
 
 - **Texto, formas, laço, imagens e régua**: toque na folha para **escrever um texto** — com **negrito, itálico, sublinhado**, **fonte**, **tamanho**, **cor** e **alinhamento**; desenhe **formas** (reta, retângulo, elipse e seta); use o **laço** para pegar vários itens e **mover, redimensionar, recolorir ou apagar** de uma vez; **cole ou insira imagens** (Ctrl + V ou pelo botão). Ainda tem **notas adesivas** (post-it) e uma **régua** que ajuda a desenhar reto.
