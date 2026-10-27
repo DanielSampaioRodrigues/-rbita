@@ -93,6 +93,7 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   Sparkles: "estrela de quatro pontas grande com duas pequenas ao lado",
   Square: "quadrado simples de contorno",
   StickyNote: "quadrado com canto inferior dobrado e linhas de texto",
+  Sticker: "quadrado com um canto enrolado, como um adesivo",
   Sun: "círculo central com raios em volta",
   Tag: "etiqueta com ponta de um lado e furo pequeno",
   Tags: "duas etiquetas sobrepostas, cada uma com furo",

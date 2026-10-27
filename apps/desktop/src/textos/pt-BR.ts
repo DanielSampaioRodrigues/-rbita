@@ -1001,6 +1001,10 @@ export const textos = {
       inserir: "Inserir imagem",
       ajuda: "Cole uma imagem (Ctrl + V) ou use o botão de imagem. Depois selecione-a com o laço para mover, redimensionar ou apagar.",
     },
+    adesivos: {
+      abrir: "Adesivos",
+      titulo: "Adesivos",
+    },
     imagemIa: {
       abrir: "Criar com IA",
       titulo: "Criar com IA",

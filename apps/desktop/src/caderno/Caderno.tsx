@@ -11,7 +11,8 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Sticker, StickyNote, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { FONTES } from "../preferencias";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
@@ -44,6 +45,9 @@ function estiloCapa(capa: Capa): React.CSSProperties {
   }
   if (capa.tipo === "galeria") {
     return { background: CAPAS_GALERIA.find((x) => x.id === capa.valor)?.css ?? "var(--cor-superficie-alternativa)" };
+  }
+  if (capa.tipo === "arte") {
+    return { backgroundImage: `url("${urlCapaArte(capa.valor)}")`, backgroundSize: "cover", backgroundPosition: "center" };
   }
   return { background: `var(--etq-${capa.valor || "mar"})` };
 }
@@ -207,7 +211,7 @@ function GradeCadernos({ cadernos, aoAbrir, aoEditar, aoExcluir, pastas, aoMover
 }
 
 function EscolherCapa({ capa, aoMudar, ia, aoMudarIa }: { capa: Capa; aoMudar: (c: Capa) => void; ia: EstadoIa | null; aoMudarIa: (e: EstadoIa) => void }) {
-  const [modo, setModo] = useState<Capa["tipo"]>(capa.tipo);
+  const [modo, setModo] = useState<"cor" | "galeria" | "imagem">(capa.tipo === "arte" ? "galeria" : capa.tipo);
   const [iaAberta, setIaAberta] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -227,7 +231,7 @@ function EscolherCapa({ capa, aoMudar, ia, aoMudarIa }: { capa: Capa; aoMudar: (
   return (
     <div className="campo">
       <span className="campo-rotulo">{t.form.capa}</span>
-      <Segmentado<Capa["tipo"]> rotulo={t.capas.tipo} rotuloOculto valor={modo} aoMudar={setModo}
+      <Segmentado<"cor" | "galeria" | "imagem"> rotulo={t.capas.tipo} rotuloOculto valor={modo} aoMudar={setModo}
         opcoes={[{ valor: "cor", nome: t.capas.cores }, { valor: "galeria", nome: t.capas.galeria }, { valor: "imagem", nome: t.capas.imagem }]} />
 
       {modo === "cor" && (
@@ -243,10 +247,19 @@ function EscolherCapa({ capa, aoMudar, ia, aoMudarIa }: { capa: Capa; aoMudar: (
       )}
 
       {modo === "galeria" && (
-        <RadioGroup className="campo" value={capa.tipo === "galeria" ? capa.valor : ""} onChange={(v) => aoMudar({ tipo: "galeria", valor: v })} aria-label={t.capas.galeria}>
+        <RadioGroup className="campo"
+          value={capa.tipo === "arte" ? `a:${capa.valor}` : capa.tipo === "galeria" ? `g:${capa.valor}` : ""}
+          onChange={(v) => { const i = v.indexOf(":"); const k = v.slice(0, i); const id = v.slice(i + 1); aoMudar(k === "a" ? { tipo: "arte", valor: id } : { tipo: "galeria", valor: id }); }}
+          aria-label={t.capas.galeria}>
           <div className="caderno-galeria">
+            {CAPAS_ARTE.map((g) => (
+              <Radio key={g.id} value={`a:${g.id}`} className="caderno-galeria-opcao" aria-label={g.nome}>
+                <span className="caderno-galeria-amostra" style={{ backgroundImage: `url("${urlCapaArte(g.id)}")`, backgroundSize: "cover", backgroundPosition: "center" }} aria-hidden="true" />
+                <span className="pequeno">{g.nome}</span>
+              </Radio>
+            ))}
             {CAPAS_GALERIA.map((g) => (
-              <Radio key={g.id} value={g.id} className="caderno-galeria-opcao" aria-label={g.nome}>
+              <Radio key={g.id} value={`g:${g.id}`} className="caderno-galeria-opcao" aria-label={g.nome}>
                 <span className="caderno-galeria-amostra" style={{ background: g.css }} aria-hidden="true" />
                 <span className="pequeno">{g.nome}</span>
               </Radio>
@@ -574,6 +587,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
   const fileRef = useRef<HTMLInputElement>(null);
   const [ia, setIa] = useState<EstadoIa | null>(null);
   const [iaAberta, setIaAberta] = useState(false);
+  const [adesivosAberto, setAdesivosAberto] = useState(false);
   useEffect(() => { api.estadoIa().then(setIa, () => {}); }, []);
   const [historia, setHistoria] = useState<Record<string, { pilha: Cena[]; i: number }>>({});
   const carregadas = useRef<Set<string>>(new Set());
@@ -759,6 +773,17 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     await inserirImagem(blob, tipo === "adesivo" ? "adesivo.png" : "imagem.jpg", tipo === "adesivo" ? 0.28 : 0.5);
     setIaAberta(false);
   };
+  // Adesivo pronto da galeria: busca o PNG empacotado e insere como figura
+  // (pequeno, com a transparência preservada). Vai para o cofre como as demais.
+  const inserirAdesivo = async (id: string) => {
+    try {
+      const blob = await (await fetch(urlAdesivo(id))).blob();
+      await inserirImagem(blob, `${id}.png`, 0.22);
+      setAdesivosAberto(false);
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
   const inserirRef = useRef(inserirImagem);
   inserirRef.current = inserirImagem;
   // Colar imagem (Ctrl + V) com o caderno aberto.
@@ -910,7 +935,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
           ferramenta={ferramenta} aoFerramenta={setFerramenta} aoAjustar={setAjustando}
           cor={cor} aoCor={(c) => { usarCor(c); if (ferramenta === "laco" && selIds.length) recolorirSelecao(c); if (ferramenta === "texto" && editandoTexto) recolorTextoEditando(c); }} favoritos={favoritos}
           corBarra={corBarra} aoAbrirCorBarra={() => setCorBarraAberta(true)}
-          aoInserirImagem={() => fileRef.current?.click()} aoCriarIa={() => setIaAberta(true)}
+          aoInserirImagem={() => fileRef.current?.click()} aoCriarIa={() => setIaAberta(true)} aoAdesivos={() => setAdesivosAberto(true)}
           reguaLigada={regua !== null} aoRegua={alternarRegua}
           vertical={posBarra === "direita" || posBarra === "esquerda"} aoMover={ciclarBarra}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
@@ -922,6 +947,10 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
 
       <Janela titulo={t.imagemIa.titulo} aberta={iaAberta} aoFechar={() => setIaAberta(false)}>
         {iaAberta && <CriarImagemIa ia={ia} aoMudarIa={setIa} aoInserir={inserirDaIa} />}
+      </Janela>
+
+      <Janela titulo={t.adesivos.titulo} aberta={adesivosAberto} aoFechar={() => setAdesivosAberto(false)}>
+        {adesivosAberto && <AdesivosPainel aoInserir={inserirAdesivo} />}
       </Janela>
 
       <Janela titulo={ajustando ? t.ferramentas.ajustesDe(t.ferramentas.nomes[ajustando]) : ""} aberta={ajustando !== null} aoFechar={() => setAjustando(null)} pequena>
@@ -1379,10 +1408,30 @@ const FERRAMENTAS_UI: { id: FerramentaUI; icone: typeof PenLine }[] = [
   { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "nota", icone: StickyNote }, { id: "forma", icone: Shapes }, { id: "laco", icone: Lasso },
 ];
 
-function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, aoCriarIa, reguaLigada, aoRegua, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
+/** Painel de adesivos prontos, por grupo. Clicar insere o adesivo na página. */
+function AdesivosPainel({ aoInserir }: { aoInserir: (id: string) => void }) {
+  return (
+    <div className="caderno-adesivos">
+      {ADESIVOS.map((g) => (
+        <div key={g.grupo} className="caderno-adesivos-grupo">
+          <span className="campo-rotulo">{g.grupo}</span>
+          <div className="caderno-adesivos-grade">
+            {g.itens.map((a) => (
+              <button key={a.id} type="button" className="caderno-adesivo" onClick={() => aoInserir(a.id)} aria-label={a.nome} title={a.nome}>
+                <img src={urlAdesivo(a.id)} alt="" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, aoCriarIa, aoAdesivos, reguaLigada, aoRegua, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
   ferramenta: FerramentaUI; aoFerramenta: (f: FerramentaUI) => void; aoAjustar: (f: FerramentaUI) => void;
   cor: string; aoCor: (c: string) => void; favoritos: string[];
-  corBarra: string; aoAbrirCorBarra: () => void; aoInserirImagem: () => void; aoCriarIa: () => void;
+  corBarra: string; aoAbrirCorBarra: () => void; aoInserirImagem: () => void; aoCriarIa: () => void; aoAdesivos: () => void;
   reguaLigada: boolean; aoRegua: () => void;
   vertical: boolean; aoMover: () => void;
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
@@ -1415,6 +1464,7 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, fav
         <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={t.ferramentas.refazer}><Redo2 aria-hidden="true" size="1.1em" /></Button>
         <Button className={reguaLigada ? "botao-icone ativo" : "botao-icone"} onPress={aoRegua} aria-label={t.regua.titulo} aria-pressed={reguaLigada}><Ruler aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoInserirImagem} aria-label={t.imagem.inserir}><ImagePlus aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={aoAdesivos} aria-label={t.adesivos.abrir}><Sticker aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoCriarIa} aria-label={t.imagemIa.abrir}><Sparkles aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoAbrirCorBarra} aria-label={t.barraCor.abrir}><Palette aria-hidden="true" size="1.1em" /></Button>
       </span>

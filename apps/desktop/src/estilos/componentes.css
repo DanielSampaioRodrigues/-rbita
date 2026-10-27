@@ -818,6 +818,12 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .caderno-galeria-opcao { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; cursor: pointer; padding: 0.2rem; border-radius: var(--raio-1); }
 .caderno-galeria-opcao[data-selected] { outline: 2px solid var(--cor-destaque); }
 .caderno-galeria-amostra { width: 2.6rem; height: 3.3rem; border-radius: var(--raio-1); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
+.caderno-adesivos { display: flex; flex-direction: column; gap: var(--espaco-3); }
+.caderno-adesivos-grupo { display: flex; flex-direction: column; gap: var(--espaco-1); }
+.caderno-adesivos-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(3.4rem, 1fr)); gap: var(--espaco-2); }
+.caderno-adesivo { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; padding: 0.35rem; background: var(--cor-fundo-suave); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-1); cursor: pointer; }
+.caderno-adesivo:hover { border-color: var(--cor-destaque); background: var(--cor-superficie); }
+.caderno-adesivo img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .caderno-capa-imagem { display: flex; flex-direction: column; gap: var(--espaco-2); }
 .caderno-capa-previa { width: 7rem; height: 9rem; border-radius: var(--raio-1); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.22); }
 

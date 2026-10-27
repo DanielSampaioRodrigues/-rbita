@@ -152,14 +152,15 @@ export function lerCena(texto: string): Cena {
   }
 }
 
-/** Tipo da capa do caderno: cor da paleta, capa pronta da galeria, ou uma
- *  imagem da própria pessoa (enviada ou criada com IA). */
-export type TipoCapa = "cor" | "galeria" | "imagem";
+/** Tipo da capa do caderno: cor da paleta, gradiente pronto da galeria, capa de
+ *  arte empacotada, ou uma imagem da própria pessoa (enviada ou criada com IA). */
+export type TipoCapa = "cor" | "galeria" | "arte" | "imagem";
 
 export interface Capa {
   tipo: TipoCapa;
-  /** Cor da paleta ("cor"), id de uma capa pronta ("galeria"), ou o endereço
-   *  de dados (data URI, já reduzido) da imagem ("imagem"). */
+  /** Cor da paleta ("cor"), id de um gradiente pronto ("galeria"), id de uma
+   *  capa de arte empacotada ("arte"), ou o endereço de dados (data URI, já
+   *  reduzido) da imagem ("imagem"). */
   valor: string;
 }
 

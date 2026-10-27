@@ -427,9 +427,9 @@ export interface CartaoOrg {
   criadoEm: number;
 }
 
-/** Capa do caderno: cor da paleta ou id de uma capa pronta. */
+/** Capa do caderno: cor da paleta, gradiente/arte pronta, ou imagem da pessoa. */
 export interface Capa {
-  tipo: "cor" | "galeria" | "imagem";
+  tipo: "cor" | "galeria" | "arte" | "imagem";
   valor: string;
 }
 
