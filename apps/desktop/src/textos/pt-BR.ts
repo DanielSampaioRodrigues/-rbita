@@ -1053,6 +1053,7 @@ export const textos = {
     regua: {
       titulo: "Régua (desenhar reto)",
       ajuda: "Arraste a régua para posicionar e as pontas para girar. Desenhe perto dela e o traço sai reto.",
+      opacidade: "Opacidade da régua",
     },
     barraCor: {
       abrir: "Cor da barra de ferramentas",

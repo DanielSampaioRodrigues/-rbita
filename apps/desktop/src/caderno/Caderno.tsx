@@ -422,7 +422,9 @@ type FerramentaUI = Ferramenta | "texto" | "nota" | "forma" | "laco";
 const FUNDOS_NOTA = ["#fff3b0", "#ffd6e0", "#d9f2d0", "#cfe8ff", "#e6d9ff", "#ffe0c2"];
 
 /** Régua: uma guia (segmento) para desenhar reto. Em px de referência. */
-type Regua = { x1: number; y1: number; x2: number; y2: number };
+type Regua = { x1: number; y1: number; x2: number; y2: number; op?: number };
+/** Pixels por centímetro (as medidas da página são px a 96 dpi). */
+const PX_CM = 96 / 2.54;
 const LIMIAR_REGUA = 46; // px de referência: perto da régua, o traço gruda nela
 function projetarNaRegua(px: number, py: number, r: Regua): { x: number; y: number } {
   const dx = r.x2 - r.x1, dy = r.y2 - r.y1;
@@ -571,7 +573,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     if (r) return null;
     const pg = paginas.find((p) => p.id === selId);
     const m = medidaDe(pg?.tamanho ?? "a4");
-    return { x1: m.largura * 0.12, y1: m.altura * 0.22, x2: m.largura * 0.88, y2: m.altura * 0.22 };
+    return { x1: m.largura * 0.12, y1: m.altura * 0.22, x2: m.largura * 0.88, y2: m.altura * 0.22, op: 0.5 };
   });
   const mudarCorBarra = (c: string) => {
     setCorBarra(c);
@@ -1255,7 +1257,17 @@ function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura
           }
           aoSelecionar(ids);
         } else {
-          aoSelecionar([]);
+          // Toque simples (sem contornar): seleciona o objeto que está embaixo
+          // do dedo. É o jeito natural — tocar numa imagem, figurinha ou traço
+          // já a seleciona, sem precisar desenhar um laço em volta.
+          const tap = l && l.length ? l[l.length - 1] : null;
+          const sob = tap
+            ? [...elementos].reverse().find((el) => {
+                const b = limitesDe([el], alturaTextoEstim);
+                return b && tap[0] >= b.x && tap[0] <= b.x + b.largura && tap[1] >= b.y && tap[1] <= b.y + b.altura;
+              })
+            : undefined;
+          aoSelecionar(sob ? [sob.id] : []);
         }
         return null;
       });
@@ -1286,8 +1298,9 @@ function CamadaSelecao({ elementos, selecionados, ativa, escala, largura, altura
   );
 }
 
-/** A régua: uma guia que a pessoa arrasta e gira. Desenhar perto dela faz o
- *  traço sair reto (o encaixe fica na SuperficieDesenho). */
+/** A régua: uma guia translúcida com traços e números (em cm) que a pessoa
+ *  arrasta e gira. Desenhar perto da borda de cima faz o traço sair reto (o
+ *  encaixe fica na SuperficieDesenho). A opacidade é ajustável. */
 function CamadaRegua({ regua, escala, largura, altura, aoMudar }: {
   regua: Regua; escala: number; largura: number; altura: number; aoMudar: (r: Regua) => void;
 }) {
@@ -1308,20 +1321,53 @@ function CamadaRegua({ regua, escala, largura, altura, aoMudar }: {
     const g = gesto.current;
     if (!g) return;
     const [x, y] = pt(e);
-    if (g.modo === "mover") { const dx = x - g.ux, dy = y - g.uy; aoMudar({ x1: regua.x1 + dx, y1: regua.y1 + dy, x2: regua.x2 + dx, y2: regua.y2 + dy }); g.ux = x; g.uy = y; }
+    if (g.modo === "mover") { const dx = x - g.ux, dy = y - g.uy; aoMudar({ ...regua, x1: regua.x1 + dx, y1: regua.y1 + dy, x2: regua.x2 + dx, y2: regua.y2 + dy }); g.ux = x; g.uy = y; }
     else if (g.modo === "a") aoMudar({ ...regua, x1: x, y1: y });
     else aoMudar({ ...regua, x2: x, y2: y });
   };
   const fim = () => { gesto.current = null; };
   const raio = escala ? 12 / escala : 12;
+
+  // Geometria: comprimento, ângulo e corpo da régua (uma faixa de largura L).
+  const dx = regua.x2 - regua.x1, dy = regua.y2 - regua.y1;
+  const comp = Math.hypot(dx, dy) || 1;
+  const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const L = 58; // largura da faixa (px de referência)
+  const op = regua.op ?? 0.5;
+  // Traços: a cada 1 mm um risco curtinho, a cada 0,5 cm médio, a cada 1 cm
+  // longo + número. Fica igual a uma régua de verdade.
+  const passoMm = PX_CM / 10;
+  const marcas: React.ReactNode[] = [];
+  for (let i = 0, x = 0; x <= comp + 0.1; i++, x = i * passoMm) {
+    const cm = i % 10 === 0, meio = i % 5 === 0;
+    const h = cm ? 17 : meio ? 11 : 6;
+    marcas.push(<line key={`m${i}`} x1={x} y1={0} x2={x} y2={h} className="caderno-regua-traco" vectorEffect="non-scaling-stroke" />);
+    if (cm && i > 0) marcas.push(<text key={`t${i}`} x={x} y={30} className="caderno-regua-num" textAnchor="middle">{i / 10}</text>);
+  }
+
+  // Posição do controle de opacidade: meio da régua, deslocado para o lado do corpo.
+  const mx = (regua.x1 + regua.x2) / 2, my = (regua.y1 + regua.y2) / 2;
+  const nx = -dy / comp, ny = dx / comp; // perpendicular (lado do corpo)
+  const cx = (mx + nx * (L + 16)) * escala, cy = (my + ny * (L + 16)) * escala;
+
   return (
-    <svg ref={ref} className="caderno-regua-svg" viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
-      onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
-      <line x1={regua.x1} y1={regua.y1} x2={regua.x2} y2={regua.y2} className="caderno-regua-banda" onPointerDown={inicio("mover")} />
-      <line x1={regua.x1} y1={regua.y1} x2={regua.x2} y2={regua.y2} className="caderno-regua-linha" vectorEffect="non-scaling-stroke" />
-      <circle cx={regua.x1} cy={regua.y1} r={raio} className="caderno-regua-alca" vectorEffect="non-scaling-stroke" onPointerDown={inicio("a")} />
-      <circle cx={regua.x2} cy={regua.y2} r={raio} className="caderno-regua-alca" vectorEffect="non-scaling-stroke" onPointerDown={inicio("b")} />
-    </svg>
+    <div className="caderno-regua-camada">
+      <svg ref={ref} className="caderno-regua-svg" viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
+        onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
+        <g transform={`translate(${regua.x1} ${regua.y1}) rotate(${ang})`}>
+          <rect x={0} y={0} width={comp} height={L} className="caderno-regua-corpo" fillOpacity={op} onPointerDown={inicio("mover")} />
+          <g className="caderno-regua-marcas" style={{ opacity: Math.min(1, op + 0.35) }}>{marcas}</g>
+          <line x1={0} y1={0} x2={comp} y2={0} className="caderno-regua-linha" vectorEffect="non-scaling-stroke" />
+        </g>
+        <circle cx={regua.x1} cy={regua.y1} r={raio} className="caderno-regua-alca" vectorEffect="non-scaling-stroke" onPointerDown={inicio("a")} />
+        <circle cx={regua.x2} cy={regua.y2} r={raio} className="caderno-regua-alca" vectorEffect="non-scaling-stroke" onPointerDown={inicio("b")} />
+      </svg>
+      <label className="caderno-regua-opac" style={{ left: cx, top: cy }} title={t.regua.opacidade}>
+        <Ruler aria-hidden="true" size="0.9em" />
+        <input type="range" min={0.15} max={0.85} step={0.05} value={op} aria-label={t.regua.opacidade}
+          onChange={(e) => aoMudar({ ...regua, op: Number(e.target.value) })} />
+      </label>
+    </div>
   );
 }
 
