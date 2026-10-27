@@ -989,6 +989,13 @@ export const textos = {
       ajuda: "Contorne com um laço o que quer selecionar. Depois arraste para mover, toque numa cor para recolorir, ou use a lixeira para apagar.",
       apagar: "Apagar o que está selecionado",
     },
+    barraCor: {
+      abrir: "Cor da barra de ferramentas",
+      titulo: "Cor da barra",
+      escolher: "Escolher a cor",
+      padrao: "Voltar ao padrão",
+      ajuda: "A cor dos ícones se ajusta sozinha para continuar legível sobre a cor escolhida.",
+    },
     infinitoEmBreve: "O quadro infinito — com rolagem e zoom livres e as mesmas ferramentas — chega na próxima etapa. Por enquanto, use o modo caderno para escrever e desenhar.",
   },
   leitura: {

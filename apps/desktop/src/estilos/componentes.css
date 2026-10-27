@@ -897,6 +897,17 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .caderno-ferramenta { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border: 1px solid transparent; border-radius: var(--raio-1); background: none; color: var(--cor-texto-suave); cursor: pointer; }
 .caderno-ferramenta[data-hovered] { background: var(--cor-superficie-alternativa); }
 .caderno-ferramenta.ativa { background: var(--cor-superficie-alternativa); color: var(--cor-destaque); border-color: var(--cor-destaque); }
+/* Barra com cor escolhida pela pessoa: ícones se ajustam para contrastar. */
+.caderno-barra.tintada { border-color: color-mix(in srgb, var(--barra-fg) 25%, transparent); }
+.caderno-barra.tintada .caderno-ferramenta,
+.caderno-barra.tintada .botao-icone,
+.caderno-barra.tintada .caderno-mover-barra,
+.caderno-barra.tintada .caderno-cor-escolher { color: var(--barra-fg); }
+.caderno-barra.tintada .caderno-ferramenta[data-hovered],
+.caderno-barra.tintada .botao-icone[data-hovered] { background: color-mix(in srgb, var(--barra-fg) 14%, transparent); }
+.caderno-barra.tintada .caderno-ferramenta.ativa { background: color-mix(in srgb, var(--barra-fg) 18%, transparent); color: var(--barra-fg); border-color: var(--barra-fg); }
+.caderno-cor-barra-escolher { display: inline-flex; align-items: center; gap: var(--espaco-2); cursor: pointer; }
+.caderno-cor-barra-escolher input[type="color"] { width: 2.4rem; height: 2.4rem; padding: 0; border: 1px solid var(--cor-borda); border-radius: var(--raio-1); background: none; cursor: pointer; }
 .caderno-cores { gap: 0.3rem; }
 .caderno-cor { width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid var(--cor-borda-suave); cursor: pointer; padding: 0; }
 .caderno-cor.atual { outline: 2px solid var(--cor-foco); outline-offset: 1px; border-color: var(--cor-superficie); }

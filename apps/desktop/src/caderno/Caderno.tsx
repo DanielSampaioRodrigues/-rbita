@@ -8,7 +8,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, Italic, Lasso, LayoutGrid, List, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, ChevronLeft, Eraser, FolderOpen, FolderPlus, GripVertical, Highlighter, Italic, Lasso, LayoutGrid, List, Palette, Pencil, PenLine, Plus, Redo2, Shapes, SlidersHorizontal, Trash2, Type, Underline, Undo2, Wand2 } from "../icones";
 import { FONTES } from "../preferencias";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useEntrarImersivo } from "../app/Imersivo";
@@ -330,6 +330,20 @@ function lerFavoritos(): string[] {
 type PosBarra = "baixo" | "cima" | "direita" | "esquerda";
 const POS_BARRA: PosBarra[] = ["baixo", "cima", "direita", "esquerda"];
 
+/** Cor de ícone que contrasta com um fundo hex (claro → escuro, escuro → claro). */
+function corContraste(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return "#1f2937";
+  const n = parseInt(m[1], 16);
+  const canal = (c: number) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  const lum = 0.2126 * canal((n >> 16) & 255) + 0.7152 * canal((n >> 8) & 255) + 0.0722 * canal(n & 255);
+  return lum > 0.4 ? "#1f2937" : "#f5f3ee";
+}
+function lerCorBarra(): string {
+  try { const s = localStorage.getItem("caderno-cor-barra"); if (s && /^#[0-9a-fA-F]{6}$/.test(s)) return s; } catch { /* padrão */ }
+  return "";
+}
+
 /** Ferramentas da barra: as de traço (do motor) mais texto, formas e o laço. */
 type FerramentaUI = Ferramenta | "texto" | "forma" | "laco";
 
@@ -443,6 +457,12 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
     const prox = POS_BARRA[(POS_BARRA.indexOf(posBarra) + 1) % POS_BARRA.length];
     setPosBarra(prox);
     try { localStorage.setItem("caderno-pos-barra", prox); } catch { /* ignora */ }
+  };
+  const [corBarra, setCorBarra] = useState<string>(lerCorBarra);
+  const [corBarraAberta, setCorBarraAberta] = useState(false);
+  const mudarCorBarra = (c: string) => {
+    setCorBarra(c);
+    try { if (c) localStorage.setItem("caderno-cor-barra", c); else localStorage.removeItem("caderno-cor-barra"); } catch { /* ignora */ }
   };
   const mudarAjuste = (f: Ferramenta, patch: Partial<AjusteTraco>) =>
     setAjustes((a) => {
@@ -717,6 +737,7 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
         <BarraFerramentas
           ferramenta={ferramenta} aoFerramenta={setFerramenta} aoAjustar={setAjustando}
           cor={cor} aoCor={(c) => { usarCor(c); if (ferramenta === "laco" && selIds.length) recolorirSelecao(c); if (ferramenta === "texto" && editandoTexto) recolorTextoEditando(c); }} favoritos={favoritos}
+          corBarra={corBarra} aoAbrirCorBarra={() => setCorBarraAberta(true)}
           vertical={posBarra === "direita" || posBarra === "esquerda"} aoMover={ciclarBarra}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
         />
@@ -737,6 +758,20 @@ function CadernoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () =
 
       <Janela titulo={t.folha.titulo} aberta={editor} aoFechar={() => setEditor(false)}>
         {editor && <EditorFolha inicial={sel ? folhaDe(sel) : papelPadrao()} tamanho={sel?.tamanho ?? "a4"} varias={paginas.length > 1} aoAplicar={aplicarFolha} aoFechar={() => setEditor(false)} />}
+      </Janela>
+
+      <Janela titulo={t.barraCor.titulo} aberta={corBarraAberta} aoFechar={() => setCorBarraAberta(false)} pequena>
+        <div className="formulario">
+          <label className="caderno-cor-barra-escolher">
+            <input type="color" value={corBarra || "#2e2f33"} onChange={(e) => mudarCorBarra(e.target.value)} aria-label={t.barraCor.escolher} />
+            <span>{t.barraCor.escolher}</span>
+          </label>
+          <p className="campo-ajuda">{t.barraCor.ajuda}</p>
+          <div className="janela-acoes">
+            <Button className="botao" onPress={() => mudarCorBarra("")}>{t.barraCor.padrao}</Button>
+            <Button className="botao principal" onPress={() => setCorBarraAberta(false)}>{textos.comum.fechar}</Button>
+          </div>
+        </div>
       </Janela>
     </div>
   );
@@ -1080,14 +1115,17 @@ const FERRAMENTAS_UI: { id: FerramentaUI; icone: typeof PenLine }[] = [
   { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "forma", icone: Shapes }, { id: "laco", icone: Lasso },
 ];
 
-function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
+function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, favoritos, corBarra, aoAbrirCorBarra, vertical, aoMover, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer }: {
   ferramenta: FerramentaUI; aoFerramenta: (f: FerramentaUI) => void; aoAjustar: (f: FerramentaUI) => void;
   cor: string; aoCor: (c: string) => void; favoritos: string[];
+  corBarra: string; aoAbrirCorBarra: () => void;
   vertical: boolean; aoMover: () => void;
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
 }) {
+  const estilo = corBarra ? ({ background: corBarra, "--barra-fg": corContraste(corBarra) } as React.CSSProperties) : undefined;
+  const classe = `${vertical ? "caderno-barra vertical" : "caderno-barra"}${corBarra ? " tintada" : ""}`;
   return (
-    <div className={vertical ? "caderno-barra vertical" : "caderno-barra"} role="toolbar" aria-label={t.ferramentas.titulo}>
+    <div className={classe} style={estilo} role="toolbar" aria-label={t.ferramentas.titulo}>
       <Button className="botao-icone caderno-mover-barra" onPress={aoMover} aria-label={t.ferramentas.moverBarra}><GripVertical aria-hidden="true" size="1.1em" /></Button>
       <span className="caderno-barra-grupo">
         {FERRAMENTAS_UI.map(({ id, icone: Icone }) => (
@@ -1110,6 +1148,7 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, cor, aoCor, fav
       <span className="caderno-barra-grupo">
         <Button className="botao-icone" onPress={aoDesfazer} isDisabled={!podeDesfazer} aria-label={t.ferramentas.desfazer}><Undo2 aria-hidden="true" size="1.1em" /></Button>
         <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={t.ferramentas.refazer}><Redo2 aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={aoAbrirCorBarra} aria-label={t.barraCor.abrir}><Palette aria-hidden="true" size="1.1em" /></Button>
       </span>
     </div>
   );
