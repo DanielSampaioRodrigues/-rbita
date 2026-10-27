@@ -395,22 +395,25 @@ function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoEditar, aoApagar, aoSu
 
   return (
     <div ref={setNodeRef} className={isDragging ? "org-cartao arrastando" : cartao.feito ? "org-cartao feito" : "org-cartao"} style={estilo}>
-      <span className="org-alca" {...attributes} {...listeners} role="button" tabIndex={0} aria-roledescription="cartão arrastável" aria-label={`${t.cartao.mover}: ${cartao.texto}`} onClick={(e) => { if (arrastou.current) e.preventDefault(); }}>
-        <GripVertical aria-hidden="true" size="1em" />
-      </span>
-      <label className="org-cartao-check">
-        <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={t.cartao.feito} />
-      </label>
-      <button type="button" className="org-cartao-texto quebra" onClick={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}>
-        <span>{cartao.texto}</span>
-        {cartao.prazo && <PrazoSelo prazo={cartao.prazo} />}
-      </button>
-      <span className="org-cartao-ordenar">
+      <div className="org-cartao-topo">
+        <label className="org-cartao-check">
+          <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={t.cartao.feito} />
+        </label>
+        <button type="button" className="org-cartao-texto quebra" onClick={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}>
+          <span>{cartao.texto}</span>
+          {cartao.prazo && <PrazoSelo prazo={cartao.prazo} />}
+        </button>
+      </div>
+      <div className="org-cartao-acoes">
+        <span className="org-alca" {...attributes} {...listeners} role="button" tabIndex={0} aria-roledescription="cartão arrastável" aria-label={`${t.cartao.mover}: ${cartao.texto}`} onClick={(e) => { if (arrastou.current) e.preventDefault(); }}>
+          <GripVertical aria-hidden="true" size="1em" />
+        </span>
         <Button className="botao-icone pequeno" onPress={aoSubir} isDisabled={!podeSubir} aria-label={`${t.cartao.subir}: ${cartao.texto}`}><ArrowUp aria-hidden="true" size="1em" /></Button>
         <Button className="botao-icone pequeno" onPress={aoDescer} isDisabled={!podeDescer} aria-label={`${t.cartao.descer}: ${cartao.texto}`}><ArrowDown aria-hidden="true" size="1em" /></Button>
-      </span>
-      <Button className="botao-icone pequeno" onPress={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1em" /></Button>
-      <Button className="botao-icone pequeno" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1em" /></Button>
+        <span className="org-cartao-espaco" />
+        <Button className="botao-icone pequeno" onPress={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1em" /></Button>
+        <Button className="botao-icone pequeno" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1em" /></Button>
+      </div>
     </div>
   );
 }
