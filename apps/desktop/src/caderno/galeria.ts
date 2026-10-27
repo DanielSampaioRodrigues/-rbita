@@ -20,6 +20,9 @@ export const CAPAS_ARTE: ItemGaleria[] = [
   { id: "gradiente-colorido", nome: "Gradiente colorido" },
   { id: "quadro-verde", nome: "Quadro verde" },
   { id: "quadro-rosa", nome: "Quadro rosa" },
+  { id: "memphis-1", nome: "Memphis 1" },
+  { id: "memphis-2", nome: "Memphis 2" },
+  { id: "memphis-3", nome: "Memphis 3" },
 ];
 
 /** Adesivos prontos, agrupados por tema (o grupo ajuda a achar). */
