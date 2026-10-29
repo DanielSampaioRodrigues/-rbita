@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { balanco, limitarPeso, marcar, marcarCamuflagem, podar, saldoDoDia, sugerirReposicao, ultimaVez, usarKit, validar, VAZIO, type DadosEnergia } from "./contas";
+import { balanco, limitarPeso, marcar, marcarCamuflagem, podar, saldoDoDia, sugerirReposicao, ultimaVez, usarKit, validar, VAZIO, type DadosEnergia } from "./contasDados";
 
 const base: DadosEnergia = {
   atividades: [

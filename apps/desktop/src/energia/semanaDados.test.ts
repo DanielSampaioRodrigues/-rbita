@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Evento } from "../api";
 import type { Ocorrencia } from "../agenda/datas";
-import { marcar, marcarCamuflagem, VAZIO, type DadosEnergia } from "./contas";
-import { diasPesados, fraseAviso, juntar, negativosSeguidos, semanaEmSaldo } from "./semana";
+import { marcar, marcarCamuflagem, VAZIO, type DadosEnergia } from "./contasDados";
+import { diasPesados, fraseAviso, juntar, negativosSeguidos, semanaEmSaldo } from "./semanaDados";
 
 // 29/10/2026 é uma quinta-feira.
 const HOJE = new Date(2026, 9, 29, 15, 0);

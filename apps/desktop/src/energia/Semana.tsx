@@ -5,7 +5,7 @@ import { api } from "../api";
 import { useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { useContas } from "./Contas";
-import { diasPesados, fraseAviso, negativosSeguidos, NEGATIVOS_PARA_AVISO, semanaEmSaldo } from "./semana";
+import { diasPesados, fraseAviso, negativosSeguidos, NEGATIVOS_PARA_AVISO, semanaEmSaldo } from "./semanaDados";
 
 const ts = textos.energia.semana;
 const tp = textos.energia.pesados;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api";
-import { lojaContas, CHAVE_ANTIGA as ENERGIA_ANTIGA } from "./energia/contas";
+import { lojaContas, CHAVE_ANTIGA as ENERGIA_ANTIGA } from "./energia/contasDados";
 import { lojaEstante } from "./leitura/estanteLocal";
 import { CHAVE_ANTIGA as ROTINAS_ANTIGA, comPasso, lojaPersonalizacoes } from "./rotinas/personalizacao";
 import { criarLoja, lerValoresParaExportar } from "./valores";

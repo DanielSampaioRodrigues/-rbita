@@ -3,7 +3,7 @@
 // no negativo, não um dia ruim; e dá para se preparar para dias cheios.
 import { chaveDia, inicioDoDia, somarDias, type Ocorrencia } from "../agenda/datas";
 import { textos } from "../textos/pt-BR";
-import { balanco, saldoDoDia, type Balanco, type Camuflagem, type DadosEnergia, type Saldo } from "./contas";
+import { balanco, saldoDoDia, type Balanco, type Camuflagem, type DadosEnergia, type Saldo } from "./contasDados";
 
 export interface DiaEmSaldo {
   /** "AAAA-MM-DD" */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RegistroEnergia } from "../api";
-import { marcar, marcarCamuflagem, usarKit, VAZIO, type DadosEnergia } from "./contas";
-import { textoParaTerapia } from "./terapia";
+import { marcar, marcarCamuflagem, usarKit, VAZIO, type DadosEnergia } from "./contasDados";
+import { textoParaTerapia } from "./terapiaTexto";
 
 // 29/10/2026 é uma quinta-feira.
 const HOJE = new Date(2026, 9, 29, 15, 0);

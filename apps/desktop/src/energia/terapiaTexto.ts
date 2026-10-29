@@ -4,8 +4,8 @@
 import { chaveDia, inicioDoDia, somarDias } from "../agenda/datas";
 import type { RegistroEnergia } from "../api";
 import { textos } from "../textos/pt-BR";
-import { CAMUFLAGENS, type DadosEnergia } from "./contas";
-import { semanaEmSaldo } from "./semana";
+import { CAMUFLAGENS, type DadosEnergia } from "./contasDados";
+import { semanaEmSaldo } from "./semanaDados";
 
 const t = textos.energia.terapia;
 const tc = textos.energia.camuflagem;

@@ -20,7 +20,7 @@ import {
   ultimaVez,
   type Atividade,
   type DadosEnergia,
-} from "./contas";
+} from "./contasDados";
 
 const tc = textos.energia.contas;
 const ts = textos.energia.sinais;

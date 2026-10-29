@@ -7,7 +7,7 @@ import { ATALHOS } from "../atalhos";
 import { Campo } from "../componentes/Campo";
 import { Teclas } from "../componentes/Teclas";
 import { textos } from "../textos/pt-BR";
-import { diaDe, novoId, usarKit } from "./contas";
+import { diaDe, novoId, usarKit } from "./contasDados";
 import { useContas } from "./Contas";
 
 const t = textos.energia.kit;

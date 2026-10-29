@@ -9,7 +9,7 @@ import { LEMBRETES_CORPO, type LembreteCorpo as Intervalo } from "../preferencia
 import { textos } from "../textos/pt-BR";
 import { useLoja } from "../valores";
 import { avancarRelogio, COISAS_DO_CORPO, corpoDoDia, lojaCorpo, marcarCorpo, type CoisaDoCorpo } from "./corpo";
-import { juntar } from "./semana";
+import { juntar } from "./semanaDados";
 
 const t = textos.energia.corpo;
 

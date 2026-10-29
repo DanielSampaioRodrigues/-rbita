@@ -6,8 +6,8 @@ import { api, escolherOndeExportar } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Segmentado } from "../componentes/Segmentado";
 import { textos } from "../textos/pt-BR";
-import { lojaContas } from "./contas";
-import { SEMANAS_TERAPIA, textoParaTerapia } from "./terapia";
+import { lojaContas } from "./contasDados";
+import { SEMANAS_TERAPIA, textoParaTerapia } from "./terapiaTexto";
 
 const t = textos.energia.terapia;
 

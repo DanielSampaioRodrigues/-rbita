@@ -4,7 +4,7 @@
 //
 // O que a pessoa marca fica no cofre de valores, chave "energia.corpo".
 import { criarLoja } from "../valores";
-import { diaDe } from "./contas";
+import { diaDe } from "./contasDados";
 
 export const COISAS_DO_CORPO = ["agua", "comida", "banheiro", "pausa"] as const;
 export type CoisaDoCorpo = (typeof COISAS_DO_CORPO)[number];
