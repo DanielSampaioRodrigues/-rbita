@@ -1,6 +1,7 @@
 // Ponte com a parte nativa (Rust). Fora do app (navegador, testes de tela),
 // usa uma simulação em memória para a interface poder ser vista e testada.
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { escolherArquivoWeb, modoWeb } from "./web/modoWeb";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
@@ -668,7 +669,7 @@ export interface Sugestao {
   local: boolean;
 }
 
-interface Api {
+export interface Api {
   situacao(): Promise<Situacao>;
   /** `senha` é opcional: sem ela, as 6 palavras fazem o papel de senha. */
   criarCofre(senha: string | null, modo: ModoAbrir, pin?: string): Promise<string[]>;
@@ -1115,12 +1116,61 @@ const nativa: Api = {
 };
 
 /** Parte da simulação que cuida de ideias, projetos e tarefas (mesmas regras da parte nativa). */
+// ── Estado guardável da simulação ───────────────────────────────────────────
+// Na versão de navegador (iPad), o estado dos módulos abaixo é guardado,
+// criptografado, no próprio aparelho. Cada módulo registra aqui as suas listas;
+// nos testes e na prévia o registro fica parado (nada é gravado).
+export interface Guardavel {
+  ler: () => unknown;
+  escrever: (v: unknown) => void;
+  zerar: () => void;
+}
+export const guardaveis = new Map<string, Guardavel>();
+function guardarLista<T>(chave: string, lista: T[]): T[] {
+  guardaveis.set(chave, {
+    ler: () => lista,
+    escrever: (v) => void lista.splice(0, lista.length, ...((v as T[]) ?? [])),
+    zerar: () => void lista.splice(0, lista.length),
+  });
+  return lista;
+}
+function guardarMapa<K, V>(chave: string, mapa: Map<K, V>): Map<K, V> {
+  guardaveis.set(chave, {
+    ler: () => [...mapa],
+    escrever: (v) => {
+      mapa.clear();
+      for (const [k, x] of (v as [K, V][]) ?? []) mapa.set(k, x);
+    },
+    zerar: () => mapa.clear(),
+  });
+  return mapa;
+}
+function guardarConjunto<T>(chave: string, conjunto: Set<T>): Set<T> {
+  guardaveis.set(chave, {
+    ler: () => [...conjunto],
+    escrever: (v) => {
+      conjunto.clear();
+      for (const x of (v as T[]) ?? []) conjunto.add(x);
+    },
+    zerar: () => conjunto.clear(),
+  });
+  return conjunto;
+}
+function guardarValor<T>(chave: string, ler: () => T, escrever: (v: T) => void) {
+  const inicial = structuredClone(ler());
+  guardaveis.set(chave, { ler, escrever: (v) => escrever(v as T), zerar: () => escrever(structuredClone(inicial)) });
+}
+
 function simularItens() {
   type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null; nota?: string; etiquetas?: string[] };
   let etiquetas: Etiqueta[] = [];
   let ligacoes: [string, string][] = [];
   const itens: Item[] = [];
   let limite = 3;
+  guardarValor("itens.etiquetas", () => etiquetas, (v) => (etiquetas = v));
+  guardarValor("itens.ligacoes", () => ligacoes, (v) => (ligacoes = v));
+  guardarLista("itens.itens", itens);
+  guardarValor("itens.limite", () => limite, (v) => (limite = v));
   const agora = () => Date.now();
   const novo = (x: Partial<Item> & Pick<Item, "tipo" | "texto" | "estado">): Item => {
     const item: Item = { id: crypto.randomUUID(), paiId: null, ordem: 0, criadoEm: agora(), alteradoEm: agora(), ondeParei: null, pausadoEm: null, ...x };
@@ -1160,7 +1210,7 @@ function simularItens() {
     return pai.tipo === "projeto" ? pai : achar(pai.paiId!);
   };
   // Exemplo para as telas não começarem vazias.
-  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+  if (paramsDeTeste().get("exemplo")) {
     etiquetas = [
       { id: "e1", nome: "Arte", cor: "rosa" },
       { id: "e2", nome: "Escrita", cor: "mar" },
@@ -1305,9 +1355,10 @@ function simularItens() {
 
 function simularAgenda() {
   const eventos: Evento[] = [];
+  guardarLista("agenda.eventos", eventos);
   const hoje = new Date();
   const em = (dias: number, h: number, m = 0) => new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias, h, m).getTime();
-  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+  if (paramsDeTeste().get("exemplo")) {
     const base = { id: "", diaInteiro: false, repeticao: null, modelo: false, notas: "", excecoes: [] };
     eventos.push(
       { ...base, id: "a1", titulo: "Consulta com a psiquiatra", inicio: em(0, 15), fim: em(0, 16) },
@@ -1340,7 +1391,8 @@ function simularAgenda() {
 
 function simularRotinas(itens: ReturnType<typeof simularItens>, anexos: ReturnType<typeof simularAnexos>) {
   const rotinas: Rotina[] = [];
-  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+  guardarLista("rotinas.rotinas", rotinas);
+  if (paramsDeTeste().get("exemplo")) {
     rotinas.push({
       id: "r1",
       titulo: "Manhã",
@@ -1399,9 +1451,11 @@ function simularRotinas(itens: ReturnType<typeof simularItens>, anexos: ReturnTy
 /** Anexos de mentira: guardados só na memória da página. */
 function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLink" | "anexarBytes" | "imagemAnexo" | "abrirAnexo" | "salvarAnexo" | "excluirAnexo"> & { imagemDe: (item: string) => string | null } {
   const anexos: (Anexo & { item: string })[] = [];
+  guardarLista("anexos.anexos", anexos);
   const desenho = (cor: string) =>
     `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320"><rect width="480" height="320" fill="${cor}"/><circle cx="360" cy="90" r="40" fill="#f3efe6" opacity="0.8"/><path d="M0 260 L120 150 L230 250 L320 180 L480 280 L480 320 L0 320 Z" fill="#2f4a3a"/></svg>`)}`;
   const imagens = new Map<string, string>();
+  guardarMapa("anexos.imagens", imagens);
   const tipoDe = (nome: string): Anexo["tipo"] => (/\.(png|jpe?g|gif|webp|svg)$/i.test(nome) ? "imagem" : "arquivo");
   return {
     imagemDe: (item) => anexos.filter((a) => a.item === item && a.tipo === "imagem").pop()?.id ?? null,
@@ -1447,9 +1501,12 @@ function simularAnexos(): Pick<Api, "listarAnexos" | "anexarArquivo" | "anexarLi
 
 function simularEnergia() {
   const registros: RegistroEnergia[] = [];
+  guardarLista("energia.registros", registros);
   let basicos = ["Tomar o remédio", "Comer alguma coisa", "Beber água"];
   const feitos = new Set<string>();
-  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+  guardarValor("energia.basicos", () => basicos, (v) => (basicos = v));
+  guardarConjunto("energia.feitos", feitos);
+  if (paramsDeTeste().get("exemplo")) {
     const dia = 86_400_000;
     [3, 2, 4, 3, 1, 2, 3, 4, 4, 2, 3, 3, 2].forEach((nivel, i) =>
       registros.push({ id: `en${i}`, nivel, momento: Date.now() - (13 - i) * dia - 3_600_000, nota: "" }),
@@ -1471,13 +1528,17 @@ function simularEnergia() {
 
 function simularSaude() {
   const remedios: Remedio[] = [];
+  guardarLista("saude.remedios", remedios);
   // Doses tomadas: chave "remedioId|horario|data".
   const tomadas = new Set<string>();
+  guardarConjunto("saude.tomadas", tomadas);
   const registros: RegistroSaude[] = [];
+  guardarLista("saude.registros", registros);
   const planos: PlanoSaude[] = [];
+  guardarLista("saude.planos", planos);
   const normalizar = (hs: string[]) =>
     [...new Set(hs.map((h) => h.trim()).filter(Boolean))].filter((h) => /^\d{2}:\d{2}$/.test(h)).sort();
-  if (new URLSearchParams(globalThis.location?.search ?? "").get("exemplo")) {
+  if (paramsDeTeste().get("exemplo")) {
     remedios.push(
       { id: "rem1", nome: "Metilfenidato", dose: "1 comprimido", horarios: ["08:00", "14:00"], estoque: 4, porDose: 1, receita: "2026-10-30", estado: "ativo", criadoEm: Date.now() },
       { id: "rem2", nome: "Sertralina", dose: "1 comprimido", horarios: ["08:00"], estoque: 28, porDose: 1, receita: null, estado: "ativo", criadoEm: Date.now() },
@@ -1576,8 +1637,11 @@ function simularSaude() {
 
 function simularCuidado() {
   const profissionais: Profissional[] = [];
+  guardarLista("cuidado.profissionais", profissionais);
   const notas: (Nota & { prof: string })[] = [];
+  guardarLista("cuidado.notas", notas);
   const sessoes: (RegistroSessao & { prof: string })[] = [];
+  guardarLista("cuidado.sessoes", sessoes);
   return {
     listarProfissionais: async () => profissionais.map((p) => ({ ...p })).sort((a, b) => a.criadoEm - b.criadoEm),
     salvarProfissional: async (p: Profissional) => {
@@ -1646,6 +1710,10 @@ function simularAcademico() {
   const atividades: Atividade[] = [];
   const aulas: Aula[] = [];
   let media = 6;
+  guardarLista("academico.materias", materias);
+  guardarLista("academico.atividades", atividades);
+  guardarLista("academico.aulas", aulas);
+  guardarValor("academico.media", () => media, (v) => (media = v));
   const horaOk = (h: string) => /^\d{2}:\d{2}$/.test(h) && Number(h.slice(0, 2)) < 24 && Number(h.slice(3)) < 60;
   return {
     listarMaterias: async () => materias.map((m) => ({ ...m })).sort((a, b) => a.nome.localeCompare(b.nome)),
@@ -1728,6 +1796,11 @@ function simularDinheiro() {
   const contas: Conta[] = [];
   const desejos: Desejo[] = [];
   const metas: Meta[] = [];
+  guardarLista("dinheiro.gastos", gastos);
+  guardarLista("dinheiro.grupos", grupos);
+  guardarLista("dinheiro.contas", contas);
+  guardarLista("dinheiro.desejos", desejos);
+  guardarLista("dinheiro.metas", metas);
   return {
     registrarGasto: async (centavos: number, grupoId: string, descricao: string, interesse: boolean) => {
       if (centavos < 0) throw new ErroOrbita("interno", "O valor não pode ser negativo.");
@@ -1825,6 +1898,8 @@ function simularDinheiro() {
 function simularHobbies() {
   const hobbies: Hobby[] = [];
   const cartoes: CartaoQuadro[] = [];
+  guardarLista("hobbies.hobbies", hobbies);
+  guardarLista("hobbies.cartoes", cartoes);
   const TIPOS = ["texto", "arquivo", "imagem", "link", "audio", "desenho"];
   return {
     listarCartoes: async (hobbyId: string) =>
@@ -1879,6 +1954,9 @@ function simularOrganizacao() {
   const quadros: Quadro[] = [];
   const colunas: Coluna[] = [];
   const cartoes: CartaoOrg[] = [];
+  guardarLista("organizacao.quadros", quadros);
+  guardarLista("organizacao.colunas", colunas);
+  guardarLista("organizacao.cartoes", cartoes);
   const novaColuna = (quadroId: string, nome: string, ordem: number): Coluna => {
     const c = { id: crypto.randomUUID(), quadroId, nome, ordem };
     colunas.push(c);
@@ -1974,6 +2052,10 @@ function simularCaderno() {
   const cadernos: Caderno[] = [];
   const paginas: PaginaCaderno[] = [];
   const cenas = new Map<string, string>();
+  guardarLista("caderno.pastas", pastas);
+  guardarLista("caderno.cadernos", cadernos);
+  guardarLista("caderno.paginas", paginas);
+  guardarMapa("caderno.cenas", cenas);
   return {
     listarPastasCaderno: async () => pastas.map((p) => ({ ...p })).sort((a, b) => a.nome.localeCompare(b.nome)),
     salvarPastaCaderno: async (p: PastaCaderno) => {
@@ -2041,6 +2123,9 @@ function simularLeitura() {
   const livros: Livro[] = [];
   const gruposLivro: GrupoLivro[] = [];
   const anotacoes: Anotacao[] = [];
+  guardarLista("leitura.livros", livros);
+  guardarLista("leitura.grupos", gruposLivro);
+  guardarLista("leitura.anotacoes", anotacoes);
   const SUBTIPOS = ["marcador", "nota", "grifo", "traco"];
   const ordem: Record<string, number> = { lendo: 0, quero: 1, pausado: 2, lido: 3 };
   const STATUS = ["quero", "lendo", "lido", "pausado"];
@@ -2124,7 +2209,7 @@ function criarSimulacao(): Api {
   const backup: SituacaoBackup = { pasta: null, ultimo: null, erro: null };
   const comItens = simularItens();
   const comAnexos = simularAnexos();
-  const params0 = new URLSearchParams(globalThis.location?.search ?? "");
+  const params0 = paramsDeTeste();
   let bandeja = false;
   const comIa = simularIa(params0.get("ia") !== null, params0.get("ia") === "erro");
   const espera = () => new Promise((r) => setTimeout(r, 250));
@@ -2134,7 +2219,7 @@ function criarSimulacao(): Api {
     if (texto.trim().toLowerCase().split(/\s+/).join(" ") !== PALAVRAS.join(" "))
       throw new ErroOrbita("chave_errada", "A chave de recuperação não abre estes dados.");
   };
-  const params = new URLSearchParams(globalThis.location?.search ?? "");
+  const params = paramsDeTeste();
   // `?senha=nao`: cofre criado sem senha (só as 6 palavras).
   if (params.get("cofre")) Object.assign(s, { existe: true, modo: params.get("cofre"), senha: params.get("senha") === "nao" ? "" : "gato azul na janela", pin: "2468" });
   const confirmar = async (conf: Confirmacao) => {
@@ -2466,10 +2551,21 @@ ${JSON.stringify(tema)}`;
 }
 
 export const noApp = isTauri();
-export const api: Api = noApp ? nativa : criarSimulacao();
+/** Versão de navegador de verdade (iPad): guarda os dados, criptografados, no aparelho.
+ *  Ligada só no build da web (VITE_ORBITA_WEB=1); a prévia e os testes seguem na simulação. */
+export const MODO_WEB = !noApp && import.meta.env.VITE_ORBITA_WEB === "1";
+/** Parâmetros de teste da simulação (?cofre=, ?exemplo=…). Na versão web de verdade, ignorados. */
+function paramsDeTeste() {
+  return new URLSearchParams(MODO_WEB ? "" : (globalThis.location?.search ?? ""));
+}
+export const api: Api = noApp ? nativa : MODO_WEB ? modoWeb(criarSimulacao(), { ErroOrbita, guardaveis }) : criarSimulacao();
 
 /** Pergunta onde salvar o arquivo de recuperação e grava. Devolve false se a pessoa cancelar. */
 export async function salvarArquivoRecuperacao(): Promise<boolean> {
+  if (MODO_WEB) {
+    await api.gravarArquivoRecuperacao("orbita-chave-de-recuperacao.txt");
+    return true;
+  }
   if (!noApp) return true;
   const caminho = await save({
     defaultPath: "orbita-chave-de-recuperacao.txt",
@@ -2482,6 +2578,10 @@ export async function salvarArquivoRecuperacao(): Promise<boolean> {
 
 /** Pede para escolher o arquivo de recuperação e devolve as palavras lidas. */
 export async function escolherArquivoRecuperacao(): Promise<string | null> {
+  if (MODO_WEB) {
+    const ref = await escolherArquivoWeb(".txt,text/plain");
+    return ref ? api.lerArquivoRecuperacao(ref) : null;
+  }
   if (!noApp) return api.lerArquivoRecuperacao("");
   const caminho = await open({ multiple: false, directory: false, filters: [{ name: "Texto", extensions: ["txt"] }] });
   if (!caminho || Array.isArray(caminho)) return null;
@@ -2492,6 +2592,7 @@ const hoje = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD
 
 /** Pergunta onde salvar um backup. Devolve null se a pessoa cancelar. */
 export async function escolherOndeSalvarBackup(): Promise<string | null> {
+  if (MODO_WEB) return `orbita-backup-${hoje()}.orbita-backup`;
   if (!noApp) return "simulacao.orbita-backup";
   return save({
     defaultPath: `orbita-backup-${hoje()}.orbita-backup`,
@@ -2501,6 +2602,7 @@ export async function escolherOndeSalvarBackup(): Promise<string | null> {
 
 /** Diálogo de "salvar como" para uma exportação (nome sugerido + extensão). */
 export async function escolherOndeExportar(nomeBase: string, nomeFiltro: string, extensao: string): Promise<string | null> {
+  if (MODO_WEB) return `${nomeBase}.${extensao}`;
   if (!noApp) return `simulacao-${nomeBase}.${extensao}`;
   return save({
     defaultPath: `${nomeBase}.${extensao}`,
@@ -2509,12 +2611,14 @@ export async function escolherOndeExportar(nomeBase: string, nomeFiltro: string,
 }
 
 export async function escolherBackup(): Promise<string | null> {
+  if (MODO_WEB) return escolherArquivoWeb();
   if (!noApp) return "simulacao.orbita-backup";
   const caminho = await open({ multiple: false, directory: false, filters: [{ name: "Backup do Órbita", extensions: ["orbita-backup"] }] });
   return typeof caminho === "string" ? caminho : null;
 }
 
 export async function escolherPasta(): Promise<string | null> {
+  if (MODO_WEB) return null;
   if (!noApp) return "C:\\Users\\Dan\\Google Drive\\Órbita";
   const caminho = await open({ multiple: false, directory: true });
   return typeof caminho === "string" ? caminho : null;
@@ -2522,6 +2626,7 @@ export async function escolherPasta(): Promise<string | null> {
 
 /** Escolhe um arquivo para anexar. Devolve null se a pessoa cancelar. */
 export async function escolherArquivoParaAnexar(soImagens = false): Promise<string | null> {
+  if (MODO_WEB) return escolherArquivoWeb(soImagens ? "image/*" : "");
   if (!noApp) return soImagens ? "C:\\Users\\Dan\\Imagens\\copo-de-agua.png" : "C:\\Users\\Dan\\Imagens\\esboço-da-capa.png";
   const filters = soImagens ? [{ name: "Imagens", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }] : undefined;
   const caminho = await open({ multiple: false, directory: false, filters });
@@ -2530,6 +2635,8 @@ export async function escolherArquivoParaAnexar(soImagens = false): Promise<stri
 
 /** Escolhe um arquivo EPUB ou PDF para a estante. */
 export async function escolherLivro(): Promise<string | null> {
+  // Os livros (EPUB/PDF) ainda não ficam guardados na versão de navegador.
+  if (MODO_WEB) return null;
   if (!noApp) return "C:\\Users\\Dan\\Livros\\dom-casmurro.epub";
   const caminho = await open({ multiple: false, directory: false, filters: [{ name: "Livros", extensions: ["epub", "pdf"] }] });
   return typeof caminho === "string" ? caminho : null;
@@ -2537,7 +2644,7 @@ export async function escolherLivro(): Promise<string | null> {
 
 /** Pergunta onde salvar a cópia de um anexo. */
 export async function escolherOndeSalvarAnexo(nome: string): Promise<string | null> {
-  if (!noApp) return nome;
+  if (MODO_WEB || !noApp) return nome;
   return save({ defaultPath: nome });
 }
 
