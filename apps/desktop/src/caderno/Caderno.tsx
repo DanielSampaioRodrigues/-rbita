@@ -518,7 +518,8 @@ const extensoesCaderno = [
 ];
 
 /** Fontes oferecidas na caixa ("" = padrão do app). */
-const FONTES_CADERNO: (keyof typeof FONTES | "")[] = ["", "atkinson", "lexend", "opendyslexic"];
+// Padrão do tema primeiro; depois todas as fontes do app (as mesmas da Aparência).
+const FONTES_CADERNO: (keyof typeof FONTES | "")[] = ["", ...(Object.keys(FONTES) as (keyof typeof FONTES)[])];
 const fonteCss = (f?: string) => (f && f in FONTES ? FONTES[f as keyof typeof FONTES].css : "var(--fonte-texto)");
 const ALINHAR: AlinharTexto[] = ["esquerda", "centro", "direita"];
 const ALINHAR_CSS: Record<AlinharTexto, "left" | "center" | "right"> = { esquerda: "left", centro: "center", direita: "right" };
