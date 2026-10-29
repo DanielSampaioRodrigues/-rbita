@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CampoRico } from "../componentes/CampoRico";
-import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
-import { api, type Evento, type Repeticao } from "../api";
+import { Button, Form, Label, Radio, RadioGroup, ToggleButton, ToggleButtonGroup } from "react-aria-components";
+import { api, CORES_ETIQUETA, type Evento, type Repeticao } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { CampoData } from "../componentes/CampoData";
 import { Interruptor } from "../componentes/Interruptor";
@@ -51,6 +51,8 @@ export function FormEvento({ inicial, dia, aoFechar }: { inicial: Evento; dia: s
   const [ate, setAte] = useState(inicial.repeticao?.ate != null ? chaveDia(new Date(inicial.repeticao.ate)) : "");
   const [modelo, setModelo] = useState(inicial.modelo);
   const [notas, setNotas] = useState(inicial.notas);
+  // "" = sem cor. Uma cor fora da paleta (dado antigo ou estranho) vira "sem cor".
+  const [cor, setCor] = useState(inicial.cor && (CORES_ETIQUETA as readonly string[]).includes(inicial.cor) ? inicial.cor : "");
   const [erro, setErro] = useState<string | null>(null);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -70,6 +72,7 @@ export function FormEvento({ inicial, dia, aoFechar }: { inicial: Evento; dia: s
       repeticao: repetir === "nao" ? null : { frequencia: repetir, dias: repetir === "semanal" ? dias : [], ate: ate ? juntar(ate, "23:59") : null },
       modelo,
       notas,
+      cor: cor || null,
     };
   };
 
@@ -153,6 +156,7 @@ export function FormEvento({ inicial, dia, aoFechar }: { inicial: Evento; dia: s
         <Interruptor rotulo={t.modelo} ligado={modelo} aoMudar={setModelo} />
         <p className="campo-ajuda">{t.modeloExplicacao}</p>
       </div>
+      <EscolherCorEvento valor={cor} aoMudar={setCor} />
       <CampoRico rotulo={t.notas} valor={notas} aoMudar={setNotas} />
       <Aviso>{erro}</Aviso>
       <div className="janela-acoes">
@@ -163,5 +167,27 @@ export function FormEvento({ inicial, dia, aoFechar }: { inicial: Evento; dia: s
         <Button className="botao principal" type="submit" isDisabled={!titulo.trim()}>{textos.comum.salvar}</Button>
       </div>
     </Form>
+  );
+}
+
+/** Cor do cartão: "sem cor" e as 8 cores das etiquetas, sempre com o nome. Setas trocam. */
+function EscolherCorEvento({ valor, aoMudar }: { valor: string; aoMudar: (c: string) => void }) {
+  return (
+    <RadioGroup className="campo agenda-cores" value={valor} onChange={aoMudar} orientation="horizontal">
+      <Label className="campo-rotulo">{t.cor}</Label>
+      <div className="cores-etiqueta">
+        <Radio value="" className="cor-opcao">
+          <span className="etiqueta-cor grande cor-nenhuma" aria-hidden="true" />
+          <span className="pequeno">{t.semCor}</span>
+        </Radio>
+        {CORES_ETIQUETA.map((c) => (
+          <Radio key={c} value={c} className="cor-opcao">
+            <span className={`etiqueta-cor grande cor-${c}`} aria-hidden="true" />
+            <span className="pequeno">{textos.ideias.cores[c]}</span>
+          </Radio>
+        ))}
+      </div>
+      <p className="campo-ajuda">{t.corAjuda}</p>
+    </RadioGroup>
   );
 }

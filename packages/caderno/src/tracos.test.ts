@@ -32,3 +32,17 @@ describe("caderno: traços (perfect-freehand)", () => {
     expect(tracoAtingido(t, 30, 30, 5)).toBe(false);
   });
 });
+
+describe("caderno: pressão da caneta", () => {
+  const comPressao = (p: number): Traco => ({
+    tipo: "traco", id: "p", ferramenta: "caneta", cor: "#000", espessura: 6, pressao: true,
+    pontos: Array.from({ length: 12 }, (_x, i) => ({ x: i * 8, y: 0, p })),
+  });
+  const alturaDe = (d: string) => {
+    const ys = [...d.matchAll(/-?\d+\.\d+/g)].map((m) => Number(m[0])).filter((_n, i) => i % 2 === 1);
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  it("com caneta, mais força deixa o traço mais grosso", () => {
+    expect(alturaDe(caminhoDeTraco(comPressao(0.9)))).toBeGreaterThan(alturaDe(caminhoDeTraco(comPressao(0.15))) * 1.5);
+  });
+});

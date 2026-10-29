@@ -60,9 +60,16 @@ export interface Preferencias {
   temasProprios: Tema[];
   /** Tela inicial montável: ordem dos blocos, escondidos e largos. */
   inicio: { ordem: string[]; ocultos: string[]; largos: string[] };
+  /** Como o tempo do Foco aparece: disco, relógio de ponteiro, ampulheta ou barra. */
+  estiloFoco: EstiloFoco;
 }
 
-export const BLOCOS_INICIO = ["capturar", "energia", "hoje", "continuar", "ideias", "novidades"] as const;
+export const ESTILOS_FOCO = ["circulo", "analogico", "ampulheta", "barra"] as const;
+export type EstiloFoco = (typeof ESTILOS_FOCO)[number];
+
+export const BLOCOS_INICIO = ["capturar", "energia", "hoje", "continuar", "ideias", "novidades", "organizacao", "rotinas", "foco", "dinheiro", "saude", "cuidado", "estudos", "hobbies", "leitura", "caderno"] as const;
+/** Atalhos para os outros módulos: começam escondidos, para o Início não mudar sem a pessoa pedir. */
+export const BLOCOS_ATALHO = ["organizacao", "rotinas", "foco", "dinheiro", "saude", "cuidado", "estudos", "hobbies", "leitura", "caderno"] as const;
 
 export const PADRAO: Preferencias = {
   fonte: "atkinson",
@@ -85,12 +92,21 @@ export const PADRAO: Preferencias = {
   vidro: 0,
   contornoLetras: true,
   temasProprios: [],
-  inicio: { ordem: [...BLOCOS_INICIO], ocultos: [], largos: ["energia", "hoje", "continuar", "novidades"] },
+  inicio: { ordem: [...BLOCOS_INICIO], ocultos: [...BLOCOS_ATALHO], largos: ["energia", "hoje", "continuar", "novidades"] },
+  estiloFoco: "circulo",
 };
 
 export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
-/** Opções de bloqueio automático, em minutos (0 = nunca). */
-export const BLOQUEIOS = [0, 5, 15, 30, 60] as const;
+/** Opções de bloqueio automático, em minutos (0 = nunca). 1440 = 1 dia, 10080 = 7 dias. */
+export const BLOQUEIOS = [0, 5, 15, 30, 60, 120, 240, 480, 1440, 4320, 10080] as const;
+
+/** A partir de quanto tempo (1 dia) o Órbita mostra o aviso de que fica aberto por dias. */
+export const BLOQUEIO_LONGO = 1440;
+
+/** Limite de projetos ativos: mínimo, máximo e padrão. */
+export const LIMITE_MIN = 1;
+export const LIMITE_MAX = 50;
+export const LIMITE_PADRAO = 6;
 
 const CHAVE = "orbita.preferencias.v1";
 
@@ -124,6 +140,7 @@ export function validar(bruto: unknown): Preferencias {
     vidro: typeof p.vidro === "number" && p.vidro >= 0 && p.vidro <= 100 ? Math.round(p.vidro) : PADRAO.vidro,
     fundoVisivel: typeof p.fundoVisivel === "number" && p.fundoVisivel >= 0 && p.fundoVisivel <= 100 ? Math.round(p.fundoVisivel) : PADRAO.fundoVisivel,
     inicio: validarInicio(p.inicio),
+    estiloFoco: dentro(p.estiloFoco, ESTILOS_FOCO) ? p.estiloFoco : PADRAO.estiloFoco,
   };
 }
 
@@ -136,11 +153,14 @@ export function carregar(armazenamento: Storage = localStorage): Preferencias {
   }
 }
 
-export function salvar(prefs: Preferencias, armazenamento: Storage = localStorage): void {
+/** Grava as preferências. Devolve false se o navegador recusou (sem espaço ou sem acesso). */
+export function salvar(prefs: Preferencias, armazenamento: Storage = localStorage): boolean {
   try {
     armazenamento.setItem(CHAVE, JSON.stringify(prefs));
+    return true;
   } catch {
     // Sem espaço ou sem acesso: o app segue funcionando com o que está na tela.
+    return false;
   }
 }
 
@@ -165,7 +185,8 @@ function validarFundo(bruto: unknown): Fundo | null {
     case "padrao":
       return typeof f.nome === "string" ? { tipo: f.tipo, nome: f.nome } : null;
     case "imagem":
-      return typeof f.dados === "string" && f.dados.startsWith("data:image/")
+      // "orbita-imagem:…": referência à imagem guardada à parte, no IndexedDB (ver imagensFundo.ts).
+      return typeof f.dados === "string" && (f.dados.startsWith("data:image/") || f.dados.startsWith("orbita-imagem:"))
         ? { tipo: "imagem", dados: f.dados, desfoque: num(f.desfoque, 0), escurecimento: num(f.escurecimento, 0) }
         : null;
     case "svg":
@@ -200,9 +221,15 @@ function validarInicio(bruto: unknown): Preferencias["inicio"] {
   const b = (typeof bruto === "object" && bruto !== null ? bruto : {}) as Record<string, unknown>;
   const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => (BLOCOS_INICIO as readonly string[]).includes(x as string)) : []);
   const ordem = [...new Set(lista(b.ordem))];
-  // Blocos novos (de versões futuras) entram no fim.
-  for (const bloco of BLOCOS_INICIO) if (!ordem.includes(bloco)) ordem.push(bloco);
-  return { ordem, ocultos: lista(b.ocultos), largos: Array.isArray(b.largos) ? lista(b.largos) : [...PADRAO.inicio.largos] };
+  const ocultos = [...new Set(lista(b.ocultos))];
+  // Blocos novos (de versões futuras) entram no fim. Os atalhos de módulo que a
+  // pessoa ainda não conhecia entram escondidos: nada muda na tela sem aviso.
+  for (const bloco of BLOCOS_INICIO) {
+    if (ordem.includes(bloco)) continue;
+    ordem.push(bloco);
+    if ((BLOCOS_ATALHO as readonly string[]).includes(bloco) && !ocultos.includes(bloco)) ocultos.push(bloco);
+  }
+  return { ordem, ocultos, largos: Array.isArray(b.largos) ? lista(b.largos) : [...PADRAO.inicio.largos] };
 }
 
 /** Tema em uso: um pronto ou um próprio. */

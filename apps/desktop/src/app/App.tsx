@@ -38,12 +38,11 @@ import { ProvedorLimite } from "../projetos/Limite";
 import { textos } from "../textos/pt-BR";
 import { Captura } from "./Captura";
 import { JanelaAtalhos } from "./JanelaAtalhos";
-import { Moldura, type Secao } from "./Moldura";
+import { InstalarCartao } from "./InstalarCartao";
+import { Moldura, type Lugar, type Secao } from "./Moldura";
 import { ProvedorRecado } from "./Recado";
 import { ProvedorAtualizacao } from "../atualizacao/atualizacao";
 import { AvisoAtualizacao } from "../atualizacao/TelasAtualizacao";
-
-type Lugar = { secao: Secao; projeto: string | null };
 
 export function App() {
   const { prefs, mudar } = usePreferencias();
@@ -97,6 +96,8 @@ export function App() {
   const abrirProjeto = useCallback((id: string) => navegar({ secao: "projetos", projeto: id }), [navegar]);
   const voltar = useCallback(() => setHistorico((h) => ({ ...h, posicao: Math.max(0, h.posicao - 1) })), []);
   const avancar = useCallback(() => setHistorico((h) => ({ ...h, posicao: Math.min(h.lugares.length - 1, h.posicao + 1) })), []);
+  // Pular direto para uma das últimas telas (pela lista entre as setas).
+  const irParaPosicao = useCallback((i: number) => setHistorico((h) => ({ ...h, posicao: Math.max(0, Math.min(h.lugares.length - 1, i)) })), []);
 
   // Botões de voltar e avançar do mouse.
   useEffect(() => {
@@ -226,9 +227,10 @@ export function App() {
               <Moldura
                 secao={secao}
                 aoEscolherSecao={irPara}
-                navegacao={{ podeVoltar: historico.posicao > 0, podeAvancar: historico.posicao < historico.lugares.length - 1, voltar, avancar }} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
+                navegacao={{ podeVoltar: historico.posicao > 0, podeAvancar: historico.posicao < historico.lugares.length - 1, voltar, avancar, lugares: historico.lugares, posicao: historico.posicao, irParaPosicao }} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
                 <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
                 <AvisoAtualizacao />
+                <InstalarCartao />
                 {pagina}
               </Moldura>
             )}

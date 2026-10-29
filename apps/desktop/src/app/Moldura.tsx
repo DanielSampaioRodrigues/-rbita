@@ -1,6 +1,7 @@
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, List, Palette, BatteryMedium, BookOpen, Books, CalendarDays, FolderKanban, Heart, LayoutGrid, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
-import { useEffect, useState, type ReactNode } from "react";
-import { Button } from "react-aria-components";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, List, Palette, BatteryMedium, BookOpen, Books, CalendarDays, FolderKanban, Heart, LayoutGrid, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
+import { api } from "../api";
 import { Interruptor } from "../componentes/Interruptor";
 import { usePreferencias } from "../estado";
 import { textos } from "../textos/pt-BR";
@@ -30,15 +31,47 @@ const SECOES: { id: Secao; icone: LucideIcon; nome: string }[] = [
   { id: "ajustes", icone: SlidersHorizontal, nome: textos.secoes.ajustes },
 ];
 
+/** Um lugar por onde a pessoa passou (seção e, se for o caso, o projeto aberto). */
+export type Lugar = { secao: Secao; projeto: string | null };
+
 interface Props {
   secao: Secao;
   aoEscolherSecao: (secao: Secao) => void;
   aoVerAtalhos: () => void;
   aoBloquear: () => void;
   aoCapturar: () => void;
-  /** Setas de voltar e avançar entre as funções (como num navegador). */
-  navegacao: { podeVoltar: boolean; podeAvancar: boolean; voltar: () => void; avancar: () => void };
+  /** Setas de voltar e avançar entre as funções (como num navegador), mais a lista das últimas telas. */
+  navegacao: { podeVoltar: boolean; podeAvancar: boolean; voltar: () => void; avancar: () => void; lugares: Lugar[]; posicao: number; irParaPosicao: (i: number) => void };
   children: ReactNode;
+}
+
+/** Lista das últimas telas, entre as setas: toca e pula direto. Segurar "voltar" também abre. */
+function HistoricoNavegacao({ lugares, posicao, irParaPosicao, aberto, aoMudarAberto }: { lugares: Lugar[]; posicao: number; irParaPosicao: (i: number) => void; aberto: boolean; aoMudarAberto: (v: boolean) => void }) {
+  const [titulos, setTitulos] = useState<Record<string, string>>({});
+  // Nome dos projetos, só quando a lista abre (é raro e barato).
+  useEffect(() => {
+    if (!aberto || !lugares.some((l) => l.projeto)) return;
+    api.listarProjetos().then((ps) => setTitulos(Object.fromEntries(ps.map((p) => [p.id, p.titulo]))), () => {});
+  }, [aberto, lugares]);
+  // Mais recente primeiro; a tela atual fica marcada.
+  const itens = lugares.map((l, i) => ({ i, l })).reverse();
+  const rotulo = (l: Lugar) => (l.projeto ? `${textos.secoes.projetos} › ${titulos[l.projeto] ?? textos.navegacao.projeto}` : textos.secoes[l.secao]);
+  return (
+    <MenuTrigger isOpen={aberto} onOpenChange={aoMudarAberto}>
+      <Button className="botao-icone seta-nav historico-botao" aria-label={textos.navegacao.historico} isDisabled={lugares.length < 2}>
+        <ChevronDown aria-hidden="true" size="1.35em" strokeWidth={2.25} />
+      </Button>
+      <Popover className="menu-popover" placement="bottom start">
+        <Menu className="menu" aria-label={textos.navegacao.historico} onAction={(k) => irParaPosicao(Number(k))}>
+          {itens.map(({ i, l }) => (
+            <MenuItem key={i} id={String(i)} className={`menu-item${i === posicao ? " atual" : ""}`} textValue={rotulo(l)}>
+              {rotulo(l)} {i === posicao && <span className="texto-suave">{textos.navegacao.atual}</span>}
+            </MenuItem>
+          ))}
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+  );
 }
 
 const CHAVE_MENU = "orbita-menu-recolhido";
@@ -74,6 +107,11 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [menuAberto]);
   const escolher = (id: Secao) => { aoEscolherSecao(id); setMenuAberto(false); };
+  // Segurar a seta "voltar" por meio segundo abre a lista das últimas telas.
+  const [historicoAberto, setHistoricoAberto] = useState(false);
+  const segurando = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const comecarSegurar = () => { segurando.current = setTimeout(() => { segurando.current = null; setHistoricoAberto(true); }, 500); };
+  const pararSegurar = () => { if (segurando.current) { clearTimeout(segurando.current); segurando.current = null; return false; } return true; };
 
   return (
     <div className={`moldura${imersivo ? " imersivo" : ""}${!imersivo && recolhido ? " recolhida" : ""}${escondido && menuAberto ? " menu-aberto" : ""}`}>
@@ -159,11 +197,19 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
                 <span aria-hidden="true">{textos.moldura.menuCurto}</span>
               </Button>
             )}
-            <Button className="botao-icone" aria-label={`${textos.navegacao.voltar} (Alt + ←)`} isDisabled={!navegacao.podeVoltar} onPress={navegacao.voltar}>
-              <ArrowLeft aria-hidden="true" size="1.1em" />
+            <Button
+              className="botao-icone seta-nav"
+              aria-label={`${textos.navegacao.voltar} (Alt + ←)`}
+              isDisabled={!navegacao.podeVoltar}
+              onPressStart={comecarSegurar}
+              onPressEnd={() => { pararSegurar(); }}
+              onPress={() => { if (!historicoAberto) navegacao.voltar(); }}
+            >
+              <ArrowLeft aria-hidden="true" size="1.5em" strokeWidth={2.25} />
             </Button>
-            <Button className="botao-icone" aria-label={`${textos.navegacao.avancar} (Alt + →)`} isDisabled={!navegacao.podeAvancar} onPress={navegacao.avancar}>
-              <ArrowRight aria-hidden="true" size="1.1em" />
+            <HistoricoNavegacao lugares={navegacao.lugares} posicao={navegacao.posicao} irParaPosicao={navegacao.irParaPosicao} aberto={historicoAberto} aoMudarAberto={setHistoricoAberto} />
+            <Button className="botao-icone seta-nav" aria-label={`${textos.navegacao.avancar} (Alt + →)`} isDisabled={!navegacao.podeAvancar} onPress={navegacao.avancar}>
+              <ArrowRight aria-hidden="true" size="1.5em" strokeWidth={2.25} />
             </Button>
           </div>
         )}

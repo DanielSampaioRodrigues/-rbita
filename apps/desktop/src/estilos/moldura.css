@@ -84,6 +84,7 @@
 :root[data-fundo="foto"]:not([data-fundo-natural="true"]) .conteudo,
 :root[data-fundo="foto"]:not([data-fundo-natural="true"]) .acesso,
 :root[data-fundo="foto"]:not([data-fundo-natural="true"]) .baixa-energia {
+  -webkit-backdrop-filter: blur(3px); /* Safari do iPad */
   backdrop-filter: blur(3px);
 }
 
@@ -227,3 +228,13 @@
 /* Altura zero: as setas ocupam o espaço que a página já deixa no topo, sem empurrar nada. */
 .setas-navegacao { display: flex; gap: var(--espaco-1); height: 0; padding: var(--espaco-3) var(--espaco-5) 0; position: relative; z-index: 1; }
 .setas-navegacao .botao-icone[data-disabled] { opacity: 0.4; cursor: default; }
+/* Setas grandes (44 px, o mínimo para o dedo) e com traço mais grosso, para ver e tocar sem esforço. */
+.setas-navegacao .seta-nav { width: 2.75rem; height: 2.75rem; color: var(--cor-texto); }
+.setas-navegacao .historico-botao { width: 2rem; margin: 0 calc(var(--espaco-1) * -1); color: var(--cor-texto-suave); }
+.menu-item.atual { font-weight: 650; }
+
+/* Cartão "Instalar o Órbita" (só no navegador): discreto, no alto da página, com saída rápida. */
+.instalar-cartao { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--espaco-4); margin: var(--espaco-7) var(--espaco-5) 0; padding: var(--espaco-4) var(--espaco-5); padding-right: 3.2rem; }
+.instalar-cartao .instalar-texto { flex: 1 1 20rem; display: grid; gap: var(--espaco-1); }
+.instalar-cartao .instalar-titulo { font-weight: 650; }
+.instalar-cartao .instalar-fechar { position: absolute; top: var(--espaco-2); right: var(--espaco-2); }

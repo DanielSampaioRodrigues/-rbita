@@ -38,6 +38,9 @@ pub struct Evento {
     /// Datas puladas ("AAAA-MM-DD"), quando o evento se repete.
     #[serde(default)]
     pub excecoes: Vec<String>,
+    /// Cor do cartão: um nome da paleta das etiquetas ("musgo", "mar"...). Sem cor: `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cor: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -49,9 +52,13 @@ struct Dados {
     notas: String,
     #[serde(default)]
     excecoes: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    cor: Option<String>,
 }
 
 const FREQUENCIAS: &[&str] = &["diaria", "semanal", "mensal"];
+/// As mesmas cores das etiquetas (a tela adapta cada uma ao tema claro e escuro).
+const CORES: &[&str] = &["musgo", "mar", "ceu", "lavanda", "rosa", "terra", "areia", "cinza"];
 
 fn validar(e: &Evento) -> Result<(), Erro> {
     if e.titulo.trim().is_empty() {
@@ -60,6 +67,11 @@ fn validar(e: &Evento) -> Result<(), Erro> {
     if let Some(fim) = e.fim {
         if fim < e.inicio {
             return Err(Erro::Interno("o fim vem antes do começo".into()));
+        }
+    }
+    if let Some(cor) = &e.cor {
+        if !CORES.contains(&cor.as_str()) {
+            return Err(Erro::Interno(format!("cor desconhecida: {cor}")));
         }
     }
     if let Some(r) = &e.repeticao {
@@ -86,6 +98,7 @@ fn da_linha(r: &rusqlite::Row) -> rusqlite::Result<Evento> {
         modelo: dados.modelo,
         notas: dados.notas,
         excecoes: dados.excecoes,
+        cor: dados.cor,
     })
 }
 
@@ -105,11 +118,16 @@ pub fn obter(conn: &Connection, id: &str) -> Result<Evento, Erro> {
 }
 
 fn dados_json(e: &Evento) -> String {
-    serde_json::to_string(&Dados { modelo: e.modelo, notas: e.notas.trim().to_string(), excecoes: e.excecoes.clone() }).unwrap()
+    serde_json::to_string(&Dados { modelo: e.modelo, notas: e.notas.trim().to_string(), excecoes: e.excecoes.clone(), cor: e.cor.clone() })
+        .unwrap()
 }
 
 /// Cria (sem `id`) ou atualiza (com `id`) um evento.
 pub fn salvar(conn: &Connection, mut e: Evento) -> Result<Evento, Erro> {
+    // Texto vazio vale como "sem cor".
+    if e.cor.as_deref().is_some_and(|c| c.trim().is_empty()) {
+        e.cor = None;
+    }
     validar(&e)?;
     e.titulo = e.titulo.trim().to_string();
     let repeticao = e.repeticao.as_ref().map(|r| serde_json::to_string(r).unwrap());
@@ -172,6 +190,7 @@ mod testes {
             modelo: false,
             notas: String::new(),
             excecoes: vec![],
+            cor: None,
         }
     }
 
@@ -207,6 +226,21 @@ mod testes {
     }
 
     #[test]
+    fn guarda_a_cor_e_recusa_cor_desconhecida() {
+        let (_p, conn) = banco();
+        let mut e = evento("Terapia", 0);
+        e.cor = Some("lavanda".into());
+        let e = salvar(&conn, e).unwrap();
+        assert_eq!(obter(&conn, &e.id).unwrap().cor.as_deref(), Some("lavanda"));
+        let mut sem = e.clone();
+        sem.cor = Some(String::new());
+        assert_eq!(salvar(&conn, sem).unwrap().cor, None);
+        let mut ruim = evento("x", 0);
+        ruim.cor = Some("vermelho-neon".into());
+        assert!(salvar(&conn, ruim).is_err());
+    }
+
+    #[test]
     fn pular_data_e_excluir() {
         let (_p, conn) = banco();
         let mut e = evento("Remédio", 0);
@@ -218,6 +252,7 @@ mod testes {
         let lido = obter(&conn, &e.id).unwrap();
         assert_eq!(lido.excecoes, vec!["2026-10-25"]);
         assert!(lido.modelo);
+        assert_eq!(lido.cor, None);
         excluir(&conn, &e.id).unwrap();
         assert!(listar(&conn, 0, 100 * DIA).unwrap().is_empty());
     }

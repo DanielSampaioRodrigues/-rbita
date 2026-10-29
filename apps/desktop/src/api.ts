@@ -104,6 +104,8 @@ export interface Evento {
   modelo: boolean;
   notas: string;
   excecoes: string[];
+  /** Cor do cartão, da paleta das etiquetas (ver CORES_ETIQUETA). Ausente ou null: sem cor. */
+  cor?: string | null;
 }
 
 export interface Passo {
@@ -120,6 +122,15 @@ export interface Rotina {
   id: string;
   titulo: string;
   passos: Passo[];
+  /** Personalização (opcional). Se faltar, vale o que estiver guardado neste computador. */
+  /** Id da cor da paleta de rotinas; vazio = sem cor. */
+  cor?: string | null;
+  /** Nome de um ícone ou um emoji. */
+  icone?: string | null;
+  /** Dias em que vale (0 = domingo … 6 = sábado); vazio = todos. */
+  dias?: number[];
+  /** Horário sugerido, "HH:MM". */
+  horario?: string | null;
 }
 
 export type Peso = "leve" | "media" | "pesada";
@@ -404,6 +415,8 @@ export interface Quadro {
   /** "quadro" (colunas com cartões) ou "lista" (itens com caixinha). */
   estilo: "quadro" | "lista";
   criadoEm: number;
+  /** Cor do cartão na página principal (vazio ou ausente = sem cor). */
+  cor?: string;
 }
 
 /** Uma coluna de um quadro (na lista, uma só, sem título). */
@@ -412,6 +425,8 @@ export interface Coluna {
   quadroId: string;
   nome: string;
   ordem: number;
+  /** Cor da coluna inteira (vazio ou ausente = sem cor). */
+  cor?: string;
 }
 
 /** Um cartão/item de "Minha organização". */
@@ -1166,7 +1181,7 @@ function simularItens() {
   let etiquetas: Etiqueta[] = [];
   let ligacoes: [string, string][] = [];
   const itens: Item[] = [];
-  let limite = 3;
+  let limite = 6;
   guardarValor("itens.etiquetas", () => etiquetas, (v) => (etiquetas = v));
   guardarValor("itens.ligacoes", () => ligacoes, (v) => (ligacoes = v));
   guardarLista("itens.itens", itens);
@@ -1971,10 +1986,10 @@ function simularOrganizacao() {
       if (q.id) {
         const i = quadros.findIndex((x) => x.id === q.id);
         if (i < 0) throw new ErroOrbita("nao_encontrado", "Quadro não encontrado.");
-        quadros[i] = { ...quadros[i], nome };
+        quadros[i] = { ...quadros[i], nome, cor: q.cor ?? quadros[i].cor ?? "" };
         return { ...quadros[i] };
       }
-      const novo: Quadro = { id: crypto.randomUUID(), nome, estilo, criadoEm: Date.now() };
+      const novo: Quadro = { id: crypto.randomUUID(), nome, estilo, criadoEm: Date.now(), cor: q.cor ?? "" };
       quadros.push(novo);
       if (estilo === "lista") novaColuna(novo.id, "", 1);
       else ["A fazer", "Fazendo", "Feito"].forEach((n, i) => novaColuna(novo.id, n, i + 1));

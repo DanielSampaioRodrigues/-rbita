@@ -13,7 +13,7 @@ use super::{agora_ms, etiquetas, gravar_config, ler_config, novo_id};
 use crate::erro::Erro;
 
 const CONFIG_LIMITE: &str = "limite_projetos_ativos";
-pub const LIMITE_PADRAO: u32 = 3;
+pub const LIMITE_PADRAO: u32 = 6;
 
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -209,8 +209,8 @@ pub fn limite(conn: &Connection) -> Result<u32, Erro> {
 }
 
 pub fn definir_limite(conn: &Connection, limite: u32) -> Result<(), Erro> {
-    if !(1..=20).contains(&limite) {
-        return Err(Erro::Interno("o limite precisa ficar entre 1 e 20".into()));
+    if !(1..=50).contains(&limite) {
+        return Err(Erro::Interno("o limite precisa ficar entre 1 e 50".into()));
     }
     gravar_config(conn, CONFIG_LIMITE, &limite.to_string())
 }

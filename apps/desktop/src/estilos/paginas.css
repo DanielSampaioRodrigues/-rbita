@@ -135,54 +135,75 @@
 
 .lista-ocorrencias { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
 
+/*
+  Cartão de compromisso. A cor escolhida (paleta das etiquetas, que já se adapta ao
+  tema claro e escuro e fica neutra no baixo estímulo) vira a faixa da esquerda e um
+  fundo bem suave. O texto continua na cor normal do tema: o contraste não depende da cor.
+*/
 .ocorrencia {
+  --ev: var(--cor-destaque);
   width: 100%;
+  min-height: 2.75rem;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr) auto;
   gap: var(--espaco-1) var(--espaco-3);
   align-items: baseline;
-  padding: var(--espaco-2) var(--espaco-3);
+  padding: var(--espaco-2) var(--espaco-3) var(--espaco-2) var(--espaco-4);
   border: 1px solid var(--cor-borda);
-  border-left: 4px solid var(--cor-destaque);
+  border-left: 5px solid var(--ev);
   border-radius: var(--canto);
   background: var(--cor-superficie);
   color: var(--cor-texto);
   font: inherit;
+  line-height: 1.35;
   text-align: left;
   cursor: pointer;
+  transition: background var(--transicao);
 }
 
+.ocorrencia.com-cor { --ev: var(--etq); background: color-mix(in srgb, var(--ev) 13%, var(--cor-superficie)); }
 .ocorrencia[data-hovered] { background: var(--cor-superficie-alternativa); }
+.ocorrencia.com-cor[data-hovered] { background: color-mix(in srgb, var(--ev) 22%, var(--cor-superficie)); }
+.ocorrencia[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
 
 /* Bloco fixo da semana-modelo: mais claro, borda tracejada. */
-.ocorrencia.modelo { border-left-style: dashed; border-left-color: var(--cor-borda-controle); background: transparent; }
+.ocorrencia.modelo { --ev: var(--cor-borda-controle); border-left-style: dashed; background: transparent; }
+.ocorrencia.modelo.com-cor { --ev: var(--etq); background: color-mix(in srgb, var(--ev) 6%, transparent); }
 
-.ocorrencia-hora { color: var(--cor-texto-suave); font-size: 0.9rem; white-space: nowrap; }
-.ocorrencia-titulo { font-weight: 600; }
+.ocorrencia-hora { color: var(--cor-texto-suave); font-size: 0.9rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ocorrencia-titulo { font-weight: 650; }
 .ocorrencia-marcas { display: inline-flex; gap: var(--espaco-2); align-items: center; color: var(--cor-texto-suave); }
 
-.semana { align-self: stretch; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--espaco-2); }
+/* Semana: sete colunas com ar entre elas. */
+.semana { align-self: stretch; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--espaco-3); }
 /* Na semana, as colunas são estreitas: horário, título e marcas ficam empilhados. */
-.semana .ocorrencia { grid-template-columns: minmax(0, 1fr); padding: var(--espaco-2); }
-.semana .ocorrencia-titulo { overflow-wrap: break-word; }
+.semana .ocorrencia { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: var(--espaco-2) var(--espaco-2) var(--espaco-2) var(--espaco-3); }
+.semana .ocorrencia-titulo { overflow-wrap: break-word; hyphens: auto; }
+.semana .ocorrencia-hora { font-size: 0.8rem; white-space: normal; }
 
 .semana-dia {
   display: grid;
   align-content: start;
-  gap: var(--espaco-2);
-  padding: var(--espaco-2);
-  min-height: 10rem;
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--canto);
+  gap: var(--espaco-3);
+  padding: var(--espaco-3);
+  min-height: 12rem;
+  border: 1px solid var(--cor-borda-suave);
+  border-radius: var(--canto-grande);
   background: var(--cor-superficie-alternativa);
 }
 
-.semana-dia.hoje { border-color: var(--cor-destaque); box-shadow: inset 0 0 0 1px var(--cor-destaque); }
-.semana-dia h3 { font-size: 0.95rem; display: flex; gap: var(--espaco-2); align-items: center; }
+/* Hoje: borda e um véu bem leve da cor de destaque do tema. Nada de vermelho. */
+.semana-dia.hoje { border-color: var(--cor-destaque); background: color-mix(in srgb, var(--cor-destaque) 7%, var(--cor-superficie-alternativa)); }
 
+/* Tela estreita (iPad em pé, janela pequena): um dia por linha, cabeçalho ao lado. */
 @media (max-width: 1100px) {
-  .semana { grid-template-columns: 1fr; }
-  .semana-dia { min-height: 0; }
+  .semana { grid-template-columns: 1fr; gap: var(--espaco-2); }
+  .semana-dia { min-height: 0; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: start; }
+  .semana .ocorrencia { grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr) auto; gap: var(--espaco-1) var(--espaco-3); }
+}
+@media (max-width: 560px) {
+  .semana-dia { grid-template-columns: 1fr; }
+  .semana .ocorrencia { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
 
 .mes { align-self: stretch; display: grid; gap: var(--espaco-1); }
@@ -211,8 +232,6 @@
 .mes-dia.hoje { border-color: var(--cor-destaque); box-shadow: inset 0 0 0 1px var(--cor-destaque); }
 .mes-numero { font-weight: 650; }
 .mes-evento { font-size: 0.8rem; line-height: 1.3; padding: 1px var(--espaco-1); border-left: 3px solid var(--cor-destaque); }
-.semana .ocorrencia-titulo { hyphens: auto; }
-.semana .ocorrencia-hora { font-size: 0.8rem; white-space: normal; }
 
 /* Rotinas */
 .passos-resumo { margin: 0; padding-left: 1.4em; display: grid; gap: var(--espaco-1); color: var(--cor-texto-suave); }
@@ -622,3 +641,264 @@
 .grade-icones-ia { list-style: none; margin: 0; padding: var(--espaco-3); display: grid; grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr)); gap: var(--espaco-2); border: 1px solid var(--cor-borda); border-radius: var(--canto); background: var(--cor-superficie); }
 .grade-icones-ia li { display: grid; place-items: center; height: 2.75rem; border-radius: var(--canto-pequeno); color: var(--cor-texto); }
 .grade-icones-ia li.faltou { opacity: 0.35; }
+
+/* Controle do limite de projetos dentro da página Projetos (discreto) */
+.limite-inline { margin-block: var(--espaco-2); }
+.limite-inline summary { cursor: pointer; color: var(--cor-destaque); width: fit-content; }
+.limite-inline[open] summary { margin-bottom: var(--espaco-3); }
+
+/* Atalhos de módulo no Início: um cartão por módulo, com ícone grande, que abre a seção. */
+.bloco-atalho { width: 100%; display: flex; align-items: center; gap: var(--espaco-3); min-height: 3.5rem; font: inherit; font-weight: 600; color: var(--cor-texto); text-align: left; cursor: pointer; }
+.bloco-atalho[data-hovered] { background: var(--cor-superficie-alternativa); }
+.bloco-atalho[data-focus-visible] { outline: 2px solid var(--cor-destaque); outline-offset: 2px; }
+.bloco-atalho svg { color: var(--cor-destaque); flex: none; }
+
+/* Rotinas: cartões, passos como caixinhas grandes, personalização */
+.rotina-lista { gap: var(--espaco-5); }
+
+/* A cor da rotina aparece como faixa e leve tom; o texto segue a cor normal do tema (contraste do tema). */
+.rotina-cartao { gap: var(--espaco-4); border-left: 6px solid var(--cor-borda); }
+.rotina-cartao[data-cor="sim"] {
+  border-left-color: var(--rotina-cor);
+  background: color-mix(in srgb, var(--rotina-cor) 12%, var(--cor-superficie));
+}
+.rotina-cartao[data-fora-de-hoje="true"] .rotina-cabeca-texto > .cartao-projeto-titulo { color: var(--cor-texto-suave); }
+
+.rotina-cabeca { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espaco-4); }
+.rotina-cabeca-texto { flex: 1 1 12rem; min-width: 0; display: grid; gap: var(--espaco-1); }
+.rotina-cabeca .botoes { flex: none; }
+.rotina-etiqueta {
+  justify-self: start;
+  padding: 0 var(--espaco-2);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto-pequeno);
+  font-size: 0.8rem;
+  color: var(--cor-texto-suave);
+}
+
+.rotina-marca {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid transparent;
+  border-radius: var(--canto);
+}
+.rotina-marca.sem-cor { background: var(--cor-superficie-alternativa); color: var(--cor-destaque); border-color: var(--cor-borda); }
+.rotina-emoji { font-size: 1.5rem; line-height: 1; }
+.rotina-titulo-linha { display: flex; align-items: center; gap: var(--espaco-4); }
+.rotina-titulo-linha h1 { margin: 0; }
+
+.rotina-progresso { display: grid; gap: var(--espaco-2); }
+.rotina-trilho { display: block; height: 0.5rem; border-radius: 999px; background: var(--cor-superficie-alternativa); border: 1px solid var(--cor-borda); overflow: hidden; }
+.rotina-preenchido { display: block; height: 100%; background: var(--cor-destaque); border-radius: 999px; transition: width var(--transicao); }
+
+.rotina-passos { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
+.rotina-passo {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-3);
+  min-height: max(44px, 2.75rem);
+  padding: var(--espaco-2) var(--espaco-4);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto);
+  background: var(--cor-superficie);
+  cursor: pointer;
+}
+.rotina-passo[data-hovered] { background: var(--cor-superficie-alternativa); }
+.rotina-passo[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.rotina-caixa {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid var(--cor-borda-controle);
+  border-radius: var(--canto-pequeno);
+  color: transparent;
+}
+.rotina-passo[data-selected] .rotina-caixa { background: var(--cor-destaque); border-color: var(--cor-destaque); color: var(--cor-texto-sobre-destaque); }
+/* Feito não é riscado nem apagado: só a caixinha marcada. */
+.rotina-passo-icone { flex: none; display: grid; place-items: center; color: var(--cor-destaque); min-width: 1.4rem; }
+.rotina-passo-titulo { flex: 1; min-width: 0; }
+
+/* Estado vazio */
+.rotina-vazio { display: grid; gap: var(--espaco-3); padding: var(--espaco-5); border: 1px dashed var(--cor-borda-controle); border-radius: var(--canto-grande); background: var(--cor-superficie); }
+.rotina-vazio-titulo { font-size: 1.2rem; font-weight: 650; }
+.rotina-vazio-passos { margin: 0; padding-left: 1.4em; display: grid; gap: var(--espaco-2); color: var(--cor-texto-suave); }
+
+/* Personalizar */
+.rotina-cores { display: grid; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--espaco-2); }
+.rotina-cor-opcao {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-2);
+  min-height: max(44px, 2.75rem);
+  padding: var(--espaco-2);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.rotina-cor-opcao[data-hovered] { background: var(--cor-superficie-alternativa); }
+.rotina-cor-opcao[data-selected] { border-color: var(--cor-destaque); box-shadow: inset 0 0 0 1px var(--cor-destaque); font-weight: 650; }
+.rotina-cor-opcao[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.rotina-cor-amostra { flex: none; display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 1px solid var(--cor-borda-controle); }
+.rotina-cor-amostra svg { opacity: 0; }
+.rotina-cor-opcao[data-selected] .rotina-cor-amostra svg { opacity: 1; }
+.rotina-cor-amostra.sem-cor { background: var(--cor-superficie); color: var(--cor-texto); }
+.rotina-cor-amostra.sem-cor svg { opacity: 1; }
+
+.rotina-dias { display: flex; flex-wrap: wrap; gap: var(--espaco-2); }
+.rotina-dia {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(44px, 2.75rem);
+  padding: var(--espaco-2) var(--espaco-4);
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto);
+  cursor: pointer;
+}
+.rotina-dia[data-hovered] { background: var(--cor-superficie-alternativa); }
+.rotina-dia[data-selected] { background: var(--cor-destaque); border-color: var(--cor-destaque); color: var(--cor-texto-sobre-destaque); font-weight: 650; }
+.rotina-dia[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.rotina-horario { width: 10rem; min-height: max(44px, 2.75rem); }
+
+/* Passos na edição: também grandes e espaçados */
+.passo-linha { min-height: max(44px, 3rem); padding-block: var(--espaco-3); }
+.passo-linha .botao-icone { width: max(44px, 2.75rem); height: max(44px, 2.75rem); }
+
+/* ---------- Agenda: acabamento (só dentro da página da Agenda) ---------- */
+/* Alvos de toque de pelo menos 44 px. */
+.agenda .botao,
+.agenda .segmentado-opcao { min-height: 2.75rem; }
+.agenda .navegacao-periodo .botao-icone { width: 2.75rem; height: 2.75rem; }
+.agenda .navegacao-periodo h2 { margin: 0 0 0 var(--espaco-3); font-size: 1.3rem; }
+
+/* Cabeçalho do dia: nome curto discreto, número em destaque. */
+.agenda-dia-cabecalho { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--espaco-2); font-size: 1rem; line-height: 1.2; }
+.agenda-dia-nome { color: var(--cor-texto-suave); font-weight: 600; font-size: 0.9rem; }
+.agenda-dia-numero { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.semana-dia.hoje .agenda-dia-nome { color: var(--cor-texto); }
+.agenda .selo { align-self: center; background: color-mix(in srgb, var(--cor-destaque) 16%, transparent); color: var(--cor-texto); border: 1px solid var(--cor-destaque); }
+@media (max-width: 1100px) {
+  .agenda-dia-cabecalho { flex-direction: column; align-items: flex-start; gap: 2px; }
+}
+@media (max-width: 560px) {
+  .agenda-dia-cabecalho { flex-direction: row; align-items: baseline; }
+}
+
+.agenda-livre { margin: 0; color: var(--cor-texto-suave); font-size: 0.9rem; }
+.agenda-lista-dia { gap: var(--espaco-3); }
+.agenda-lista-dia .ocorrencia { padding-block: var(--espaco-3); }
+.agenda-lista-dia .ocorrencia-titulo { font-size: 1.05rem; }
+
+/* Estado vazio: calmo, com o que dá para fazer. */
+.agenda-vazio {
+  display: flex;
+  gap: var(--espaco-4);
+  align-items: flex-start;
+  padding: var(--espaco-5);
+  border: 1px dashed var(--cor-borda);
+  border-radius: var(--canto-grande);
+  background: var(--cor-superficie-alternativa);
+  color: var(--cor-texto);
+}
+.agenda-vazio > svg { flex: none; color: var(--cor-texto-suave); }
+.agenda-vazio p { margin: 0; }
+.agenda-vazio p + p { margin-top: var(--espaco-1); }
+
+/* Mês: mais espaço entre os dias, hoje com o número num círculo. */
+.agenda .mes,
+.agenda .mes-linha { gap: var(--espaco-2); }
+.agenda .mes-cabecalho { padding: var(--espaco-1) var(--espaco-2); font-size: 0.85rem; }
+.agenda .mes-dia { min-height: 7rem; gap: 3px; border-color: var(--cor-borda-suave); border-radius: var(--canto); transition: background var(--transicao); }
+.agenda .mes-dia[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.agenda .mes-dia.hoje { border-color: var(--cor-destaque); box-shadow: none; background: color-mix(in srgb, var(--cor-destaque) 7%, var(--cor-superficie)); }
+.agenda .mes-numero { display: inline-grid; place-items: center; align-self: flex-start; min-width: 1.9em; height: 1.9em; margin: -0.2em 0 2px -0.2em; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.agenda .mes-dia.hoje .mes-numero { background: var(--cor-destaque); color: var(--cor-texto-sobre-destaque); }
+.agenda .mes-evento {
+  --ev: var(--cor-destaque);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  padding: 2px var(--espaco-1) 2px var(--espaco-2);
+  border-left: 3px solid var(--ev);
+  border-radius: var(--canto-pequeno);
+  background: var(--cor-superficie-alternativa);
+}
+.agenda .mes-evento.com-cor { --ev: var(--etq); background: color-mix(in srgb, var(--ev) 14%, var(--cor-superficie)); }
+.agenda .mes-evento.prazo { --ev: var(--cor-atencao); }
+.agenda-mais { font-size: 0.8rem; color: var(--cor-texto-suave); padding-left: var(--espaco-2); }
+
+/* Mês em tela estreita: os compromissos viram tracinhos coloridos; o dia abre ao tocar. */
+@media (max-width: 700px) {
+  .agenda .mes,
+  .agenda .mes-linha { gap: var(--espaco-1); }
+  .agenda .mes-dia { min-height: 3.5rem; padding: var(--espaco-1); align-items: center; }
+  .agenda .mes-numero { align-self: center; margin: 0; }
+  .agenda .mes-evento { width: 100%; height: 5px; padding: 0; font-size: 0; border-left: 0; border-radius: 999px; background: var(--ev); }
+  .agenda-mais { padding: 0; font-size: 0.7rem; }
+}
+
+/* Escolha da cor no formulário (a janela fica fora da página): alvos de 44 px. */
+.agenda-cores .cor-opcao { min-height: 2.75rem; padding-inline: var(--espaco-3); }
+
+/* Foco: estilos do tempo e focos salvos */
+.foco-estilos { margin-bottom: var(--espaco-4); }
+.foco-estilo { min-width: 2.75rem; min-height: 2.75rem; justify-content: center; }
+.foco-estilo-desenho { display: inline-grid; place-items: center; }
+.foco-estilo[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.foco-ampulheta { width: min(15rem, 60vw); }
+.foco-ampulheta-baixo { fill: var(--cor-destaque); opacity: 0.55; }
+.foco-ampulheta-fio { stroke: var(--cor-destaque); stroke-width: 1.2; opacity: 0.55; }
+.foco-ampulheta-vidro { fill: none; stroke: var(--cor-borda-controle); stroke-width: 1.5; stroke-linejoin: round; }
+.foco-ampulheta-moldura { fill: var(--cor-texto-suave); }
+.foco-analogico-marca { stroke: var(--cor-texto-suave); stroke-width: 1.5; stroke-linecap: round; }
+.foco-analogico-arco { fill: none; stroke: var(--cor-destaque); stroke-width: 3; stroke-linecap: round; opacity: 0.45; }
+.foco-analogico-ponteiro { stroke: var(--cor-destaque); stroke-width: 3; stroke-linecap: round; }
+.foco-analogico-centro { fill: var(--cor-destaque); }
+/* Na barra, o desenho fica em cima e os controles embaixo. */
+.foco.foco-com-barra { flex-direction: column; align-items: stretch; }
+.foco > .foco-barra {
+  width: 100%;
+  max-width: 36rem;
+  height: 1.25rem;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: 999px;
+  background: var(--cor-superficie-alternativa);
+  overflow: hidden;
+}
+.foco-barra-tempo { height: 100%; background: var(--cor-destaque); border-radius: 999px; }
+
+.foco-salvos { display: grid; gap: var(--espaco-3); margin-top: var(--espaco-6); max-width: 48rem; }
+.foco-salvos-cabeca { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--espaco-3); }
+.foco-salvos-cabeca h2 { margin: 0; }
+.foco-salvos-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-3); grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.foco-salvo { flex-direction: row; align-items: center; gap: var(--espaco-2); }
+.foco-salvo-iniciar {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-3);
+  padding: var(--espaco-2);
+  border: none;
+  border-radius: var(--canto);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.foco-salvo-iniciar[data-hovered] { background: var(--cor-superficie-alternativa); }
+.foco-salvo-iniciar[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.foco-salvo-iniciar[data-disabled] { cursor: default; opacity: 0.6; }
+.foco-salvo-play { flex: none; color: var(--cor-destaque); }
+.foco-salvo-texto { display: grid; gap: var(--espaco-1); min-width: 0; }
+.foco-salvo-nome { font-weight: 650; }
+.foco-salvo-acoes { display: flex; flex: none; }
+.foco-salvo-acoes .botao-icone[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }

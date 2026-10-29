@@ -1,3 +1,27 @@
+- **Setas de voltar e avançar maiores** e com traço mais grosso, fáceis de tocar. Entre elas, um botãozinho (⌄) abre a **lista das últimas telas** por onde você passou: toca e pula direto. Segurar a seta de voltar também abre a lista.
+
+- **Instalar o Órbita (navegador)**: um cartão discreto explica como colocar o Órbita na tela de início. No iPhone e no iPad: Compartilhar → "Adicionar à Tela de Início". Tem "Agora não" (volta em 7 dias) e "Não mostrar mais". Só aparece enquanto o app não está instalado.
+
+- **Início com todos os módulos**: em "Organizar a tela inicial", agora dá para mostrar um **atalho para qualquer módulo** (Minha organização, Rotinas, Foco, Dinheiro, Saúde, Cuidado, Estudos, Hobbies, Leitura, Caderno). Os atalhos começam escondidos — nada muda na sua tela sem você pedir.
+
+- **Agenda com cor e cara nova**: cada compromisso pode ter uma **cor** (faixa na lateral e fundo levemente tingido). Cabeçalhos de dia mais claros, "hoje" destacado de leve (sem vermelho), dia sem nada aparece como "Livre", espaço mais respirável e tudo com alvos de toque de 44 px. No iPad em pé a semana vira uma lista por dia.
+
+- **Rotinas personalizáveis**: cada rotina ganha **cor**, **ícone ou emoji**, **dias da semana** e **horário sugerido**. A lista virou cartões com o progresso de hoje ("Hoje: 2 de 5"), e os passos são caixinhas grandes de marcar. Sem sequência, sem "falhou": o dia seguinte começa limpo. (Por enquanto a personalização fica guardada só neste aparelho; não entra no backup.)
+
+- **Aparência — dois bugs corrigidos**: (1) o editor de tema abria sempre nas cores do modo **claro**, mesmo com o app no escuro — por isso o tema novo "não aparecia" até trocar de modo. Agora abre no modo que você está usando, e avisa se você trocar. (2) A **imagem própria de fundo sumia** ao reabrir: ela era guardada num espaço pequeno do navegador (uns 5 MB) e, quando não cabia, a gravação falhava em silêncio. Agora vai para um armazenamento maior do aparelho, uma vez só; imagens acima de 8 MB avisam. Quem já tinha foto é migrado sozinho. (Sobre o vidro no iPad: pode ter sido consequência do bug 2; se continuar sem desfoque, é limitação do Safari e entra numa próxima etapa.)
+
+- **Foco com estilos e focos salvos**: escolha como ver o tempo — **disco** (o de antes), **relógio de ponteiro**, **ampulheta** ou **barra** — por botõezinhos na própria tela. E agora dá para **salvar focos** (nome, minutos de foco e de pausa) que ficam em cartões abaixo do timer: um toque e começa. Nada muda sozinho: a pausa só começa quando você apertar.
+
+- **Ajustes — bloqueio automático mais longo**: além de até 1 hora, agora tem 2 h, 4 h, 8 h, 1 dia, 3 dias e 7 dias. A partir de 1 dia aparece um aviso literal: o Órbita fica aberto por dias e quem pegar o aparelho vê seus dados. A contagem também vale com o app em segundo plano.
+
+- **Projetos ativos — limite do seu jeito**: o limite (antes fixo em 6) agora é um número que você escolhe, de 1 a 50, nos Ajustes **e** dentro de Projetos ("Mudar o limite").
+
+- **Caderno — cor na hora e página nova no iPad**: tocar numa cor marca na hora (antes, o caderno inteiro se redesenhava e travava). Novo botão **"+ Página"** na barra, e **rolar além da última página cria uma nova** (como no GoodNotes), se a última não estiver vazia. No iPad, depois de usar a Apple Pencil uma vez, o **dedo passa a rolar** e a caneta escreve.
+
+---
+
+<!-- Abaixo: o que veio na 0.44.6. -->
+
 - **Botão do menu mais fácil de achar**: quando o menu está recolhido, o botão que o abre ficou **maior**, com **borda** e com a palavra **"Menu"** escrita ao lado do ícone.
 
 ---

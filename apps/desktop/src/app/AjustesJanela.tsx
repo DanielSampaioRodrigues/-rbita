@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { Aviso } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Segmentado } from "../componentes/Segmentado";
 import { usePreferencias } from "../estado";
-import { BLOQUEIOS } from "../preferencias";
+import { BLOQUEIO_LONGO, BLOQUEIOS } from "../preferencias";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.janela;
@@ -46,6 +47,7 @@ export function AjustesJanela() {
         opcoes={BLOQUEIOS.map((m) => ({ valor: String(m), nome: m === 0 ? t.nunca : t.minutos(m) }))}
         aoMudar={(v) => mudar({ bloqueioAuto: Number(v) })}
       />
+      {prefs.bloqueioAuto >= BLOQUEIO_LONGO && <Aviso tipo="info">{t.bloqueioLongo}</Aviso>}
       <p className="campo-ajuda">{t.bloqueioAjuda}</p>
     </section>
   );

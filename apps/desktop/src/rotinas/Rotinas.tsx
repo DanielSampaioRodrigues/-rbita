@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowRight, ImagePlus, MoreHorizontal, Pencil, Play, Plus, Timer, Trash2, X } from "../icones";
-import { useEffect, useState } from "react";
-import { Button, Form, Label, Menu, MenuItem, MenuTrigger, Popover, Radio, RadioGroup } from "react-aria-components";
+import { ArrowLeft, ArrowRight, Check, ImagePlus, MoreHorizontal, Pencil, Play, Plus, Timer, Trash2, X } from "../icones";
+import { useEffect, useState, type CSSProperties } from "react";
+import { Button, Checkbox, CheckboxGroup, Form, Label, Menu, MenuItem, MenuTrigger, Popover, ProgressBar, Radio, RadioGroup } from "react-aria-components";
 import { api, escolherArquivoParaAnexar, type Passo, type Rotina } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
@@ -10,6 +10,10 @@ import { EditarTexto } from "../paginas/Ideias";
 import { ImagemAnexo } from "../relacoes/Relacoes";
 import { textos } from "../textos/pt-BR";
 import { ICONES } from "./icones";
+import {
+  PALETA, hexDaCor, limparEmoji, marcarPasso, passosFeitosHoje, personalizacaoDe, resumoDeDias,
+  salvarPersonalizacao, textoSobre, valeNoDia, type Personalizacao,
+} from "./personalizacao";
 
 const t = textos.rotinas;
 
@@ -18,6 +22,106 @@ function IconePasso({ nome, tamanho = "1.2em" }: { nome: string; tamanho?: strin
   if (!item) return null;
   const Icone = item.icone;
   return <Icone aria-hidden="true" size={tamanho} strokeWidth={1.75} />;
+}
+
+/** Ícone da lista ou, se for outra coisa, o emoji que a pessoa escreveu. */
+function Simbolo({ nome, tamanho = "1.2em" }: { nome?: string | null; tamanho?: string }) {
+  if (!nome) return null;
+  if (ICONES[nome]) return <IconePasso nome={nome} tamanho={tamanho} />;
+  return <span aria-hidden="true" className="rotina-emoji">{nome}</span>;
+}
+
+/** Quadradinho da rotina: cor suave com o ícone, texto sempre com contraste automático. */
+function Marca({ p }: { p: Personalizacao }) {
+  const hex = hexDaCor(p.cor);
+  if (!hex && !p.icone) return null;
+  const estilo = hex ? { background: hex, color: textoSobre(hex), borderColor: hex } : undefined;
+  return (
+    <span className={hex ? "rotina-marca" : "rotina-marca sem-cor"} style={estilo}>
+      {p.icone ? <Simbolo nome={p.icone} tamanho="1.5rem" /> : <Check aria-hidden="true" size="1.3rem" />}
+    </span>
+  );
+}
+
+function estiloDaCor(p: Personalizacao) {
+  const hex = hexDaCor(p.cor);
+  return hex ? ({ "--rotina-cor": hex } as CSSProperties) : undefined;
+}
+
+/** Cartão de uma rotina: quem é, quantos passos, o que já foi marcado hoje (sem cobrança). */
+function CartaoRotina({ rotina, aoComecar, aoEditar }: { rotina: Rotina; aoComecar: () => void; aoEditar: () => void }) {
+  const mudancas = useMudancas();
+  const p = personalizacaoDe(rotina);
+  const [feitos, setFeitos] = useState<string[]>(() => passosFeitosHoje(rotina.id));
+  useEffect(() => setFeitos(passosFeitosHoje(rotina.id)), [mudancas, rotina.id]);
+  const total = rotina.passos.length;
+  const feitosValidos = rotina.passos.filter((x) => feitos.includes(x.id)).length;
+  const vale = valeNoDia(p.dias, new Date().getDay());
+  const detalhes = [t.passos(total), resumoDeDias(p.dias ?? []), p.horario ? t.aPartirDe(p.horario) : ""].filter(Boolean);
+
+  return (
+    <li className="cartao compacto rotina-cartao" data-cor={hexDaCor(p.cor) ? "sim" : "nao"} data-fora-de-hoje={!vale} style={estiloDaCor(p)}>
+      <div className="rotina-cabeca">
+        <Marca p={p} />
+        <div className="rotina-cabeca-texto">
+          <p className="cartao-projeto-titulo quebra">{rotina.titulo}</p>
+          <p className="texto-suave pequeno">{detalhes.join(" · ")}</p>
+          {!vale && <p className="rotina-etiqueta">{t.foraDeHoje}</p>}
+        </div>
+        <div className="botoes">
+          <Button className="botao principal" isDisabled={total === 0} onPress={aoComecar}>
+            <Play aria-hidden="true" size="1.1em" /> {t.comecar}
+          </Button>
+          <Button className="botao" onPress={aoEditar}>
+            <Pencil aria-hidden="true" size="1.1em" /> {t.editar}
+          </Button>
+        </div>
+      </div>
+      {total > 0 ? (
+        <>
+          <ProgressBar className="rotina-progresso" value={feitosValidos} minValue={0} maxValue={total} aria-label={t.hojeProgresso(feitosValidos, total)}>
+            {({ percentage }) => (
+              <>
+                <span className="texto-suave pequeno">{t.hojeProgresso(feitosValidos, total)}</span>
+                <span className="rotina-trilho" aria-hidden="true">
+                  <span className="rotina-preenchido" style={{ width: `${percentage}%` }} />
+                </span>
+              </>
+            )}
+          </ProgressBar>
+          <ul className="rotina-passos">
+            {rotina.passos.map((x) => {
+              const feito = feitos.includes(x.id);
+              return (
+                <li key={x.id}>
+                  <Checkbox
+                    className="rotina-passo"
+                    isSelected={feito}
+                    onChange={(v) => {
+                      marcarPasso(rotina.id, x.id, v);
+                      setFeitos(passosFeitosHoje(rotina.id));
+                    }}
+                    aria-label={t.marcarPasso(x.titulo)}
+                  >
+                    <span className="rotina-caixa" aria-hidden="true">
+                      <Check size="1.1rem" strokeWidth={3} />
+                    </span>
+                    <span className="rotina-passo-icone">
+                      {x.imagem ? <ImagemAnexo id={x.imagem} nome="" className="passo-imagem" /> : <IconePasso nome={x.icone} tamanho="1.2em" />}
+                    </span>
+                    <span className="rotina-passo-titulo quebra">{x.titulo}</span>
+                    {x.minutos ? <span className="texto-suave pequeno">{t.min(x.minutos)}</span> : null}
+                  </Checkbox>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : (
+        <p className="texto-suave">{t.vazioPassos}</p>
+      )}
+    </li>
+  );
 }
 
 export function Rotinas() {
@@ -44,35 +148,19 @@ export function Rotinas() {
       </Button>
       <Aviso>{erro}</Aviso>
       {rotinas.length === 0 ? (
-        <p className="texto-suave">{t.vazio}</p>
+        <div className="rotina-vazio largura-leitura">
+          <p className="rotina-vazio-titulo">{t.vazioTitulo}</p>
+          <p className="texto-suave">{t.vazio}</p>
+          <ol className="rotina-vazio-passos">
+            <li>{t.vazioPasso1}</li>
+            <li>{t.vazioPasso2}</li>
+            <li>{t.vazioPasso3}</li>
+          </ol>
+        </div>
       ) : (
-        <ul className="lista-cartoes largura-leitura">
+        <ul className="lista-cartoes largura-leitura rotina-lista">
           {rotinas.map((r) => (
-            <li key={r.id} className="cartao compacto">
-              <div className="linha-ajuste">
-                <div>
-                  <p className="cartao-projeto-titulo quebra">{r.titulo}</p>
-                  <p className="texto-suave pequeno">{t.passos(r.passos.length)}</p>
-                </div>
-                <div className="botoes">
-                  <Button className="botao principal" isDisabled={r.passos.length === 0} onPress={() => setFazendo(r)}>
-                    <Play aria-hidden="true" size="1.1em" /> {t.comecar}
-                  </Button>
-                  <Button className="botao" onPress={() => setEditando(r.id)}>
-                    <Pencil aria-hidden="true" size="1.1em" /> {t.editar}
-                  </Button>
-                </div>
-              </div>
-              {r.passos.length > 0 && (
-                <ol className="passos-resumo">
-                  {r.passos.map((p) => (
-                    <li key={p.id}>
-                      <IconePasso nome={p.icone} tamanho="1em" /> {p.titulo}
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </li>
+            <CartaoRotina key={r.id} rotina={r} aoComecar={() => setFazendo(r)} aoEditar={() => setEditando(r.id)} />
           ))}
         </ul>
       )}
@@ -101,7 +189,8 @@ export function Rotinas() {
 
 function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => void }) {
   const [passo, setPasso] = useState<Passo | null>(null);
-  const [janela, setJanela] = useState<"renomear" | "excluir" | null>(null);
+  const [janela, setJanela] = useState<"renomear" | "excluir" | "personalizar" | null>(null);
+  const pers = personalizacaoDe(rotina);
   const [erro, setErro] = useState<string | null>(null);
 
   const executar = async (acao: () => Promise<unknown>) => {
@@ -119,11 +208,20 @@ function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => vo
       <Button className="link voltar" onPress={aoVoltar}>
         <ArrowLeft aria-hidden="true" size="1em" /> {t.titulo}
       </Button>
-      <h1 className="quebra">{rotina.titulo}</h1>
+      <div className="rotina-titulo-linha" style={estiloDaCor(pers)}>
+        <Marca p={pers} />
+        <div className="rotina-cabeca-texto">
+          <h1 className="quebra">{rotina.titulo}</h1>
+          <p className="texto-suave pequeno">
+            {[resumoDeDias(pers.dias ?? []), pers.horario ? t.aPartirDe(pers.horario) : ""].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+      </div>
       <div className="botoes">
         <Button className="botao principal" onPress={() => setPasso({ id: "", titulo: "", icone: "", minutos: null })}>
           <Plus aria-hidden="true" size="1.1em" /> {t.novoPasso}
         </Button>
+        <Button className="botao" onPress={() => setJanela("personalizar")}>{t.personalizar}</Button>
         <Button className="botao" onPress={() => setJanela("renomear")}>{t.renomear}</Button>
         <Button className="botao" onPress={() => setJanela("excluir")}>
           <Trash2 aria-hidden="true" size="1.1em" /> {t.excluir}
@@ -131,7 +229,7 @@ function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => vo
       </div>
       <Aviso>{erro}</Aviso>
       {rotina.passos.length === 0 ? (
-        <p className="texto-suave">{t.semPassos}</p>
+        <p className="texto-suave">{t.vazioPassos}</p>
       ) : (
         <ol className="lista-passos largura-leitura">
           {rotina.passos.map((p, i) => (
@@ -185,6 +283,17 @@ function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => vo
           />
         )}
       </Janela>
+      <Janela titulo={t.personalizarTitulo} aberta={janela === "personalizar"} aoFechar={() => setJanela(null)}>
+        <FormPersonalizar
+          inicial={pers}
+          aoCancelar={() => setJanela(null)}
+          aoSalvar={(novo) => {
+            salvarPersonalizacao(rotina.id, novo);
+            setJanela(null);
+            avisarMudanca();
+          }}
+        />
+      </Janela>
       <Janela titulo={t.renomear} aberta={janela === "renomear"} aoFechar={() => setJanela(null)}>
         <EditarTexto
           inicial={rotina.titulo}
@@ -202,6 +311,82 @@ function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => vo
         aoConfirmar={() => executar(async () => (await api.excluirItem(rotina.id), setJanela(null), aoVoltar()))}
       />
     </div>
+  );
+}
+
+/** Cor, ícone ou emoji, dias e horário. Tudo opcional. */
+function FormPersonalizar({ inicial, aoCancelar, aoSalvar }: { inicial: Personalizacao; aoCancelar: () => void; aoSalvar: (p: Personalizacao) => void }) {
+  const [cor, setCor] = useState(inicial.cor ?? "");
+  const [icone, setIcone] = useState(inicial.icone ?? "");
+  const [dias, setDias] = useState((inicial.dias ?? []).map(String));
+  const [horario, setHorario] = useState(inicial.horario ?? "");
+  const ehEmoji = !!icone && !ICONES[icone];
+  return (
+    <Form
+      className="formulario"
+      onSubmit={(e) => {
+        e.preventDefault();
+        aoSalvar({ cor: cor || null, icone: icone || null, dias: dias.map(Number).sort(), horario: horario || null });
+      }}
+    >
+      <RadioGroup className="campo" value={cor} onChange={setCor}>
+        <Label className="campo-rotulo">{t.cor}</Label>
+        <div className="rotina-cores">
+          <Radio value="" className="rotina-cor-opcao">
+            <span className="rotina-cor-amostra sem-cor" aria-hidden="true"><X size="1.1rem" /></span>
+            <span>{t.semCor}</span>
+          </Radio>
+          {PALETA.map((c) => (
+            <Radio key={c.id} value={c.id} className="rotina-cor-opcao">
+              <span className="rotina-cor-amostra" style={{ background: c.hex, color: textoSobre(c.hex) }} aria-hidden="true">
+                <Check size="1.1rem" strokeWidth={3} />
+              </span>
+              <span>{c.nome}</span>
+            </Radio>
+          ))}
+        </div>
+      </RadioGroup>
+
+      <RadioGroup className="campo" value={ehEmoji ? "" : icone} onChange={setIcone}>
+        <Label className="campo-rotulo">{t.simbolo}</Label>
+        <div className="grade-icones">
+          <Radio value="" className="opcao-icone">
+            <X aria-hidden="true" size="1.2em" />
+            <span>{t.semIcone}</span>
+          </Radio>
+          {Object.entries(ICONES).map(([chave, { icone: Icone, nome }]) => (
+            <Radio key={chave} value={chave} className="opcao-icone">
+              <Icone aria-hidden="true" size="1.2em" strokeWidth={1.75} />
+              <span>{nome}</span>
+            </Radio>
+          ))}
+        </div>
+      </RadioGroup>
+      <Campo rotulo={t.emoji} valor={ehEmoji ? icone : ""} aoMudar={(v) => setIcone(limparEmoji(v))} descricao={t.emojiAjuda} semDitado />
+
+      <CheckboxGroup className="campo" value={dias} onChange={setDias}>
+        <Label className="campo-rotulo">{t.dias}</Label>
+        <p className="campo-ajuda">{t.diasAjuda}</p>
+        <div className="rotina-dias">
+          {t.nomesDias.map((nome, i) => (
+            <Checkbox key={nome} value={String(i)} className="rotina-dia">
+              {nome}
+            </Checkbox>
+          ))}
+        </div>
+      </CheckboxGroup>
+
+      <label className="campo">
+        <span className="campo-rotulo">{t.horario}</span>
+        <input className="entrada-texto rotina-horario" type="time" value={horario} onChange={(e) => setHorario(e.target.value)} />
+        <span className="campo-ajuda">{t.horarioAjuda}</span>
+      </label>
+
+      <div className="janela-acoes">
+        <Button className="botao" onPress={aoCancelar}>{textos.comum.cancelar}</Button>
+        <Button className="botao principal" type="submit">{textos.comum.salvar}</Button>
+      </div>
+    </Form>
   );
 }
 
@@ -308,7 +493,15 @@ function FazerRotina({ rotina, aoFechar }: { rotina: Rotina; aoFechar: () => voi
                 <ArrowLeft aria-hidden="true" size="1.1em" /> {t.voltar}
               </Button>
             )}
-            <Button className="botao principal" autoFocus onPress={() => setAtual(atual + 1)}>
+            <Button
+              className="botao principal"
+              autoFocus
+              onPress={() => {
+                marcarPasso(rotina.id, passo.id, true);
+                avisarMudanca();
+                setAtual(atual + 1);
+              }}
+            >
               {t.proximo} <ArrowRight aria-hidden="true" size="1.1em" />
             </Button>
           </div>

@@ -54,7 +54,9 @@ export function caminhoDeTraco(traco: Traco): string {
       thinning: afinar,
       smoothing: op.suavizar,
       streamline: traco.alisar ?? op.alisar,
-      simulatePressure: afinar > 0,
+      // Com caneta de verdade, usa a pressão gravada; senão, simula pela
+      // velocidade (mouse e dedo não têm pressão).
+      simulatePressure: afinar > 0 && !traco.pressao,
       last: true,
       start: { cap: !op.achatado },
       end: { cap: !op.achatado },

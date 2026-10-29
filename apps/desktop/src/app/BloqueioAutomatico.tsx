@@ -6,10 +6,19 @@ export const CHAVE_MOTIVO = "orbita.bloqueado-por-tempo";
 
 const EVENTOS = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"] as const;
 
+/** Já passou o tempo sem uso? Conta por data e hora, então vale mesmo se o app ficou parado em segundo plano. */
+export function passouDoTempo(agora: number, ultimoUso: number, minutos: number): boolean {
+  return minutos > 0 && agora - ultimoUso >= minutos * 60_000;
+}
+
 /**
  * Bloqueia sozinho depois de `minutos` sem uso (0 = nunca). Não bloqueia
  * enquanto o timer de foco corre: quem está concentrado pode passar muito
  * tempo sem tocar no computador.
+ *
+ * Não usa `setTimeout` longo (estoura em ~24,8 dias e o navegador atrasa timers
+ * em segundo plano). Guarda a hora do último uso e compara com a hora de agora:
+ * a cada 15 s, ao voltar para a janela e antes de registrar um novo uso.
  */
 export function BloqueioAutomatico({ minutos, aoBloquear }: { minutos: number; aoBloquear: () => void }) {
   const { estado } = useFoco();
@@ -19,22 +28,46 @@ export function BloqueioAutomatico({ minutos, aoBloquear }: { minutos: number; a
   useEffect(() => {
     if (!minutos) return;
     ultimoUso.current = Date.now();
-    const usou = () => (ultimoUso.current = Date.now());
-    EVENTOS.forEach((e) => window.addEventListener(e, usou, { passive: true }));
-    const conferir = setInterval(() => {
-      if (focoCorrendo) return void (ultimoUso.current = Date.now());
-      if (Date.now() - ultimoUso.current >= minutos * 60_000) {
-        try {
-          sessionStorage.setItem(CHAVE_MOTIVO, String(minutos));
-        } catch {
-          // Sem armazenamento: só não mostra o motivo.
-        }
-        aoBloquear();
+    let bloqueou = false;
+    const bloquear = () => {
+      if (bloqueou) return;
+      bloqueou = true;
+      try {
+        sessionStorage.setItem(CHAVE_MOTIVO, String(minutos));
+      } catch {
+        // Sem armazenamento: só não mostra o motivo.
       }
-    }, 15_000);
+      aoBloquear();
+    };
+    /** Confere o tempo; com foco correndo, conta como uso. Devolve true se bloqueou. */
+    const conferir = () => {
+      const agora = Date.now();
+      if (focoCorrendo) {
+        ultimoUso.current = agora;
+        return false;
+      }
+      if (passouDoTempo(agora, ultimoUso.current, minutos)) {
+        bloquear();
+        return true;
+      }
+      return false;
+    };
+    // Um gesto depois de passar o tempo (app voltando de segundo plano) bloqueia, não "salva" a sessão.
+    const usou = () => {
+      if (!conferir()) ultimoUso.current = Date.now();
+    };
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible") conferir();
+    };
+    EVENTOS.forEach((e) => window.addEventListener(e, usou, { passive: true }));
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
+    const intervalo = setInterval(conferir, 15_000);
     return () => {
       EVENTOS.forEach((e) => window.removeEventListener(e, usou));
-      clearInterval(conferir);
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", aoVoltar);
+      clearInterval(intervalo);
     };
   }, [minutos, focoCorrendo, aoBloquear]);
 

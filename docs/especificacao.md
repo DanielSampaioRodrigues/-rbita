@@ -42,7 +42,7 @@ São dez módulos sobre uma base comum: o mesmo item pode aparecer em lista, kan
 
 - **Captura rápida** de ideias por texto ou voz, com transcrição local.
 - **Estacionamento de ideias**: a ideia fica guardada sem virar compromisso até a pessoa decidir.
-- **Limite de projetos ativos**, definido pela pessoa. Ao passar do limite, o programa pede para hibernar outro.
+- **Limite de projetos ativos**, definido pela pessoa (1 a 50, padrão 6; muda em Ajustes ou dentro de Projetos). Ao passar do limite, o programa pede para hibernar outro.
 - **Hibernação sem culpa** com **cartão "onde parei"**: em que ponto estava, próximo passo, arquivos e links.
 - Etapas, subtarefas e quebra de tarefas grandes em passos pequenos (com ajuda de IA opcional).
 - Visualizações: lista, kanban, mapa mental, linha do tempo e calendário.
@@ -379,7 +379,7 @@ A IA é opcional e a pessoa escolhe o provedor que preferir. Nenhuma função de
 
 **Como ficou na Onda 1 (etapa 17, fechamento).**
 - **Bandeja do sistema**, opcional (Ajustes > Janela e bloqueio): fechar a janela só a esconde; o ícone perto do relógio abre, captura e sai. Na primeira vez, uma notificação explica onde o Órbita ficou. Sem a bandeja, fechar fecha, como antes.
-- **Bloqueio automático**, opcional (nunca, 5, 15, 30 minutos ou 1 hora sem mexer no mouse nem no teclado). Desligado por padrão. Não bloqueia com o timer de foco correndo. A tela de desbloqueio diz que foi o bloqueio automático e que nada se perdeu.
+- **Bloqueio automático**, opcional (nunca, 5, 15, 30 minutos, 1, 2, 4 ou 8 horas, 1, 3 ou 7 dias sem mexer no mouse nem no teclado; de 1 dia para cima aparece um aviso de que o aparelho fica aberto por dias). Conta pela hora do último uso, não por timer longo. Desligado por padrão. Não bloqueia com o timer de foco correndo. A tela de desbloqueio diz que foi o bloqueio automático e que nada se perdeu.
 - **Backup testado** com todo tipo de dado: salvar, apagar e restaurar em outro lugar.
 - **Revisão dos sete princípios** e lista do que testar no Windows: `docs/revisao-onda-1.md`.
 
@@ -432,6 +432,19 @@ docs/                especificação e registro de decisões
 - **Publicação:** em `https://danielsampaiorodrigues.github.io/orbita-versoes/app/`, na subpasta `app/` da mesma branch do GitHub Pages que serve a página inicial e a de privacidade (`claude/orbita-setup-planning-cfbqzz` do repositório público `orbita-versoes`; trocar essa fonte derruba as páginas exigidas pelo Google). Disparada à mão no workflow (escolha "navegador"), só na máquina Linux. Vão só os arquivos prontos; o código-fonte continua privado.
 - **Endereço e dados:** o navegador guarda os dados por endereço (domínio). Se um dia o app mudar para um domínio próprio, os dados do iPad não vão sozinhos: passam pelo backup (ou pela sincronização, quando existir).
 - **Ainda não existe no navegador:** IA (avisa e pede para usar no Windows), ditado do computador (no iPad, usa-se o microfone do teclado), backup automático numa pasta, livros EPUB/PDF na Leitura e lembretes com o app fechado.
+- **Cartão "Instalar o Órbita" (0.45.0):** só no navegador e só enquanto o app não está na tela de início. Aparece uma vez por visita; "Agora não" esconde por 7 dias, "Não mostrar mais" esconde para sempre. No iPhone/iPad explica Compartilhar → Adicionar à Tela de Início; em outros navegadores usa o botão nativo de instalar quando existe.
+- **Publicação sem minutos do Actions:** o build web pode ser feito na sessão e copiado para `app/` da branch do Pages (feito assim na 0.45.0).
+
+**Decisões da versão 0.45.0 (29/10/2026, lista de falhas e melhorias de Dan, testada no iPad):**
+- **Navegação:** setas de voltar/avançar com 44 px e traço grosso; entre elas, um botão abre a lista das últimas telas (segurar "voltar" também abre). Pular para uma tela do histórico não apaga o "avançar".
+- **Início:** "Organizar a tela inicial" oferece um bloco-atalho para cada módulo. Atalhos novos entram **escondidos** (princípio 1: nada muda sem a pessoa pedir).
+- **Agenda:** cor por compromisso (mesma paleta das etiquetas; faixa lateral + fundo tingido a 13%; texto na cor do tema). A cor é guardada junto das notas no banco nativo, sem mudar a estrutura. Não vai para o `.ics`.
+- **Rotinas:** cor, ícone/emoji, dias da semana e horário sugerido por rotina; progresso de hoje sem culpa. **Pendência:** por enquanto guardado só no aparelho (fora do cofre e do backup) — falta o lado Rust guardar esses campos.
+- **Foco:** quatro mostradores (disco, ponteiro, ampulheta, barra) e focos salvos (nome, foco, pausa). **Pendência:** focos salvos fora do cofre e do backup até existir o comando Rust.
+- **Aparência:** editor de tema abre no modo atual (claro/escuro); imagem própria de fundo vai para o IndexedDB (limite 8 MB), não para as preferências.
+- **Ajustes:** bloqueio automático até 7 dias (aviso literal a partir de 1 dia; contagem por carimbo de tempo, vale em segundo plano); limite de projetos ativos de 1 a 50 (padrão 6), nos Ajustes e em Projetos.
+- **Caderno:** traços e folhas em cache (cor marca na hora); botão "+ Página" e página nova ao rolar além da última; no Safari, após a primeira Pencil, dedo rola e caneta escreve.
+- **Em espera (INPI):** endereço `orbita.arcano3.com.br` e login com Google.
 
 ## Ondas de construção
 

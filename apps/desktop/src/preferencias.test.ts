@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { carregar, PADRAO, salvar, validar } from "./preferencias";
+import { BLOCOS_ATALHO, BLOCOS_INICIO, carregar, PADRAO, salvar, validar } from "./preferencias";
 
 class Memoria implements Storage {
   private dados = new Map<string, string>();
@@ -27,6 +27,7 @@ describe("preferências", () => {
     expect(PADRAO.bloqueioAuto).toBe(0);
     expect(validar({ bloqueioAuto: 15 }).bloqueioAuto).toBe(15);
     expect(validar({ bloqueioAuto: 7 }).bloqueioAuto).toBe(0);
+    for (const m of [120, 240, 480, 1440, 4320, 10080]) expect(validar({ bloqueioAuto: m }).bloqueioAuto).toBe(m);
     expect(validar({ bloqueioAuto: "15" }).bloqueioAuto).toBe(0);
   });
 
@@ -49,8 +50,9 @@ describe("preferências", () => {
   it("tela inicial guarda ordem válida e acrescenta blocos que faltam", () => {
     const r = validar({ inicio: { ordem: ["hoje", "xyz", "hoje", "capturar"], ocultos: ["novidades", "nada"], largos: [] } });
     expect(r.inicio.ordem.slice(0, 2)).toEqual(["hoje", "capturar"]);
-    expect(r.inicio.ordem).toHaveLength(6);
-    expect(r.inicio.ocultos).toEqual(["novidades"]);
+    expect(r.inicio.ordem).toHaveLength(BLOCOS_INICIO.length);
+    // Os atalhos de módulo que a pessoa ainda não viu entram escondidos: o Início não muda sem aviso.
+    expect(r.inicio.ocultos).toEqual(["novidades", ...BLOCOS_ATALHO]);
   });
 
   it("não quebra com texto corrompido", () => {

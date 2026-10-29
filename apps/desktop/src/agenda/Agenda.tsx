@@ -1,7 +1,7 @@
-import { ChevronLeft, ChevronRight, Flag, Plus, Repeat } from "../icones";
+import { CalendarDays, ChevronLeft, ChevronRight, Flag, Plus, Repeat } from "../icones";
 import { useEffect, useMemo, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
-import { api, type Evento, type Prazo } from "../api";
+import { api, CORES_ETIQUETA, type Evento, type Prazo } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
 import { useMudancas } from "../dados";
@@ -18,6 +18,11 @@ const fmtDiaLongo = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "nu
 const fmtDiaMes = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" });
 const fmtMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const maiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Classe da cor do evento (a mesma paleta das etiquetas), ou "" se não tiver cor válida. */
+function classeCor(e: Evento): string {
+  return e.cor && (CORES_ETIQUETA as readonly string[]).includes(e.cor) ? ` com-cor cor-${e.cor}` : "";
+}
 
 function visaoSalva(): Visao {
   try {
@@ -87,7 +92,7 @@ export function Agenda({ aoAbrirProjeto }: { aoAbrirProjeto: (id: string) => voi
   const abrir = (o: Ocorrencia) => setEditando({ evento: o.evento, dia: o.dia });
 
   return (
-    <div className="pagina pagina-larga">
+    <div className="pagina pagina-larga agenda">
       <h1>{t.titulo}</h1>
       <div className="barra-agenda">
         <ToggleButtonGroup
@@ -152,7 +157,7 @@ export function LinhaOcorrencia({ o, aoAbrir, compacta }: { o: Ocorrencia; aoAbr
       </span>
     </>
   );
-  const classe = o.evento.modelo ? "ocorrencia modelo" : "ocorrencia";
+  const classe = (o.evento.modelo ? "ocorrencia modelo" : "ocorrencia") + classeCor(o.evento);
   return aoAbrir ? (
     <Button className={classe} onPress={aoAbrir}>{conteudo}</Button>
   ) : (
@@ -172,9 +177,9 @@ function LinhaPrazo({ p, aoAbrirProjeto }: { p: Prazo; aoAbrirProjeto: (id: stri
 }
 
 function ListaDoDia({ ocorrencias, prazos, aoAbrir, aoAbrirProjeto }: { ocorrencias: Ocorrencia[]; prazos: Prazo[]; aoAbrir: (o: Ocorrencia) => void; aoAbrirProjeto: (id: string) => void }) {
-  if (ocorrencias.length === 0 && prazos.length === 0) return <p className="texto-suave">{t.nadaNoDia}</p>;
+  if (ocorrencias.length === 0 && prazos.length === 0) return <AgendaVazia texto={t.nadaNoDia} dica={t.nadaNoDiaDica} />;
   return (
-    <ul className="lista-ocorrencias largura-leitura">
+    <ul className="lista-ocorrencias agenda-lista-dia largura-leitura">
       {prazos.map((p) => (
         <li key={p.id}>
           <LinhaPrazo p={p} aoAbrirProjeto={aoAbrirProjeto} />
@@ -192,21 +197,33 @@ function ListaDoDia({ ocorrencias, prazos, aoAbrir, aoAbrirProjeto }: { ocorrenc
 function Semana({ de, ocorrencias, prazos, modelo, aoAbrir, aoAbrirProjeto }: { de: Date; ocorrencias: Ocorrencia[]; prazos: Prazo[]; modelo: boolean; aoAbrir: (o: Ocorrencia) => void; aoAbrirProjeto: (id: string) => void }) {
   const grupos = porDia(ocorrencias);
   const hoje = chaveDia(new Date());
-  if (modelo && ocorrencias.length === 0) return <p className="texto-suave largura-leitura">{t.nadaNaSemanaModelo}</p>;
+  if (modelo && ocorrencias.length === 0) return <AgendaVazia texto={t.nadaNaSemanaModelo} />;
   return (
     <div className="semana">
       {Array.from({ length: 7 }, (_, i) => somarDias(de, i)).map((d) => {
         const chave = chaveDia(d);
         const doDia = grupos.get(chave) ?? [];
         const eHoje = !modelo && chave === hoje;
+        const doPrazo = prazos.filter((p) => p.data === chave);
+        const vazio = doDia.length === 0 && doPrazo.length === 0;
         return (
           <section key={chave} className={eHoje ? "semana-dia hoje" : "semana-dia"} aria-label={modelo ? t.diasSemana[d.getDay()] : fmtDiaLongo.format(d)}>
-            <h3>
-              {modelo ? t.diasSemana[d.getDay()] : `${t.diasSemanaCurtos[d.getDay()]} ${d.getDate()}`}
+            <h3 className="agenda-dia-cabecalho">
+              {modelo ? (
+                <span className="agenda-dia-nome">{t.diasSemana[d.getDay()]}</span>
+              ) : (
+                <>
+                  <span className="agenda-dia-nome">{t.diasSemanaCurtos[d.getDay()]}</span>
+                  <span className="agenda-dia-numero">{d.getDate()}</span>
+                </>
+              )}
               {eHoje && <span className="selo">{t.hoje}</span>}
             </h3>
+            {vazio ? (
+              <p className="agenda-livre">{t.diaLivre}</p>
+            ) : (
             <ul className="lista-ocorrencias">
-              {prazos.filter((p) => p.data === chave).map((p) => (
+              {doPrazo.map((p) => (
                 <li key={p.id}>
                   <LinhaPrazo p={p} aoAbrirProjeto={aoAbrirProjeto} />
                 </li>
@@ -217,6 +234,7 @@ function Semana({ de, ocorrencias, prazos, modelo, aoAbrir, aoAbrirProjeto }: { 
                 </li>
               ))}
             </ul>
+            )}
           </section>
         );
       })}
@@ -240,8 +258,10 @@ function Mes({ referencia, ocorrencias, prazos, aoAbrirDia }: { referencia: Date
           {dias.slice(s * 7, s * 7 + 7).map((d) => {
             const chave = chaveDia(d);
             const doDia = [
-              ...prazos.filter((p) => p.data === chave).map((p) => ({ id: p.id, titulo: t.prazoDe(p.titulo), prazo: true })),
-              ...(grupos.get(chave) ?? []).filter((o) => !o.evento.modelo).map((o) => ({ id: o.evento.id, titulo: o.evento.titulo, prazo: false })),
+              ...prazos.filter((p) => p.data === chave).map((p) => ({ id: p.id, titulo: t.prazoDe(p.titulo), classe: "mes-evento prazo quebra" })),
+              ...(grupos.get(chave) ?? [])
+                .filter((o) => !o.evento.modelo)
+                .map((o) => ({ id: o.evento.id, titulo: o.evento.titulo, classe: "mes-evento quebra" + classeCor(o.evento) })),
             ];
             const fora = d.getMonth() !== referencia.getMonth();
             const classes = ["mes-dia", fora && "fora", chave === hoje && "hoje"].filter(Boolean).join(" ");
@@ -250,15 +270,28 @@ function Mes({ referencia, ocorrencias, prazos, aoAbrirDia }: { referencia: Date
                 <Button className={classes} onPress={() => aoAbrirDia(d)} aria-label={`${t.abrirDia(fmtDiaLongo.format(d))}${doDia.length ? `, ${doDia.length}` : ""}`}>
                   <span className="mes-numero">{d.getDate()}</span>
                   {doDia.slice(0, 3).map((o) => (
-                    <span key={o.id} className={o.prazo ? "mes-evento prazo quebra" : "mes-evento quebra"}>{o.titulo}</span>
+                    <span key={o.id} className={o.classe}>{o.titulo}</span>
                   ))}
-                  {doDia.length > 3 && <span className="texto-suave pequeno">{t.mais(doDia.length - 3)}</span>}
+                  {doDia.length > 3 && <span className="agenda-mais">{t.mais(doDia.length - 3)}</span>}
                 </Button>
               </div>
             );
           })}
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Estado vazio: calmo, sem cobrança. */
+function AgendaVazia({ texto, dica }: { texto: string; dica?: string }) {
+  return (
+    <div className="agenda-vazio largura-leitura">
+      <CalendarDays aria-hidden="true" size="1.6em" />
+      <div>
+        <p>{texto}</p>
+        {dica && <p className="texto-suave pequeno">{dica}</p>}
+      </div>
     </div>
   );
 }

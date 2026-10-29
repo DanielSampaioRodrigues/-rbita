@@ -70,6 +70,12 @@ export interface Traco {
   alisar?: number;
   /** Opacidade (0..1). Omisso = padrão da ferramenta. */
   opacidade?: number;
+  /** O traço veio de uma caneta com pressão de verdade (Apple Pencil, caneta
+   *  do Windows). Aí a espessura segue a pressão gravada nos pontos; sem isso
+   *  (mouse, dedo, traços antigos), a pressão é simulada pela velocidade. */
+  pressao?: boolean;
+  /** Id do grupo (objetos agrupados se selecionam juntos). Ausente = solto. */
+  grupo?: string;
   pontos: Ponto[];
 }
 
@@ -95,11 +101,13 @@ export interface Texto {
   alinhamento?: AlinharTexto;
   /** Cor de fundo (nota adesiva/post-it). Ausente = caixa sem fundo. */
   fundo?: string;
+  /** Id do grupo (objetos agrupados se selecionam juntos). Ausente = solto. */
+  grupo?: string;
 }
 
 /** Formas que se desenham arrastando (traçadas de um canto a outro). */
-export type TipoForma = "reta" | "retangulo" | "elipse" | "seta";
-export const TIPOS_FORMA: TipoForma[] = ["reta", "retangulo", "elipse", "seta"];
+export type TipoForma = "reta" | "retangulo" | "elipse" | "seta" | "triangulo" | "losango" | "estrela";
+export const TIPOS_FORMA: TipoForma[] = ["reta", "retangulo", "elipse", "seta", "triangulo", "losango", "estrela"];
 
 /** Uma forma geométrica. Guarda o retângulo que a contém (dois cantos), em px
  *  de referência; a reta e a seta usam esses dois pontos como extremos. */
@@ -113,6 +121,12 @@ export interface Forma {
   y2: number;
   cor: string;
   espessura: number;
+  /** Seta presa a objetos (conector): id do objeto no início e no fim. Quando
+   *  o objeto se move, a ponta da seta acompanha. Ausente = ponta solta. */
+  ligaInicio?: string;
+  ligaFim?: string;
+  /** Id do grupo (objetos agrupados se selecionam juntos). Ausente = solto. */
+  grupo?: string;
 }
 
 /** Uma imagem colada ou inserida na página. Os bytes ficam no cofre (anexo);
@@ -128,6 +142,8 @@ export interface Imagem {
   anexoId: string;
   /** Rotação em graus (horário), em torno do centro. Ausente = 0. */
   rot?: number;
+  /** Id do grupo (objetos agrupados se selecionam juntos). Ausente = solto. */
+  grupo?: string;
 }
 
 export type Elemento = Traco | Texto | Forma | Imagem;

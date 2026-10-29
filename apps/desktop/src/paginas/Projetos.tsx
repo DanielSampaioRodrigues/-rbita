@@ -7,13 +7,14 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useComLimite } from "../projetos/Limite";
+import { SeletorLimite } from "../projetos/SeletorLimite";
 import { formatoDia } from "../projetos/OndeParei";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.projetos;
 const GRUPOS: EstadoProjeto[] = ["ativo", "pausado", "concluido"];
 
-export function Projetos({ aoAbrir, aoMudarLimite }: { aoAbrir: (id: string) => void; aoMudarLimite: () => void }) {
+export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLimite?: () => void }) {
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [limite, setLimite] = useState(3);
   const [criando, setCriando] = useState(false);
@@ -45,8 +46,23 @@ export function Projetos({ aoAbrir, aoMudarLimite }: { aoAbrir: (id: string) => 
           <Plus aria-hidden="true" size="1.1em" /> {t.novo}
         </Button>
         <span className="texto-suave">{t.ativosDe(ativos, limite)}</span>
-        <Button className="link" onPress={aoMudarLimite}>{t.mudarLimite}</Button>
       </div>
+      <details className="limite-inline">
+        <summary>{t.mudarLimite}</summary>
+        <SeletorLimite
+          valor={limite}
+          aoMudar={async (n) => {
+            setErro(null);
+            try {
+              await api.definirLimiteProjetos(n);
+              setLimite(n);
+            } catch (e) {
+              setErro(e instanceof Error ? e.message : String(e));
+            }
+          }}
+        />
+        <p className="campo-ajuda">{textos.limite.explicacao}</p>
+      </details>
       <Aviso>{erro}</Aviso>
 
       <ToggleButtonGroup

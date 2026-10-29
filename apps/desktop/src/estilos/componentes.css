@@ -990,6 +990,21 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .deslizante-rotulo { display: flex; justify-content: space-between; align-items: baseline; gap: var(--espaco-2); }
 .caderno-cor-escolher { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px dashed var(--cor-borda); cursor: pointer; color: var(--cor-texto-suave); overflow: hidden; }
 .caderno-cor-escolher input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: none; padding: 0; cursor: pointer; }
+/* Cor personalizada em uso: o círculo mostra a cor, marcado como as outras. */
+.caderno-cor-escolher.atual { border-style: solid; border-color: var(--cor-superficie); outline: 2px solid var(--cor-foco); outline-offset: 1px; }
+/* Toque na barra responde na hora (sem a espera do toque duplo do Safari). */
+.caderno-barra button, .caderno-barra label { touch-action: manipulation; }
+/* Botão "nova página" na barra: ícone + palavra curta (na barra lateral, só o ícone). */
+.caderno-nova-pagina { display: inline-flex; align-items: center; gap: 0.3rem; height: 2.4rem; padding: 0 0.6rem; border: 1px solid var(--cor-borda); border-radius: var(--raio-1); background: none; color: var(--cor-texto); font: inherit; cursor: pointer; }
+.caderno-nova-pagina[data-hovered] { background: var(--cor-superficie-alternativa); }
+.caderno-nova-pagina[data-focus-visible] { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
+.caderno-barra.tintada .caderno-nova-pagina { color: var(--barra-fg); border-color: color-mix(in srgb, var(--barra-fg) 35%, transparent); }
+.caderno-barra.vertical .caderno-nova-pagina { width: 2.4rem; padding: 0; justify-content: center; }
+.caderno-barra.vertical .caderno-nova-pagina-texto { display: none; }
+/* Fim do caderno: espaço para "puxar" e criar página nova ao rolar além da última. */
+.caderno-puxar { width: min(100%, 1500px); min-height: 35vh; padding-top: var(--espaco-4); text-align: center; color: var(--cor-texto-suave); font-size: 0.9rem; flex: none; }
+/* iPad com Apple Pencil: o dedo rola o caderno; a caneta continua escrevendo. */
+.caderno-folha-area.dedo-rola, .caderno-desenho.dedo-rola { touch-action: pan-x pan-y; }
 
 /* Barra de ferramentas móvel: cima, baixo ou nas laterais. */
 .caderno-miolo { flex: 1; display: flex; min-height: 0; }

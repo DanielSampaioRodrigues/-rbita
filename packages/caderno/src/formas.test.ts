@@ -29,3 +29,20 @@ describe("caderno: formas", () => {
     expect(formaAtingida(reta, 50, 40, 3)).toBe(false);
   });
 });
+
+describe("caderno: formas novas", () => {
+  it("triângulo, losango e estrela viram polígonos fechados", () => {
+    for (const forma of ["triangulo", "losango", "estrela"] as const) {
+      const f: Forma = { ...base, forma, x1: 0, y1: 0, x2: 100, y2: 80 };
+      const d = caminhoDeForma(f);
+      expect(d.startsWith("M ")).toBe(true);
+      expect(d.endsWith("Z")).toBe(true);
+    }
+  });
+
+  it("a borracha acerta a borda do losango", () => {
+    const f: Forma = { ...base, forma: "losango", x1: 0, y1: 0, x2: 100, y2: 100 };
+    expect(formaAtingida(f, 25, 25, 3)).toBe(true);
+    expect(formaAtingida(f, 50, 50, 3)).toBe(false);
+  });
+});

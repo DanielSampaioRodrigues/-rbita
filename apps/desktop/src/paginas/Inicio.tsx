@@ -1,7 +1,7 @@
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, BatteryLow, EyeOff, GripVertical, LayoutGrid, Lightbulb, MoveHorizontal, PenLine, Plus } from "../icones";
+import { ArrowDown, ArrowUp, BatteryLow, BookOpen, Books, EyeOff, GripVertical, Heart, LayoutGrid, Lightbulb, ListChecks, MoveHorizontal, PenLine, Plus, Quote, Sparkles, Timer, Wallet, type LucideIcon } from "../icones";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { LinhaOcorrencia } from "../agenda/Agenda";
@@ -10,17 +10,25 @@ import { api, type Projeto } from "../api";
 import { useMudancas } from "../dados";
 import { RegistroRapido } from "../energia/Energia";
 import { usePreferencias } from "../estado";
-import type { BLOCOS_INICIO } from "../preferencias";
+import { BLOCOS_ATALHO, type BLOCOS_INICIO } from "../preferencias";
 import { textos } from "../textos/pt-BR";
+import type { Secao } from "../app/Moldura";
 import { CartaoProjeto } from "./Projetos";
 
 const t = textos.inicio;
 type Bloco = (typeof BLOCOS_INICIO)[number];
+type Atalho = (typeof BLOCOS_ATALHO)[number];
+
+/** Ícone de cada atalho de módulo (os mesmos do menu). */
+const ICONE_ATALHO: Record<Atalho, LucideIcon> = {
+  organizacao: LayoutGrid, rotinas: ListChecks, foco: Timer, dinheiro: Wallet, saude: Heart,
+  cuidado: Quote, estudos: BookOpen, hobbies: Sparkles, leitura: Books, caderno: PenLine,
+};
 
 interface Props {
   aoCapturar: () => void;
   aoAbrirProjeto: (id: string) => void;
-  aoIr: (secao: "ideias" | "projetos" | "agenda") => void;
+  aoIr: (secao: Secao) => void;
   aoLigarBaixa: () => void;
 }
 
@@ -42,7 +50,21 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
     api.listarEventos(de.getTime(), ate.getTime()).then((es) => setHoje(expandir(es, de, ate)), () => {});
   }, [mudancas]);
 
+  // Atalhos para os módulos que não têm bloco próprio: um toque e a pessoa já está lá.
+  const atalhos = Object.fromEntries(
+    BLOCOS_ATALHO.map((id) => {
+      const Icone = ICONE_ATALHO[id];
+      return [id, (
+        <Button className="cartao compacto bloco-atalho" onPress={() => aoIr(id)} aria-label={t.abrirModulo(t.blocos[id])}>
+          <Icone aria-hidden="true" size="1.5em" strokeWidth={1.75} />
+          <span>{t.blocos[id]}</span>
+        </Button>
+      )];
+    }),
+  ) as Record<Atalho, ReactNode>;
+
   const conteudo: Record<Bloco, ReactNode> = {
+    ...atalhos,
     capturar: (
       <div className="bloco-centro">
         <Button className="botao principal grande" onPress={aoCapturar}>
@@ -140,7 +162,7 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
           <LayoutGrid aria-hidden="true" size="1.1em" /> {organizando ? t.pronto : t.organizar}
         </Button>
       </div>
-      <p className="pagina-intro">{organizando ? t.organizarExplicacao : t.construcao}</p>
+      <p className="pagina-intro">{organizando ? `${t.organizarExplicacao} ${t.atalhosExplicacao}` : t.construcao}</p>
       {organizando && ocultos.length > 0 && (
         <section className="grupo esticado" aria-labelledby="escondidos">
           <h2 id="escondidos">{t.escondidos}</h2>

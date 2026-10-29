@@ -27,6 +27,19 @@ export const textos = {
   navegacao: {
     voltar: "Voltar",
     avancar: "Avançar",
+    historico: "Últimas telas",
+    historicoVazio: "Você ainda não passou por outras telas.",
+    atual: "(aqui)",
+    projeto: "Projeto",
+  },
+  instalar: {
+    titulo: "Instalar o Órbita neste aparelho",
+    texto: "Instalado, ele abre em tela cheia pelo ícone na tela de início, como um app. Os dados continuam só neste aparelho.",
+    ios: "No iPhone e no iPad: toque em Compartilhar (o quadrado com a seta para cima) e depois em “Adicionar à Tela de Início”.",
+    outros: "No menu do navegador, procure “Instalar app” ou “Adicionar à tela inicial”.",
+    instalar: "Instalar",
+    agoraNao: "Agora não",
+    nuncaMais: "Não mostrar mais",
   },
   aparencia: {
     titulo: "Aparência",
@@ -65,7 +78,19 @@ export const textos = {
       continuar: "Continuar de onde parei",
       ideias: "Ideias guardadas",
       novidades: "O que mudou",
+      organizacao: "Minha organização",
+      rotinas: "Rotinas",
+      foco: "Foco",
+      dinheiro: "Dinheiro",
+      saude: "Saúde",
+      cuidado: "Cuidado",
+      estudos: "Estudos",
+      hobbies: "Hobbies",
+      leitura: "Leitura",
+      caderno: "Caderno",
     },
+    abrirModulo: (nome: string) => `Abrir ${nome}`,
+    atalhosExplicacao: "Os blocos de módulo são atalhos: um toque e você já está lá.",
     arrastar: (b: string) => `Arrastar o bloco ${b}`,
     subir: "Subir",
     descer: "Descer",
@@ -160,6 +185,7 @@ export const textos = {
     visivelAjuda: "Começa no ponto mais legível. Arrastando, o fundo aparece mais, mas o texto nunca fica abaixo do mínimo de leitura.",
     visivelAviso: "O texto ficou com menos contraste. Se cansar a leitura, volte o controle para o começo.",
     erroImagem: "Não deu para abrir essa imagem. Tente PNG, JPG ou WebP.",
+    imagemGrande: (mb: string) => `Essa imagem tem ${mb} MB, e o limite é 8 MB. Escolha uma imagem menor.`,
     criarAPartir: "Criar um tema a partir deste",
     criarDoZero: "Criar um tema novo",
     editar: "Editar este tema",
@@ -176,6 +202,8 @@ export const textos = {
     nome: "Nome do tema",
     modos: { claro: "Claro", escuro: "Escuro" },
     modo: "Modo",
+    outroModo: (editando: string, tela: string) =>
+      `O app está no modo ${tela} agora. As cores do modo ${editando} aparecem na prévia ao lado e no app quando ele estiver no modo ${editando}.`,
     cores: "Cores",
     cantos: "Arredondamento dos cantos",
     tracoIcones: "Traço dos ícones",
@@ -566,6 +594,12 @@ export const textos = {
     excluirRepeteTexto: "Este compromisso se repete. Quer tirar só o deste dia ou todos?",
     excluirTexto: "Ele sai da agenda.",
     fimAntes: "O horário de término vem antes do começo.",
+    cor: "Cor do cartão",
+    semCor: "Sem cor",
+    corAjuda: "Só para reconhecer de relance. No modo de baixo estímulo, as cores ficam neutras.",
+    nadaNoDiaDica: "Para marcar algo, use Novo compromisso.",
+    diaLivre: "Livre",
+    semanaDe: (n: number) => (n === 1 ? "1 compromisso" : `${n} compromissos`),
   },
   rotinas: {
     titulo: "Rotinas",
@@ -607,6 +641,29 @@ export const textos = {
     usarTimer: (m: number) => `Usar o timer de ${m} minutos`,
     feita: "Rotina feita.",
     feitaTexto: "Pronto. Pode fechar quando quiser.",
+    // Personalização e cartões
+    personalizar: "Personalizar",
+    personalizarTitulo: "Personalizar a rotina",
+    cor: "Cor",
+    semCor: "Sem cor",
+    simbolo: "Ícone ou emoji (opcional)",
+    emoji: "Ou escreva um emoji",
+    emojiAjuda: "Por exemplo 🌞. Vale o primeiro que você escrever.",
+    dias: "Dias em que vale",
+    diasAjuda: "Sem escolher nenhum, a rotina vale todos os dias.",
+    nomesDias: ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"],
+    horario: "Horário sugerido (opcional)",
+    horarioAjuda: "Só uma sugestão. Nada avisa nem cobra nesse horário.",
+    aPartirDe: (h: string) => `Sugerida às ${h}`,
+    foraDeHoje: "Não é de hoje",
+    hojeProgresso: (f: number, n: number) => (f === 0 ? "Hoje: ainda sem passos marcados" : `Hoje: ${f} de ${n}`),
+    marcarPasso: (t: string) => `Marcar como feito: ${t}`,
+    vazioTitulo: "Sua primeira rotina",
+    vazioPasso1: "Dê um nome, como Manhã ou Dormir.",
+    vazioPasso2: "Acrescente passos pequenos, um de cada vez.",
+    vazioPasso3: "Use quando quiser. Não tem hora certa nem nota.",
+    vazioPassos: "Nenhum passo ainda. Comece com algo bem pequeno, como beber um copo de água.",
+    abrir: (t: string) => `Abrir a rotina ${t}`,
     fechar: "Fechar",
   },
   foco: {
@@ -629,6 +686,28 @@ export const textos = {
     terminouPausa: "A pausa terminou.",
     naBarra: (m: string) => `Foco: ${m}`,
     naBarraPausa: (m: string) => `Pausa: ${m}`,
+    // Aparência do tempo
+    estilo: "Como o tempo aparece",
+    estilos: { circulo: "Disco", analogico: "Relógio de ponteiro", ampulheta: "Ampulheta", barra: "Barra" },
+    // Focos salvos
+    salvos: "Focos salvos",
+    salvosIntro: "Guarde os tempos que você usa sempre. Um toque e o foco começa.",
+    salvosVazio: "Nenhum foco salvo ainda. Por exemplo: Estudar, 45 min, com 10 min de pausa.",
+    novoSalvo: "Salvar um foco",
+    editarSalvo: "Editar foco salvo",
+    nomeSalvo: "Nome",
+    minutosFoco: "Minutos de foco",
+    minutosPausa: "Minutos de pausa depois (0 = sem pausa)",
+    minutosAjuda: "De 1 a 180.",
+    detalheSalvo: (foco: number, pausa: number) => (pausa > 0 ? `${foco} min de foco, ${pausa} min de pausa` : `${foco} min de foco`),
+    iniciarSalvo: (nome: string) => `Começar ${nome}`,
+    editar: (nome: string) => `Editar ${nome}`,
+    excluir: (nome: string) => `Excluir ${nome}`,
+    excluirTitulo: "Excluir este foco salvo?",
+    excluirTexto: "Só o atalho sai. O que você já focou não muda.",
+    excluirConfirmar: "Excluir",
+    ocupado: "Um tempo já está correndo. Pare ou termine esse antes de começar outro.",
+    terminouFocoComPausa: (m: number) => `O tempo de foco terminou. A pausa de ${m} min está pronta: é só começar quando quiser.`,
   },
   energia: {
     titulo: "Energia",
@@ -939,6 +1018,10 @@ export const textos = {
     paginas: {
       titulo: "Páginas",
       adicionar: "Adicionar página",
+      nova: "Nova página no fim do caderno",
+      novaCurta: "Página",
+      puxar: "Continue rolando para criar uma página nova.",
+      puxarVazia: "A última página ainda está vazia. Use ela antes de criar outra.",
       excluir: "Apagar página",
       numero: (n: number) => `Página ${n}`,
       tamanho: "Tamanho",
@@ -1265,14 +1348,19 @@ export const textos = {
     adicionar: "Novo quadro ou lista",
     vazio: "Nada aqui ainda. Crie um quadro (colunas com cartões) ou uma lista (itens com caixinha) para começar a organizar.",
     abrir: "Abrir",
-    editar: "Renomear",
+    editar: "Editar",
     excluir: "Apagar",
+    cor: "Cor",
+    semCor: "Sem cor",
+    corAjuda: "O texto se ajusta sozinho para continuar fácil de ler.",
+    cores: { musgo: "Musgo", mar: "Mar", ceu: "Céu", lavanda: "Lavanda", rosa: "Rosa", terra: "Terra", areia: "Areia", cinza: "Cinza", pessego: "Pêssego", menta: "Menta" },
+    amostra: "Aa",
     confirmarExcluir: (nome: string) => `Apagar "${nome}" com tudo que está dentro? Isso não dá para desfazer.`,
     estilo: "Como você quer organizar?",
     estilos: { quadro: "Quadro (colunas)", lista: "Lista (caixinhas)" },
     estiloAjuda: { quadro: "Colunas com cartões que você arrasta de uma para a outra. Bom para acompanhar etapas.", lista: "Uma lista de itens para marcar como feitos. Bom para o dia a dia." },
     selo: { quadro: "Quadro", lista: "Lista" },
-    form: { nome: "Nome", novo: "Novo quadro ou lista", editarTitulo: "Renomear", salvar: "Criar", salvarMudancas: "Salvar" },
+    form: { nome: "Nome", novo: "Novo quadro ou lista", editarTitulo: "Editar", salvar: "Criar", salvarMudancas: "Salvar" },
     voltar: "Voltar para a lista",
     coluna: {
       adicionar: "Nova coluna",
@@ -1282,6 +1370,8 @@ export const textos = {
       confirmarExcluir: (nome: string) => `Apagar a coluna "${nome}" e seus cartões?`,
       salvar: "Salvar",
       semNome: "Coluna",
+      cor: "Cor da coluna",
+      pronto: "Pronto",
     },
     cartao: {
       adicionar: "Adicionar cartão",
@@ -1308,7 +1398,15 @@ export const textos = {
       limparFeitos: "Limpar os feitos",
       feitosDe: (feitos: number, total: number) => `${feitos} de ${total} feitos`,
     },
-    arrastarInstrucoes: "Pressione espaço para pegar o cartão, as setas para escolher a coluna e espaço de novo para soltar.",
+    arrastarInstrucoes: "Pressione espaço para pegar o cartão. As setas para cima e para baixo mudam a posição; para os lados, mudam a coluna. Espaço de novo para soltar, ou Esc para desistir.",
+    arrastarInstrucoesLista: "Pressione espaço para pegar o item, as setas para cima e para baixo para mudar a posição e espaço de novo para soltar. Esc desiste.",
+    arrastar: {
+      pegou: (texto: string) => `Pegou "${texto}".`,
+      largou: (texto: string) => `Soltou "${texto}".`,
+      soltou: (texto: string, coluna: string, posicao: number) => `"${texto}" ficou em ${coluna}, posição ${posicao}.`,
+      soltouLista: (texto: string, posicao: number) => `"${texto}" ficou na posição ${posicao}.`,
+      desistiu: "Movimento cancelado. Nada mudou.",
+    },
   },
   dinheiro: {
     titulo: "Dinheiro",
@@ -1549,7 +1647,10 @@ export const textos = {
     pausarEste: "Pausar este",
     criarPausado: "Criar já pausado",
     rotulo: "Projetos ativos ao mesmo tempo",
-    explicacao: "Quando passar desse número, o Órbita pede para pausar um projeto antes de ativar outro.",
+    campo: "Máximo de projetos ativos (1 a 50)",
+    explicacao:
+      "O limite existe para ajudar no foco e evitar abrir projeto demais. Mas quem decide é você: escolha de 1 a 50. Quando passar desse número, o Órbita pede para pausar um projeto antes de ativar outro.",
+    salvo: (n: number) => `Limite de ${n} ${n === 1 ? "projeto ativo" : "projetos ativos"} guardado.`,
   },
   projeto: {
     voltar: "Projetos",
@@ -1984,11 +2085,12 @@ export const textos = {
       "O Órbita fica no ícone perto do relógio, pronto para capturar com Ctrl + Alt + Espaço. Para sair de vez, clique no ícone com o botão direito e escolha Sair.",
     bloqueio: "Bloquear sozinho depois de um tempo sem uso",
     nunca: "Nunca",
-    minutos: (m: number) => (m === 60 ? "1 hora" : `${m} min`),
+    minutos: (m: number) => tempoDeBloqueio(m, true),
+    bloqueioLongo: "Com esse tempo, o Órbita fica aberto por dias. Quem pegar o aparelho vê seus dados.",
     bloqueioAjuda:
       "Sem uso quer dizer sem mexer no mouse nem no teclado. Com o timer de foco correndo, o Órbita não bloqueia. Para abrir de novo, use o seu jeito de sempre (Windows Hello, PIN ou senha).",
     bloqueadoPorTempo: (m: number) =>
-      `O Órbita foi bloqueado depois de ${m === 60 ? "1 hora" : `${m} minutos`} sem uso, como está em Ajustes. Nada foi perdido.`,
+      `O Órbita foi bloqueado depois de ${tempoDeBloqueio(m, false)} sem uso, como está em Ajustes. Nada foi perdido.`,
   },
   atalhos: {
     titulo: "Atalhos de teclado",
@@ -1998,3 +2100,16 @@ export const textos = {
     fechar: "Fechar",
   },
 } as const;
+
+/** Escreve o tempo do bloqueio automático por extenso. `curto` usa "min" (nas opções). */
+function tempoDeBloqueio(m: number, curto: boolean): string {
+  if (m >= 1440 && m % 1440 === 0) {
+    const d = m / 1440;
+    return d === 1 ? "1 dia" : `${d} dias`;
+  }
+  if (m >= 60 && m % 60 === 0) {
+    const h = m / 60;
+    return h === 1 ? "1 hora" : `${h} h`.replace(" h", curto ? " h" : " horas");
+  }
+  return curto ? `${m} min` : `${m} minutos`;
+}

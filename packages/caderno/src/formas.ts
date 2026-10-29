@@ -1,4 +1,5 @@
-// Formas geométricas (reta, retângulo, elipse, seta) desenhadas arrastando.
+// Formas geométricas (reta, retângulo, elipse, seta, triângulo, losango,
+// estrela) desenhadas arrastando.
 // Puro: devolve o caminho SVG (traçado, sem preenchimento) e um teste de acerto
 // para a borracha. O render e a captura do ponteiro ficam no app.
 
@@ -26,6 +27,32 @@ function asasDaSeta(f: Forma, tam: number): [[number, number], [number, number]]
   ];
 }
 
+/** Vértices dos polígonos (triângulo, losango, estrela) dentro da caixa da
+ *  forma. O triângulo aponta para cima; a estrela tem cinco pontas. */
+export function verticesDaForma(forma: Forma): [number, number][] | null {
+  const xa = Math.min(forma.x1, forma.x2), ya = Math.min(forma.y1, forma.y2);
+  const xb = Math.max(forma.x1, forma.x2), yb = Math.max(forma.y1, forma.y2);
+  const cx = (xa + xb) / 2, cy = (ya + yb) / 2;
+  switch (forma.forma) {
+    case "triangulo":
+      return [[cx, ya], [xb, yb], [xa, yb]];
+    case "losango":
+      return [[cx, ya], [xb, cy], [cx, yb], [xa, cy]];
+    case "estrela": {
+      const rx = (xb - xa) / 2, ry = (yb - ya) / 2;
+      const pts: [number, number][] = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const k = i % 2 === 0 ? 1 : 0.42; // pontas e vales
+        pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+      }
+      return pts;
+    }
+    default:
+      return null;
+  }
+}
+
 /** Caminho SVG da forma, pronto para `<path d>` (só contorno, sem fill). */
 export function caminhoDeForma(forma: Forma): string {
   const { x1, y1, x2, y2 } = forma;
@@ -45,6 +72,10 @@ export function caminhoDeForma(forma: Forma): string {
       const [a, b] = asasDaSeta(forma, tam);
       return `M ${f2(x1)} ${f2(y1)} L ${f2(x2)} ${f2(y2)} M ${f2(a[0])} ${f2(a[1])} L ${f2(x2)} ${f2(y2)} L ${f2(b[0])} ${f2(b[1])}`;
     }
+    default: {
+      const vs = verticesDaForma(forma) ?? [];
+      return vs.length ? `M ${vs.map(([x, y]) => `${f2(x)} ${f2(y)}`).join(" L ")} Z` : "";
+    }
   }
 }
 
@@ -61,6 +92,10 @@ function segmentosDaForma(forma: Forma): [number, number][] {
     }
     case "elipse":
       return pontosElipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2);
+    default: {
+      const vs = verticesDaForma(forma) ?? [];
+      return vs.length ? [...vs, vs[0]] : [];
+    }
   }
 }
 

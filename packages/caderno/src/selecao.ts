@@ -8,6 +8,8 @@ import type { Elemento, Forma, Texto, Traco } from "./tipos";
 export type Ponto2 = [number, number];
 /** Altura de uma caixa de texto, medida/estimada pelo app. */
 export type AlturaTexto = (t: Texto) => number;
+/** Largura real (medida) de uma caixa de texto. Omissa = a largura guardada. */
+export type LarguraTexto = (t: Texto) => number;
 
 /** Ponto dentro do polígono? Lança raio para a direita e conta cruzamentos. */
 export function pontoEmPoligono(x: number, y: number, poly: Ponto2[]): boolean {
@@ -22,11 +24,12 @@ export function pontoEmPoligono(x: number, y: number, poly: Ponto2[]): boolean {
 }
 
 /** Pontos que representam o elemento, para testar se está dentro do laço. */
-export function pontosDoElemento(el: Elemento, alturaTexto: AlturaTexto): Ponto2[] {
+export function pontosDoElemento(el: Elemento, alturaTexto: AlturaTexto, larguraTexto?: LarguraTexto): Ponto2[] {
   if (el.tipo === "traco") return el.pontos.map((p) => [p.x, p.y] as Ponto2);
   if (el.tipo === "texto") {
     const h = alturaTexto(el);
-    return [[el.x, el.y], [el.x + el.largura, el.y], [el.x + el.largura, el.y + h], [el.x, el.y + h]];
+    const w = larguraTexto ? larguraTexto(el) : el.largura;
+    return [[el.x, el.y], [el.x + w, el.y], [el.x + w, el.y + h], [el.x, el.y + h]];
   }
   if (el.tipo === "imagem") {
     const cantos: Ponto2[] = [[el.x, el.y], [el.x + el.largura, el.y], [el.x + el.largura, el.y + el.altura], [el.x, el.y + el.altura]];
@@ -42,9 +45,9 @@ export function pontosDoElemento(el: Elemento, alturaTexto: AlturaTexto): Ponto2
 }
 
 /** O elemento está inteiro dentro do laço? (todos os pontos-chave dentro). */
-export function elementoDentro(el: Elemento, poly: Ponto2[], alturaTexto: AlturaTexto): boolean {
+export function elementoDentro(el: Elemento, poly: Ponto2[], alturaTexto: AlturaTexto, larguraTexto?: LarguraTexto): boolean {
   if (poly.length < 3) return false;
-  return pontosDoElemento(el, alturaTexto).every(([x, y]) => pontoEmPoligono(x, y, poly));
+  return pontosDoElemento(el, alturaTexto, larguraTexto).every(([x, y]) => pontoEmPoligono(x, y, poly));
 }
 
 export interface Limites {
@@ -55,10 +58,10 @@ export interface Limites {
 }
 
 /** Retângulo que envolve todos os elementos dados (ou null se vazio). */
-export function limitesDe(els: Elemento[], alturaTexto: AlturaTexto): Limites | null {
+export function limitesDe(els: Elemento[], alturaTexto: AlturaTexto, larguraTexto?: LarguraTexto): Limites | null {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const el of els) {
-    for (const [x, y] of pontosDoElemento(el, alturaTexto)) {
+    for (const [x, y] of pontosDoElemento(el, alturaTexto, larguraTexto)) {
       if (x < minX) minX = x;
       if (y < minY) minY = y;
       if (x > maxX) maxX = x;

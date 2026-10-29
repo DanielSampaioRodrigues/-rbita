@@ -153,6 +153,8 @@ svg.icone { filter: var(--filtro-icone, none); }
 :root[data-vidro="true"] .cartao,
 :root[data-vidro="true"] .lateral {
   background: rgb(var(--cor-superficie-rgb) / var(--opacidade-cartoes));
+  /* O Safari do iPad (antes do iPadOS 18) só entende a versão com prefixo; sem ela, nada de vidro. */
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 

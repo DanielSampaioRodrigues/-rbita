@@ -11,7 +11,7 @@ import { Interruptor } from "../componentes/Interruptor";
 import { Janela } from "../componentes/Janela";
 import { textos } from "../textos/pt-BR";
 import { usePreferencias } from "../estado";
-import { definirPreviaTema } from "../aparencia";
+import { definirPreviaTema, modoEfetivo } from "../aparencia";
 
 const t = textos.editorTema;
 type Modo = "claro" | "escuro";
@@ -99,7 +99,10 @@ export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inici
   useEffect(() => {
     api.estadoIa().then(setIa, () => setIa(null));
   }, []);
-  const [modo, setModo] = useState<Modo>("claro");
+  // Começa no modo que o app está mostrando agora: assim cada mudança aparece na tela na hora.
+  // (Antes começava sempre no claro; com o app no escuro, a pessoa editava cores que não estavam na tela.)
+  const modoNaTela = modoEfetivo(prefs);
+  const [modo, setModo] = useState<Modo>(() => modoNaTela);
   const paleta = tema[modo];
   const resultados = conferirPaleta(paleta);
   const falhas = new Set(resultados.filter((r) => !r.passa).map((r) => r.frente));
@@ -123,6 +126,7 @@ export function EditorTema({ inicial, aoSalvar, aoGuardar, aoCancelar }: { inici
                 <ToggleButton key={m} id={m} className="segmentado-opcao">{t.modos[m]}</ToggleButton>
               ))}
             </ToggleButtonGroup>
+            {modo !== modoNaTela && <p className="campo-ajuda">{t.outroModo(t.modos[modo].toLowerCase(), t.modos[modoNaTela].toLowerCase())}</p>}
           </div>
           <fieldset className="grupo-cores">
             <legend className="campo-rotulo">{t.cores}</legend>

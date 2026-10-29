@@ -11,6 +11,7 @@ import { Aviso } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { usePreferencias } from "../estado";
 import { prepararFoto } from "../fundo";
+import { ehRefImagem, LIMITE_IMAGEM_FUNDO } from "../imagensFundo";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.temaFundo;
@@ -83,7 +84,7 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
     if (chave === "cor") return mudar({ fundo: { tipo: "cor" } });
     // Imagem: se já tem uma guardada, volta para ela; só abre o seletor se não houver nenhuma.
     if (chave === "imagem") {
-      if (prefs.imagemFundo && fundo?.tipo !== "imagem") return mudar({ fundo: { tipo: "imagem", dados: prefs.imagemFundo, desfoque: 0, escurecimento: 0 } });
+      if (prefs.imagemFundo && !ehRefImagem(prefs.imagemFundo) && fundo?.tipo !== "imagem") return mudar({ fundo: { tipo: "imagem", dados: prefs.imagemFundo, desfoque: 0, escurecimento: 0 } });
       return entradaImagem.current?.click();
     }
     if (chave === "svg") return entradaSvg.current?.click();
@@ -196,7 +197,10 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
           const arquivo = e.target.files?.[0];
           e.target.value = "";
           if (!arquivo) return;
+          // Limite para o aparelho não travar ao abrir a foto (ela é reduzida e guardada no aparelho).
+          if (arquivo.size > LIMITE_IMAGEM_FUNDO) return setErro(t.imagemGrande((arquivo.size / 1024 / 1024).toFixed(1).replace(".", ",")));
           try {
+            setErro(null);
             const dados = await prepararFoto(arquivo);
             mudar({ fundo: { tipo: "imagem", dados, desfoque: 0, escurecimento: 0 }, imagemFundo: dados });
           } catch {

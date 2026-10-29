@@ -3,9 +3,9 @@ import { Button } from "react-aria-components";
 import { api, ErroOrbita, type Projeto } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
-import { Segmentado } from "../componentes/Segmentado";
 import { avisarMudanca } from "../dados";
 import { textos } from "../textos/pt-BR";
+import { SeletorLimite } from "./SeletorLimite";
 import { JanelaOndeParei } from "./OndeParei";
 
 const t = textos.limite;
@@ -69,11 +69,10 @@ export function ProvedorLimite({ children }: { children: ReactNode }) {
                 </li>
               ))}
             </ul>
-            <Segmentado
+            <SeletorLimite
               rotulo={textos.projetos.mudarLimite}
-              valor={String(pedido.limite)}
-              opcoes={["1", "2", "3", "4", "5", "6"].map((n) => ({ valor: n, nome: n }))}
-              aoMudar={(n) => tentarDeNovo(async () => (await api.definirLimiteProjetos(Number(n)), await pedido.repetir()))}
+              valor={pedido.limite}
+              aoMudar={(n) => tentarDeNovo(async () => (await api.definirLimiteProjetos(n), await pedido.repetir()))}
             />
             <Aviso>{erro}</Aviso>
             <div className="janela-acoes">

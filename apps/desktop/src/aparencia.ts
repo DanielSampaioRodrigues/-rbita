@@ -2,6 +2,7 @@ import { ajustarPaleta, aplicarVariaveis, lerHex, paletaFinal, variaveisDaPaleta
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { aplicarFundo } from "./fundo";
+import { fundoPendente } from "./imagensFundo";
 import { definirEstiloIcones } from "./icones";
 import {
   DENSIDADES,
@@ -90,7 +91,9 @@ export function aplicarAparencia(salvas: Preferencias, raiz: HTMLElement = docum
   // Ícones: família, preenchimento e desenhos próprios vêm do tema; o efeito vai para o CSS.
   definirEstiloIcones(tema.icones);
   raiz.dataset.iconesEfeito = tema.icones?.efeito ?? "nenhum";
-  void aplicarFundo(raiz, prefs.fundo ?? tema.fundoPadrao ?? { tipo: "cor" }, paleta, {
+  // Enquanto a imagem de fundo volta do IndexedDB (uma fração de segundo ao abrir), fica a cor lisa.
+  const fundo = fundoPendente(prefs) ? { tipo: "cor" as const } : prefs.fundo ?? tema.fundoPadrao ?? { tipo: "cor" };
+  void aplicarFundo(raiz, fundo, paleta, {
     baixoEstimulo: prefs.baixoEstimulo,
     reduzirAnimacao: consultaMovimento().matches,
     visivel: prefs.fundoVisivel,

@@ -394,6 +394,7 @@ mod testes {
                 modelo: false,
                 notas: String::new(),
                 excecoes: vec![],
+                cor: None,
             },
         )
         .unwrap();
