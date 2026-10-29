@@ -62,7 +62,7 @@
 
 - **Agenda com cor e cara nova**: cada compromisso pode ter uma **cor** (faixa na lateral e fundo levemente tingido). Cabeçalhos de dia mais claros, "hoje" destacado de leve (sem vermelho), dia sem nada aparece como "Livre", espaço mais respirável e tudo com alvos de toque de 44 px. No iPad em pé a semana vira uma lista por dia.
 
-- **Rotinas personalizáveis**: cada rotina ganha **cor**, **ícone ou emoji**, **dias da semana** e **horário sugerido**. A lista virou cartões com o progresso de hoje ("Hoje: 2 de 5"), e os passos são caixinhas grandes de marcar. Sem sequência, sem "falhou": o dia seguinte começa limpo. (Por enquanto a personalização fica guardada só neste aparelho; não entra no backup.)
+- **Rotinas personalizáveis**: cada rotina ganha **cor**, **ícone ou emoji**, **dias da semana** e **horário sugerido**. A lista virou cartões com o progresso de hoje ("Hoje: 2 de 5"), e os passos são caixinhas grandes de marcar. Sem sequência, sem "falhou": o dia seguinte começa limpo.
 
 - **Energia — o que gasta e o que repõe**: você cadastra suas atividades com um peso em palavras ("gasta muito" … "repõe muito") e marca o que fez hoje; o módulo diz, em frase neutra, se hoje gastou mais do que repôs e sugere uma coisa que costuma te repor (sem cobrar). E **"Meus sinais de sobrecarga"**: uma lista que você mesmo escreve ("começo a falar menos", "a luz incomoda"), com o botão "Estou sentindo isso", que anota e liga o modo baixa energia. Baseado numa pesquisa neuroafirmativa (teoria das colheres, burnout autista, monotropismo) que está em `docs/pesquisa-energia.md`. Ícones e layout revistos.
 
