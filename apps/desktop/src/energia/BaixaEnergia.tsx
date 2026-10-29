@@ -10,6 +10,7 @@ import { avisarMudanca, useMudancas } from "../dados";
 import { usePreferencias } from "../estado";
 import { textos } from "../textos/pt-BR";
 import { SugestaoReposicao } from "./Contas";
+import { KitSensorial } from "./Kit";
 import { RegistroRapido } from "./Energia";
 
 const t = textos.baixaEnergia;
@@ -103,6 +104,8 @@ export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCap
         </section>
 
         <SugestaoReposicao comTitulo />
+
+        <KitSensorial compacto />
 
         {hoje.length > 0 && (
           <section className="cartao">

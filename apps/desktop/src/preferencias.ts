@@ -71,7 +71,12 @@ export interface Preferencias {
   menu: { ordem: SecaoMenu[]; ocultos: SecaoMenu[] };
   /** Como o tempo do Foco aparece: disco, relógio de ponteiro, ampulheta ou barra. */
   estiloFoco: EstiloFoco;
+  /** Lembrete "como está o corpo?" (água, comida, banheiro, pausa): de quantos em quantos minutos. 0 = desligado. */
+  lembreteCorpo: LembreteCorpo;
 }
+
+export const LEMBRETES_CORPO = [0, 60, 120, 180] as const;
+export type LembreteCorpo = (typeof LEMBRETES_CORPO)[number];
 
 export const ESTILOS_FOCO = ["circulo", "analogico", "ampulheta", "barra"] as const;
 export type EstiloFoco = (typeof ESTILOS_FOCO)[number];
@@ -110,6 +115,7 @@ export const PADRAO: Preferencias = {
   inicio: { ordem: [...BLOCOS_INICIO], ocultos: [...BLOCOS_ATALHO], largos: ["energia", "hoje", "continuar", "novidades"] },
   menu: { ordem: [...SECOES_MENU], ocultos: [] },
   estiloFoco: "circulo",
+  lembreteCorpo: 0,
 };
 
 export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
@@ -158,6 +164,7 @@ export function validar(bruto: unknown): Preferencias {
     inicio: validarInicio(p.inicio),
     menu: validarMenu(p.menu),
     estiloFoco: dentro(p.estiloFoco, ESTILOS_FOCO) ? p.estiloFoco : PADRAO.estiloFoco,
+    lembreteCorpo: LEMBRETES_CORPO.includes(p.lembreteCorpo as LembreteCorpo) ? (p.lembreteCorpo as LembreteCorpo) : PADRAO.lembreteCorpo,
   };
 }
 

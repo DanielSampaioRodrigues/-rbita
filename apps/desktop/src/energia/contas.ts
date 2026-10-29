@@ -1,4 +1,5 @@
-// "O que gasta / o que repõe" e "meus sinais de sobrecarga".
+// "O que gasta / o que repõe", "meus sinais de sobrecarga", o kit de recuperação
+// sensorial e a pergunta da camuflagem (custo de parecer "normal").
 // Ideia da contabilidade de energia (Maja Toudal): cada coisa do dia tira ou põe energia,
 // e a lista é da pessoa. Ver docs/pesquisa-energia.md.
 //
@@ -25,15 +26,32 @@ export interface DadosEnergia {
   sinais: Sinal[];
   /** Momentos em que a pessoa apertou "Estou sentindo isso". */
   sentidos: { sinalId: string; momento: number }[];
+  /** Kit de recuperação sensorial: o que ajuda a baixar a entrada sensorial. */
+  kit: ItemKit[];
+  /** Momentos em que a pessoa apertou "Usar agora" num item do kit. */
+  usosKit: { itemId: string; momento: number }[];
+  /** Dia → quanto precisou se camuflar (pergunta opcional ao registrar o dia). */
+  camuflagem: Record<string, Camuflagem>;
 }
+
+export interface ItemKit {
+  id: string;
+  nome: string;
+}
+
+export const CAMUFLAGENS = ["nada", "pouco", "muito"] as const;
+export type Camuflagem = (typeof CAMUFLAGENS)[number];
 
 export const PESOS = [-3, -2, -1, 1, 2, 3] as const;
 const DIAS_GUARDADOS = 90;
 const SENTIDOS_GUARDADOS = 200;
+const USOS_GUARDADOS = 300;
 /** Onde ficavam antes (localStorage). */
 export const CHAVE_ANTIGA = "orbita.energia.contas";
 
-export const VAZIO: DadosEnergia = { atividades: [], feitos: {}, sinais: [], sentidos: [] };
+export const VAZIO: DadosEnergia = { atividades: [], feitos: {}, sinais: [], sentidos: [], kit: [], usosKit: [], camuflagem: {} };
+
+const DIA = /^\d{4}-\d{2}-\d{2}$/;
 
 export function limitarPeso(p: number): number {
   const n = Math.round(Number(p));
@@ -53,7 +71,7 @@ export function validar(bruto: unknown): DadosEnergia {
   const feitos: Record<string, string[]> = {};
   if (b.feitos && typeof b.feitos === "object") {
     for (const [dia, ids] of Object.entries(b.feitos as Record<string, unknown>)) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dia) && Array.isArray(ids)) feitos[dia] = ids.filter((x): x is string => typeof x === "string");
+      if (DIA.test(dia) && Array.isArray(ids)) feitos[dia] = ids.filter((x): x is string => typeof x === "string");
     }
   }
   const sinais = Array.isArray(b.sinais)
@@ -62,7 +80,21 @@ export function validar(bruto: unknown): DadosEnergia {
   const sentidos = Array.isArray(b.sentidos)
     ? b.sentidos.filter((s): s is DadosEnergia["sentidos"][number] => !!s && typeof s.sinalId === "string" && typeof s.momento === "number")
     : [];
-  return { atividades, feitos, sinais, sentidos };
+  const kit = Array.isArray(b.kit)
+    ? b.kit
+        .filter((k): k is ItemKit => !!k && typeof k.id === "string" && typeof k.nome === "string" && k.nome.trim() !== "")
+        .map((k) => ({ id: k.id, nome: k.nome.trim() }))
+    : [];
+  const usosKit = Array.isArray(b.usosKit)
+    ? b.usosKit.filter((u): u is DadosEnergia["usosKit"][number] => !!u && typeof u.itemId === "string" && typeof u.momento === "number")
+    : [];
+  const camuflagem: Record<string, Camuflagem> = {};
+  if (b.camuflagem && typeof b.camuflagem === "object") {
+    for (const [dia, v] of Object.entries(b.camuflagem as Record<string, unknown>)) {
+      if (DIA.test(dia) && (CAMUFLAGENS as readonly unknown[]).includes(v)) camuflagem[dia] = v as Camuflagem;
+    }
+  }
+  return { atividades, feitos, sinais, sentidos, kit, usosKit, camuflagem };
 }
 
 /** Tira dias muito antigos e anotações demais, para o armazenamento não crescer sem fim. */
@@ -71,7 +103,8 @@ export function podar(d: DadosEnergia, hoje: string): DadosEnergia {
   limite.setDate(limite.getDate() - DIAS_GUARDADOS);
   const corte = `${limite.getFullYear()}-${String(limite.getMonth() + 1).padStart(2, "0")}-${String(limite.getDate()).padStart(2, "0")}`;
   const feitos = Object.fromEntries(Object.entries(d.feitos).filter(([dia, ids]) => dia >= corte && ids.length > 0));
-  return { ...d, feitos, sentidos: d.sentidos.slice(-SENTIDOS_GUARDADOS) };
+  const camuflagem = Object.fromEntries(Object.entries(d.camuflagem).filter(([dia]) => dia >= corte));
+  return { ...d, feitos, camuflagem, sentidos: d.sentidos.slice(-SENTIDOS_GUARDADOS), usosKit: d.usosKit.slice(-USOS_GUARDADOS) };
 }
 
 /** Atividades, marcações do dia, sinais e "estou sentindo isso", no cofre. */
@@ -114,20 +147,61 @@ export function balanco(s: Saldo): Balanco {
   return s.saldo < 0 ? "gastou-mais" : "repos-mais";
 }
 
+/** Dia ("AAAA-MM-DD") de um momento, no horário local. */
+export function diaDe(momento: number): string {
+  const d = new Date(momento);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Algo sugerido para repor: uma atividade que repõe ou um item do kit sensorial. */
+export interface Sugestao {
+  id: string;
+  nome: string;
+  origem: "atividade" | "kit";
+}
+
 /**
- * Uma coisa que costuma repor e ainda não foi feita hoje.
- * Prefere a que a pessoa mais marcou nos outros dias; no empate, a que repõe mais.
+ * Uma coisa que costuma repor e ainda não foi feita hoje: uma atividade que repõe
+ * ou um item do kit de recuperação sensorial.
+ * Prefere a que a pessoa usou em mais dias; no empate, a que repõe mais
+ * (um item do kit conta como "repõe").
  */
-export function sugerirReposicao(d: DadosEnergia, hoje: string): Atividade | null {
+export function sugerirReposicao(d: DadosEnergia, hoje: string): Sugestao | null {
   const feitasHoje = new Set(d.feitos[hoje] ?? []);
-  const vezes = new Map<string, number>();
-  for (const [dia, ids] of Object.entries(d.feitos)) {
-    if (dia === hoje) continue;
-    for (const id of new Set(ids)) vezes.set(id, (vezes.get(id) ?? 0) + 1);
+  const dias = new Map<string, Set<string>>();
+  const contar = (id: string, dia: string) => {
+    if (dia === hoje) return;
+    if (!dias.has(id)) dias.set(id, new Set());
+    dias.get(id)!.add(dia);
+  };
+  for (const [dia, ids] of Object.entries(d.feitos)) for (const id of ids) contar(id, dia);
+  const kitHoje = new Set<string>();
+  for (const u of d.usosKit) {
+    const dia = diaDe(u.momento);
+    if (dia === hoje) kitHoje.add(u.itemId);
+    contar(u.itemId, dia);
   }
-  const candidatas = d.atividades.filter((a) => a.peso > 0 && !feitasHoje.has(a.id));
-  candidatas.sort((a, b) => (vezes.get(b.id) ?? 0) - (vezes.get(a.id) ?? 0) || b.peso - a.peso || a.nome.localeCompare(b.nome));
-  return candidatas[0] ?? null;
+  const candidatas = [
+    ...d.atividades.filter((a) => a.peso > 0 && !feitasHoje.has(a.id)).map((a) => ({ id: a.id, nome: a.nome, peso: a.peso, origem: "atividade" as const })),
+    ...d.kit.filter((k) => !kitHoje.has(k.id)).map((k) => ({ id: k.id, nome: k.nome, peso: 2, origem: "kit" as const })),
+  ];
+  const vezes = (id: string) => dias.get(id)?.size ?? 0;
+  candidatas.sort((a, b) => vezes(b.id) - vezes(a.id) || b.peso - a.peso || a.nome.localeCompare(b.nome));
+  const c = candidatas[0];
+  return c ? { id: c.id, nome: c.nome, origem: c.origem } : null;
+}
+
+/** Anota que um item do kit foi usado agora. */
+export function usarKit(d: DadosEnergia, itemId: string, momento: number): DadosEnergia {
+  return { ...d, usosKit: [...d.usosKit, { itemId, momento }] };
+}
+
+/** Responde (ou apaga, com null) a pergunta da camuflagem de um dia. */
+export function marcarCamuflagem(d: DadosEnergia, dia: string, valor: Camuflagem | null): DadosEnergia {
+  const camuflagem = { ...d.camuflagem };
+  if (valor) camuflagem[dia] = valor;
+  else delete camuflagem[dia];
+  return { ...d, camuflagem };
 }
 
 /** Marca ou desmarca uma atividade num dia. */

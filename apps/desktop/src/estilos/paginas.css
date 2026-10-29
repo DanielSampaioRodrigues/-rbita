@@ -1874,3 +1874,98 @@
   .aparencia-previa-janela { grid-template-columns: minmax(0, 1fr); }
   .aparencia-previa-lateral { display: none; }
 }
+
+/* Energia: camuflagem, semana em saldo, dias pesados, kit sensorial, corpo, terapia */
+.energia-camuflagem { margin-top: var(--espaco-2); }
+.energia-camuflagem .campo-ajuda { margin-top: calc(-1 * var(--espaco-1)); }
+.energia-camuflagem-opcoes .segmentado-opcao,
+.energia-corpo .segmentado-opcao,
+.energia-terapia .segmentado-opcao { min-height: 2.75rem; justify-content: center; }
+
+.energia-semana-dias { display: grid; gap: 0; margin: 0; }
+.energia-semana-dia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--espaco-3);
+  padding: var(--espaco-2) 0;
+  border-bottom: 1px solid var(--cor-borda-suave, var(--cor-borda));
+}
+.energia-semana-dia:last-child { border-bottom: none; }
+.energia-semana-nome { min-width: 3.2rem; font-weight: 650; }
+.energia-semana-dia.vazio .energia-semana-balanco { color: var(--cor-texto-suave); }
+.energia-semana-marca { font-size: 0.85rem; color: var(--cor-texto-suave); }
+.energia-semana-marca::before { content: "· "; }
+.energia-semana-descanso {
+  margin: var(--espaco-3) 0 0;
+  padding: var(--espaco-3) var(--espaco-4);
+  border-radius: var(--canto);
+  background: var(--cor-superficie-alternativa);
+  line-height: 1.5;
+}
+
+.energia-pesados-lista { display: grid; gap: var(--espaco-2); margin: 0; }
+.energia-pesados-lista li {
+  padding: var(--espaco-3) var(--espaco-4);
+  border-radius: var(--canto);
+  background: var(--cor-superficie-alternativa);
+  line-height: 1.5;
+}
+
+.energia-kit-ideias { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--espaco-2); }
+.energia-kit-ideias .botao { font-weight: 500; }
+.energia-kit-check { vertical-align: -0.12em; color: var(--cor-destaque); }
+.energia-kit-estrategias { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espaco-2); margin-top: var(--espaco-3); }
+
+.energia-terapia-aviso { margin: 0; padding: var(--espaco-3) var(--espaco-4); border-left: 3px solid var(--cor-borda-controle); background: var(--cor-superficie-alternativa); border-radius: var(--canto-pequeno, var(--canto)); }
+.energia-terapia-texto { font-family: inherit; white-space: pre-wrap; min-height: 12rem; }
+
+/* Faixa "Como está o corpo?": discreta, num canto, sem som e sem roubar o foco. */
+.energia-corpo-faixa {
+  position: fixed;
+  right: var(--espaco-5);
+  bottom: var(--espaco-5);
+  z-index: 15;
+  display: grid;
+  gap: var(--espaco-2);
+  width: min(32rem, calc(100vw - 2 * var(--espaco-4)));
+  box-sizing: border-box;
+  padding: var(--espaco-3) var(--espaco-4);
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto-grande, var(--canto));
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  box-shadow: var(--sombra);
+}
+.energia-corpo-pergunta { margin: 0; font-weight: 650; }
+.energia-corpo-botoes { display: flex; flex-wrap: wrap; gap: var(--espaco-2); align-items: center; }
+.energia-corpo-coisa {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espaco-1);
+  padding: var(--espaco-2) var(--espaco-3);
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  cursor: pointer;
+}
+.energia-corpo-coisa[data-hovered] { background: var(--cor-superficie-alternativa); }
+.energia-corpo-coisa[data-selected] {
+  border-color: var(--cor-destaque);
+  box-shadow: inset 0 0 0 1px var(--cor-destaque);
+  background: color-mix(in srgb, var(--cor-destaque) 12%, var(--cor-superficie));
+  cursor: default;
+}
+.energia-corpo-coisa[data-selected] .icone { color: var(--cor-destaque); }
+.energia-corpo-coisa[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.energia-corpo-fechar { margin-left: auto; }
+@media (max-width: 40rem) {
+  .energia-corpo-faixa { right: var(--espaco-4); bottom: var(--espaco-4); }
+}
+/* Baixo estímulo: ainda mais discreta (sem sombra, sem cor de destaque, letra menor). */
+:root[data-baixo-estimulo="true"] .energia-corpo-faixa { box-shadow: none; border-color: var(--cor-borda); width: min(28rem, calc(100vw - 2 * var(--espaco-4))); padding: var(--espaco-2) var(--espaco-3); }
+:root[data-baixo-estimulo="true"] .energia-corpo-pergunta { font-weight: 500; color: var(--cor-texto-suave); }
+:root[data-baixo-estimulo="true"] .energia-corpo-coisa[data-selected] { box-shadow: none; background: var(--cor-superficie-alternativa); border-color: var(--cor-texto-suave); }
+@media print { .energia-corpo-faixa { display: none; } }

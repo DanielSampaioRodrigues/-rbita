@@ -17,6 +17,7 @@ import { Aparencia } from "../paginas/Aparencia";
 import { Rotinas } from "../rotinas/Rotinas";
 import { BaixaEnergia } from "../energia/BaixaEnergia";
 import { PaginaEnergia } from "../energia/Energia";
+import { LembreteCorpo } from "../energia/LembreteCorpo";
 import { PaginaSaude } from "../saude/Saude";
 import { LembretesRemedio } from "../saude/LembretesRemedio";
 import { JanelaPlanoDeCrise } from "../saude/PlanoDeCrise";
@@ -218,6 +219,7 @@ export function App() {
            <ProvedorImersivo>
             <BloqueioAutomatico minutos={prefs.bloqueioAuto} aoBloquear={bloquear} />
             <LembretesRemedio aberto={aberto} />
+            <LembreteCorpo aberto={aberto} />
             {prefs.baixaEnergia ? (
               <>
                 <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />

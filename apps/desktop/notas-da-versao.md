@@ -1,3 +1,19 @@
+- **Energia — mais seis coisas da pesquisa**: **"Como está o corpo?"** (lembrete opcional, desligado por padrão, de 1 em 1, 2 em 2 ou 3 em 3 horas: uma faixa discreta no canto com água · comida · banheiro · pausa, sem som nem notificação); **Semana em saldo** (os últimos 7 dias em palavras, e uma frase gentil depois de 3 dias seguidos gastando mais); **Kit de recuperação sensorial** (sua lista do que baixa o estímulo — fone, luz baixa, cobertor pesado… — com "Usar agora", também no modo baixa energia); **Custo da camuflagem** (pergunta opcional: hoje precisou se esforçar para parecer "normal"?); **Dias pesados à vista** (olha a Agenda dos próximos 7 dias e avisa, sem alarme, quando um dia tem 3+ compromissos); e **Levar para a terapia** (monta um texto das últimas 2 a 4 semanas para copiar ou salvar — só quando você pedir).
+
+- **Estudos — mais níveis**: além de Fundamental, Médio, Graduação e Pós, agora tem **Técnico**, **Curso livre** (idioma, concurso, oficina) e **"Do meu jeito"**: você dá o nome e escolhe o que aparece (período, notas, créditos, Pesquisa).
+
+- **Cuidado → Agenda**: ao marcar uma consulta, um interruptor "Marcar também na Agenda" (ligado por padrão) cria o compromisso de dia inteiro; mudar ou tirar a data atualiza o mesmo compromisso.
+
+- **Minha organização**: setas ← → no topo de cada coluna para mudar a ordem.
+
+- **Leitura**: a posição em cada livro e os ajustes do leitor agora ficam no cofre e no backup.
+
+- **Caderno**: o seletor de fonte passou a ter todas as fontes do app, inclusive as 6 novas.
+
+---
+
+<!-- Abaixo: o que veio na 0.45.0. -->
+
 - **Setas de voltar e avançar maiores** e com traço mais grosso, fáceis de tocar. Entre elas, um botãozinho (⌄) abre a **lista das últimas telas** por onde você passou: toca e pula direto. Segurar a seta de voltar também abre a lista.
 
 - **Instalar o Órbita (navegador)**: um cartão discreto explica como colocar o Órbita na tela de início. No iPhone e no iPad: Compartilhar → "Adicionar à Tela de Início". Tem "Agora não" (volta em 7 dias) e "Não mostrar mais". Só aparece enquanto o app não está instalado.

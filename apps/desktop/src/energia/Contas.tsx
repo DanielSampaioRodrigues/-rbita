@@ -8,8 +8,10 @@ import { textos } from "../textos/pt-BR";
 import { useLoja } from "../valores";
 import {
   balanco,
+  CAMUFLAGENS,
   lojaContas,
   marcar,
+  marcarCamuflagem,
   novoId,
   PESOS,
   podar,
@@ -22,6 +24,7 @@ import {
 
 const tc = textos.energia.contas;
 const ts = textos.energia.sinais;
+const tcam = textos.energia.camuflagem;
 const fmtQuando = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 // Um só lugar com os dados (no cofre), para a página e o modo baixa energia verem a mesma coisa.
@@ -134,6 +137,31 @@ export function GastaRepoe() {
             {estado === "gastou-mais" && <SugestaoReposicao />}
           </div>
         </>
+      )}
+
+      {!editando && (
+        <div className="campo energia-camuflagem">
+          <span className="campo-rotulo" id="energia-camuflagem">{tcam.pergunta}</span>
+          <span className="campo-ajuda" id="energia-camuflagem-ajuda">{tcam.ajuda}</span>
+          <ToggleButtonGroup
+            aria-labelledby="energia-camuflagem"
+            aria-describedby="energia-camuflagem-ajuda"
+            selectionMode="single"
+            selectedKeys={dados.camuflagem[hoje] ? [dados.camuflagem[hoje]] : []}
+            onSelectionChange={(k) => {
+              const v = [...k][0];
+              const valor = CAMUFLAGENS.find((c) => c === v) ?? null;
+              mudar((d) => marcarCamuflagem(d, hoje, valor));
+            }}
+            className="segmentado energia-camuflagem-opcoes"
+          >
+            {CAMUFLAGENS.map((c) => (
+              <ToggleButton key={c} id={c} className="segmentado-opcao energia-alvo">
+                {tcam.opcoes[c]}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </div>
       )}
 
       {editando && (

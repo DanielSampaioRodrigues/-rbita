@@ -7,7 +7,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { api } from "./api";
 
 /** Todas as chaves usadas hoje (para a exportação em JSON). */
-export const CHAVES_DE_VALOR = ["rotinas.personalizacao", "rotinas.feitos", "foco.salvos", "energia.contas", "leitura.estante", "leitura.config", "estudos.extras"] as const;
+export const CHAVES_DE_VALOR = ["rotinas.personalizacao", "rotinas.feitos", "foco.salvos", "energia.contas", "energia.corpo", "leitura.estante", "leitura.config", "estudos.extras"] as const;
 export type ChaveDeValor = (typeof CHAVES_DE_VALOR)[number];
 
 function lerAntigo(chave: string): string | null {

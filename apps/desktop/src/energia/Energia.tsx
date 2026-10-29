@@ -10,6 +10,10 @@ import { Teclas } from "../componentes/Teclas";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { GastaRepoe, SinaisSobrecarga } from "./Contas";
+import { KitSensorial } from "./Kit";
+import { AjusteLembreteCorpo } from "./LembreteCorpo";
+import { DiasPesados, SemanaEmSaldo } from "./Semana";
+import { LevarParaTerapia } from "./Terapia";
 
 const t = textos.energia;
 const fmtHora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -118,6 +122,15 @@ export function PaginaEnergia({ aoLigarBaixa, aoAbrirProjeto }: { aoLigarBaixa: 
 
       <GastaRepoe />
 
+      <div className="energia-dupla largura-leitura esticado">
+        <SemanaEmSaldo />
+        <DiasPesados />
+      </div>
+
+      <KitSensorial />
+
+      <AjusteLembreteCorpo />
+
       <section className="cartao largura-leitura esticado" aria-labelledby="historico">
         <h2 id="historico">{t.historico}</h2>
         <p className="campo-ajuda">{t.historicoExplicacao}</p>
@@ -200,6 +213,8 @@ export function PaginaEnergia({ aoLigarBaixa, aoAbrirProjeto }: { aoLigarBaixa: 
           </div>
         </Form>
       </section>
+
+      <LevarParaTerapia />
       <Aviso>{erro}</Aviso>
     </div>
   );
