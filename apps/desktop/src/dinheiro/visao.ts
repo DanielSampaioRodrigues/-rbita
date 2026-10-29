@@ -1,7 +1,7 @@
 // Agregação dos gastos por mês e por grupo, e a geometria da pizza. Tudo puro
 // (sem DOM, sem relógio além do que entra por parâmetro), para dar para testar.
 
-import type { Conta, Gasto, Grupo } from "../api";
+import type { Conta, Entrada, Gasto, Grupo } from "../api";
 
 /** "AAAA-MM" do momento (ms), no horário local. */
 export function chaveMes(ms: number): string {
@@ -176,4 +176,85 @@ export function fatiasPizza(itens: { label: string; cor: string; centavos: numbe
     angulo = fim;
     return { label: i.label, cor: i.cor, centavos: i.centavos, porcentagem: Math.round(fracao * 100), d };
   });
+}
+
+/** "AAAA-MM-DD" do momento (ms), no horário local. */
+export function chaveDia(ms: number): string {
+  const d = new Date(ms);
+  return `${chaveMes(ms)}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** "AAAA-MM-DD" (de um campo de data) → ms ao meio-dia local, longe da virada do dia. `null` se inválido. */
+export function diaParaMomento(dia: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dia);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
+  return Number.isNaN(d.getTime()) || d.getMonth() !== Number(m[2]) - 1 ? null : d.getTime();
+}
+
+/** O mês anterior (`passo` -1) ou seguinte (+1) de "AAAA-MM". */
+export function mesVizinho(mes: string, passo: number): string {
+  const [a, m] = mes.split("-").map(Number);
+  const d = new Date(a, m - 1 + passo, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** As contas fixas que contam num mês: as criadas até aquele mês. */
+export function contasDoMes(contas: Conta[], mes: string): Conta[] {
+  return contas.filter((c) => chaveMes(c.criadoEm) <= mes);
+}
+
+export interface ResumoMes {
+  /** Quanto entrou. */
+  entrou: number;
+  /** Gastos registrados no mês. */
+  gastos: number;
+  /** Contas fixas que contam no mês. */
+  contas: number;
+  /** gastos + contas. */
+  saiu: number;
+  /** entrou − saiu (pode ser negativo: faltou). */
+  sobra: number;
+}
+
+/** Entrou, saiu e sobra de um mês ("AAAA-MM"). As contas fixas entram no "saiu", como na tabela. */
+export function resumoDoMes(gastos: Gasto[], contas: Conta[], entradas: Entrada[], mes: string): ResumoMes {
+  const soma = (xs: { centavos: number }[]) => xs.reduce((s, x) => s + Math.max(0, x.centavos), 0);
+  const entrou = soma(entradas.filter((e) => chaveMes(e.momento) === mes));
+  const g = soma(gastos.filter((x) => chaveMes(x.momento) === mes));
+  const c = soma(contasDoMes(contas, mes));
+  return { entrou, gastos: g, contas: c, saiu: g + c, sobra: entrou - g - c };
+}
+
+/** Total que entrou em cada mês da lista. */
+export function entradasPorMes(entradas: Entrada[], meses: string[]): Record<string, number> {
+  const out: Record<string, number> = Object.fromEntries(meses.map((m) => [m, 0]));
+  for (const e of entradas) {
+    const m = chaveMes(e.momento);
+    if (m in out && e.centavos > 0) out[m] += e.centavos;
+  }
+  return out;
+}
+
+export interface DiaDeGastos {
+  /** "AAAA-MM-DD". */
+  dia: string;
+  total: number;
+  gastos: Gasto[];
+}
+
+/** Gastos de um mês agrupados por dia, do dia mais recente ao mais antigo. */
+export function gastosPorDia(gastos: Gasto[], mes: string): DiaDeGastos[] {
+  const dias = new Map<string, DiaDeGastos>();
+  for (const g of gastos) {
+    if (chaveMes(g.momento) !== mes) continue;
+    const k = chaveDia(g.momento);
+    if (!dias.has(k)) dias.set(k, { dia: k, total: 0, gastos: [] });
+    const d = dias.get(k)!;
+    d.gastos.push(g);
+    d.total += g.centavos;
+  }
+  const lista = [...dias.values()].sort((a, b) => (a.dia < b.dia ? 1 : a.dia > b.dia ? -1 : 0));
+  for (const d of lista) d.gastos.sort((a, b) => b.momento - a.momento);
+  return lista;
 }

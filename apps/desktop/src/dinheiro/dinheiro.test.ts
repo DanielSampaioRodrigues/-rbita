@@ -7,6 +7,7 @@ async function limpar() {
   for (const c of await api.listarContas()) await api.excluirConta(c.id);
   for (const d of await api.listarDesejos()) await api.excluirDesejo(d.id);
   for (const m of await api.listarMetas()) await api.excluirMeta(m.id);
+  for (const e of await api.listarEntradas(0, agora + 1_000_000)) await api.excluirEntrada(e.id);
 }
 
 describe("dinheiro (simulação)", () => {
@@ -55,5 +56,24 @@ describe("dinheiro (simulação)", () => {
     const ms = await api.listarMetas();
     expect(ms).toHaveLength(1);
     expect([ms[0].alvoCentavos, ms[0].guardadoCentavos]).toEqual([100000, 25000]);
+  });
+
+  it("gasto aceita um dia escolhido e uma nota", async () => {
+    const ontem = Date.now() - 86_400_000;
+    const g = await api.registrarGasto(500, "", "café", false, { momento: ontem, nota: " com a Ana " });
+    expect(g.momento).toBe(ontem);
+    expect(g.nota).toBe("com a Ana");
+    const sem = await api.registrarGasto(100, "", "", false);
+    expect(sem.nota).toBeUndefined();
+  });
+
+  it("entradas: registra, lista no intervalo, recusa zero e apaga", async () => {
+    const agora = Date.now();
+    const e = await api.registrarEntrada(300000, " Salário ", agora - 1000);
+    expect(e.descricao).toBe("Salário");
+    await expect(api.registrarEntrada(0, "nada")).rejects.toThrow();
+    expect(await api.listarEntradas(agora - 60_000, agora + 60_000)).toHaveLength(1);
+    await api.excluirEntrada(e.id);
+    expect(await api.listarEntradas(0, agora + 60_000)).toHaveLength(0);
   });
 });

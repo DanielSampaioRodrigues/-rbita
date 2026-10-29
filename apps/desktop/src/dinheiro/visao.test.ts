@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Conta, Gasto, Grupo } from "../api";
-import { chaveMes, fatiasPizza, filtrar, mesesRecentes, pontosLinha, tabelaPorMes } from "./visao";
+import type { Conta, Entrada, Gasto, Grupo } from "../api";
+import { chaveDia, chaveMes, contasDoMes, diaParaMomento, entradasPorMes, fatiasPizza, filtrar, gastosPorDia, mesesRecentes, mesVizinho, pontosLinha, resumoDoMes, tabelaPorMes } from "./visao";
 
 const gasto = (centavos: number, grupoId: string, ano: number, mes1: number, interesse = false): Gasto => ({
   id: crypto.randomUUID(), centavos, grupoId, categoria: "", interesse, descricao: "", momento: new Date(ano, mes1 - 1, 15).getTime(),
@@ -93,5 +93,47 @@ describe("dinheiro: visão (puro)", () => {
     ]);
     expect(f.map((x) => x.porcentagem)).toEqual([75, 25]);
     expect(f[0].d).toContain("A"); // tem arco
+  });
+});
+
+describe("dinheiro: este mês (puro)", () => {
+  const entrada = (centavos: number, ano: number, mes1: number, dia = 5): Entrada => ({
+    id: crypto.randomUUID(), centavos, descricao: "Salário", momento: new Date(ano, mes1 - 1, dia, 12).getTime(),
+  });
+
+  it("resumo: entrou, saiu (gastos + contas fixas) e sobra", () => {
+    const gastos = [gasto(1000, "g1", 2026, 10), gasto(500, "", 2026, 10), gasto(700, "g1", 2026, 9)];
+    const contas = [conta(2000, "", new Date(2026, 8, 1).getTime()), conta(300, "", new Date(2026, 10, 1).getTime())];
+    const entradas = [entrada(10000, 2026, 10), entrada(5, 2026, 9)];
+    const r = resumoDoMes(gastos, contas, entradas, "2026-10");
+    expect(r).toEqual({ entrou: 10000, gastos: 1500, contas: 2000, saiu: 3500, sobra: 6500 });
+    // Sem entrada no mês, a sobra fica negativa (faltou), sem quebrar.
+    expect(resumoDoMes(gastos, contas, [], "2026-10").sobra).toBe(-3500);
+    expect(contasDoMes(contas, "2026-11")).toHaveLength(2);
+  });
+
+  it("entradas por mês", () => {
+    const e = entradasPorMes([entrada(100, 2026, 9), entrada(200, 2026, 10), entrada(50, 2026, 10), entrada(1, 2026, 1)], ["2026-09", "2026-10"]);
+    expect(e).toEqual({ "2026-09": 100, "2026-10": 250 });
+  });
+
+  it("gastos por dia, do mais recente ao mais antigo, com total do dia", () => {
+    const g = (c: number, dia: number, hora: number): Gasto => ({
+      id: crypto.randomUUID(), centavos: c, grupoId: "", categoria: "", interesse: false, descricao: "", momento: new Date(2026, 9, dia, hora).getTime(),
+    });
+    const dias = gastosPorDia([g(100, 3, 9), g(200, 10, 8), g(50, 3, 18), g(999, 1, 1), { ...g(7, 1, 1), momento: new Date(2026, 8, 30).getTime() }], "2026-10");
+    expect(dias.map((d) => d.dia)).toEqual(["2026-10-10", "2026-10-03", "2026-10-01"]);
+    expect(dias[1].total).toBe(150);
+    expect(dias[1].gastos.map((x) => x.centavos)).toEqual([50, 100]);
+  });
+
+  it("datas: dia do campo, chave do dia e mês vizinho", () => {
+    const ms = diaParaMomento("2026-10-29")!;
+    expect(chaveDia(ms)).toBe("2026-10-29");
+    expect(new Date(ms).getHours()).toBe(12);
+    expect(diaParaMomento("2026-02-30")).toBeNull();
+    expect(diaParaMomento("")).toBeNull();
+    expect(mesVizinho("2026-01", -1)).toBe("2025-12");
+    expect(mesVizinho("2026-12", 1)).toBe("2027-01");
   });
 });
