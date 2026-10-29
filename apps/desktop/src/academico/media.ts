@@ -32,3 +32,14 @@ export function situacao(media: number | null, aprovacao: number): Situacao {
   if (media >= aprovacao - 0.5) return "perto";
   return "abaixo";
 }
+
+/**
+ * Médias por bimestre (índices 0–3) e a média do ano (índice 4), cada uma com
+ * as notas lançadas. `bimestreDe` diz em que bimestre cada atividade cai
+ * (null = sem bimestre: entra só no ano).
+ */
+export function mediasPorBimestre(atividades: Atividade[], bimestreDe: (a: Atividade) => number | null): (number | null)[] {
+  const saida: (number | null)[] = [1, 2, 3, 4].map((b) => mediaPonderada(atividades.filter((a) => bimestreDe(a) === b)));
+  saida.push(mediaPonderada(atividades));
+  return saida;
+}

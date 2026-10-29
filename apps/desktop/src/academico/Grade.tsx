@@ -1,11 +1,12 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { api, type Aula, type Materia } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Plus, Trash2 } from "../icones";
-import { avisarMudanca, useMudancas } from "../dados";
+import { avisarMudanca } from "../dados";
 import { textos } from "../textos/pt-BR";
+import { ORDEM_SEMANA } from "./nivel";
 
 const t = textos.estudos.grade;
 
@@ -13,17 +14,17 @@ export function novaAula(materiaId: string): Aula {
   return { id: "", materiaId, diaSemana: 1, inicio: "08:00", fim: "", criadoEm: 0 };
 }
 
-/** Grade de horário semanal: as aulas como blocos fixos por dia, por matéria. */
-export function GradeHorario({ materias }: { materias: Materia[] }) {
-  const [aulas, setAulas] = useState<Aula[]>([]);
+export const aulasDoDia = (aulas: Aula[], dia: number) => aulas.filter((a) => a.diaSemana === dia).sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+/**
+ * Grade de horário semanal: as aulas como blocos fixos por dia, por matéria.
+ * Segunda a sexta sempre aparecem; sábado e domingo só quando têm aula.
+ */
+export function GradeHorario({ materias, aulas, disciplina }: { materias: Materia[]; aulas: Aula[]; disciplina?: boolean }) {
   const [editando, setEditando] = useState<Aula | null>(null);
   const [excluindo, setExcluindo] = useState<Aula | null>(null);
-  const mudancas = useMudancas();
   const porMateria = useMemo(() => new Map(materias.map((m) => [m.id, m])), [materias]);
-
-  useEffect(() => {
-    api.listarAulas().then(setAulas, () => {});
-  }, [mudancas]);
+  const hoje = new Date().getDay();
 
   const excluir = async () => {
     if (!excluindo) return;
@@ -32,31 +33,38 @@ export function GradeHorario({ materias }: { materias: Materia[] }) {
     avisarMudanca();
   };
 
-  const porDia = (dia: number) => aulas.filter((a) => a.diaSemana === dia).sort((a, b) => a.inicio.localeCompare(b.inicio));
+  const dias = ORDEM_SEMANA.filter((d) => (d >= 1 && d <= 5) || aulasDoDia(aulas, d).length > 0);
 
   return (
     <>
       {aulas.length === 0 && <p className="texto-suave">{t.semAulas}</p>}
-      <div className="grade-semana">
-        {t.dias.map((nome, dia) => (
-          <div key={dia} className="grade-dia">
-            <h3 className="grade-dia-nome">{nome}</h3>
-            <ul className="lista-simples sem-marcador">
-              {porDia(dia).map((a) => {
-                const m = porMateria.get(a.materiaId);
-                return (
-                  <li key={a.id}>
-                    <button className={`grade-aula borda-${m?.cor ?? "cinza"}`} onClick={() => setEditando(a)} aria-label={`${t.editarTitulo}: ${m?.nome ?? ""}`}>
-                      <span className="grade-aula-hora">{t.faixa(a.inicio, a.fim)}</span>
-                      <span className="quebra">{m?.nome ?? "—"}</span>
-                    </button>
-                  </li>
-                );
-              })}
-              {porDia(dia).length === 0 && <li className="texto-suave pequeno grade-vazio">{t.semAula}</li>}
-            </ul>
-          </div>
-        ))}
+      <div className="estudos-grade">
+        {dias.map((dia) => {
+          const doDia = aulasDoDia(aulas, dia);
+          const ehHoje = dia === hoje;
+          return (
+            <section key={dia} className={ehHoje ? "estudos-grade-dia hoje" : "estudos-grade-dia"} aria-label={`${t.diasLongos[dia]}${ehHoje ? `, ${t.hoje}` : ""}`}>
+              <h3 className="estudos-grade-dia-nome">
+                {t.dias[dia]}
+                {ehHoje && <span className="estudos-grade-hoje">{t.hoje}</span>}
+              </h3>
+              <ul className="estudos-grade-lista">
+                {doDia.map((a) => {
+                  const m = porMateria.get(a.materiaId);
+                  return (
+                    <li key={a.id}>
+                      <Button className={`estudos-grade-aula cor-${m?.cor ?? "cinza"}`} onPress={() => setEditando(a)} aria-label={`${t.editarTitulo}: ${m?.nome ?? ""}, ${t.diasLongos[dia]} ${t.faixa(a.inicio, a.fim)}`}>
+                        <span className="estudos-grade-hora">{t.faixa(a.inicio, a.fim)}</span>
+                        <span className="estudos-grade-materia">{m?.nome ?? "—"}</span>
+                      </Button>
+                    </li>
+                  );
+                })}
+                {doDia.length === 0 && <li className="estudos-grade-livre">{t.livre}</li>}
+              </ul>
+            </section>
+          );
+        })}
       </div>
 
       <div className="botoes">
@@ -72,6 +80,7 @@ export function GradeHorario({ materias }: { materias: Materia[] }) {
             key={editando.id || "novo"}
             inicial={editando}
             materias={materias}
+            disciplina={disciplina}
             aoFechar={() => setEditando(null)}
             aoExcluir={editando.id ? () => { setExcluindo(editando); setEditando(null); } : undefined}
           />
@@ -83,7 +92,7 @@ export function GradeHorario({ materias }: { materias: Materia[] }) {
   );
 }
 
-function FormAula({ inicial, materias, aoFechar, aoExcluir }: { inicial: Aula; materias: Materia[]; aoFechar: () => void; aoExcluir?: () => void }) {
+function FormAula({ inicial, materias, disciplina, aoFechar, aoExcluir }: { inicial: Aula; materias: Materia[]; disciplina?: boolean; aoFechar: () => void; aoExcluir?: () => void }) {
   const [materiaId, setMateriaId] = useState(inicial.materiaId || materias[0]?.id || "");
   const [diaSemana, setDiaSemana] = useState(inicial.diaSemana);
   const [inicio, setInicio] = useState(inicial.inicio);
@@ -110,7 +119,7 @@ function FormAula({ inicial, materias, aoFechar, aoExcluir }: { inicial: Aula; m
   return (
     <Form className="formulario" onSubmit={enviar}>
       <div className="campo">
-        <label className="campo-rotulo" htmlFor={idMateria}>{t.materia}</label>
+        <label className="campo-rotulo" htmlFor={idMateria}>{disciplina ? t.disciplina : t.materia}</label>
         <select id={idMateria} className="entrada-texto sozinha" value={materiaId} onChange={(e) => setMateriaId(e.target.value)}>
           {materias.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
         </select>
@@ -118,7 +127,7 @@ function FormAula({ inicial, materias, aoFechar, aoExcluir }: { inicial: Aula; m
       <div className="campo">
         <label className="campo-rotulo" htmlFor={idDia}>{t.dia}</label>
         <select id={idDia} className="entrada-texto sozinha" value={diaSemana} onChange={(e) => setDiaSemana(Number(e.target.value))}>
-          {t.dias.map((nome, dia) => <option key={dia} value={dia}>{nome}</option>)}
+          {ORDEM_SEMANA.map((dia) => <option key={dia} value={dia}>{t.dias[dia]}</option>)}
         </select>
       </div>
       <div className="campo">
