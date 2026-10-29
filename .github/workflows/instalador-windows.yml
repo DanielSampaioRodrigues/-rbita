@@ -140,14 +140,19 @@ jobs:
           gh release create "$TAG" "publicar/$NOME" publicar/latest.json -R "$REPO" --title "Órbita $VERSAO" --notes-file apps/desktop/notas-da-versao.md
 
   # Versão de navegador (iPad): publica os arquivos prontos do app no
-  # repositório público orbita-versoes, na branch "site", servida pelo GitHub
-  # Pages em https://danielsampaiorodrigues.github.io/orbita-versoes/
-  # O código-fonte continua aqui, no privado; os dados de quem usa ficam no
-  # próprio aparelho. Não mexe nas versões do Windows (que vêm das Releases).
+  # repositório público orbita-versoes, na subpasta app/ da branch que o
+  # GitHub Pages já serve (a mesma da página inicial e da de privacidade):
+  # https://danielsampaiorodrigues.github.io/orbita-versoes/app/
+  # Só troca a pasta app/; o resto do site fica como está. O código-fonte
+  # continua aqui, no privado; os dados de quem usa ficam no próprio aparelho.
+  # Não mexe nas versões do Windows (que vêm das Releases).
   navegador:
     if: github.event_name == 'workflow_dispatch' && (inputs.alvo == 'navegador' || inputs.alvo == 'ambos')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      SITE_REPO: DanielSampaioRodrigues/orbita-versoes
+      SITE_BRANCH: claude/orbita-setup-planning-cfbqzz
     steps:
       - uses: actions/checkout@v5
 
@@ -173,36 +178,23 @@ jobs:
           VITE_ORBITA_WEB: "1"
         run: pnpm exec vite build
 
-      - name: Publicar no orbita-versoes (branch site)
-        working-directory: apps/desktop/dist-web
+      - name: Publicar em app/ no site do orbita-versoes
         env:
           GH_TOKEN: ${{ secrets.TOKEN_VERSOES }}
         run: |
-          REPO=DanielSampaioRodrigues/orbita-versoes
-          VERSAO=$(node -p "require('../package.json').version")
-          # O GitHub Pages não deve tratar os arquivos como site Jekyll.
-          touch .nojekyll
-          git init -q -b site
+          VERSAO=$(node -p "require('./apps/desktop/package.json').version")
+          git clone -q --depth 1 --branch "$SITE_BRANCH" "https://x-access-token:${GH_TOKEN}@github.com/${SITE_REPO}.git" site
+          rm -rf site/app
+          mkdir site/app
+          cp -r apps/desktop/dist-web/. site/app/
+          cd site
+          git add -A app
+          if git diff --cached --quiet; then
+            echo "A versão de navegador $VERSAO já está publicada; nada a fazer."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Versão de navegador $VERSAO"
-          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" site
-          echo "Publicada a versão de navegador $VERSAO na branch site de $REPO."
-
-      # Liga o GitHub Pages na branch "site", se ainda não estiver ligado. Se o
-      # token não puder, liga-se uma vez à mão: orbita-versoes, Settings, Pages,
-      # Source "Deploy from a branch", branch "site", pasta "/ (root)".
-      - name: Ligar o GitHub Pages (se preciso)
-        env:
-          GH_TOKEN: ${{ secrets.TOKEN_VERSOES }}
-        run: |
-          REPO=DanielSampaioRodrigues/orbita-versoes
-          if gh api "repos/$REPO/pages" > /dev/null 2>&1; then
-            echo "O GitHub Pages já está ligado."
-          elif gh api -X POST "repos/$REPO/pages" -f "source[branch]=site" -f "source[path]=/" > /dev/null 2>&1; then
-            echo "Liguei o GitHub Pages na branch site."
-          else
-            echo "::warning::Não consegui ligar o GitHub Pages pelo token. Ligue uma vez à mão: orbita-versoes, Settings, Pages, Deploy from a branch, branch site, pasta / (root)."
-          fi
-          echo "Endereço: https://danielsampaiorodrigues.github.io/orbita-versoes/"
+          git commit -q -m "Versão de navegador $VERSAO em /app"
+          git push -q origin "HEAD:$SITE_BRANCH"
+          echo "Publicada em https://danielsampaiorodrigues.github.io/orbita-versoes/app/"
