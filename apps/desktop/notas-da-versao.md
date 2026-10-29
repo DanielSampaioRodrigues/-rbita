@@ -1,3 +1,23 @@
+- **Caderno — a mão não atrapalha mais**: com "Escrever só com a caneta" ligado, nenhum toque rola nem dá zoom enquanto a caneta encosta e logo depois; a **palma apoiada** (toque largo) é ignorada. Novo **cadeado "Travar a folha"** (na barra e na engrenagem): trava rolagem e zoom por toque, só a caneta escreve, e aparecem setas "‹ Página ›" para trocar de página.
+
+- **"Só caneta" já vem ligado** no iPad, em tablets e celulares (dá para desligar).
+
+- **Barra de ferramentas nova**: uma pílula flutuante, da mesma espessura nas quatro posições, encaixada no lado da página. As opções (formas, pincéis, texto…) abrem num painel ao lado, sem engrossar a barra. Uma **alça de pontinhos** mostra que dá para arrastar a barra para outro lado (ou toque nela para trocar de lado); ferramentas com mais opções têm um **▸** no canto. Na primeira vez, uma dica curta explica isso.
+
+- **Página nova ao puxar**: ao puxar além da última página, uma página tracejada vai crescendo; quando aparece "Solte para criar uma página", soltar cria. Voltar antes não cria nada.
+
+- **Modelos de pincel**: redondo, **giz**, **spray**, **pincel seco**, **aquarela** e **caneta caligráfica**, com prévia de cada um.
+
+- **Lápis** não falha mais quando a Pencil encosta de leve (fica fino, mas não some).
+
+- **Pastas do caderno** com cara de pasta de verdade (3D, com papel aparecendo), do tamanho de um caderno, e com **cor à sua escolha**.
+
+- **"Igual ao sistema"**: em Aparência, a opção de modo de cor agora diz "Igual ao sistema" (vale para iPad, Mac e Windows).
+
+---
+
+<!-- Abaixo: o que veio na 0.45.1. -->
+
 - **Energia — mais seis coisas da pesquisa**: **"Como está o corpo?"** (lembrete opcional, desligado por padrão, de 1 em 1, 2 em 2 ou 3 em 3 horas: uma faixa discreta no canto com água · comida · banheiro · pausa, sem som nem notificação); **Semana em saldo** (os últimos 7 dias em palavras, e uma frase gentil depois de 3 dias seguidos gastando mais); **Kit de recuperação sensorial** (sua lista do que baixa o estímulo — fone, luz baixa, cobertor pesado… — com "Usar agora", também no modo baixa energia); **Custo da camuflagem** (pergunta opcional: hoje precisou se esforçar para parecer "normal"?); **Dias pesados à vista** (olha a Agenda dos próximos 7 dias e avisa, sem alarme, quando um dia tem 3+ compromissos); e **Levar para a terapia** (monta um texto das últimas 2 a 4 semanas para copiar ou salvar — só quando você pedir).
 
 - **Estudos — mais níveis**: além de Fundamental, Médio, Graduação e Pós, agora tem **Técnico**, **Curso livre** (idioma, concurso, oficina) e **"Do meu jeito"**: você dá o nome e escolhe o que aparece (período, notas, créditos, Pesquisa).

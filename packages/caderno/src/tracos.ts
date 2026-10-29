@@ -43,14 +43,29 @@ export function caminhoSVG(pts: number[][]): string {
   return d + " Z";
 }
 
-/** Caminho SVG do traço, pronto para `<path d>`. */
-export function caminhoDeTraco(traco: Traco): string {
+/** Pressão mínima do lápis: com a Apple Pencil encostando de leve, a pressão
+ *  chega perto de zero e o traço sumia em trechos (parecia "falhar"). O lápis
+ *  agora tem um piso: leve continua visível, só mais fino. */
+export const PISO_LAPIS = 0.35;
+
+/** Pontos do traço como a biblioteca espera ([x, y, pressão]). No lápis com
+ *  pressão real, a pressão ganha o piso acima. */
+export function pontosDoTraco(traco: Traco): number[][] {
+  if (traco.ferramenta === "lapis" && traco.pressao) {
+    return traco.pontos.map((p) => [p.x, p.y, PISO_LAPIS + (1 - PISO_LAPIS) * p.p]);
+  }
+  return traco.pontos.map((p) => [p.x, p.y, p.p]);
+}
+
+/** Caminho SVG do traço, pronto para `<path d>`. `fator` muda a espessura
+ *  (o lápis usa um miolo mais fino por cima do contorno). */
+export function caminhoDeTraco(traco: Traco, fator = 1): string {
   const op = FERRAMENTAS[traco.ferramenta] ?? FERRAMENTAS.caneta;
   const afinar = traco.afinar ?? op.afinar;
   const contorno = getStroke(
-    traco.pontos.map((p) => [p.x, p.y, p.p]),
+    pontosDoTraco(traco),
     {
-      size: traco.espessura || op.tamanho,
+      size: (traco.espessura || op.tamanho) * fator,
       thinning: afinar,
       smoothing: op.suavizar,
       streamline: traco.alisar ?? op.alisar,

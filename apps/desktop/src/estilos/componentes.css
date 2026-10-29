@@ -831,11 +831,6 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 /* Pastas do Caderno (cara de pasta, estilo Windows/Mac). */
 .caderno-pastas { list-style: none; margin: 0 0 var(--espaco-5); padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: var(--espaco-4); }
 .caderno-pasta { display: flex; flex-direction: column; gap: var(--espaco-1); }
-.caderno-pasta-fig { position: relative; width: 100%; aspect-ratio: 4 / 3; border: none; cursor: pointer; background: var(--etq-areia); border-radius: 2px 10px 10px 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16); display: flex; align-items: flex-end; justify-content: flex-end; padding: var(--espaco-2); }
-.caderno-pasta-fig::before { content: ""; position: absolute; top: -9px; left: 0; width: 46%; height: 11px; background: var(--etq-areia); border-radius: 6px 6px 0 0; }
-.caderno-pasta-fig:hover { filter: brightness(1.05); }
-.caderno-pasta-fig:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
-.caderno-pasta-qtd { font-weight: 700; color: rgba(0, 0, 0, 0.55); font-size: 1.1rem; }
 .caderno-mover { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--cor-texto-suave); }
 .caderno-mover-select { flex: 1; min-width: 0; font-size: 0.8rem; padding: 0.15rem 0.3rem; border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-1); background: var(--cor-fundo); color: var(--cor-texto); }
 
@@ -853,7 +848,6 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-rolagem.lateral { flex-direction: row; align-items: flex-start; }
 .caderno-rolagem.lateral > * { margin-inline: 0; }
 .caderno-rolagem.lateral .caderno-adicionar { width: 16rem; flex-direction: column; align-items: stretch; }
-.caderno-rolagem.lateral .caderno-puxar { width: 35vw; min-height: 0; padding-top: 30vh; }
 .caderno-rolagem .caderno-aviso-breve { width: min(100%, 1500px); }
 .caderno-folha-bloco { width: min(100%, 1500px); }
 .caderno-folha-bloco.atual .caderno-folha-area { outline: 2px solid var(--cor-destaque); outline-offset: 2px; }
@@ -923,13 +917,10 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-regua-unidade:focus-visible, .caderno-regua-angulo input:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 1px; }
 
 /* Barra de ferramentas de desenho (rodapé do caderno). */
-.caderno-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--espaco-2) var(--espaco-4); padding: var(--espaco-2) var(--espaco-3); border-top: 1px solid var(--cor-borda); background: var(--cor-superficie); }
 .caderno-barra-grupo { display: inline-flex; align-items: center; gap: var(--espaco-1); }
-.caderno-ferramenta { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border: 1px solid transparent; border-radius: var(--raio-1); background: none; color: var(--cor-texto-suave); cursor: pointer; }
 .caderno-ferramenta[data-hovered] { background: var(--cor-superficie-alternativa); }
 .caderno-ferramenta.ativa { background: var(--cor-superficie-alternativa); color: var(--cor-destaque); border-color: var(--cor-destaque); }
 /* Barra com cor escolhida pela pessoa: ícones se ajustam para contrastar. */
-.caderno-barra.tintada { border-color: color-mix(in srgb, var(--barra-fg) 25%, transparent); }
 .caderno-barra.tintada .caderno-ferramenta,
 .caderno-barra.tintada .botao-icone,
 .caderno-barra.tintada .caderno-mover-barra,
@@ -971,26 +962,9 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-nova-pagina[data-hovered] { background: var(--cor-superficie-alternativa); }
 .caderno-nova-pagina[data-focus-visible] { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
 .caderno-barra.tintada .caderno-nova-pagina { color: var(--barra-fg); border-color: color-mix(in srgb, var(--barra-fg) 35%, transparent); }
-.caderno-barra.vertical .caderno-nova-pagina { width: 2.4rem; padding: 0; justify-content: center; }
-.caderno-barra.vertical .caderno-nova-pagina-texto { display: none; }
 /* Fim do caderno: espaço para "puxar" e criar página nova ao rolar além da última. */
-.caderno-puxar { width: min(100%, 1500px); min-height: 35vh; padding-top: var(--espaco-4); text-align: center; color: var(--cor-texto-suave); font-size: 0.9rem; flex: none; }
 /* iPad com Apple Pencil: o dedo rola o caderno; a caneta continua escrevendo. */
 .caderno-folha-area.dedo-rola, .caderno-desenho.dedo-rola { touch-action: pan-x pan-y; }
-
-/* Barra de ferramentas móvel: cima, baixo ou nas laterais. */
-.caderno-miolo { flex: 1; display: flex; min-height: 0; }
-.caderno-miolo.pos-baixo { flex-direction: column; }
-.caderno-miolo.pos-cima { flex-direction: column-reverse; }
-.caderno-miolo.pos-direita { flex-direction: row; }
-.caderno-miolo.pos-esquerda { flex-direction: row-reverse; }
-.caderno-miolo > .caderno-area { flex: 1; min-height: 0; min-width: 0; }
-.caderno-mover-barra { cursor: pointer; }
-.caderno-barra.vertical { flex-direction: column; align-items: center; justify-content: flex-start; flex-wrap: nowrap; border-top: none; border-left: 1px solid var(--cor-borda); overflow-y: auto; min-width: 3.6rem; }
-.pos-cima .caderno-barra { border-top: none; border-bottom: 1px solid var(--cor-borda); }
-.pos-esquerda .caderno-barra.vertical { border-left: none; border-right: 1px solid var(--cor-borda); }
-.caderno-barra.vertical .caderno-barra-grupo { flex-direction: column; }
-.caderno-barra.vertical .caderno-cores { flex-wrap: wrap; max-width: 3.6rem; justify-content: center; }
 
 /* ---------- Minha organização: quadros (estilo Trello) e listas ---------- */
 /* Guarda as cores do tema antes de qualquer pintura, para as partes sem cor voltarem a elas. */
@@ -1104,28 +1078,18 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 :root[data-baixo-estimulo="true"][data-modo="escuro"] .org-pintado { --org-fundo: color-mix(in srgb, var(--org-e-fundo) 40%, var(--org-tema-superficie, #222)); }
 
 /* Caderno: barra que se estende com as opções da ferramenta ativa. */
-.caderno-subbarra { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--espaco-2); padding-top: var(--espaco-2); border-top: 1px solid var(--cor-borda-suave); }
-.caderno-barra.vertical .caderno-subbarra { flex-basis: auto; flex-direction: column; padding-top: var(--espaco-2); max-width: 3.6rem; }
 .caderno-subbarra-slot { display: contents; }
 .caderno-subbarra-dica { margin: 0; font-size: 0.85rem; color: var(--cor-texto-suave); max-width: 36rem; }
-.caderno-barra.vertical .caderno-subbarra-dica { display: none; }
-.caderno-barra.tintada .caderno-subbarra { border-color: color-mix(in srgb, var(--barra-fg) 25%, transparent); }
-.caderno-barra.tintada .caderno-subbarra-dica { color: var(--barra-fg); opacity: 0.85; }
 .caderno-sub-botao { display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; min-width: 2.2rem; height: 2.2rem; padding: 0 0.4rem; border: 1px solid transparent; border-radius: var(--raio-1); background: none; color: var(--cor-texto-suave); font: inherit; cursor: pointer; touch-action: manipulation; }
 .caderno-sub-botao.texto { padding: 0 0.7rem; border-color: var(--cor-borda-suave); }
 .caderno-sub-botao:hover { background: var(--cor-superficie-alternativa); }
 .caderno-sub-botao.ativo { background: var(--cor-superficie-alternativa); color: var(--cor-destaque); border-color: var(--cor-destaque); }
 .caderno-sub-botao:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 1px; }
-.caderno-barra.tintada .caderno-sub-botao { color: var(--barra-fg); }
-.caderno-barra.tintada .caderno-sub-botao.ativo { background: color-mix(in srgb, var(--barra-fg) 18%, transparent); border-color: var(--barra-fg); }
 /* Formatação do texto na barra (antes ficava flutuando em cima da caixa). */
 .caderno-fmt-barra { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--espaco-1); }
-.caderno-barra.vertical .caderno-fmt-barra { flex-direction: column; }
-.caderno-barra.vertical .caderno-fmt-grupo { flex-direction: column; border: none; }
 .caderno-fmt:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 1px; }
 .caderno-fmt-valor { min-width: 3rem; text-align: center; font-size: 0.85rem; font-variant-numeric: tabular-nums; color: var(--cor-texto-suave); }
 .caderno-fmt-pronto { padding: 0 0.7rem; border: 1px solid var(--cor-borda); }
-.caderno-barra.tintada .caderno-fmt, .caderno-barra.tintada .caderno-fmt-valor { color: var(--barra-fg); }
 /* Zoom diferente de 100%: aviso na barra de cima, que também volta ao normal. */
 .caderno-zoom { font-variant-numeric: tabular-nums; }
 
@@ -1448,3 +1412,108 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .hobby-amostra-nome { font-size: 0.8rem; text-align: center; line-height: 1.2; }
 .hobby-fundo-previa { display: block; height: 7rem; border-radius: 12px; border: 1px solid var(--cor-borda-suave); background: center / cover no-repeat; }
 .quadro-cartao-livre.hobby-cartao-previa { position: relative; min-height: 4.5rem; }
+
+/* ---------- Caderno 0.45.2: barra flutuante, painel de opções, trava, fantasma, pastas 3D ---------- */
+/* A barra é uma pílula flutuante com a mesma espessura (52 px) nos quatro lados,
+   centralizada no lado escolhido e com margem da borda. Não engrossa: as opções
+   da ferramenta abrem num painel ao lado. Se não couber, rola por dentro. */
+.caderno-miolo { position: relative; flex: 1; display: flex; min-height: 0; min-width: 0; }
+.caderno-miolo.pos-baixo { flex-direction: column; }
+.caderno-miolo.pos-cima { flex-direction: column-reverse; }
+.caderno-miolo.pos-direita { flex-direction: row; }
+.caderno-miolo.pos-esquerda { flex-direction: row-reverse; }
+.caderno-miolo > .caderno-area { flex: 1; min-height: 0; min-width: 0; }
+.caderno-barra-caixa { position: relative; flex: none; align-self: center; display: flex; margin: 10px; max-width: calc(100% - 20px); max-height: calc(100% - 20px); min-width: 0; min-height: 0; z-index: 5; }
+.caderno-barra { --barra-esp: 52px; display: flex; align-items: center; gap: 4px; height: var(--barra-esp); padding: 0 8px; min-width: 0; overflow-x: auto; overflow-y: hidden; white-space: nowrap; border: 1px solid var(--cor-borda); border-radius: 999px; background: var(--cor-superficie); box-shadow: 0 4px 16px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.08); scrollbar-width: thin; }
+.caderno-barra.vertical { flex-direction: column; height: auto; width: var(--barra-esp); padding: 8px 0; overflow-x: hidden; overflow-y: auto; }
+.caderno-barra-grupo { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.caderno-barra.vertical .caderno-barra-grupo { flex-direction: column; }
+.caderno-barra-sep { flex: none; width: 1px; height: 26px; margin: 0 4px; background: var(--cor-borda); }
+.caderno-barra.vertical .caderno-barra-sep { width: 26px; height: 1px; margin: 4px 0; }
+.caderno-barra .botao-icone { flex: none; width: 40px; height: 40px; border-radius: 999px; }
+.caderno-cores { gap: 5px; padding: 0 2px; }
+.caderno-barra.vertical .caderno-cores { padding: 2px 0; }
+.caderno-cor, .caderno-cor-escolher { flex: none; width: 24px; height: 24px; }
+.caderno-ferramenta { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid transparent; border-radius: 999px; background: none; color: var(--cor-texto-suave); cursor: pointer; }
+.caderno-ferramenta[data-focus-visible] { outline: 2px solid var(--cor-foco); outline-offset: 1px; }
+/* ▸ no canto: a ferramenta tem mais opções (painel ao lado da barra). */
+.caderno-ferramenta-mais { position: absolute; right: 5px; bottom: 5px; width: 0; height: 0; border-left: 5px solid transparent; border-bottom: 5px solid currentColor; opacity: 0.75; pointer-events: none; }
+.caderno-mover-barra { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 40px; margin-right: 2px; border: none; border-radius: 999px; background: none; color: var(--cor-texto-suave); cursor: grab; touch-action: none; }
+.caderno-barra.vertical .caderno-mover-barra { width: 40px; height: 28px; margin: 0 0 2px; }
+.caderno-mover-barra:hover { background: var(--cor-superficie-alternativa); }
+.caderno-mover-barra:active { cursor: grabbing; }
+.caderno-mover-barra:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 1px; }
+.caderno-nova-pagina { flex: none; height: 40px; border-radius: 999px; }
+.caderno-barra.vertical .caderno-nova-pagina { width: 40px; padding: 0; justify-content: center; }
+.caderno-barra.vertical .caderno-nova-pagina-texto { display: none; }
+.caderno-barra.tintada { border-color: color-mix(in srgb, var(--barra-fg) 25%, transparent); }
+.caderno-barra.tintada .caderno-barra-sep { background: color-mix(in srgb, var(--barra-fg) 30%, transparent); }
+
+/* Painel de opções e dica: flutuam ao lado da barra, por cima da página. */
+.caderno-flutuante { position: absolute; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--espaco-2); padding: var(--espaco-2) var(--espaco-3); background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: 16px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08); width: max-content; max-width: min(36rem, calc(100vw - 2rem)); }
+.pos-baixo > .caderno-flutuante { bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); }
+.pos-cima > .caderno-flutuante { top: calc(100% + 8px); left: 50%; transform: translateX(-50%); }
+.pos-direita > .caderno-flutuante { right: calc(100% + 8px); top: 50%; transform: translateY(-50%); max-width: 17rem; max-height: 80vh; overflow-y: auto; }
+.pos-esquerda > .caderno-flutuante { left: calc(100% + 8px); top: 50%; transform: translateY(-50%); max-width: 17rem; max-height: 80vh; overflow-y: auto; }
+.caderno-subbarra-slot { display: contents; }
+.caderno-subbarra-dica { margin: 0; font-size: 0.85rem; color: var(--cor-texto-suave); max-width: 30rem; white-space: normal; }
+.caderno-painel-pe { display: inline-flex; align-items: center; gap: var(--espaco-1); margin-left: auto; }
+.caderno-dica { max-width: 20rem; justify-content: flex-start; }
+.caderno-dica p { margin: 0; font-size: 0.9rem; flex: 1 1 12rem; }
+.pos-direita > .caderno-dica, .pos-esquerda > .caderno-dica { max-width: 15rem; }
+
+/* Modelos do pincel: cada um com a prévia do traço. */
+.caderno-pinceis { display: grid; grid-template-columns: repeat(3, minmax(6.5rem, 1fr)); gap: var(--espaco-1); }
+.pos-direita .caderno-pinceis, .pos-esquerda .caderno-pinceis { grid-template-columns: repeat(2, minmax(6rem, 1fr)); }
+.caderno-pincel { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 4px; border: 1px solid var(--cor-borda-suave); border-radius: 10px; background: #fff; color: #1f2937; font: inherit; font-size: 0.8rem; cursor: pointer; touch-action: manipulation; }
+.caderno-pincel svg { width: 100%; height: 2.4rem; display: block; }
+.caderno-pincel.ativo { border-color: var(--cor-destaque); outline: 2px solid var(--cor-destaque); outline-offset: -1px; }
+.caderno-pincel:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 1px; }
+
+/* Arrastando a barra: faixa tracejada no lado onde ela vai ficar. */
+.caderno-alvo-barra { position: absolute; z-index: 7; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--cor-destaque); border-radius: 999px; background: color-mix(in srgb, var(--cor-destaque) 10%, transparent); color: var(--cor-destaque); font-size: 0.85rem; font-weight: 600; pointer-events: none; }
+.caderno-alvo-barra.pos-baixo { left: 15%; right: 15%; bottom: 10px; height: 52px; }
+.caderno-alvo-barra.pos-cima { left: 15%; right: 15%; top: 10px; height: 52px; }
+.caderno-alvo-barra.pos-direita { top: 15%; bottom: 15%; right: 10px; width: 52px; }
+.caderno-alvo-barra.pos-esquerda { top: 15%; bottom: 15%; left: 10px; width: 52px; }
+.caderno-alvo-barra.pos-direita span, .caderno-alvo-barra.pos-esquerda span { writing-mode: vertical-rl; }
+
+/* Folha travada: o toque não rola nem dá zoom (a caneta e a roda do mouse, sim). */
+.caderno-rolagem.travada, .caderno-rolagem.travada .caderno-folha-area, .caderno-rolagem.travada .caderno-desenho { touch-action: none; }
+.caderno-pagina-atual { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Fim do caderno: espaço para puxar e o "fantasma" da página que vai nascer. */
+.caderno-puxar { min-height: 45vh; flex: none; display: flex; flex-direction: column; align-items: stretch; }
+.caderno-rolagem.lateral .caderno-puxar { width: 40vw; min-height: 0; flex-direction: row; align-items: flex-start; padding-top: calc(1.2rem + var(--espaco-1)); }
+.caderno-puxar-vazia { margin: var(--espaco-4) 0 0; text-align: center; color: var(--cor-texto-suave); font-size: 0.9rem; }
+.caderno-fantasma { position: relative; flex: none; height: 0; min-height: 0; border: 2px dashed var(--cor-borda); border-radius: 4px; background: color-mix(in srgb, var(--cor-superficie) 70%, transparent); overflow: hidden; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--cor-texto-suave); font-size: 0.95rem; }
+.caderno-rolagem.lateral .caderno-fantasma { width: 0; }
+.caderno-fantasma[data-pronto="1"] { border-color: var(--cor-destaque); color: var(--cor-destaque); font-weight: 600; }
+.caderno-fantasma-texto { padding: var(--espaco-2); }
+.caderno-fantasma[data-pronto="1"] .puxe, .caderno-fantasma:not([data-pronto="1"]) .solte { display: none; }
+
+/* Pastas da estante: desenho 3D pequeno (do tamanho de um caderno na grade). */
+.caderno-pasta-fig { display: block; width: 100%; max-width: 7.5rem; padding: 0; border: none; background: none; cursor: pointer; border-radius: var(--raio-2); }
+.caderno-pasta-fig:hover .pasta3d { filter: brightness(1.04); }
+.caderno-pasta-fig:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 3px; }
+.pasta3d { display: block; width: 100%; height: auto; overflow: visible; }
+.pasta3d-sombra { fill: rgb(0 0 0 / 0.16); }
+.pasta3d-papel { fill: #f7f5ef; stroke: rgb(0 0 0 / 0.12); stroke-width: 0.8; }
+.pasta3d-papel.claro { fill: #ffffff; }
+.pasta3d-brilho { fill: none; stroke: rgb(255 255 255 / 0.55); stroke-width: 1.4; stroke-linecap: round; }
+.pasta3d-qtd { font-size: 15px; font-weight: 700; opacity: 0.75; font-family: var(--fonte-texto); }
+.caderno-pasta-cores { display: flex; flex-wrap: wrap; gap: var(--espaco-2); }
+.caderno-pasta-previa { display: flex; align-items: center; gap: var(--espaco-3); }
+.caderno-pasta-previa .pasta3d { width: 4.5rem; flex: none; }
+/* Baixo estímulo: pasta chapada, sem gradiente, brilho nem sombra. */
+:root[data-baixo-estimulo="true"] .pasta3d-frente { fill: var(--pasta-cor); }
+:root[data-baixo-estimulo="true"] .pasta3d-fundo { fill: var(--pasta-escura); }
+:root[data-baixo-estimulo="true"] .pasta3d-sombra, :root[data-baixo-estimulo="true"] .pasta3d-brilho { display: none; }
+:root[data-baixo-estimulo="true"] .caderno-barra, :root[data-baixo-estimulo="true"] .caderno-flutuante { box-shadow: none; }
+.caderno-barra .caderno-mover-barra { touch-action: none; }
+.caderno-flutuante button, .caderno-flutuante label { touch-action: manipulation; }
+.caderno-pastas { align-self: stretch; }
+.caderno-pasta { max-width: 8.5rem; }
+.caderno-pasta .caderno-item-pe { flex-wrap: wrap; row-gap: 0; }
+.caderno-pasta .caderno-item-pe strong { flex: 1 1 100%; word-break: normal; overflow-wrap: anywhere; }
+.caderno-pasta .caderno-item-pe .linha-ajuste { flex-direction: row; flex-wrap: nowrap; }

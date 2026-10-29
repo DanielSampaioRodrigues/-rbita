@@ -56,6 +56,10 @@ export interface Ponto {
 
 export type Ferramenta = "caneta" | "lapis" | "pincel" | "marcatexto" | "borracha";
 
+/** Modelos do pincel. "redondo" é o pincel de sempre (traços antigos). */
+export type ModeloPincel = "redondo" | "giz" | "spray" | "seco" | "aquarela" | "caligrafica";
+export const MODELOS_PINCEL: ModeloPincel[] = ["redondo", "giz", "spray", "seco", "aquarela", "caligrafica"];
+
 /** Um traço à mão livre. As formas, texto, setas, notas e imagens entram nas
  *  etapas seguintes; por isso `Elemento` já é uma união aberta. */
 export interface Traco {
@@ -74,6 +78,12 @@ export interface Traco {
    *  do Windows). Aí a espessura segue a pressão gravada nos pontos; sem isso
    *  (mouse, dedo, traços antigos), a pressão é simulada pela velocidade. */
   pressao?: boolean;
+  /** Modelo do pincel (só na ferramenta pincel). Ausente = "redondo". */
+  pincel?: ModeloPincel;
+  /** Semente do sorteio das texturas (giz, spray, pincel seco...). Fica
+   *  guardada no traço para ele ser redesenhado sempre igual. Ausente = vem
+   *  do id. */
+  semente?: number;
   /** Id do grupo (objetos agrupados se selecionam juntos). Ausente = solto. */
   grupo?: string;
   pontos: Ponto[];

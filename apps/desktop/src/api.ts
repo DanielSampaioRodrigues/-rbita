@@ -483,6 +483,8 @@ export interface Caderno {
 export interface PastaCaderno {
   id: string;
   nome: string;
+  /** Cor da pasta (chave da paleta de pastas). Ausente/vazio = areia. */
+  cor?: string;
   criadoEm: number;
 }
 
@@ -2157,7 +2159,7 @@ function simularCaderno() {
         pastas[i] = { ...p, nome: p.nome.trim() };
         return { ...pastas[i] };
       }
-      const nova: PastaCaderno = { id: crypto.randomUUID(), nome: p.nome.trim(), criadoEm: Date.now() };
+      const nova: PastaCaderno = { id: crypto.randomUUID(), nome: p.nome.trim(), cor: p.cor ?? "", criadoEm: Date.now() };
       pastas.push(nova);
       return { ...nova };
     },

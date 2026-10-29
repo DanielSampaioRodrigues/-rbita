@@ -36,3 +36,12 @@ export const ICONES_FORMA: Record<"reta" | "retangulo" | "elipse" | "triangulo" 
   losango: (p) => <Base {...p}><path d="M12 3l9 9-9 9-9-9z" /></Base>,
   estrela: (p) => <Base {...p}><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z" /></Base>,
 };
+/** Cadeado fechado (folha travada) e aberto (folha livre). */
+export const IconeCadeado = (p: P) => <Base {...p}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></Base>;
+export const IconeCadeadoAberto = (p: P) => <Base {...p}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.6-1.8" /></Base>;
+/** Alça de arrastar (seis pontinhos). `deitada` para a barra horizontal. */
+export const IconeAlca = ({ deitada, ...p }: P & { deitada?: boolean }) => (
+  <svg width={p.size ?? "1em"} height={p.size ?? "1em"} viewBox="0 0 24 24" fill="currentColor" focusable="false" aria-hidden={p["aria-hidden"]}>
+    {(deitada ? [[6, 9], [12, 9], [18, 9], [6, 15], [12, 15], [18, 15]] : [[9, 6], [15, 6], [9, 12], [15, 12], [9, 18], [15, 18]]).map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r={1.8} />)}
+  </svg>
+);

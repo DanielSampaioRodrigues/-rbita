@@ -67,8 +67,18 @@ pub struct PastaCaderno {
     #[serde(default)]
     pub id: String,
     pub nome: String,
+    /// Cor da pasta (chave da paleta de pastas); vazio = padrão. Fica em `dados`.
+    #[serde(default)]
+    pub cor: String,
     #[serde(default)]
     pub criado_em: i64,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DadosPasta {
+    #[serde(default)]
+    cor: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -111,10 +121,13 @@ struct DadosPagina {
 
 pub fn listar_pastas(conn: &Connection) -> Result<Vec<PastaCaderno>, Erro> {
     let mut c = conn.prepare(
-        "SELECT id, titulo, criado_em FROM item WHERE tipo = 'caderno_pasta' AND excluido_em IS NULL ORDER BY titulo",
+        "SELECT id, titulo, criado_em, dados FROM item WHERE tipo = 'caderno_pasta' AND excluido_em IS NULL ORDER BY titulo",
     )?;
     let lista = c
-        .query_map([], |r| Ok(PastaCaderno { id: r.get(0)?, nome: r.get(1)?, criado_em: r.get(2)? }))?
+        .query_map([], |r| {
+            let d: DadosPasta = serde_json::from_str(&r.get::<_, String>(3)?).unwrap_or_default();
+            Ok(PastaCaderno { id: r.get(0)?, nome: r.get(1)?, cor: d.cor, criado_em: r.get(2)? })
+        })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
 }
@@ -124,18 +137,19 @@ pub fn salvar_pasta(conn: &Connection, mut p: PastaCaderno) -> Result<PastaCader
     if p.nome.is_empty() {
         return Err(Erro::Interno("a pasta precisa de um nome".into()));
     }
+    let dados = serde_json::to_string(&DadosPasta { cor: p.cor.clone() }).map_err(|e| Erro::Interno(e.to_string()))?;
     let agora = agora_ms();
     if p.id.is_empty() {
         p.id = novo_id();
         p.criado_em = agora;
         conn.execute(
-            "INSERT INTO item (id, tipo, titulo, criado_em, alterado_em) VALUES (?1, 'caderno_pasta', ?2, ?3, ?3)",
-            params![p.id, p.nome, agora],
+            "INSERT INTO item (id, tipo, titulo, dados, criado_em, alterado_em) VALUES (?1, 'caderno_pasta', ?2, ?3, ?4, ?4)",
+            params![p.id, p.nome, dados, agora],
         )?;
     } else {
         let n = conn.execute(
-            "UPDATE item SET titulo = ?2, alterado_em = ?3 WHERE id = ?1 AND tipo = 'caderno_pasta' AND excluido_em IS NULL",
-            params![p.id, p.nome, agora],
+            "UPDATE item SET titulo = ?2, dados = ?3, alterado_em = ?4 WHERE id = ?1 AND tipo = 'caderno_pasta' AND excluido_em IS NULL",
+            params![p.id, p.nome, dados, agora],
         )?;
         if n == 0 {
             return Err(Erro::Interno("pasta não encontrada".into()));
@@ -332,7 +346,8 @@ mod testes {
     #[test]
     fn pasta_move_cadernos_para_fora_ao_ser_apagada() {
         let (_p, conn) = banco();
-        let pasta = salvar_pasta(&conn, PastaCaderno { id: String::new(), nome: "Faculdade".into(), criado_em: 0 }).unwrap();
+        let pasta = salvar_pasta(&conn, PastaCaderno { id: String::new(), nome: "Faculdade".into(), cor: "lavanda".into(), criado_em: 0 }).unwrap();
+        assert_eq!(listar_pastas(&conn).unwrap()[0].cor, "lavanda");
         let cad = salvar_caderno(&conn, Caderno { id: String::new(), nome: "C".into(), modo: "caderno".into(), capa: Capa::default(), capa_cena: String::new(), pasta_id: pasta.id.clone(), criado_em: 0 }).unwrap();
         assert_eq!(listar_cadernos(&conn).unwrap().iter().find(|x| x.id == cad.id).unwrap().pasta_id, pasta.id);
         excluir_pasta(&conn, &pasta.id).unwrap();
