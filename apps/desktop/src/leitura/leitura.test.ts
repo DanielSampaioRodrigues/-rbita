@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { api, type Anotacao, type Livro } from "../api";
+import { corDaCapa, corDoTitulo, hashTexto, padraoDoTitulo, tamanhoDoTitulo } from "./capa";
+import { livroParaContinuar, moverNaOrdem, ordenarPrateleiras } from "./estanteLocal";
 
 const anotacao = (livroId: string, tipo: Anotacao["tipo"]): Anotacao => ({
   id: "", livroId, tipo, epubCfi: "", epubCfiRange: "", pdfPagina: 0, cor: "", texto: "", trecho: "", pontos: [], espessura: 0, criadoEm: 0,
@@ -87,5 +89,62 @@ describe("leitura: anotações (simulação)", () => {
 
     await api.excluirAnotacao(g.id);
     expect((await api.listarAnotacoes("livro-1")).length).toBe(1);
+  });
+});
+
+describe("leitura: capa gerada", () => {
+  it("é estável: o mesmo título dá a mesma cor e o mesmo desenho", () => {
+    expect(hashTexto("Dom Casmurro")).toBe(hashTexto("  dom casmurro "));
+    expect(corDoTitulo("Dom Casmurro")).toBe(corDoTitulo("Dom Casmurro"));
+    expect(padraoDoTitulo("Dom Casmurro")).toBe(padraoDoTitulo("Dom Casmurro"));
+  });
+
+  it("varia entre títulos e nunca sorteia cinza", () => {
+    const titulos = ["A", "B", "Dom Casmurro", "Torto Arado", "Grande Sertão", "Fenomenologia", "Duna", "Quarto de Despejo", "Ensaio sobre a cegueira", "O cortiço"];
+    const cores = new Set(titulos.map(corDoTitulo));
+    expect(cores.size).toBeGreaterThan(2);
+    expect(cores.has("cinza")).toBe(false);
+  });
+
+  it("usa a cor escolhida quando válida e a automática quando vazia", () => {
+    expect(corDaCapa("lavanda", "X")).toBe("lavanda");
+    expect(corDaCapa("", "X")).toBe(corDoTitulo("X"));
+    expect(corDaCapa("inventada", "X")).toBe(corDoTitulo("X"));
+  });
+
+  it("diminui a letra de títulos longos", () => {
+    expect(tamanhoDoTitulo("Duna")).toBe("grande");
+    expect(tamanhoDoTitulo("Ensaio sobre a cegueira")).toBe("medio");
+    expect(tamanhoDoTitulo("Memórias póstumas de Brás Cubas e outras histórias longas")).toBe("pequeno");
+  });
+});
+
+describe("leitura: organização da estante", () => {
+  const g = (id: string, nome: string, criadoEm: number) => ({ id, nome, criadoEm });
+
+  it("ordena prateleiras pela ordem escolhida; novas vão para o fim", () => {
+    const gs = [g("a", "Lazer", 1), g("b", "Faculdade", 2), g("c", "Quadrinhos", 3)];
+    expect(ordenarPrateleiras(gs, ["c", "a"]).map((x) => x.id)).toEqual(["c", "a", "b"]);
+    expect(ordenarPrateleiras(gs, []).map((x) => x.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("move prateleira para cima e para baixo sem passar das pontas", () => {
+    expect(moverNaOrdem(["a", "b", "c"], "b", -1)).toEqual(["b", "a", "c"]);
+    expect(moverNaOrdem(["a", "b", "c"], "b", 1)).toEqual(["a", "c", "b"]);
+    const ids = ["a", "b"];
+    expect(moverNaOrdem(ids, "a", -1)).toBe(ids);
+    expect(moverNaOrdem(ids, "x", 1)).toBe(ids);
+  });
+
+  it("'Continuar lendo' prefere o último aberto, ignora lidos e cai no primeiro 'lendo'", () => {
+    const ls = [
+      { ...livro("Lendo", "lendo"), id: "1" },
+      { ...livro("Pausado", "pausado"), id: "2" },
+      { ...livro("Lido", "lido"), id: "3" },
+    ];
+    expect(livroParaContinuar(ls, "2")?.id).toBe("2");
+    expect(livroParaContinuar(ls, "3")?.id).toBe("1");
+    expect(livroParaContinuar(ls, null)?.id).toBe("1");
+    expect(livroParaContinuar([ls[2]], null)).toBeNull();
   });
 });
