@@ -722,42 +722,8 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .cuidado-sessao { padding: var(--espaco-3) 0; }
 .cuidado-sessao + .cuidado-sessao { border-top: 1px solid var(--cor-borda-suave); }
 
-/* Minha organização: quadros (Trello) e listas. */
-.org-abrir { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--espaco-2); background: none; border: none; color: var(--cor-texto); font: inherit; text-align: left; cursor: pointer; padding: 0; }
-.org-tela { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--cor-fundo); }
-.org-corpo { flex: 1; min-height: 0; overflow: auto; padding: var(--espaco-4); }
-.org-quadro { display: flex; gap: var(--espaco-3); align-items: flex-start; min-height: 100%; min-width: 100%; }
-.org-coluna { flex: 1 1 17rem; min-width: 14rem; max-width: 26rem; display: flex; flex-direction: column; gap: var(--espaco-2); background: var(--cor-superficie); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-2); padding: var(--espaco-3); }
-.org-coluna.sobre { outline: 2px dashed var(--cor-destaque); outline-offset: 2px; }
-.org-coluna-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-2); }
-.org-coluna-titulo { font-size: 1rem; font-weight: 600; margin: 0; background: none; border: none; padding: 0.15rem 0.25rem; border-radius: var(--raio-1); color: inherit; text-align: left; cursor: text; font-family: inherit; }
-button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); }
-.org-coluna-editar { flex: 1; min-width: 0; font-weight: 600; }
-.org-coluna-nova { flex: 0 0 12rem; padding-top: var(--espaco-2); }
-.org-cartoes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--espaco-2); }
-.org-cartao { display: flex; flex-direction: column; gap: 0.3rem; background: var(--cor-fundo); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-1); padding: var(--espaco-2); }
-.org-cartao-topo { display: flex; align-items: flex-start; gap: var(--espaco-2); }
-.org-cartao-acoes { display: flex; align-items: center; gap: 0.1rem; }
-.org-cartao-espaco { flex: 1; }
-.org-cartao.arrastando { opacity: 0.6; }
-.org-cartao.feito .org-cartao-texto { text-decoration: line-through; color: var(--cor-texto-suave); }
-.org-alca { display: inline-flex; align-items: center; color: var(--cor-texto-suave); cursor: grab; touch-action: none; padding: 0.1rem; }
-.org-alca:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: 2px; }
-.org-cartao-check { display: inline-flex; align-items: center; }
-.org-cartao-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; align-items: flex-start; text-align: left; background: none; border: none; color: inherit; font: inherit; cursor: text; padding: 0.1rem 0.2rem; border-radius: var(--raio-1); }
-.org-cartao-texto:hover { background: var(--cor-superficie-alternativa); }
-.org-cartao-prazo { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.78rem; color: var(--cor-texto-suave); }
-.org-cartao-ordenar { display: inline-flex; flex-direction: column; }
+/* Minha organização: as regras ficam no fim do arquivo. */
 .cor-nenhuma { background: transparent; border: 1px dashed var(--cor-borda); }
-.org-cartao-editar { flex: 1; min-width: 0; }
-.org-novo-cartao { margin-top: var(--espaco-1); }
-.org-lista { display: flex; flex-direction: column; gap: var(--espaco-3); }
-.org-lista-nova { display: flex; gap: var(--espaco-2); align-items: center; }
-.org-lista-nova input { flex: 1; min-width: 0; }
-.org-itens { display: flex; flex-direction: column; gap: var(--espaco-1); }
-.org-item { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--espaco-2); padding: var(--espaco-2); border-bottom: 1px solid var(--cor-borda-suave); }
-.org-item-check { display: flex; align-items: flex-start; gap: var(--espaco-2); flex: 1; min-width: 0; cursor: pointer; }
-.org-item.feito .org-item-check span { text-decoration: line-through; color: var(--cor-texto-suave); }
 
 /* Quadro livre de um hobby. */
 .quadro-hobby { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--cor-fundo); }
@@ -1019,3 +985,114 @@ button.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); 
 .pos-esquerda .caderno-barra.vertical { border-left: none; border-right: 1px solid var(--cor-borda); }
 .caderno-barra.vertical .caderno-barra-grupo { flex-direction: column; }
 .caderno-barra.vertical .caderno-cores { flex-wrap: wrap; max-width: 3.6rem; justify-content: center; }
+
+/* ---------- Minha organização: quadros (estilo Trello) e listas ---------- */
+/* Guarda as cores do tema antes de qualquer pintura, para as partes sem cor voltarem a elas. */
+.org-paineis, .org-tela, .org-cores {
+  --org-tema-texto: var(--cor-texto);
+  --org-tema-suave: var(--cor-texto-suave);
+  --org-tema-borda: var(--cor-borda-suave);
+  --org-tema-realce: var(--cor-superficie-alternativa);
+  --org-tema-foco: var(--cor-foco);
+  --org-tema-superficie: var(--cor-superficie);
+}
+
+/* Página principal: cartões compactos em grade (1 por linha no estreito, 2 ou 3 no largo). */
+.org-paineis { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: var(--espaco-3); max-width: 62rem; }
+.org-painel { display: flex; align-items: center; gap: var(--espaco-1); min-height: 3.75rem; padding: var(--espaco-2) var(--espaco-1) var(--espaco-2) var(--espaco-2); background: var(--cor-superficie); color: var(--cor-texto); border: 1px solid var(--cor-borda-suave); border-radius: var(--canto-grande); box-shadow: var(--sombra); }
+.org-painel:has(.org-painel-abrir:hover) { border-color: var(--cor-borda); }
+.org-painel-abrir { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--espaco-3); padding: var(--espaco-1); background: none; border: none; border-radius: var(--canto); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.org-painel-icone { flex: none; display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: var(--canto); background: var(--cor-superficie-alternativa); color: var(--cor-texto); }
+.org-painel-nome { flex: 1; min-width: 0; font-weight: 650; line-height: 1.3; }
+.org-painel-tipo { flex: none; font-size: 0.78rem; padding: 0.1rem 0.55rem; border-radius: 999px; border: 1px solid var(--cor-borda-suave); color: var(--cor-texto-suave); }
+.org-painel-acoes { flex: none; display: flex; }
+.org-icone { width: 2.1rem; height: 2.1rem; border-radius: var(--canto-pequeno); }
+
+/* Tela do quadro ou da lista. */
+.org-tela { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--cor-fundo); }
+.org-corpo { flex: 1; min-height: 0; overflow: auto; padding: var(--espaco-4); }
+
+/* Colunas. */
+.org-quadro { display: flex; gap: var(--espaco-4); align-items: flex-start; min-height: 100%; }
+.org-coluna { flex: 1 0 17rem; max-width: 22rem; display: flex; flex-direction: column; gap: var(--espaco-3); padding: var(--espaco-3); background: var(--cor-superficie); color: var(--cor-texto); border: 1px solid var(--cor-borda-suave); border-radius: var(--canto-grande); }
+.org-coluna.sobre { outline: 2px dashed var(--cor-destaque); outline-offset: 3px; }
+.org-coluna-topo { display: flex; align-items: center; gap: var(--espaco-1); }
+.org-coluna-titulo { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--espaco-2); margin: 0; padding: 0.3rem 0.45rem; background: none; border: none; border-radius: var(--canto); color: inherit; font: inherit; font-weight: 650; text-align: left; cursor: text; }
+.org-coluna-titulo:hover { background: var(--cor-superficie-alternativa); }
+.org-coluna-conta { flex: none; min-width: 1.6em; padding: 0 0.45em; border-radius: 999px; background: var(--cor-superficie-alternativa); font-size: 0.8rem; font-weight: 500; text-align: center; }
+.org-coluna-editar { flex: 1; min-width: 0; font-weight: 650; }
+.org-coluna-acoes { flex: none; display: flex; }
+.org-coluna-nova { flex: 0 0 12rem; }
+
+/* Cartões: a pessoa pega em qualquer ponto (mouse, caneta ou dedo segurando um instante). */
+.org-cartoes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--espaco-2); min-height: 2.5rem; }
+.org-cartao { position: relative; display: flex; flex-direction: column; gap: var(--espaco-1); padding: var(--espaco-2) var(--espaco-1) var(--espaco-2) var(--espaco-3); background: var(--cor-fundo); color: var(--cor-texto); border: 1px solid var(--cor-borda-suave); border-radius: var(--canto); box-shadow: var(--sombra); cursor: grab; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.org-cartao.fantasma { opacity: 0.45; box-shadow: none; border-style: dashed; }
+.org-cartao.flutuando { cursor: grabbing; box-shadow: 0 6px 18px rgb(0 0 0 / 0.18); }
+.org-cartao-topo { display: flex; align-items: flex-start; gap: var(--espaco-2); }
+.org-cartao-topo input[type="checkbox"], .org-item-check input[type="checkbox"] { flex: none; width: 1.05rem; height: 1.05rem; margin: 0.3rem 0 0; accent-color: var(--cor-destaque); cursor: pointer; }
+.org-cartao-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; padding: 0.1rem 0.25rem; background: none; border: none; border-radius: var(--canto-pequeno); color: inherit; font: inherit; line-height: 1.4; text-align: left; cursor: pointer; }
+.org-cartao.feito .org-cartao-texto > span:first-child, .org-item.feito .org-item-check > span { text-decoration: line-through; color: var(--cor-texto-suave); }
+.org-cartao-prazo { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; color: var(--cor-texto-suave); }
+.org-item .org-cartao-prazo { margin-left: var(--espaco-2); }
+.org-alca { flex: none; display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: var(--canto-pequeno); color: var(--cor-texto-suave); cursor: grab; touch-action: manipulation; }
+.org-alca:hover { background: var(--cor-superficie-alternativa); color: var(--cor-texto); }
+
+/* Subir, descer e apagar: a alternativa ao arrastar. Ficam guardadas e aparecem quando se chega pelo teclado. */
+.org-cartao-teclado { display: flex; gap: 0.1rem; }
+.org-cartao:not(:has(:focus-visible)) .org-cartao-teclado,
+.org-item:not(:has(:focus-visible)) .org-cartao-teclado { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.org-novo-cartao { display: flex; align-items: center; gap: var(--espaco-1); padding-left: var(--espaco-2); border-radius: var(--canto); color: var(--cor-texto-suave); }
+.org-novo-cartao:hover, .org-novo-cartao:focus-within { background: var(--cor-superficie-alternativa); }
+.org-novo-cartao input::placeholder { color: var(--cor-texto-suave); opacity: 1; }
+.org-novo-icone { flex: none; }
+
+/* Lista com caixinhas. */
+.org-lista { display: flex; flex-direction: column; gap: var(--espaco-3); }
+.org-lista-nova { display: flex; gap: var(--espaco-2); align-items: center; }
+.org-lista-nova input { flex: 1; min-width: 0; }
+.org-itens { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--espaco-2); }
+.org-item { display: flex; align-items: center; gap: var(--espaco-2); padding: var(--espaco-1) var(--espaco-1) var(--espaco-1) var(--espaco-3); min-height: 3rem; background: var(--cor-superficie); color: var(--cor-texto); border: 1px solid var(--cor-borda-suave); border-radius: var(--canto); box-shadow: var(--sombra); cursor: grab; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.org-item.arrastando { position: relative; z-index: 2; cursor: grabbing; box-shadow: 0 6px 18px rgb(0 0 0 / 0.16); }
+.org-item-check { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: var(--espaco-2); padding: 0.35rem 0; cursor: pointer; }
+.org-item-acoes { flex: none; display: flex; align-items: center; }
+
+/* Janela do cartão: "apagar" fica à esquerda, longe de "salvar". */
+.org-form-acoes .org-apagar { margin-right: auto; }
+
+/* Escolha de cor: cada amostra já mostra o fundo e o texto. A escolhida tem borda e nome em negrito (não só cor). */
+.org-cores { display: grid; grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr)); gap: var(--espaco-2); }
+.org-cor-opcao { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; padding: var(--espaco-1); border: 2px solid transparent; border-radius: var(--canto); cursor: pointer; }
+.org-cor-opcao[data-selected] { border-color: var(--cor-destaque); }
+.org-cor-opcao[data-selected] .org-cor-nome { font-weight: 700; }
+.org-cor-opcao[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.org-amostra { display: grid; place-items: center; width: 100%; height: 2.6rem; background: var(--cor-superficie); color: var(--cor-texto); border: 1px solid var(--cor-borda-suave); border-radius: var(--canto); font-weight: 650; }
+.org-amostra-vazia { border-style: dashed; border-color: var(--cor-borda); }
+.org-cor-nome { font-size: 0.8rem; text-align: center; }
+
+/*
+  Pintura (quadro, coluna, cartão ou item com cor). As cores vêm de organizacao/cores.ts,
+  com o texto já escolhido para passar no contraste. Por dentro, as variáveis do tema são
+  trocadas, para botões e ícones acompanharem.
+*/
+.org-pintado {
+  --org-fundo: var(--org-c-fundo); --org-texto: var(--org-c-texto); --org-suave: var(--org-c-suave); --org-borda: var(--org-c-borda); --org-realce: var(--org-c-realce);
+  --cor-texto: var(--org-texto);
+  --cor-texto-suave: var(--org-suave);
+  --cor-borda-suave: var(--org-borda);
+  --cor-superficie-alternativa: var(--org-realce);
+  --cor-foco: var(--org-texto);
+  background: var(--org-fundo);
+  color: var(--org-texto);
+  border-color: var(--org-borda);
+}
+:root[data-modo="escuro"] .org-pintado {
+  --org-fundo: var(--org-e-fundo); --org-texto: var(--org-e-texto); --org-suave: var(--org-e-suave); --org-borda: var(--org-e-borda); --org-realce: var(--org-e-realce);
+}
+.org-pintado input[type="checkbox"] { accent-color: var(--org-texto); }
+/* Cartão sem cor dentro de coluna com cor: volta ao texto do tema. */
+.org-pintado .org-cartao:not(.org-pintado) { --cor-texto: var(--org-tema-texto); --cor-texto-suave: var(--org-tema-suave); --cor-borda-suave: var(--org-tema-borda); --cor-superficie-alternativa: var(--org-tema-realce); --cor-foco: var(--org-tema-foco); }
+/* Baixo estímulo: as cores ficam bem mais apagadas (misturadas à superfície do tema); o texto continua legível. */
+:root[data-baixo-estimulo="true"] .org-pintado { --org-fundo: color-mix(in srgb, var(--org-c-fundo) 40%, var(--org-tema-superficie, #fff)); }
+:root[data-baixo-estimulo="true"][data-modo="escuro"] .org-pintado { --org-fundo: color-mix(in srgb, var(--org-e-fundo) 40%, var(--org-tema-superficie, #222)); }

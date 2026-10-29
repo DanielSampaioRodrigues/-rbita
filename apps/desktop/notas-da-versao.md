@@ -4,6 +4,8 @@
 
 - **Início com todos os módulos**: em "Organizar a tela inicial", agora dá para mostrar um **atalho para qualquer módulo** (Minha organização, Rotinas, Foco, Dinheiro, Saúde, Cuidado, Estudos, Hobbies, Leitura, Caderno). Os atalhos começam escondidos — nada muda na sua tela sem você pedir.
 
+- **Minha organização de cara nova**: na página principal, os quadros e listas viraram **cartões compactos** em grade (ícone, nome, tipo e os botões discretos à direita), em vez dos retângulos enormes. Cada **quadro, coluna e cartão** pode ter uma **cor inteira** (10 tons suaves, com o texto ajustado sozinho para ficar legível, no claro e no escuro). E agora os cartões se **arrastam** com dedo, caneta ou mouse — entre posições e entre colunas (no toque, segure um instante e arraste). Pelo teclado continua: espaço na alça pega o cartão, setas movem. Cantos arredondados de verdade (as regras antigas apontavam para uma medida que não existia).
+
 - **Agenda com cor e cara nova**: cada compromisso pode ter uma **cor** (faixa na lateral e fundo levemente tingido). Cabeçalhos de dia mais claros, "hoje" destacado de leve (sem vermelho), dia sem nada aparece como "Livre", espaço mais respirável e tudo com alvos de toque de 44 px. No iPad em pé a semana vira uma lista por dia.
 
 - **Rotinas personalizáveis**: cada rotina ganha **cor**, **ícone ou emoji**, **dias da semana** e **horário sugerido**. A lista virou cartões com o progresso de hoje ("Hoje: 2 de 5"), e os passos são caixinhas grandes de marcar. Sem sequência, sem "falhou": o dia seguinte começa limpo. (Por enquanto a personalização fica guardada só neste aparelho; não entra no backup.)

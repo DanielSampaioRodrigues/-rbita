@@ -1403,6 +1403,8 @@ export const textos = {
     arrastar: {
       pegou: (texto: string) => `Pegou "${texto}".`,
       largou: (texto: string) => `Soltou "${texto}".`,
+      sobre: (coluna: string, posicao: number) => `${coluna}, posição ${posicao}.`,
+      posicao: (posicao: number) => `Posição ${posicao}.`,
       soltou: (texto: string, coluna: string, posicao: number) => `"${texto}" ficou em ${coluna}, posição ${posicao}.`,
       soltouLista: (texto: string, posicao: number) => `"${texto}" ficou na posição ${posicao}.`,
       desistiu: "Movimento cancelado. Nada mudou.",

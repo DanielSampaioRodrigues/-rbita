@@ -1,19 +1,63 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Form, Label, Radio, RadioGroup } from "react-aria-components";
-import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { api, CORES_ETIQUETA, type Coluna, type CartaoOrg, type Quadro } from "../api";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCorners,
+  pointerWithin,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+  type DroppableContainer,
+  type KeyboardCoordinateGetter,
+  type UniqueIdentifier,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { api, type Coluna, type CartaoOrg, type Quadro } from "../api";
 import { useRecado } from "../app/Recado";
 import { pularEntreColunas } from "../componentes/tecladoColunas";
 import { Aviso, Campo } from "../componentes/Campo";
 import { CampoData } from "../componentes/CampoData";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { ArrowDown, ArrowUp, CalendarDays, Check, ChevronLeft, GripVertical, LayoutGrid, ListChecks, Pencil, Plus, Trash2 } from "../icones";
+import { ArrowDown, ArrowUp, CalendarDays, Check, ChevronLeft, GripVertical, LayoutGrid, ListChecks, Palette, Pencil, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
+import { CORES_ORG, classeCor, estiloCor } from "./cores";
 
 const t = textos.organizacao;
 const mensagem = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+/** Arrastar: mouse e caneta começam após 6 px; no toque, segurar um instante (não briga com a rolagem). */
+function useSensoresArrastar(teclado: KeyboardCoordinateGetter) {
+  return useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] }, coordinateGetter: teclado }),
+  );
+}
+
+/** Os mesmos alvos do dnd-kit, mas só os que passam no filtro (para o teclado não pular para onde não deve). */
+function soAlvos(alvos: { getEnabled(): DroppableContainer[] }, aceita: (c: DroppableContainer) => boolean) {
+  return new Proxy(alvos, {
+    get(obj, chave) {
+      if (chave === "getEnabled") return () => obj.getEnabled().filter(aceita);
+      const v = Reflect.get(obj, chave, obj);
+      return typeof v === "function" ? v.bind(obj) : v;
+    },
+  });
+}
+
+// ---------- Página principal ----------
 
 export function PaginaOrganizacao() {
   const [quadros, setQuadros] = useState<Quadro[]>([]);
@@ -43,7 +87,7 @@ export function PaginaOrganizacao() {
       <p className="pagina-intro">{t.intro}</p>
 
       <div className="botoes">
-        <Button className="botao principal" onPress={() => setEditando({ id: "", nome: "", estilo: "lista", criadoEm: 0 })}>
+        <Button className="botao principal" onPress={() => setEditando({ id: "", nome: "", estilo: "lista", criadoEm: 0, cor: "" })}>
           <Plus aria-hidden="true" size="1.1em" /> {t.adicionar}
         </Button>
       </div>
@@ -51,20 +95,20 @@ export function PaginaOrganizacao() {
       {quadros.length === 0 ? (
         <section className="cartao largura-leitura esticado"><p className="texto-suave">{t.vazio}</p></section>
       ) : (
-        <ul className="lista-cartoes largura-leitura">
+        <ul className="org-paineis">
           {quadros.map((q) => (
-            <li key={q.id}>
-              <div className="cartao compacto linha-ajuste">
-                <button className="org-abrir" onClick={() => setAberto(q)} aria-label={`${t.abrir}: ${q.nome}`}>
-                  {q.estilo === "quadro" ? <LayoutGrid aria-hidden="true" size="1.2em" /> : <ListChecks aria-hidden="true" size="1.2em" />}
-                  <span className="quebra"><strong>{q.nome}</strong></span>
-                  <span className="livro-selo">{t.selo[q.estilo]}</span>
-                </button>
-                <span className="linha-ajuste">
-                  <Button className="botao-icone" onPress={() => setEditando(q)} aria-label={`${t.editar}: ${q.nome}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
-                  <Button className="botao-icone" onPress={() => setExcluindo(q)} aria-label={`${t.excluir}: ${q.nome}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+            <li key={q.id} className={"org-painel" + classeCor(q.cor ?? "")} style={estiloCor(q.cor ?? "")}>
+              <button type="button" className="org-painel-abrir" onClick={() => setAberto(q)} aria-label={`${t.abrir}: ${q.nome} (${t.selo[q.estilo]})`}>
+                <span className="org-painel-icone" aria-hidden="true">
+                  {q.estilo === "quadro" ? <LayoutGrid size="1.15em" /> : <ListChecks size="1.15em" />}
                 </span>
-              </div>
+                <span className="org-painel-nome quebra">{q.nome}</span>
+                <span className="org-painel-tipo">{t.selo[q.estilo]}</span>
+              </button>
+              <span className="org-painel-acoes">
+                <Button className="botao-icone org-icone" onPress={() => setEditando(q)} aria-label={`${t.editar}: ${q.nome}`}><Pencil aria-hidden="true" size="1em" /></Button>
+                <Button className="botao-icone org-icone" onPress={() => setExcluindo(q)} aria-label={`${t.excluir}: ${q.nome}`}><Trash2 aria-hidden="true" size="1em" /></Button>
+              </span>
             </li>
           ))}
         </ul>
@@ -84,6 +128,7 @@ export function PaginaOrganizacao() {
 function FormQuadro({ inicial, aoFechar }: { inicial: Quadro; aoFechar: () => void }) {
   const [nome, setNome] = useState(inicial.nome);
   const [estilo, setEstilo] = useState<Quadro["estilo"]>(inicial.estilo);
+  const [cor, setCor] = useState(inicial.cor ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const editando = inicial.id !== "";
 
@@ -91,7 +136,7 @@ function FormQuadro({ inicial, aoFechar }: { inicial: Quadro; aoFechar: () => vo
     e.preventDefault();
     setErro(null);
     try {
-      await api.salvarQuadro({ ...inicial, nome, estilo });
+      await api.salvarQuadro({ ...inicial, nome, estilo, cor });
       avisarMudanca();
       aoFechar();
     } catch (err) {
@@ -116,6 +161,7 @@ function FormQuadro({ inicial, aoFechar }: { inicial: Quadro; aoFechar: () => vo
           <p className="campo-ajuda">{t.estiloAjuda[estilo]}</p>
         </>
       )}
+      <EscolherCor rotulo={t.cor} valor={cor} aoMudar={setCor} />
       <Aviso>{erro}</Aviso>
       <div className="janela-acoes">
         <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
@@ -124,6 +170,30 @@ function FormQuadro({ inicial, aoFechar }: { inicial: Quadro; aoFechar: () => vo
     </Form>
   );
 }
+
+/** Escolha de cor com amostras que já mostram o fundo e o texto como vão ficar. */
+function EscolherCor({ rotulo, valor, aoMudar }: { rotulo: string; valor: string; aoMudar: (c: string) => void }) {
+  return (
+    <RadioGroup className="campo" value={valor} onChange={aoMudar} orientation="horizontal">
+      <Label className="campo-rotulo">{rotulo}</Label>
+      <div className="org-cores">
+        <Radio value="" className="org-cor-opcao" aria-label={t.semCor}>
+          <span className="org-amostra org-amostra-vazia" aria-hidden="true">{t.amostra}</span>
+          <span className="org-cor-nome">{t.semCor}</span>
+        </Radio>
+        {CORES_ORG.map((c) => (
+          <Radio key={c} value={c} className="org-cor-opcao" aria-label={t.cores[c]}>
+            <span className={"org-amostra" + classeCor(c)} style={estiloCor(c)} aria-hidden="true">{t.amostra}</span>
+            <span className="org-cor-nome">{t.cores[c]}</span>
+          </Radio>
+        ))}
+      </div>
+      <p className="campo-ajuda">{t.corAjuda}</p>
+    </RadioGroup>
+  );
+}
+
+// ---------- Quadro ou lista aberta ----------
 
 function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => void }) {
   const [colunas, setColunas] = useState<Coluna[]>([]);
@@ -158,13 +228,21 @@ function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => vo
   };
   const apagarCartao = async (c: CartaoOrg) => {
     await api.excluirCartaoOrg(c.id);
+    setEditandoCartao(null);
     await carregar();
   };
-  const reordenar = async (ids: string[]) => {
-    // Atualiza a ordem E reordena o array (a lista é desenhada na ordem do array).
-    const posicao = new Map(ids.map((id, i) => [id, i + 1]));
-    setCartoes((cs) => cs.map((c) => (posicao.has(c.id) ? { ...c, ordem: posicao.get(c.id)! } : c)).sort((a, b) => a.ordem - b.ordem));
+  /**
+   * Guarda a nova posição: `id` passa para a coluna `colunaId`, e `ids` é a ordem final dessa coluna.
+   * A tela muda na hora; se o banco recusar, volta ao que está guardado.
+   */
+  const posicionar = async (id: string, colunaId: string, ids: string[]) => {
+    const antes = cartoes.find((c) => c.id === id);
+    const posicao = new Map(ids.map((x, i) => [x, i + 1]));
+    setCartoes((cs) =>
+      cs.map((c) => (c.id === id ? { ...c, colunaId } : c)).map((c) => (posicao.has(c.id) ? { ...c, ordem: posicao.get(c.id)! } : c)).sort((a, b) => a.ordem - b.ordem),
+    );
     try {
+      if (antes && antes.colunaId !== colunaId) await api.moverCartaoOrg(id, colunaId, posicao.get(id) ?? 1);
       await api.reordenarCartoesOrg(ids);
     } catch (e) {
       setErro(mensagem(e));
@@ -185,22 +263,17 @@ function QuadroAberto({ quadro, aoFechar }: { quadro: Quadro; aoFechar: () => vo
 
       <div className="org-corpo">
         {quadro.estilo === "quadro" ? (
-          <VisaoQuadro quadro={quadro} colunas={colunas} cartoes={cartoes} aoRecarregar={carregar} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={setEditandoCartao} aoApagar={apagarCartao} aoReordenar={reordenar} aoErro={setErro} />
+          <VisaoQuadro quadro={quadro} colunas={colunas} cartoes={cartoes} aoRecarregar={carregar} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={setEditandoCartao} aoApagar={apagarCartao} aoPosicionar={posicionar} aoErro={setErro} />
         ) : (
-          <VisaoLista coluna={colunas[0]} cartoes={cartoes} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={setEditandoCartao} aoApagar={apagarCartao} aoReordenar={reordenar} aoRecarregar={carregar} />
+          <VisaoLista coluna={colunas[0]} cartoes={cartoes} aoAdicionar={adicionarCartao} aoMarcar={marcar} aoEditar={setEditandoCartao} aoApagar={apagarCartao} aoPosicionar={posicionar} aoRecarregar={carregar} />
         )}
       </div>
 
       <Janela titulo={t.cartao.editar} aberta={editandoCartao !== null} aoFechar={() => setEditandoCartao(null)}>
-        {editandoCartao && <FormCartao key={editandoCartao.id} inicial={editandoCartao} aoSalvar={salvarCartao} aoFechar={() => setEditandoCartao(null)} />}
+        {editandoCartao && <FormCartao key={editandoCartao.id} inicial={editandoCartao} aoSalvar={salvarCartao} aoApagar={apagarCartao} aoFechar={() => setEditandoCartao(null)} />}
       </Janela>
     </div>
   );
-}
-
-/** Estilo da faixa de cor na lateral do cartão (vazio = sem faixa). */
-function corEstilo(cor: string): React.CSSProperties {
-  return cor ? { borderLeftColor: `var(--etq-${cor})`, borderLeftWidth: "4px", borderLeftStyle: "solid" } : {};
 }
 
 /** Selo do prazo: dia/mês a partir de "AAAA-MM-DD". */
@@ -210,9 +283,20 @@ function PrazoSelo({ prazo }: { prazo: string }) {
   return <span className="org-cartao-prazo" title={t.cartao.prazo}><CalendarDays aria-hidden="true" size="0.9em" /> {d}/{m}</span>;
 }
 
+/** Troca dois vizinhos de lugar (botões de subir/descer, a alternativa ao arrastar). */
+function trocar(ids: string[], i: number, delta: number): string[] | null {
+  const j = i + delta;
+  if (j < 0 || j >= ids.length) return null;
+  const novo = [...ids];
+  [novo[i], novo[j]] = [novo[j], novo[i]];
+  return novo;
+}
+
 // ---------- Estilo quadro (colunas + arrastar) ----------
 
-function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoErro }: {
+type Grupos = Record<string, string[]>;
+
+function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoPosicionar, aoErro }: {
   quadro: Quadro;
   colunas: Coluna[];
   cartoes: CartaoOrg[];
@@ -221,47 +305,137 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
   aoEditar: (c: CartaoOrg) => void;
   aoApagar: (c: CartaoOrg) => void;
-  aoReordenar: (ids: string[]) => void;
+  aoPosicionar: (id: string, colunaId: string, ids: string[]) => Promise<void>;
   aoErro: (m: string) => void;
 }) {
   const recado = useRecado();
   const arrastou = useRef(false);
   const [excluindoColuna, setExcluindoColuna] = useState<Coluna | null>(null);
-  const sensores = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] }, coordinateGetter: pularEntreColunas }),
+  const [pintandoColuna, setPintandoColuna] = useState<Coluna | null>(null);
+  // Durante o arrasto, a ordem fica num rascunho; ao soltar, é guardada.
+  const [rascunho, setRascunhoEstado] = useState<{ id: string; origem: string; grupos: Grupos } | null>(null);
+  // Cópia em ref: ao soltar, vale a última ordem, mesmo antes de a tela redesenhar.
+  const rascunhoRef = useRef(rascunho);
+  const setRascunho = (r: typeof rascunho) => { rascunhoRef.current = r; setRascunhoEstado(r); };
+
+  const idsColunas = useMemo(() => new Set(colunas.map((c) => c.id)), [colunas]);
+  const guardados = useMemo(() => {
+    const g: Grupos = Object.fromEntries(colunas.map((c) => [c.id, [] as string[]]));
+    for (const c of cartoes) g[c.colunaId]?.push(c.id);
+    return g;
+  }, [colunas, cartoes]);
+  const grupos = rascunho?.grupos ?? guardados;
+  const porId = useMemo(() => new Map(cartoes.map((c) => [c.id, c])), [cartoes]);
+  const nomeColuna = (id: string) => colunas.find((c) => c.id === id)?.nome || t.coluna.semNome;
+  const colunaDe = (g: Grupos, id: UniqueIdentifier): string | undefined => {
+    const s = String(id);
+    if (idsColunas.has(s)) return s;
+    return Object.keys(g).find((k) => g[k].includes(s));
+  };
+
+  // Teclado: para cima/baixo anda dentro da coluna; para os lados pula de coluna.
+  const teclado: KeyboardCoordinateGetter = useCallback(
+    (evento, args) => {
+      const ativo = args.active ? String(args.active) : "";
+      if (evento.code === "ArrowLeft" || evento.code === "ArrowRight") {
+        return pularEntreColunas(evento, { ...args, context: { ...args.context, droppableContainers: soAlvos(args.context.droppableContainers, (c) => idsColunas.has(String(c.id))) as typeof args.context.droppableContainers } });
+      }
+      const atual = Object.keys(grupos).find((k) => grupos[k].includes(ativo));
+      return sortableKeyboardCoordinates(evento, { ...args, context: { ...args.context, droppableContainers: soAlvos(args.context.droppableContainers, (c) => !!atual && grupos[atual].includes(String(c.id))) as typeof args.context.droppableContainers } });
+    },
+    [grupos, idsColunas],
   );
-  const cartaoDe = (id: unknown) => cartoes.find((c) => c.id === String(id).split("|")[1]);
-  const nomeColuna = (id: unknown) => colunas.find((c) => c.id === id)?.nome || t.coluna.semNome;
+  const sensores = useSensoresArrastar(teclado);
+
+  // Com o ponteiro: prefere o cartão sob o dedo/mouse; senão, a coluna; sem ponteiro (teclado), o mais próximo.
+  const colisao: CollisionDetection = useCallback(
+    (args) => {
+      const sob = pointerWithin(args);
+      if (sob.length) return [sob.find((c) => !idsColunas.has(String(c.id))) ?? sob[0]];
+      return closestCorners(args);
+    },
+    [idsColunas],
+  );
+
+  const comecar = ({ active }: DragStartEvent) => {
+    arrastou.current = true;
+    const origem = colunaDe(guardados, active.id) ?? "";
+    setRascunho({ id: String(active.id), origem, grupos: guardados });
+  };
+
+  // Passando sobre outra coluna: o cartão já aparece lá, no lugar onde vai cair.
+  const passar = ({ active, over }: DragOverEvent) => {
+    const r = rascunhoRef.current;
+    if (!over || !r) return;
+    const de = colunaDe(r.grupos, active.id);
+    const para = colunaDe(r.grupos, over.id);
+    if (!de || !para || de === para) return;
+    const id = String(active.id);
+    const destino = r.grupos[para].filter((x) => x !== id);
+    const i = destino.indexOf(String(over.id));
+    destino.splice(i < 0 ? destino.length : i, 0, id);
+    setRascunho({ ...r, grupos: { ...r.grupos, [de]: r.grupos[de].filter((x) => x !== id), [para]: destino } });
+  };
 
   const soltar = async ({ active, over }: DragEndEvent) => {
     setTimeout(() => (arrastou.current = false), 150);
-    const cartao = cartaoDe(active.id);
-    const destino = over?.id as string | undefined;
-    if (!cartao || !destino || destino === cartao.colunaId) return;
-    const ordem = Math.max(0, ...cartoes.filter((c) => c.colunaId === destino).map((c) => c.ordem)) + 1;
-    try {
-      await api.moverCartaoOrg(cartao.id, destino, ordem);
-      await aoRecarregar();
-      recado(`"${cartao.texto}" → ${nomeColuna(destino)}.`);
-    } catch (e) {
-      aoErro(mensagem(e));
-    }
+    const r = rascunhoRef.current;
+    setRascunho(null);
+    if (!r || !over) return;
+    const id = String(active.id);
+    const coluna = colunaDe(r.grupos, id);
+    if (!coluna) return;
+    let ids = r.grupos[coluna];
+    const alvo = ids.indexOf(String(over.id));
+    const daqui = ids.indexOf(id);
+    if (alvo >= 0 && alvo !== daqui) ids = arrayMove(ids, daqui, alvo);
+    if (coluna === r.origem && ids.join() === guardados[coluna]?.join()) return;
+    await aoPosicionar(id, coluna, ids);
+    const cartao = porId.get(id);
+    if (cartao) recado(t.arrastar.soltou(cartao.texto, nomeColuna(coluna), ids.indexOf(id) + 1));
+  };
+
+  const desistir = () => {
+    arrastou.current = false;
+    setRascunho(null);
+  };
+
+  const anuncios: Announcements = {
+    onDragStart: ({ active }) => t.arrastar.pegou(porId.get(String(active.id))?.texto ?? ""),
+    onDragOver: ({ active, over }) => {
+      if (!over || !rascunho) return undefined;
+      const col = colunaDe(rascunho.grupos, active.id);
+      return col ? t.arrastar.sobre(nomeColuna(col), rascunho.grupos[col].indexOf(String(active.id)) + 1) : undefined;
+    },
+    onDragEnd: ({ active }) => {
+      const c = porId.get(String(active.id));
+      return c ? t.arrastar.largou(c.texto) : undefined;
+    },
+    onDragCancel: () => t.arrastar.desistiu,
   };
 
   const adicionarColuna = async () => {
     await api.salvarColuna({ id: "", quadroId: quadro.id, nome: t.coluna.semNome, ordem: 0 });
     await aoRecarregar();
   };
-  const renomearColuna = async (col: Coluna, nome: string) => {
-    const n = nome.trim();
-    if (!n || n === col.nome) return;
+  const salvarColuna = async (col: Coluna) => {
     try {
-      await api.salvarColuna({ ...col, nome: n });
+      await api.salvarColuna(col);
       await aoRecarregar();
     } catch (e) {
       aoErro(mensagem(e));
     }
+  };
+  const renomearColuna = async (col: Coluna, nome: string) => {
+    const n = nome.trim();
+    if (!n || n === col.nome) return;
+    await salvarColuna({ ...col, nome: n });
+  };
+  const pintarColuna = async (cor: string) => {
+    if (!pintandoColuna) return;
+    const col = { ...pintandoColuna, cor };
+    setPintandoColuna(col);
+    await salvarColuna(col);
   };
   const excluirColuna = async () => {
     if (!excluindoColuna) return;
@@ -270,43 +444,61 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
     await aoRecarregar();
   };
 
+  const emArrasto = rascunho ? porId.get(rascunho.id) : undefined;
+
   return (
     <>
-    <DndContext
-      sensors={sensores}
-      onDragStart={() => (arrastou.current = true)}
-      onDragEnd={soltar}
-      onDragCancel={() => (arrastou.current = false)}
-      accessibility={{ screenReaderInstructions: { draggable: t.arrastarInstrucoes } }}
-    >
-      <div className="org-quadro">
-        {colunas.map((col) => (
-          <ColunaQuadro
-            key={col.id}
-            coluna={col}
-            cartoes={cartoes.filter((c) => c.colunaId === col.id)}
-            arrastou={arrastou}
-            aoAdicionar={(texto) => aoAdicionar(col.id, texto)}
-            aoMarcar={aoMarcar}
-            aoEditar={aoEditar}
-            aoApagar={aoApagar}
-            aoReordenar={aoReordenar}
-            aoRenomear={(nome) => renomearColuna(col, nome)}
-            aoExcluir={() => setExcluindoColuna(col)}
-          />
-        ))}
-        <div className="org-coluna-nova">
-          <Button className="botao com-icone" onPress={() => void adicionarColuna()}><Plus aria-hidden="true" size="1.1em" /> {t.coluna.adicionar}</Button>
+      <DndContext
+        sensors={sensores}
+        collisionDetection={colisao}
+        onDragStart={comecar}
+        onDragOver={passar}
+        onDragEnd={(e) => void soltar(e)}
+        onDragCancel={desistir}
+        accessibility={{ screenReaderInstructions: { draggable: t.arrastarInstrucoes }, announcements: anuncios }}
+      >
+        <div className="org-quadro">
+          {colunas.map((col) => (
+            <ColunaQuadro
+              key={col.id}
+              coluna={col}
+              cartoes={(grupos[col.id] ?? []).map((id) => porId.get(id)).filter((c): c is CartaoOrg => !!c)}
+              arrastou={arrastou}
+              aoAdicionar={(texto) => aoAdicionar(col.id, texto)}
+              aoMarcar={aoMarcar}
+              aoEditar={aoEditar}
+              aoApagar={aoApagar}
+              aoReordenar={(ids) => void aoPosicionar(ids[0], col.id, ids)}
+              aoRenomear={(nome) => void renomearColuna(col, nome)}
+              aoPintar={() => setPintandoColuna(col)}
+              aoExcluir={() => setExcluindoColuna(col)}
+            />
+          ))}
+          <div className="org-coluna-nova">
+            <Button className="botao com-icone" onPress={() => void adicionarColuna()}><Plus aria-hidden="true" size="1.1em" /> {t.coluna.adicionar}</Button>
+          </div>
         </div>
-      </div>
-    </DndContext>
+        {/* Sem animação ao soltar: o cartão vai direto para o lugar. */}
+        <DragOverlay dropAnimation={null}>{emArrasto ? <CartaoVisual cartao={emArrasto} flutuando /> : null}</DragOverlay>
+      </DndContext>
 
-    <Confirmar titulo={t.coluna.excluir} texto={excluindoColuna ? t.coluna.confirmarExcluir(excluindoColuna.nome || t.coluna.semNome) : ""} confirmar={t.coluna.excluir} aberta={excluindoColuna !== null} aoCancelar={() => setExcluindoColuna(null)} aoConfirmar={() => void excluirColuna()} />
+      <Janela titulo={t.coluna.cor} aberta={pintandoColuna !== null} aoFechar={() => setPintandoColuna(null)} pequena>
+        {pintandoColuna && (
+          <div className="formulario">
+            <EscolherCor rotulo={pintandoColuna.nome || t.coluna.semNome} valor={pintandoColuna.cor ?? ""} aoMudar={(c) => void pintarColuna(c)} />
+            <div className="janela-acoes">
+              <Button className="botao principal" onPress={() => setPintandoColuna(null)}>{t.coluna.pronto}</Button>
+            </div>
+          </div>
+        )}
+      </Janela>
+
+      <Confirmar titulo={t.coluna.excluir} texto={excluindoColuna ? t.coluna.confirmarExcluir(excluindoColuna.nome || t.coluna.semNome) : ""} confirmar={t.coluna.excluir} aberta={excluindoColuna !== null} aoCancelar={() => setExcluindoColuna(null)} aoConfirmar={() => void excluirColuna()} />
     </>
   );
 }
 
-function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoRenomear, aoExcluir }: {
+function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoRenomear, aoPintar, aoExcluir }: {
   coluna: Coluna;
   cartoes: CartaoOrg[];
   arrastou: React.MutableRefObject<boolean>;
@@ -316,6 +508,7 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEdit
   aoApagar: (c: CartaoOrg) => void;
   aoReordenar: (ids: string[]) => void;
   aoRenomear: (nome: string) => void;
+  aoPintar: () => void;
   aoExcluir: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: coluna.id });
@@ -324,14 +517,13 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEdit
   const confirmar = () => { setEditando(false); aoRenomear(nome); };
   const ids = cartoes.map((c) => c.id);
   const mover = (i: number, delta: number) => {
-    const j = i + delta;
-    if (j < 0 || j >= ids.length) return;
-    const novo = [...ids];
-    [novo[i], novo[j]] = [novo[j], novo[i]];
-    aoReordenar(novo);
+    const novo = trocar(ids, i, delta);
+    if (novo) aoReordenar(novo);
   };
+  const nomeVisivel = coluna.nome || t.coluna.semNome;
+  const cor = coluna.cor ?? "";
   return (
-    <section ref={setNodeRef} className={isOver ? "org-coluna sobre" : "org-coluna"} aria-label={coluna.nome || t.coluna.semNome}>
+    <section ref={setNodeRef} className={"org-coluna" + classeCor(cor) + (isOver ? " sobre" : "")} style={estiloCor(cor)} aria-label={nomeVisivel}>
       <div className="org-coluna-topo">
         {editando ? (
           <input
@@ -348,34 +540,49 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEdit
             maxLength={60}
           />
         ) : (
-          <button type="button" className="org-coluna-titulo" onClick={() => { setNome(coluna.nome); setEditando(true); }} aria-label={`${t.coluna.renomear}: ${coluna.nome || t.coluna.semNome}`}>
-            {coluna.nome || t.coluna.semNome} <span className="texto-suave">({cartoes.length})</span>
+          <button type="button" className="org-coluna-titulo quebra" onClick={() => { setNome(coluna.nome); setEditando(true); }} aria-label={`${t.coluna.renomear}: ${nomeVisivel}`}>
+            {nomeVisivel} <span className="org-coluna-conta">{cartoes.length}</span>
           </button>
         )}
-        <span className="linha-ajuste">
-          {!editando && <Button className="botao-icone pequeno" onPress={() => { setNome(coluna.nome); setEditando(true); }} aria-label={`${t.coluna.renomear}: ${coluna.nome}`}><Pencil aria-hidden="true" size="1em" /></Button>}
-          <Button className="botao-icone pequeno" onPress={aoExcluir} aria-label={`${t.coluna.excluir}: ${coluna.nome}`}><Trash2 aria-hidden="true" size="1em" /></Button>
+        <span className="org-coluna-acoes">
+          <Button className="botao-icone org-icone" onPress={aoPintar} aria-label={`${t.coluna.cor}: ${nomeVisivel}`}><Palette aria-hidden="true" size="1em" /></Button>
+          <Button className="botao-icone org-icone" onPress={aoExcluir} aria-label={`${t.coluna.excluir}: ${nomeVisivel}`}><Trash2 aria-hidden="true" size="1em" /></Button>
         </span>
       </div>
-      <ul className="org-cartoes">
-        {cartoes.map((c, i) => (
-          <li key={c.id}>
-            <CartaoArrastavel
-              cartao={c}
-              arrastou={arrastou}
-              aoMarcar={aoMarcar}
-              aoEditar={aoEditar}
-              aoApagar={aoApagar}
-              aoSubir={() => mover(i, -1)}
-              aoDescer={() => mover(i, 1)}
-              podeSubir={i > 0}
-              podeDescer={i < cartoes.length - 1}
-            />
-          </li>
-        ))}
-      </ul>
+      <SortableContext id={coluna.id} items={ids} strategy={verticalListSortingStrategy}>
+        <ul className="org-cartoes">
+          {cartoes.map((c, i) => (
+            <li key={c.id}>
+              <CartaoArrastavel
+                cartao={c}
+                arrastou={arrastou}
+                aoMarcar={aoMarcar}
+                aoEditar={aoEditar}
+                aoApagar={aoApagar}
+                aoSubir={() => mover(i, -1)}
+                aoDescer={() => mover(i, 1)}
+                podeSubir={i > 0}
+                podeDescer={i < cartoes.length - 1}
+              />
+            </li>
+          ))}
+        </ul>
+      </SortableContext>
       <NovoCartao aoAdicionar={aoAdicionar} />
     </section>
+  );
+}
+
+/** O cartão como aparece (também usado na cópia que segue o dedo durante o arrasto). */
+function CartaoVisual({ cartao, flutuando }: { cartao: CartaoOrg; flutuando?: boolean }) {
+  return (
+    <div className={"org-cartao" + classeCor(cartao.cor) + (cartao.feito ? " feito" : "") + (flutuando ? " flutuando" : "")} style={estiloCor(cartao.cor)}>
+      <div className="org-cartao-topo">
+        <input type="checkbox" checked={cartao.feito} readOnly tabIndex={-1} aria-hidden="true" />
+        <span className="org-cartao-texto quebra"><span>{cartao.texto}</span>{cartao.prazo && <PrazoSelo prazo={cartao.prazo} />}</span>
+        <span className="org-alca" aria-hidden="true"><GripVertical size="1em" /></span>
+      </div>
+    </div>
   );
 }
 
@@ -390,55 +597,48 @@ function CartaoArrastavel({ cartao, arrastou, aoMarcar, aoEditar, aoApagar, aoSu
   podeSubir: boolean;
   podeDescer: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `${cartao.colunaId}|${cartao.id}` });
-  const estilo = { ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : {}), ...corEstilo(cartao.cor) };
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: cartao.id });
+  // Mouse, caneta e dedo pegam o cartão em qualquer ponto; o teclado usa a alça (espaço).
+  const { onKeyDown, ...ponteiro } = listeners ?? {};
+  const estilo = { ...estiloCor(cartao.cor), transform: CSS.Translate.toString(transform), transition };
+  const evitarCliqueAposArrastar = (e: React.MouseEvent) => { if (arrastou.current) e.preventDefault(); };
 
   return (
-    <div ref={setNodeRef} className={isDragging ? "org-cartao arrastando" : cartao.feito ? "org-cartao feito" : "org-cartao"} style={estilo}>
+    <div
+      ref={setNodeRef}
+      className={"org-cartao" + classeCor(cartao.cor) + (cartao.feito ? " feito" : "") + (isDragging ? " fantasma" : "")}
+      style={estilo}
+      {...ponteiro}
+    >
       <div className="org-cartao-topo">
-        <label className="org-cartao-check">
-          <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={t.cartao.feito} />
-        </label>
-        <button type="button" className="org-cartao-texto quebra" onClick={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}>
+        <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={`${t.cartao.feito}: ${cartao.texto}`} />
+        <button type="button" className="org-cartao-texto quebra" onClick={(e) => { if (arrastou.current) { e.preventDefault(); return; } aoEditar(cartao); }} aria-label={`${t.cartao.editar}: ${cartao.texto}`}>
           <span>{cartao.texto}</span>
           {cartao.prazo && <PrazoSelo prazo={cartao.prazo} />}
         </button>
-      </div>
-      <div className="org-cartao-acoes">
-        <span className="org-alca" {...attributes} {...listeners} role="button" tabIndex={0} aria-roledescription="cartão arrastável" aria-label={`${t.cartao.mover}: ${cartao.texto}`} onClick={(e) => { if (arrastou.current) e.preventDefault(); }}>
+        <span
+          ref={setActivatorNodeRef}
+          className="org-alca"
+          {...attributes}
+          onKeyDown={onKeyDown as React.KeyboardEventHandler | undefined}
+          aria-roledescription="cartão arrastável"
+          aria-label={`${t.cartao.mover}: ${cartao.texto}`}
+          onClick={evitarCliqueAposArrastar}
+        >
           <GripVertical aria-hidden="true" size="1em" />
         </span>
-        <Button className="botao-icone pequeno" onPress={aoSubir} isDisabled={!podeSubir} aria-label={`${t.cartao.subir}: ${cartao.texto}`}><ArrowUp aria-hidden="true" size="1em" /></Button>
-        <Button className="botao-icone pequeno" onPress={aoDescer} isDisabled={!podeDescer} aria-label={`${t.cartao.descer}: ${cartao.texto}`}><ArrowDown aria-hidden="true" size="1em" /></Button>
-        <span className="org-cartao-espaco" />
-        <Button className="botao-icone pequeno" onPress={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1em" /></Button>
-        <Button className="botao-icone pequeno" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1em" /></Button>
+      </div>
+      {/* Alternativa ao arrastar: aparece quando se chega aqui pelo teclado. */}
+      <div className="org-cartao-teclado">
+        <Button className="botao-icone org-icone" onPress={aoSubir} isDisabled={!podeSubir} aria-label={`${t.cartao.subir}: ${cartao.texto}`}><ArrowUp aria-hidden="true" size="1em" /></Button>
+        <Button className="botao-icone org-icone" onPress={aoDescer} isDisabled={!podeDescer} aria-label={`${t.cartao.descer}: ${cartao.texto}`}><ArrowDown aria-hidden="true" size="1em" /></Button>
+        <Button className="botao-icone org-icone" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1em" /></Button>
       </div>
     </div>
   );
 }
 
-function EscolherCorCartao({ valor, aoMudar }: { valor: string; aoMudar: (c: string) => void }) {
-  return (
-    <RadioGroup className="campo" value={valor} onChange={aoMudar} orientation="horizontal">
-      <Label className="campo-rotulo">{t.cartao.cor}</Label>
-      <div className="cores-etiqueta">
-        <Radio value="" className="cor-opcao" aria-label={t.cartao.semCor}>
-          <span className="etiqueta-cor grande cor-nenhuma" aria-hidden="true" />
-          <span className="pequeno">{t.cartao.semCor}</span>
-        </Radio>
-        {CORES_ETIQUETA.map((c) => (
-          <Radio key={c} value={c} className="cor-opcao" aria-label={textos.ideias.cores[c]}>
-            <span className={`etiqueta-cor grande cor-${c}`} aria-hidden="true" />
-            <span className="pequeno">{textos.ideias.cores[c]}</span>
-          </Radio>
-        ))}
-      </div>
-    </RadioGroup>
-  );
-}
-
-function FormCartao({ inicial, aoSalvar, aoFechar }: { inicial: CartaoOrg; aoSalvar: (c: CartaoOrg) => Promise<void>; aoFechar: () => void }) {
+function FormCartao({ inicial, aoSalvar, aoApagar, aoFechar }: { inicial: CartaoOrg; aoSalvar: (c: CartaoOrg) => Promise<void>; aoApagar: (c: CartaoOrg) => Promise<void>; aoFechar: () => void }) {
   const [texto, setTexto] = useState(inicial.texto);
   const [cor, setCor] = useState(inicial.cor);
   const [prazo, setPrazo] = useState(inicial.prazo);
@@ -458,11 +658,12 @@ function FormCartao({ inicial, aoSalvar, aoFechar }: { inicial: CartaoOrg; aoSal
   return (
     <Form className="formulario" onSubmit={enviar}>
       <Campo rotulo={t.cartao.texto} valor={texto} aoMudar={setTexto} autoFocus maximo={200} />
-      <EscolherCorCartao valor={cor} aoMudar={setCor} />
+      <EscolherCor rotulo={t.cartao.cor} valor={cor} aoMudar={setCor} />
       <CampoData rotulo={t.cartao.prazo} tipo="date" valor={prazo} aoMudar={setPrazo} />
       {prazo && <Button className="botao pequeno com-icone" onPress={() => setPrazo("")}><Trash2 aria-hidden="true" size="1em" /> {t.cartao.semPrazo}</Button>}
       <Aviso>{erro}</Aviso>
-      <div className="janela-acoes">
+      <div className="janela-acoes org-form-acoes">
+        <Button className="botao com-icone org-apagar" onPress={() => void aoApagar(inicial)}><Trash2 aria-hidden="true" size="1em" /> {t.cartao.excluir}</Button>
         <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
         <Button className="botao principal" type="submit">{t.cartao.salvar}</Button>
       </div>
@@ -481,33 +682,44 @@ function NovoCartao({ aoAdicionar }: { aoAdicionar: (texto: string) => Promise<v
   };
   return (
     <Form className="org-novo-cartao" onSubmit={enviar}>
-      <input className="entrada-texto sozinha" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder={t.cartao.novo} aria-label={t.cartao.adicionar} />
+      <Plus aria-hidden="true" size="1em" className="org-novo-icone" />
+      <input className="entrada-texto" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder={t.cartao.novo} aria-label={t.cartao.adicionar} />
     </Form>
   );
 }
 
 // ---------- Estilo lista (caixinhas) ----------
 
-function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoRecarregar }: {
+function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoPosicionar, aoRecarregar }: {
   coluna: Coluna | undefined;
   cartoes: CartaoOrg[];
   aoAdicionar: (colunaId: string, texto: string) => Promise<void>;
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
   aoEditar: (c: CartaoOrg) => void;
   aoApagar: (c: CartaoOrg) => void;
-  aoReordenar: (ids: string[]) => void;
+  aoPosicionar: (id: string, colunaId: string, ids: string[]) => Promise<void>;
   aoRecarregar: () => Promise<void>;
 }) {
+  const recado = useRecado();
   const [texto, setTexto] = useState("");
+  const sensores = useSensoresArrastar(sortableKeyboardCoordinates);
   if (!coluna) return null;
   const feitos = cartoes.filter((c) => c.feito).length;
   const ids = cartoes.map((c) => c.id);
+  const reordenar = (novo: string[], id: string) => void aoPosicionar(id, coluna.id, novo);
   const mover = (i: number, delta: number) => {
-    const j = i + delta;
-    if (j < 0 || j >= ids.length) return;
-    const novo = [...ids];
-    [novo[i], novo[j]] = [novo[j], novo[i]];
-    aoReordenar(novo);
+    const novo = trocar(ids, i, delta);
+    if (novo) reordenar(novo, ids[i]);
+  };
+
+  const soltar = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const de = ids.indexOf(String(active.id));
+    const para = ids.indexOf(String(over.id));
+    if (de < 0 || para < 0) return;
+    reordenar(arrayMove(ids, de, para), String(active.id));
+    const c = cartoes[de];
+    if (c) recado(t.arrastar.soltouLista(c.texto, para + 1));
   };
 
   const adicionar = async (e: React.FormEvent) => {
@@ -537,21 +749,38 @@ function VisaoLista({ coluna, cartoes, aoAdicionar, aoMarcar, aoEditar, aoApagar
             <span className="texto-suave pequeno">{t.lista.feitosDe(feitos, cartoes.length)}</span>
             {feitos > 0 && <Button className="botao pequeno com-icone" onPress={() => void limparFeitos()}><Check aria-hidden="true" size="1em" /> {t.lista.limparFeitos}</Button>}
           </div>
-          <ul className="lista-simples sem-marcador org-itens">
-            {cartoes.map((c, i) => (
-              <ItemLista
-                key={c.id}
-                cartao={c}
-                aoMarcar={aoMarcar}
-                aoEditar={aoEditar}
-                aoApagar={aoApagar}
-                aoSubir={() => mover(i, -1)}
-                aoDescer={() => mover(i, 1)}
-                podeSubir={i > 0}
-                podeDescer={i < cartoes.length - 1}
-              />
-            ))}
-          </ul>
+          <DndContext
+            sensors={sensores}
+            collisionDetection={closestCorners}
+            onDragEnd={soltar}
+            accessibility={{
+              screenReaderInstructions: { draggable: t.arrastarInstrucoesLista },
+              announcements: {
+                onDragStart: ({ active }) => t.arrastar.pegou(cartoes.find((c) => c.id === active.id)?.texto ?? ""),
+                onDragOver: ({ over }) => (over ? t.arrastar.posicao(ids.indexOf(String(over.id)) + 1) : undefined),
+                onDragEnd: () => undefined,
+                onDragCancel: () => t.arrastar.desistiu,
+              },
+            }}
+          >
+            <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+              <ul className="org-itens">
+                {cartoes.map((c, i) => (
+                  <ItemLista
+                    key={c.id}
+                    cartao={c}
+                    aoMarcar={aoMarcar}
+                    aoEditar={aoEditar}
+                    aoApagar={aoApagar}
+                    aoSubir={() => mover(i, -1)}
+                    aoDescer={() => mover(i, 1)}
+                    podeSubir={i > 0}
+                    podeDescer={i < cartoes.length - 1}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         </>
       )}
     </div>
@@ -568,17 +797,25 @@ function ItemLista({ cartao, aoMarcar, aoEditar, aoApagar, aoSubir, aoDescer, po
   podeSubir: boolean;
   podeDescer: boolean;
 }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: cartao.id });
+  const { onKeyDown, ...ponteiro } = listeners ?? {};
+  const estilo = { ...estiloCor(cartao.cor), transform: CSS.Translate.toString(transform), transition };
   return (
-    <li className={cartao.feito ? "org-item feito" : "org-item"} style={corEstilo(cartao.cor)}>
+    <li ref={setNodeRef} className={"org-item" + classeCor(cartao.cor) + (cartao.feito ? " feito" : "") + (isDragging ? " arrastando" : "")} style={estilo} {...ponteiro}>
       <label className="org-item-check">
         <input type="checkbox" checked={cartao.feito} onChange={(e) => aoMarcar(cartao, e.target.checked)} aria-label={cartao.texto} />
         <span className="quebra">{cartao.texto}{cartao.prazo && <PrazoSelo prazo={cartao.prazo} />}</span>
       </label>
-      <span className="linha-ajuste">
-        <Button className="botao-icone" onPress={aoSubir} isDisabled={!podeSubir} aria-label={`${t.cartao.subir}: ${cartao.texto}`}><ArrowUp aria-hidden="true" size="1.1em" /></Button>
-        <Button className="botao-icone" onPress={aoDescer} isDisabled={!podeDescer} aria-label={`${t.cartao.descer}: ${cartao.texto}`}><ArrowDown aria-hidden="true" size="1.1em" /></Button>
-        <Button className="botao-icone" onPress={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
-        <Button className="botao-icone" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+      <span className="org-item-acoes">
+        <span className="org-cartao-teclado">
+          <Button className="botao-icone org-icone" onPress={aoSubir} isDisabled={!podeSubir} aria-label={`${t.cartao.subir}: ${cartao.texto}`}><ArrowUp aria-hidden="true" size="1em" /></Button>
+          <Button className="botao-icone org-icone" onPress={aoDescer} isDisabled={!podeDescer} aria-label={`${t.cartao.descer}: ${cartao.texto}`}><ArrowDown aria-hidden="true" size="1em" /></Button>
+          <Button className="botao-icone org-icone" onPress={() => aoApagar(cartao)} aria-label={`${t.cartao.excluir}: ${cartao.texto}`}><Trash2 aria-hidden="true" size="1em" /></Button>
+        </span>
+        <Button className="botao-icone org-icone" onPress={() => aoEditar(cartao)} aria-label={`${t.cartao.editar}: ${cartao.texto}`}><Pencil aria-hidden="true" size="1em" /></Button>
+        <span ref={setActivatorNodeRef} className="org-alca" {...attributes} onKeyDown={onKeyDown as React.KeyboardEventHandler | undefined} aria-roledescription="item arrastável" aria-label={`${t.cartao.mover}: ${cartao.texto}`}>
+          <GripVertical aria-hidden="true" size="1em" />
+        </span>
       </span>
     </li>
   );

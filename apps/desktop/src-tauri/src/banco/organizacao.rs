@@ -3,8 +3,8 @@
 //! A pessoa pode ter vários quadros e listas ao mesmo tempo. Cada "quadro" tem
 //! um estilo: "quadro" (colunas com cartões que se arrastam) ou "lista" (uma
 //! lista de itens com caixinha de feito). Tudo na tabela `item`:
-//! - quadro: tipo 'org_quadro', estado = estilo, titulo = nome.
-//! - coluna: tipo 'org_coluna', pai_id = quadro, titulo = nome. (Na lista, uma só.)
+//! - quadro: tipo 'org_quadro', estado = estilo, titulo = nome; cor em `dados` (JSON).
+//! - coluna: tipo 'org_coluna', pai_id = quadro, titulo = nome; cor em `dados`. (Na lista, uma só.)
 //! - cartão: tipo 'org_cartao', pai_id = coluna, conteudo = texto, estado = 'feito' ou ''.
 //!   cor e prazo ("AAAA-MM-DD") ficam em `dados` (JSON).
 
@@ -27,6 +27,9 @@ pub struct Quadro {
     pub estilo: String,
     #[serde(default)]
     pub criado_em: i64,
+    /// Cor do cartão do quadro na página principal (vazio = sem cor).
+    #[serde(default)]
+    pub cor: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -38,6 +41,24 @@ pub struct Coluna {
     pub nome: String,
     #[serde(default)]
     pub ordem: f64,
+    /// Cor da coluna inteira (vazio = sem cor).
+    #[serde(default)]
+    pub cor: String,
+}
+
+/// Campos extras de quadros e colunas guardados em JSON na coluna `dados`.
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct DadosCor {
+    #[serde(default)]
+    cor: String,
+}
+
+fn ler_cor(dados: &str) -> String {
+    serde_json::from_str::<DadosCor>(dados).unwrap_or_default().cor
+}
+
+fn gravar_cor(cor: &str) -> Result<String, Erro> {
+    serde_json::to_string(&DadosCor { cor: cor.to_string() }).map_err(|e| Erro::Interno(e.to_string()))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -75,10 +96,10 @@ struct DadosCartao {
 
 pub fn listar_quadros(conn: &Connection) -> Result<Vec<Quadro>, Erro> {
     let mut c = conn.prepare(
-        "SELECT id, titulo, estado, criado_em FROM item WHERE tipo = 'org_quadro' AND excluido_em IS NULL ORDER BY criado_em",
+        "SELECT id, titulo, estado, criado_em, dados FROM item WHERE tipo = 'org_quadro' AND excluido_em IS NULL ORDER BY criado_em",
     )?;
     let lista = c
-        .query_map([], |r| Ok(Quadro { id: r.get(0)?, nome: r.get(1)?, estilo: r.get(2)?, criado_em: r.get(3)? }))?
+        .query_map([], |r| Ok(Quadro { id: r.get(0)?, nome: r.get(1)?, estilo: r.get(2)?, criado_em: r.get(3)?, cor: ler_cor(&r.get::<_, String>(4)?) }))?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
 }
@@ -92,12 +113,13 @@ pub fn salvar_quadro(conn: &Connection, mut q: Quadro) -> Result<Quadro, Erro> {
         q.estilo = "lista".into();
     }
     let agora = agora_ms();
+    let dados = gravar_cor(&q.cor)?;
     if q.id.is_empty() {
         q.id = novo_id();
         q.criado_em = agora;
         conn.execute(
-            "INSERT INTO item (id, tipo, titulo, estado, criado_em, alterado_em) VALUES (?1, 'org_quadro', ?2, ?3, ?4, ?4)",
-            params![q.id, q.nome, q.estilo, agora],
+            "INSERT INTO item (id, tipo, titulo, estado, dados, criado_em, alterado_em) VALUES (?1, 'org_quadro', ?2, ?3, ?4, ?5, ?5)",
+            params![q.id, q.nome, q.estilo, dados, agora],
         )?;
         // Uma lista nasce com uma coluna única (sem título); um quadro nasce com três colunas comuns.
         if q.estilo == "lista" {
@@ -108,10 +130,10 @@ pub fn salvar_quadro(conn: &Connection, mut q: Quadro) -> Result<Quadro, Erro> {
             }
         }
     } else {
-        // Ao editar, não troca o estilo (as colunas já existem); só o nome.
+        // Ao editar, não troca o estilo (as colunas já existem); só o nome e a cor.
         let n = conn.execute(
-            "UPDATE item SET titulo = ?2, alterado_em = ?3 WHERE id = ?1 AND tipo = 'org_quadro' AND excluido_em IS NULL",
-            params![q.id, q.nome, agora],
+            "UPDATE item SET titulo = ?2, dados = ?3, alterado_em = ?4 WHERE id = ?1 AND tipo = 'org_quadro' AND excluido_em IS NULL",
+            params![q.id, q.nome, dados, agora],
         )?;
         if n == 0 {
             return Err(Erro::Interno("quadro não encontrado".into()));
@@ -139,7 +161,7 @@ pub fn excluir_quadro(conn: &Connection, id: &str) -> Result<(), Erro> {
 // ---------- Colunas ----------
 
 fn criar_coluna_interna(conn: &Connection, quadro_id: &str, nome: &str, ordem: f64) -> Result<Coluna, Erro> {
-    let col = Coluna { id: novo_id(), quadro_id: quadro_id.to_string(), nome: nome.to_string(), ordem };
+    let col = Coluna { id: novo_id(), quadro_id: quadro_id.to_string(), nome: nome.to_string(), ordem, cor: String::new() };
     let agora = agora_ms();
     conn.execute(
         "INSERT INTO item (id, tipo, titulo, pai_id, ordem, criado_em, alterado_em) VALUES (?1, 'org_coluna', ?2, ?3, ?4, ?5, ?5)",
@@ -150,10 +172,10 @@ fn criar_coluna_interna(conn: &Connection, quadro_id: &str, nome: &str, ordem: f
 
 pub fn listar_colunas(conn: &Connection, quadro_id: &str) -> Result<Vec<Coluna>, Erro> {
     let mut c = conn.prepare(
-        "SELECT id, pai_id, titulo, ordem FROM item WHERE tipo = 'org_coluna' AND pai_id = ?1 AND excluido_em IS NULL ORDER BY ordem, criado_em",
+        "SELECT id, pai_id, titulo, ordem, dados FROM item WHERE tipo = 'org_coluna' AND pai_id = ?1 AND excluido_em IS NULL ORDER BY ordem, criado_em",
     )?;
     let lista = c
-        .query_map([quadro_id], |r| Ok(Coluna { id: r.get(0)?, quadro_id: r.get(1)?, nome: r.get(2)?, ordem: r.get(3)? }))?
+        .query_map([quadro_id], |r| Ok(Coluna { id: r.get(0)?, quadro_id: r.get(1)?, nome: r.get(2)?, ordem: r.get(3)?, cor: ler_cor(&r.get::<_, String>(4)?) }))?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
 }
@@ -168,11 +190,16 @@ pub fn salvar_coluna(conn: &Connection, mut col: Coluna) -> Result<Coluna, Erro>
         if col.ordem == 0.0 {
             col.ordem = conn.query_row("SELECT coalesce(max(ordem), 0) + 1 FROM item WHERE tipo = 'org_coluna' AND pai_id = ?1 AND excluido_em IS NULL", params![col.quadro_id], |r| r.get(0))?;
         }
-        return criar_coluna_interna(conn, &col.quadro_id, &col.nome, col.ordem);
+        let mut nova = criar_coluna_interna(conn, &col.quadro_id, &col.nome, col.ordem)?;
+        if !col.cor.is_empty() {
+            conn.execute("UPDATE item SET dados = ?2 WHERE id = ?1", params![nova.id, gravar_cor(&col.cor)?])?;
+            nova.cor = col.cor;
+        }
+        return Ok(nova);
     }
     let n = conn.execute(
-        "UPDATE item SET titulo = ?2, ordem = ?3, alterado_em = ?4 WHERE id = ?1 AND tipo = 'org_coluna' AND excluido_em IS NULL",
-        params![col.id, col.nome, col.ordem, agora],
+        "UPDATE item SET titulo = ?2, ordem = ?3, dados = ?4, alterado_em = ?5 WHERE id = ?1 AND tipo = 'org_coluna' AND excluido_em IS NULL",
+        params![col.id, col.nome, col.ordem, gravar_cor(&col.cor)?, agora],
     )?;
     if n == 0 {
         return Err(Erro::Interno("coluna não encontrada".into()));
@@ -299,20 +326,20 @@ mod testes {
     #[test]
     fn lista_nasce_com_uma_coluna_e_quadro_com_tres() {
         let (_p, conn) = banco();
-        let lista = salvar_quadro(&conn, Quadro { id: String::new(), nome: " Hoje ".into(), estilo: "lista".into(), criado_em: 0 }).unwrap();
+        let lista = salvar_quadro(&conn, Quadro { id: String::new(), nome: " Hoje ".into(), estilo: "lista".into(), criado_em: 0, cor: String::new() }).unwrap();
         assert_eq!(lista.nome, "Hoje");
         assert_eq!(listar_colunas(&conn, &lista.id).unwrap().len(), 1);
-        let quadro = salvar_quadro(&conn, Quadro { id: String::new(), nome: "Projeto".into(), estilo: "quadro".into(), criado_em: 0 }).unwrap();
+        let quadro = salvar_quadro(&conn, Quadro { id: String::new(), nome: "Projeto".into(), estilo: "quadro".into(), criado_em: 0, cor: String::new() }).unwrap();
         let cols = listar_colunas(&conn, &quadro.id).unwrap();
         assert_eq!(cols.len(), 3);
         assert_eq!(cols[0].nome, "A fazer");
-        assert!(salvar_quadro(&conn, Quadro { id: String::new(), nome: "  ".into(), estilo: "lista".into(), criado_em: 0 }).is_err());
+        assert!(salvar_quadro(&conn, Quadro { id: String::new(), nome: "  ".into(), estilo: "lista".into(), criado_em: 0, cor: String::new() }).is_err());
     }
 
     #[test]
     fn cartoes_criam_movem_marcam_e_listam_por_quadro() {
         let (_p, conn) = banco();
-        let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "Projeto".into(), estilo: "quadro".into(), criado_em: 0 }).unwrap();
+        let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "Projeto".into(), estilo: "quadro".into(), criado_em: 0, cor: String::new() }).unwrap();
         let cols = listar_colunas(&conn, &q.id).unwrap();
         let c1 = salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[0].id.clone(), texto: " comprar tinta ".into(), feito: false, cor: String::new(), prazo: String::new(), ordem: 0.0, criado_em: 0 }).unwrap();
         assert_eq!(c1.texto, "comprar tinta");
@@ -333,7 +360,7 @@ mod testes {
     #[test]
     fn cartao_guarda_cor_e_prazo_e_reordena() {
         let (_p, conn) = banco();
-        let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "P".into(), estilo: "quadro".into(), criado_em: 0 }).unwrap();
+        let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "P".into(), estilo: "quadro".into(), criado_em: 0, cor: String::new() }).unwrap();
         let cols = listar_colunas(&conn, &q.id).unwrap();
         let col = cols[0].id.clone();
         // Cria com cor e prazo e confere que voltam.
@@ -351,9 +378,22 @@ mod testes {
     }
 
     #[test]
+    fn quadro_e_coluna_guardam_cor() {
+        let (_p, conn) = banco();
+        let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "Cor".into(), estilo: "quadro".into(), criado_em: 0, cor: "menta".into() }).unwrap();
+        assert_eq!(listar_quadros(&conn).unwrap()[0].cor, "menta");
+        salvar_quadro(&conn, Quadro { cor: "ceu".into(), ..q.clone() }).unwrap();
+        assert_eq!(listar_quadros(&conn).unwrap()[0].cor, "ceu");
+        let col = listar_colunas(&conn, &q.id).unwrap().remove(0);
+        assert_eq!(col.cor, "");
+        salvar_coluna(&conn, Coluna { cor: "rosa".into(), ..col.clone() }).unwrap();
+        assert_eq!(listar_colunas(&conn, &q.id).unwrap()[0].cor, "rosa");
+    }
+
+    #[test]
     fn excluir_quadro_leva_colunas_e_cartoes() {
         let (_p, conn) = banco();
-        let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "X".into(), estilo: "quadro".into(), criado_em: 0 }).unwrap();
+        let q = salvar_quadro(&conn, Quadro { id: String::new(), nome: "X".into(), estilo: "quadro".into(), criado_em: 0, cor: String::new() }).unwrap();
         let cols = listar_colunas(&conn, &q.id).unwrap();
         salvar_cartao(&conn, Cartao { id: String::new(), coluna_id: cols[0].id.clone(), texto: "a".into(), feito: false, cor: String::new(), prazo: String::new(), ordem: 0.0, criado_em: 0 }).unwrap();
         excluir_quadro(&conn, &q.id).unwrap();

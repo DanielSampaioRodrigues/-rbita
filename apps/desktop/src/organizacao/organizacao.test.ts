@@ -45,6 +45,18 @@ describe("organização: quadros e listas (simulação)", () => {
     expect((await api.listarCartoesOrg(q.id)).map((c) => c.id)).toEqual([b.id, a.id]);
   });
 
+  it("quadro e coluna guardam a cor (e quadros antigos ficam sem cor)", async () => {
+    const q = await api.salvarQuadro({ ...quadro("Colorido", "quadro"), cor: "menta" });
+    expect((await api.listarQuadros()).find((x) => x.id === q.id)?.cor).toBe("menta");
+    await api.salvarQuadro({ ...q, cor: "ceu" });
+    expect((await api.listarQuadros()).find((x) => x.id === q.id)?.cor).toBe("ceu");
+    const antigo = await api.salvarQuadro(quadro("Antigo", "lista"));
+    expect(antigo.cor ?? "").toBe("");
+    const col = (await api.listarColunas(q.id))[0];
+    await api.salvarColuna({ ...col, cor: "rosa" });
+    expect((await api.listarColunas(q.id))[0].cor).toBe("rosa");
+  });
+
   it("apagar o quadro leva colunas e cartões", async () => {
     const q = await api.salvarQuadro(quadro("Some tudo", "quadro"));
     const cols = await api.listarColunas(q.id);
