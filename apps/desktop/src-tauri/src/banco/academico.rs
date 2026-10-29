@@ -4,7 +4,7 @@
 //! As aulas em si entram na Agenda como blocos da semana-modelo. A média é
 //! calculada na interface, a partir das notas lançadas aqui.
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 
 use super::{agora_ms, gravar_config, ler_config, novo_id};
