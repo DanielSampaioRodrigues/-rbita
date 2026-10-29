@@ -6,6 +6,11 @@
   max-width: 62rem;
   padding: var(--espaco-7) var(--espaco-7) var(--espaco-7);
 }
+/* Celular: margens menores, para o conteúdo aproveitar a largura. */
+@media (max-width: 600px) {
+  .pagina { padding: var(--espaco-7) var(--espaco-4) var(--espaco-6); }
+  .setas-navegacao { padding-left: var(--espaco-4); padding-right: var(--espaco-4); }
+}
 
 .pagina > .cartao { align-self: stretch; max-width: var(--largura-leitura); }
 

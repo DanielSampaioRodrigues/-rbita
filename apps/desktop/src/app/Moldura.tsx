@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, List, Palette, BatteryMedium, BookOpen, Books, CalendarDays, FolderKanban, Heart, LayoutGrid, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, List, Palette, BatteryMedium, BookOpen, Books, CalendarDays, FolderKanban, Heart, LayoutGrid, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Interruptor } from "../componentes/Interruptor";
@@ -41,26 +41,60 @@ interface Props {
   children: ReactNode;
 }
 
+const CHAVE_MENU = "orbita-menu-recolhido";
+function lerMenuRecolhido(): boolean {
+  try {
+    const v = localStorage.getItem(CHAVE_MENU);
+    if (v === "1" || v === "0") return v === "1";
+  } catch { /* usa o padrão */ }
+  return (globalThis.innerWidth ?? 1200) < 900;
+}
+
 export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCapturar, navegacao, children }: Props) {
   const { prefs, mudar } = usePreferencias();
   const foco = useFoco();
   const { imersivo } = useImersivo();
   const [menuAberto, setMenuAberto] = useState(false);
+  // Menu recolhido: some e volta por um botão, por cima da tela. Começa assim em
+  // telas estreitas (celular, tablet em pé); a escolha fica lembrada no aparelho.
+  const [recolhido, setRecolhido] = useState(lerMenuRecolhido);
+  const recolher = (v: boolean) => {
+    setRecolhido(v);
+    setMenuAberto(false);
+    try { localStorage.setItem(CHAVE_MENU, v ? "1" : "0"); } catch { /* ignora */ }
+  };
+  const escondido = imersivo || recolhido;
   // Ao sair do modo imersivo (fechar o caderno), o menu volta ao normal.
   useEffect(() => { if (!imersivo) setMenuAberto(false); }, [imersivo]);
+  // Esc fecha o menu aberto por cima.
+  useEffect(() => {
+    if (!menuAberto) return;
+    const aoTeclar = (e: KeyboardEvent) => e.key === "Escape" && setMenuAberto(false);
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [menuAberto]);
   const escolher = (id: Secao) => { aoEscolherSecao(id); setMenuAberto(false); };
 
   return (
-    <div className={`moldura${imersivo ? " imersivo" : ""}${imersivo && menuAberto ? " menu-aberto" : ""}`}>
+    <div className={`moldura${imersivo ? " imersivo" : ""}${!imersivo && recolhido ? " recolhida" : ""}${escondido && menuAberto ? " menu-aberto" : ""}`}>
       <aside className="lateral">
         <div className="lateral-marca">
           <Marca />
           <span>{textos.app.nome}</span>
+          {!imersivo && (
+            <Button
+              className="botao-icone lateral-recolher"
+              onPress={() => recolher(!recolhido)}
+              aria-label={recolhido ? textos.moldura.fixarMenu : textos.moldura.recolherMenu}
+            >
+              {recolhido ? <ChevronRight aria-hidden="true" size="1.1em" /> : <ChevronLeft aria-hidden="true" size="1.1em" />}
+            </Button>
+          )}
         </div>
 
         <Button className="botao principal capturar" onPress={aoCapturar}>
           <PenLine aria-hidden="true" size="1.1em" />
-          {textos.moldura.capturar}
+          <span className="lateral-nome">{textos.moldura.capturar}</span>
         </Button>
 
         <nav aria-label={textos.app.navegacao}>
@@ -73,7 +107,7 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
                   aria-current={secao === id ? "page" : undefined}
                 >
                   <Icone aria-hidden="true" size="1.15em" strokeWidth={1.75} />
-                  {nome}
+                  <span className="lateral-nome">{nome}</span>
                 </Button>
               </li>
             ))}
@@ -81,9 +115,9 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
         </nav>
 
         {foco.restante != null && (
-          <Button className="lateral-item foco-mini" onPress={() => aoEscolherSecao("foco")}>
+          <Button className="lateral-item foco-mini" onPress={() => escolher("foco")}>
             <Timer aria-hidden="true" size="1.15em" strokeWidth={1.75} />
-            {(foco.estado.modo === "foco" ? textos.foco.naBarra : textos.foco.naBarraPausa)(formatarRestante(foco.restante))}
+            <span className="lateral-nome">{(foco.estado.modo === "foco" ? textos.foco.naBarra : textos.foco.naBarraPausa)(formatarRestante(foco.restante))}</span>
           </Button>
         )}
 
@@ -96,12 +130,12 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
           />
           <Button className="lateral-item discreto" onPress={aoVerAtalhos}>
             <Keyboard aria-hidden="true" size="1.15em" strokeWidth={1.75} />
-            {textos.moldura.verAtalhos}
+            <span className="lateral-nome">{textos.moldura.verAtalhos}</span>
             <kbd className="lateral-dica">F1</kbd>
           </Button>
           <Button className="lateral-item discreto" onPress={aoBloquear}>
             <Lock aria-hidden="true" size="1.15em" strokeWidth={1.75} />
-            {textos.moldura.bloquear}
+            <span className="lateral-nome">{textos.moldura.bloquear}</span>
           </Button>
           <p className="lateral-versao">{textos.app.versao(__VERSAO__)}</p>
         </div>
@@ -113,12 +147,17 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
             <List aria-hidden="true" size="1.2em" />
           </Button>
         )}
-        {imersivo && menuAberto && <Button className="imersivo-fundo" aria-label={textos.comum.fechar} onPress={() => setMenuAberto(false)} />}
+        {escondido && menuAberto && <Button className="imersivo-fundo" aria-label={textos.comum.fechar} onPress={() => setMenuAberto(false)} />}
         {/* Ficam sempre no mesmo lugar; sem para onde ir, aparecem apagadas.
             No modo imersivo (caderno aberto) somem, para não ficar por cima da
             barra do caderno e bloquear o botão de voltar. */}
         {!imersivo && (
           <div className="setas-navegacao">
+            {recolhido && (
+              <Button className="botao-icone menu-recolhido" onPress={() => setMenuAberto((v) => !v)} aria-label={textos.moldura.menu} aria-expanded={menuAberto}>
+                <List aria-hidden="true" size="1.2em" />
+              </Button>
+            )}
             <Button className="botao-icone" aria-label={`${textos.navegacao.voltar} (Alt + ←)`} isDisabled={!navegacao.podeVoltar} onPress={navegacao.voltar}>
               <ArrowLeft aria-hidden="true" size="1.1em" />
             </Button>

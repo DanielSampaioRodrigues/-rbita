@@ -16,9 +16,7 @@ function versaoDeNavegador(): Plugin {
     apply: "build",
     enforce: "post",
     transformIndexHtml(html) {
-      return html
-        .replace('content="width=device-width, initial-scale=1.0"', 'content="width=device-width, initial-scale=1.0, viewport-fit=cover"')
-        .replace(
+      return html.replace(
           "</head>",
           [
             '    <link rel="manifest" href="./manifest.webmanifest" />',

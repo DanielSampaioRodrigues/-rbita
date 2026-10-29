@@ -90,9 +90,9 @@
 /* Modo imersivo (caderno aberto): a lateral some e o conteúdo ocupa tudo.
    Um botão de menu a traz de volta por cima, com tudo (inclusive o baixo
    estímulo, que por princípio nunca pode sumir). */
-.moldura.imersivo { grid-template-columns: 1fr; }
-.moldura.imersivo > .lateral { display: none; }
-.moldura.imersivo.menu-aberto > .lateral {
+.moldura:is(.imersivo, .recolhida) { grid-template-columns: 1fr; }
+.moldura:is(.imersivo, .recolhida) > .lateral { display: none; }
+.moldura:is(.imersivo, .recolhida).menu-aberto > .lateral {
   display: flex;
   position: absolute;
   top: 0;
@@ -131,12 +131,20 @@
 /* Abre espaço na barra do caderno para o botão de menu não cobrir o "voltar". */
 .moldura.imersivo .leitor-barra { padding-left: 3.4rem; }
 
-/* Janela estreita: a barra lateral fica só com os ícones. */
+/* Menu recolhido (fora do caderno): o botão de menu fica junto das setas. */
+.lateral-marca .lateral-recolher { margin-left: auto; }
+.moldura.recolhida .setas-navegacao .menu-recolhido { margin-right: var(--espaco-2); }
+
+/* Janela estreita com o menu fixo: a barra lateral fica só com os ícones.
+   O texto some só da tela; o leitor de tela continua lendo o nome. */
 @media (max-width: 760px) {
-  .lateral { width: auto; }
-  .lateral-marca span,
-  .lateral-dica,
-  .lateral-versao { display: none; }
+  .moldura:not(.menu-aberto) > .lateral { width: auto; padding-left: var(--espaco-2); padding-right: var(--espaco-2); }
+  .moldura:not(.menu-aberto) > .lateral :is(.lateral-nome, .lateral-marca > span, .interruptor > span:last-child) {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .moldura:not(.menu-aberto) > .lateral :is(.lateral-dica, .lateral-versao) { display: none; }
+  .moldura:not(.menu-aberto) > .lateral .lateral-marca { flex-direction: column; padding: 0; }
+  .moldura:not(.menu-aberto) > .lateral .lateral-marca .lateral-recolher { margin-left: 0; }
 }
 
 /* Telas de entrada (criar, abrir, recuperar) */
@@ -190,7 +198,7 @@
 .lateral .capturar { width: 100%; justify-content: flex-start; }
 
 @media (max-width: 760px) {
-  .lateral .capturar { justify-content: center; }
+  .moldura:not(.menu-aberto) > .lateral .capturar { justify-content: center; }
 }
 
 .lateral .foco-mini { color: var(--cor-destaque); font-weight: 650; font-variant-numeric: tabular-nums; }

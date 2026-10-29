@@ -1,3 +1,11 @@
+- **Menu que recolhe**: o menu do lado agora **se esconde** com a setinha ao lado do nome Órbita. Recolhido, ele volta pelo botão **☰** no alto da tela e abre **por cima**, sem apertar o conteúdo; ao escolher uma função, ele se fecha sozinho. No celular e no iPad em pé, ele **já começa recolhido**, para sobrar espaço. A escolha fica lembrada no aparelho.
+
+- **Versão de navegador (iPad e celular)**: o Órbita também abre no navegador, com ícone na tela de início e funcionando sem internet. Os dados ficam **criptografados no próprio aparelho** e são **separados** dos do Windows (por enquanto, sem sincronizar).
+
+---
+
+<!-- Abaixo: o que veio na 0.44.4. -->
+
 - **Caderno — selecionar, girar e organizar ficou fácil**: agora **basta tocar** numa imagem, figurinha, forma ou traço para **selecionar** (não precisa mais contornar com o laço). Com a seleção vêm as **alças para redimensionar**, uma **alça para girar** (imagens e figurinhas) e botões para **trazer para a frente** ou **enviar para trás** (camadas).
 
 - **Borracha de verdade**: a borracha agora **apaga só o pedaço** por onde você passa, em vez do objeto inteiro — com um círculo mostrando o tamanho dela.
