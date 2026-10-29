@@ -10,8 +10,9 @@ const tr = textos.saude.registros;
 const fmtDia = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
 
 /** Painel holístico: equilíbrio ao longo do tempo e resumo por tipo. */
-export function GraficosSaude() {
-  const [periodo, setPeriodo] = useState<"7" | "30" | "90">("30");
+export function GraficosSaude({ periodo: periodoFixo }: { periodo?: "7" | "30" | "90" } = {}) {
+  const [periodoProprio, setPeriodo] = useState<"7" | "30" | "90">("30");
+  const periodo = periodoFixo ?? periodoProprio;
   const [registros, setRegistros] = useState<RegistroSaude[]>([]);
   const mudancas = useMudancas();
 
@@ -33,7 +34,7 @@ export function GraficosSaude() {
 
   return (
     <div className="saude-graficos">
-      <Segmentado
+      {!periodoFixo && <Segmentado
         rotulo={t.periodo}
         valor={periodo}
         aoMudar={setPeriodo}
@@ -42,7 +43,7 @@ export function GraficosSaude() {
           { valor: "30", nome: t.periodos[30] },
           { valor: "90", nome: t.periodos[90] },
         ]}
-      />
+      />}
 
       {vazio ? (
         <p className="texto-suave">{t.semDados}</p>

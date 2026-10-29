@@ -58,7 +58,7 @@ export function FormRemedio({ inicial, aoFechar }: Props) {
 
   return (
     <Form
-      className="formulario"
+      className="formulario saude-form"
       onSubmit={(e) => {
         e.preventDefault();
         void enviar();

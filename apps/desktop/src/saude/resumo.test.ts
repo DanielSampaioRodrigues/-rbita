@@ -43,4 +43,23 @@ describe("resumo para a consulta", () => {
     expect(texto.indexOf("m300")).toBeLessThan(texto.indexOf("m200"));
     expect(texto).toContain("m300 — Sobrecarga sensorial: barulho");
   });
+
+  it("inclui o que fez bem, os gatilhos e as perguntas em aberto", () => {
+    const texto = montarResumo({
+      remedios: [],
+      registros: [
+        reg({ id: "a", tipo: "coisa_boa", intensidade: 4, momento: 100 }),
+        reg({ id: "b", tipo: "sobrecarga", nota: "Gatilhos: Barulho, Luz\nno ônibus", momento: 200 }),
+      ],
+      periodoDias: 7,
+      ate: "2026-10-26",
+      formatarMomento: fmt,
+      perguntas: [{ profissional: "Dra. Ana", texto: "posso mudar o horário?" }],
+    });
+    expect(texto).toContain("### O que fez bem");
+    expect(texto).toContain("**Coisa boa**: 1 registro (média 4,0 de 5).");
+    expect(texto).toContain("Gatilhos de sobrecarga anotados: Barulho, Luz.");
+    expect(texto).toContain("m200 — Sobrecarga sensorial: Gatilhos: Barulho, Luz · no ônibus");
+    expect(texto).toContain("- posso mudar o horário? (Dra. Ana)");
+  });
 });

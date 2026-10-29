@@ -1,72 +1,82 @@
 import { useEffect, useState } from "react";
-import { Button } from "react-aria-components";
+import { Button, Tab, TabList, TabPanel, Tabs } from "react-aria-components";
 import { chaveDia } from "../agenda/datas";
-import { api, type AvisoSaude, type DoseDoDia, type Remedio } from "../api";
-import { useRecado } from "../app/Recado";
+import { api, type AvisoSaude, type Remedio } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
-import { Check, Heart, Pencil, Pause, Play, Plus, Trash2, TriangleAlert } from "../icones";
+import { CalendarDays, Heart, ListChecks, Pencil, Pause, Pill, Play, Plus, Sun, Trash2 } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { FormRemedio, novoRemedio } from "./FormRemedio";
-import { RegistrosSaude } from "./RegistrosSaude";
-import { GraficosSaude } from "./GraficosSaude";
-import { JanelaResumoConsulta } from "./ResumoConsulta";
+import { AbaHoje } from "./AbaHoje";
+import { AbaHistorico } from "./HistoricoSaude";
+import { AbaPlanos } from "./AbaPlanos";
 
 const t = textos.saude;
+const fmtData = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" });
 
-/** Cartão das doses do dia, com confirmar e desfazer. Reaproveitável em outras telas. */
-export function CartaoRemediosHoje() {
-  const [doses, setDoses] = useState<DoseDoDia[]>([]);
-  const mudancas = useMudancas();
-  const recado = useRecado();
-  const hoje = chaveDia(new Date());
+export type AbaSaude = "hoje" | "remedios" | "historico" | "planos";
+const ABAS: AbaSaude[] = ["hoje", "remedios", "historico", "planos"];
+const CHAVE_ABA = "orbita.saude.aba";
 
-  useEffect(() => {
-    api.dosesDoDia(hoje).then(setDoses, () => {});
-  }, [hoje, mudancas]);
+function lerAba(): AbaSaude {
+  try {
+    const v = localStorage.getItem(CHAVE_ABA);
+    return ABAS.includes(v as AbaSaude) ? (v as AbaSaude) : "hoje";
+  } catch {
+    return "hoje";
+  }
+}
 
-  const marcar = async (d: DoseDoDia, tomada: boolean) => {
-    await api.marcarDose(d.remedioId, d.horario, hoje, tomada);
-    avisarMudanca();
-    recado(tomada ? t.tomadaConfirmada(d.nome) : t.tomadaDesfeita(d.nome));
+export { CartaoRemediosHoje } from "./RemediosHoje";
+
+export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () => void }) {
+  const [aba, setAbaEstado] = useState<AbaSaude>(lerAba);
+
+  const setAba = (a: AbaSaude) => {
+    setAbaEstado(a);
+    try {
+      localStorage.setItem(CHAVE_ABA, a);
+    } catch {
+      // Sem armazenamento: só não lembra a aba na próxima vez.
+    }
   };
 
-  if (doses.length === 0) return <p className="texto-suave">{t.semRemediosHoje}</p>;
-
   return (
-    <ul className="lista-simples sem-marcador">
-      {doses.map((d) => (
-        <li key={`${d.remedioId}|${d.horario}`} className={d.tomada ? "linha-ajuste feito" : "linha-ajuste"}>
-          <span className="quebra">
-            <strong>{d.nome}</strong>
-            {" "}
-            <span className="texto-suave">{t.doseTexto(d.dose, [d.horario])}</span>
-          </span>
-          {d.tomada ? (
-            <span className="linha-ajuste">
-              <span className="etiqueta-estado ok">
-                <Check aria-hidden="true" size="1em" /> {t.tomada}
-              </span>
-              <Button className="link" onPress={() => void marcar(d, false)}>{t.desfazer}</Button>
-            </span>
-          ) : (
-            <Button className="botao principal" onPress={() => void marcar(d, true)}>
-              <Check aria-hidden="true" size="1.1em" /> {t.tomei}
-            </Button>
-          )}
-        </li>
-      ))}
-    </ul>
+    <div className="pagina saude-pagina">
+      <h1>{t.titulo}</h1>
+      <p className="pagina-intro">{t.intro}</p>
+
+      <Tabs className="saude-tabs" selectedKey={aba} onSelectionChange={(k) => setAba(k as AbaSaude)}>
+        <TabList className="saude-abas" aria-label={t.abas.rotulo}>
+          <Tab id="hoje" className="saude-aba"><Sun aria-hidden="true" size="1.1em" /> {t.abas.hoje}</Tab>
+          <Tab id="remedios" className="saude-aba"><Pill aria-hidden="true" size="1.1em" /> {t.abas.remedios}</Tab>
+          <Tab id="historico" className="saude-aba"><ListChecks aria-hidden="true" size="1.1em" /> {t.abas.historico}</Tab>
+          <Tab id="planos" className="saude-aba"><CalendarDays aria-hidden="true" size="1.1em" /> {t.abas.planos}</Tab>
+        </TabList>
+        <TabPanel id="hoje" className="saude-painel">
+          <AbaHoje aoIrPara={setAba} />
+        </TabPanel>
+        <TabPanel id="remedios" className="saude-painel">
+          <AbaRemedios />
+        </TabPanel>
+        <TabPanel id="historico" className="saude-painel">
+          <AbaHistorico />
+        </TabPanel>
+        <TabPanel id="planos" className="saude-painel">
+          <AbaPlanos aoAbrirPlanoDeCrise={aoAbrirPlanoDeCrise} />
+        </TabPanel>
+      </Tabs>
+    </div>
   );
 }
 
-export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () => void }) {
+/** Aba "Remédios": a lista, o estoque, a receita e os avisos calmos. */
+function AbaRemedios() {
   const [remedios, setRemedios] = useState<Remedio[]>([]);
   const [alertas, setAlertas] = useState<AvisoSaude[]>([]);
   const [editando, setEditando] = useState<Remedio | null>(null);
   const [excluindo, setExcluindo] = useState<Remedio | null>(null);
-  const [resumoAberto, setResumoAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
   const hoje = chaveDia(new Date());
@@ -89,20 +99,10 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
   };
 
   return (
-    <div className="pagina">
-      <h1>{t.titulo}</h1>
-      <p className="pagina-intro">{t.intro}</p>
-
-      <section className="cartao largura-leitura esticado" aria-labelledby="remedios-hoje">
-        <h2 id="remedios-hoje">{t.remediosHoje}</h2>
-        <CartaoRemediosHoje />
-      </section>
-
+    <>
       {alertas.length > 0 && (
-        <section className="cartao largura-leitura esticado" aria-labelledby="avisos-saude">
-          <h2 id="avisos-saude">
-            <TriangleAlert aria-hidden="true" size="1em" /> {t.alertas}
-          </h2>
+        <section className="cartao saude-cartao saude-avisos" aria-labelledby="avisos-saude">
+          <h2 id="avisos-saude">{t.alertas}</h2>
           <ul className="lista-simples sem-marcador">
             {alertas.map((a, i) => (
               <li key={`${a.remedioId}|${a.tipo}|${i}`}>
@@ -113,69 +113,54 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
         </section>
       )}
 
-      <section className="cartao largura-leitura esticado" aria-labelledby="seus-remedios">
-        <h2 id="seus-remedios">{t.seusRemedios}</h2>
-        {remedios.length === 0 ? (
-          <p className="texto-suave">{t.semRemedios}</p>
-        ) : (
-          <ul className="lista-simples sem-marcador">
-            {remedios.map((r) => (
-              <li key={r.id} className={r.estado === "pausado" ? "linha-ajuste esmaecido" : "linha-ajuste"}>
-                <span className="quebra">
-                  <strong>{r.nome}</strong>
-                  {r.estado === "pausado" && <span className="etiqueta-estado"> {t.pausado}</span>}
-                  <br />
-                  <span className="texto-suave">{t.doseTexto(r.dose, r.horarios)}</span>
-                  {r.estoque !== null && <span className="texto-suave"> · {t.estoqueRestante(r.estoque)}</span>}
-                </span>
-                <span className="linha-ajuste">
-                  <Button className="botao-icone" onPress={() => setEditando(r)} aria-label={`${t.editar}: ${r.nome}`}>
-                    <Pencil aria-hidden="true" size="1.1em" />
-                  </Button>
-                  <Button
-                    className="botao-icone"
-                    onPress={() => void pausar(r, r.estado !== "pausado")}
-                    aria-label={`${r.estado === "pausado" ? t.retomar : t.pausar}: ${r.nome}`}
-                  >
-                    {r.estado === "pausado" ? <Play aria-hidden="true" size="1.1em" /> : <Pause aria-hidden="true" size="1.1em" />}
-                  </Button>
-                  <Button className="botao-icone" onPress={() => setExcluindo(r)} aria-label={`${t.excluir}: ${r.nome}`}>
-                    <Trash2 aria-hidden="true" size="1.1em" />
-                  </Button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="botoes">
+      <section className="cartao saude-cartao" aria-labelledby="seus-remedios">
+        <div className="linha-ajuste">
+          <h2 id="seus-remedios">{t.seusRemedios}</h2>
           <Button className="botao principal" onPress={() => setEditando(novoRemedio())}>
             <Plus aria-hidden="true" size="1.1em" /> {t.adicionar}
           </Button>
         </div>
-      </section>
-
-      <section className="cartao largura-leitura esticado" aria-labelledby="como-esta">
-        <h2 id="como-esta">{textos.saude.registros.titulo}</h2>
-        <p className="texto-suave">{textos.saude.registros.intro}</p>
-        <RegistrosSaude />
-        <div className="botoes">
-          <Button className="botao" onPress={() => setResumoAberto(true)}>{textos.saude.resumo.abrir}</Button>
-        </div>
-      </section>
-
-      <section className="cartao largura-leitura esticado" aria-labelledby="saude-graficos">
-        <h2 id="saude-graficos">{textos.saude.graficos.titulo}</h2>
-        <p className="texto-suave">{textos.saude.graficos.intro}</p>
-        <GraficosSaude />
-      </section>
-
-      <section className="cartao largura-leitura esticado" aria-labelledby="plano-crise">
-        <h2 id="plano-crise">{textos.saude.plano.titulo}</h2>
-        <p className="texto-suave">{textos.saude.plano.intro}</p>
-        <div className="botoes">
-          <Button className="botao principal" onPress={aoAbrirPlanoDeCrise}>{textos.saude.plano.abrir}</Button>
-        </div>
-        <p className="campo-ajuda">{textos.saude.plano.atalho}</p>
+        {remedios.length === 0 ? (
+          <div className="saude-vazio">
+            <Pill aria-hidden="true" size="1.6em" />
+            <p>{t.semRemedios}</p>
+            <p className="texto-suave">{t.semRemediosAjuda}</p>
+          </div>
+        ) : (
+          <ul className="lista-simples sem-marcador saude-remedios">
+            {remedios.map((r) => (
+              <li key={r.id} className={r.estado === "pausado" ? "saude-remedio esmaecido" : "saude-remedio"}>
+                <div className="linha-ajuste">
+                  <span className="quebra">
+                    <strong>{r.nome}</strong>
+                    {r.estado === "pausado" && <span className="etiqueta-estado peso">{t.pausado}</span>}
+                  </span>
+                  <span className="linha-ajuste">
+                    <Button className="botao-icone" onPress={() => setEditando(r)} aria-label={`${t.editar}: ${r.nome}`}>
+                      <Pencil aria-hidden="true" size="1.1em" />
+                    </Button>
+                    <Button
+                      className="botao-icone"
+                      onPress={() => void pausar(r, r.estado !== "pausado")}
+                      aria-label={`${r.estado === "pausado" ? t.retomar : t.pausar}: ${r.nome}`}
+                    >
+                      {r.estado === "pausado" ? <Play aria-hidden="true" size="1.1em" /> : <Pause aria-hidden="true" size="1.1em" />}
+                    </Button>
+                    <Button className="botao-icone" onPress={() => setExcluindo(r)} aria-label={`${t.excluir}: ${r.nome}`}>
+                      <Trash2 aria-hidden="true" size="1.1em" />
+                    </Button>
+                  </span>
+                </div>
+                <dl className="saude-ficha">
+                  <div><dt>{t.ficha.dose}</dt><dd>{r.dose || "—"}</dd></div>
+                  <div><dt>{t.ficha.horarios}</dt><dd>{r.horarios.length ? r.horarios.join(", ") : t.ficha.semHorario}</dd></div>
+                  <div><dt>{t.ficha.estoque}</dt><dd>{r.estoque !== null ? t.estoqueRestante(r.estoque) : t.semEstoque}</dd></div>
+                  <div><dt>{t.ficha.receita}</dt><dd>{r.receita ? fmtData.format(new Date(`${r.receita}T00:00:00`)) : t.ficha.semReceita}</dd></div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <Aviso>{erro}</Aviso>
@@ -198,9 +183,7 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
         aoCancelar={() => setExcluindo(null)}
         aoConfirmar={() => void excluir()}
       />
-
-      <JanelaResumoConsulta aberta={resumoAberto} aoFechar={() => setResumoAberto(false)} />
-    </div>
+    </>
   );
 }
 

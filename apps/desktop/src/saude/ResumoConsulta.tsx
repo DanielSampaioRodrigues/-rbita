@@ -18,6 +18,7 @@ export function JanelaResumoConsulta({ aberta, aoFechar }: { aberta: boolean; ao
   const [periodo, setPeriodo] = useState<Periodo>("30");
   const [remedios, setRemedios] = useState<Remedio[]>([]);
   const [registros, setRegistros] = useState<RegistroSaude[]>([]);
+  const [perguntas, setPerguntas] = useState<{ profissional: string; texto: string }[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const recado = useRecado();
 
@@ -36,6 +37,17 @@ export function JanelaResumoConsulta({ aberta, aoFechar }: { aberta: boolean; ao
     );
   }, [aberta, periodo]);
 
+  // Perguntas em aberto, de todos os profissionais da seção Cuidado.
+  useEffect(() => {
+    if (!aberta) return;
+    api.listarProfissionais().then(async (ps) => {
+      const listas = await Promise.all(
+        ps.map(async (p) => (await api.listarNotasCuidado(p.id, "pergunta")).filter((n) => !n.feita).map((n) => ({ profissional: p.nome, texto: n.texto }))),
+      );
+      setPerguntas(listas.flat());
+    }, () => setPerguntas([]));
+  }, [aberta]);
+
   const texto = useMemo(
     () =>
       montarResumo({
@@ -44,8 +56,9 @@ export function JanelaResumoConsulta({ aberta, aoFechar }: { aberta: boolean; ao
         periodoDias: Number(periodo),
         ate: chaveDia(new Date()),
         formatarMomento: (ms) => fmtMomento.format(ms),
+        perguntas,
       }),
-    [remedios, registros, periodo],
+    [remedios, registros, periodo, perguntas],
   );
 
   const copiar = async () => {

@@ -4,6 +4,7 @@ import { api, type PlanoSaude, type TipoPlano } from "../api";
 import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
+import { avisarMudanca, useMudancas } from "../dados";
 import { Pencil, Plus, Trash2 } from "../icones";
 import { textos } from "../textos/pt-BR";
 
@@ -14,26 +15,36 @@ function planoVazio(tipo: TipoPlano): PlanoSaude {
   return { id: "", tipo, titulo: "", sinais: "", ajuda: "", contatos: "", atualizadoEm: 0 };
 }
 
-/** Janela dos planos de crise e estratégias. A pessoa pode ter vários. */
+/** Janela dos planos de crise e estratégias (o atalho de crise abre esta). */
 export function JanelaPlanoDeCrise({ aberta, aoFechar }: { aberta: boolean; aoFechar: () => void }) {
+  return (
+    <Janela titulo={t.titulo} aberta={aberta} aoFechar={aoFechar} larga>
+      <PlanosSaude />
+    </Janela>
+  );
+}
+
+/** Os planos, com criar, editar e apagar. Usado na janela do atalho e na aba "Planos e consultas". */
+export function PlanosSaude({ semIntro }: { semIntro?: boolean }) {
   const [planos, setPlanos] = useState<PlanoSaude[]>([]);
   const [editando, setEditando] = useState<PlanoSaude | null>(null);
   const [excluindo, setExcluindo] = useState<PlanoSaude | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const mudancas = useMudancas();
   const recado = useRecado();
 
-  const carregar = () => api.listarPlanos().then(setPlanos, (e) => setErro(e instanceof Error ? e.message : String(e)));
   useEffect(() => {
-    if (!aberta) return;
-    setEditando(null);
-    setErro(null);
-    void carregar();
-  }, [aberta]);
+    api.listarPlanos().then(
+      // Os de crise primeiro: é o que se procura com pressa.
+      (ps) => setPlanos([...ps].sort((a, b) => (a.tipo === b.tipo ? 0 : a.tipo === "crise" ? -1 : 1))),
+      (e) => setErro(e instanceof Error ? e.message : String(e)),
+    );
+  }, [mudancas]);
 
   const salvar = async (p: PlanoSaude) => {
     await api.salvarPlano(p);
     setEditando(null);
-    await carregar();
+    avisarMudanca();
     recado(t.salvo);
   };
 
@@ -41,49 +52,45 @@ export function JanelaPlanoDeCrise({ aberta, aoFechar }: { aberta: boolean; aoFe
     if (!excluindo) return;
     await api.excluirPlano(excluindo.id);
     setExcluindo(null);
-    await carregar();
+    avisarMudanca();
   };
 
+  if (editando) return <FormPlano inicial={editando} aoSalvar={salvar} aoCancelar={() => setEditando(null)} />;
+
   return (
-    <Janela titulo={t.titulo} aberta={aberta} aoFechar={aoFechar} larga>
-      {editando ? (
-        <FormPlano inicial={editando} aoSalvar={salvar} aoCancelar={() => setEditando(null)} />
+    <div className="saude-planos">
+      {!semIntro && <p className="texto-suave">{t.intro}</p>}
+      {planos.length === 0 ? (
+        <p>{t.semPlanos}</p>
       ) : (
-        <>
-          <p className="texto-suave">{t.intro}</p>
-          {planos.length === 0 ? (
-            <p>{t.semPlanos}</p>
-          ) : (
-            <ul className="lista-simples sem-marcador">
-              {planos.map((p) => (
-                <li key={p.id} className="cartao compacto">
-                  <div className="linha-ajuste">
-                    <strong className="quebra">
-                      <span className={`livro-selo`}>{t.tipos[p.tipo]}</span> {p.titulo}
-                    </strong>
-                    <span className="linha-ajuste">
-                      <Button className="botao-icone" onPress={() => setEditando(p)} aria-label={`${t.editar}: ${p.titulo}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
-                      <Button className="botao-icone" onPress={() => setExcluindo(p)} aria-label={`${t.excluir}: ${p.titulo}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
-                    </span>
-                  </div>
-                  <Secao titulo={t.campos[p.tipo].sinais} texto={p.sinais} />
-                  <Secao titulo={t.campos[p.tipo].ajuda} texto={p.ajuda} />
-                  <Secao titulo={t.campos[p.tipo].contatos} texto={p.contatos} />
-                  {p.atualizadoEm > 0 && <p className="campo-ajuda">{t.atualizadoEm(fmtData.format(p.atualizadoEm))}</p>}
-                </li>
-              ))}
-            </ul>
-          )}
-          <Aviso>{erro}</Aviso>
-          <div className="botoes">
-            <Button className="botao principal" onPress={() => setEditando(planoVazio("crise"))}><Plus aria-hidden="true" size="1.1em" /> {t.adicionarCrise}</Button>
-            <Button className="botao" onPress={() => setEditando(planoVazio("estrategia"))}><Plus aria-hidden="true" size="1.1em" /> {t.adicionarEstrategia}</Button>
-          </div>
-        </>
+        <ul className="lista-simples sem-marcador saude-planos-lista">
+          {planos.map((p) => (
+            <li key={p.id} className={`cartao compacto saude-plano saude-plano-${p.tipo}`}>
+              <div className="linha-ajuste">
+                <strong className="quebra">
+                  <span className="livro-selo">{t.tipos[p.tipo]}</span> {p.titulo}
+                </strong>
+                <span className="linha-ajuste">
+                  <Button className="botao-icone" onPress={() => setEditando(p)} aria-label={`${t.editar}: ${p.titulo}`}><Pencil aria-hidden="true" size="1.1em" /></Button>
+                  <Button className="botao-icone" onPress={() => setExcluindo(p)} aria-label={`${t.excluir}: ${p.titulo}`}><Trash2 aria-hidden="true" size="1.1em" /></Button>
+                </span>
+              </div>
+              <Secao titulo={t.campos[p.tipo].sinais} texto={p.sinais} />
+              <Secao titulo={t.campos[p.tipo].ajuda} texto={p.ajuda} />
+              <Secao titulo={t.campos[p.tipo].contatos} texto={p.contatos} />
+              {p.atualizadoEm > 0 && <p className="campo-ajuda">{t.atualizadoEm(fmtData.format(p.atualizadoEm))}</p>}
+            </li>
+          ))}
+        </ul>
       )}
+      <Aviso>{erro}</Aviso>
+      <div className="botoes">
+        <Button className="botao principal" onPress={() => setEditando(planoVazio("crise"))}><Plus aria-hidden="true" size="1.1em" /> {t.adicionarCrise}</Button>
+        <Button className="botao" onPress={() => setEditando(planoVazio("estrategia"))}><Plus aria-hidden="true" size="1.1em" /> {t.adicionarEstrategia}</Button>
+      </div>
 
       <Confirmar titulo={t.excluir} texto={excluindo ? t.confirmarExcluir(excluindo.titulo) : ""} confirmar={t.excluir} aberta={excluindo !== null} aoCancelar={() => setExcluindo(null)} aoConfirmar={() => void excluir()} />
-    </Janela>
+    </div>
   );
 }
 
@@ -103,7 +110,7 @@ function FormPlano({ inicial, aoSalvar, aoCancelar }: { inicial: PlanoSaude; aoS
   };
 
   return (
-    <Form className="formulario" onSubmit={enviar}>
+    <Form className="formulario saude-form" onSubmit={enviar}>
       <p className="texto-suave">{t.tipos[plano.tipo]}</p>
       <Campo rotulo={t.titulo_campo} valor={plano.titulo} aoMudar={(v) => setPlano((p) => ({ ...p, titulo: v }))} maximo={80} semDitado autoFocus />
       <Campo rotulo={campos.sinais} valor={plano.sinais} aoMudar={(v) => setPlano((p) => ({ ...p, sinais: v }))} multilinha descricao={campos.sinaisAjuda} />
