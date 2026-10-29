@@ -12,7 +12,8 @@ import { RegistroRapido } from "../energia/Energia";
 import { usePreferencias } from "../estado";
 import { BLOCOS_ATALHO, type BLOCOS_INICIO } from "../preferencias";
 import { textos } from "../textos/pt-BR";
-import type { Secao } from "../app/Moldura";
+import { ModulosEscondidos, type Secao } from "../app/Moldura";
+import { useOrganizar } from "../app/Organizar";
 import { CartaoProjeto } from "./Projetos";
 
 const t = textos.inicio;
@@ -37,7 +38,8 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
   const [ativos, setAtivos] = useState<Projeto[]>([]);
   const [ideias, setIdeias] = useState(0);
   const [hoje, setHoje] = useState<Ocorrencia[]>([]);
-  const [organizando, setOrganizando] = useState(false);
+  // O mesmo modo organizar vale para o menu lateral (fica na Moldura).
+  const { organizando, setOrganizando } = useOrganizar();
   const mudancas = useMudancas();
   const { prefs, mudar } = usePreferencias();
   const { ordem, ocultos, largos } = prefs.inicio;
@@ -162,18 +164,24 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
           <LayoutGrid aria-hidden="true" size="1.1em" /> {organizando ? t.pronto : t.organizar}
         </Button>
       </div>
-      <p className="pagina-intro">{organizando ? `${t.organizarExplicacao} ${t.atalhosExplicacao}` : t.construcao}</p>
-      {organizando && ocultos.length > 0 && (
-        <section className="grupo esticado" aria-labelledby="escondidos">
-          <h2 id="escondidos">{t.escondidos}</h2>
-          <div className="botoes">
-            {ocultos.map((b) => (
-              <Button key={b} className="botao" onPress={() => mudarInicio({ ocultos: ocultos.filter((x) => x !== b) })}>
-                <Plus aria-hidden="true" size="1.1em" /> {t.mostrar(t.blocos[b as Bloco])}
-              </Button>
-            ))}
-          </div>
-        </section>
+      <p className="pagina-intro">{organizando ? `${t.organizarExplicacao} ${t.atalhosExplicacao} ${t.menuExplicacao}` : t.construcao}</p>
+      {organizando && (
+        <div className="inicio-escondidos esticado">
+          {ocultos.length > 0 && (
+            <section className="grupo" aria-labelledby="escondidos">
+              <h2 id="escondidos">{t.escondidos}</h2>
+              <div className="botoes">
+                {ocultos.map((b) => (
+                  <Button key={b} className="botao" onPress={() => mudarInicio({ ocultos: ocultos.filter((x) => x !== b) })}>
+                    <Plus aria-hidden="true" size="1.1em" /> {t.mostrar(t.blocos[b as Bloco])}
+                  </Button>
+                ))}
+              </div>
+            </section>
+          )}
+          {/* Fica fora do arrastar dos blocos: recebe os itens arrastados do menu. */}
+          <ModulosEscondidos />
+        </div>
       )}
       {!organizando && ocultos.length > 0 && (
         <p className="texto-suave pequeno esticado">

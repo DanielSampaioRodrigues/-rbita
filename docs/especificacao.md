@@ -437,6 +437,7 @@ docs/                especificação e registro de decisões
 
 **Decisões da versão 0.45.0 (29/10/2026, lista de falhas e melhorias de Dan, testada no iPad):**
 - **Navegação:** setas de voltar/avançar com 44 px e traço grosso; entre elas, um botão abre a lista das últimas telas (segurar "voltar" também abre). Pular para uma tela do histórico não apaga o "avançar".
+- **Menu lateral organizável:** no modo organizar do Início, o menu aceita reordenar (arrastar/subir/descer) e esconder seções; `prefs.menu = { ordem, ocultos }`, validado como `inicio`. Travadas (nunca escondidas): `inicio`, `aparencia` (saída rápida do baixo estímulo) e `ajustes`. Seção escondida continua acessível por atalho e histórico.
 - **Início:** "Organizar a tela inicial" oferece um bloco-atalho para cada módulo. Atalhos novos entram **escondidos** (princípio 1: nada muda sem a pessoa pedir).
 - **Minha organização:** cartões compactos em grade na página principal; cor inteira em quadro, coluna e cartão (10 tons, versão clara e escura, texto por contraste calculado, ≥ 4,5:1; no baixo estímulo as cores ficam apagadas); arrastar com dnd-kit (toque: segurar 150 ms). Cor guardada no campo `dados` do item, sem migração. Fora: arrastar colunas.
 - **Agenda:** cor por compromisso (mesma paleta das etiquetas; faixa lateral + fundo tingido a 13%; texto na cor do tema). A cor é guardada junto das notas no banco nativo, sem mudar a estrutura. Não vai para o `.ics`.

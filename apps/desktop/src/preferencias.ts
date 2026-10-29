@@ -60,6 +60,8 @@ export interface Preferencias {
   temasProprios: Tema[];
   /** Tela inicial montável: ordem dos blocos, escondidos e largos. */
   inicio: { ordem: string[]; ocultos: string[]; largos: string[] };
+  /** Menu lateral montável: ordem das seções e as escondidas (que continuam abertas por atalho). */
+  menu: { ordem: SecaoMenu[]; ocultos: SecaoMenu[] };
   /** Como o tempo do Foco aparece: disco, relógio de ponteiro, ampulheta ou barra. */
   estiloFoco: EstiloFoco;
 }
@@ -70,6 +72,12 @@ export type EstiloFoco = (typeof ESTILOS_FOCO)[number];
 export const BLOCOS_INICIO = ["capturar", "energia", "hoje", "continuar", "ideias", "novidades", "organizacao", "rotinas", "foco", "dinheiro", "saude", "cuidado", "estudos", "hobbies", "leitura", "caderno"] as const;
 /** Atalhos para os outros módulos: começam escondidos, para o Início não mudar sem a pessoa pedir. */
 export const BLOCOS_ATALHO = ["organizacao", "rotinas", "foco", "dinheiro", "saude", "cuidado", "estudos", "hobbies", "leitura", "caderno"] as const;
+
+/** Seções do menu lateral, na ordem de fábrica. Seção nova de versão futura entra aqui (e no fim do menu de quem já arrumou). */
+export const SECOES_MENU = ["inicio", "organizacao", "ideias", "projetos", "agenda", "rotinas", "foco", "energia", "dinheiro", "saude", "cuidado", "estudos", "hobbies", "leitura", "caderno", "aparencia", "ajustes"] as const;
+export type SecaoMenu = (typeof SECOES_MENU)[number];
+/** Ficam sempre no menu (podem mudar de lugar, não podem ser escondidas). Aparência é a saída rápida do baixo estímulo. */
+export const SECOES_TRAVADAS: readonly SecaoMenu[] = ["inicio", "aparencia", "ajustes"];
 
 export const PADRAO: Preferencias = {
   fonte: "atkinson",
@@ -93,6 +101,7 @@ export const PADRAO: Preferencias = {
   contornoLetras: true,
   temasProprios: [],
   inicio: { ordem: [...BLOCOS_INICIO], ocultos: [...BLOCOS_ATALHO], largos: ["energia", "hoje", "continuar", "novidades"] },
+  menu: { ordem: [...SECOES_MENU], ocultos: [] },
   estiloFoco: "circulo",
 };
 
@@ -140,6 +149,7 @@ export function validar(bruto: unknown): Preferencias {
     vidro: typeof p.vidro === "number" && p.vidro >= 0 && p.vidro <= 100 ? Math.round(p.vidro) : PADRAO.vidro,
     fundoVisivel: typeof p.fundoVisivel === "number" && p.fundoVisivel >= 0 && p.fundoVisivel <= 100 ? Math.round(p.fundoVisivel) : PADRAO.fundoVisivel,
     inicio: validarInicio(p.inicio),
+    menu: validarMenu(p.menu),
     estiloFoco: dentro(p.estiloFoco, ESTILOS_FOCO) ? p.estiloFoco : PADRAO.estiloFoco,
   };
 }
@@ -230,6 +240,17 @@ function validarInicio(bruto: unknown): Preferencias["inicio"] {
     if ((BLOCOS_ATALHO as readonly string[]).includes(bloco) && !ocultos.includes(bloco)) ocultos.push(bloco);
   }
   return { ordem, ocultos, largos: Array.isArray(b.largos) ? lista(b.largos) : [...PADRAO.inicio.largos] };
+}
+
+function validarMenu(bruto: unknown): Preferencias["menu"] {
+  const b = (typeof bruto === "object" && bruto !== null ? bruto : {}) as Record<string, unknown>;
+  const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is SecaoMenu => (SECOES_MENU as readonly unknown[]).includes(x)) : []);
+  const ordem = [...new Set(lista(b.ordem))];
+  // Seções novas (de versões futuras) entram no fim, à mostra.
+  for (const s of SECOES_MENU) if (!ordem.includes(s)) ordem.push(s);
+  // As travadas nunca ficam escondidas, nem se o arquivo disser o contrário.
+  const ocultos = [...new Set(lista(b.ocultos))].filter((s) => !SECOES_TRAVADAS.includes(s));
+  return { ordem, ocultos };
 }
 
 /** Tema em uso: um pronto ou um próprio. */

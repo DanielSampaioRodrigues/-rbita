@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BLOCOS_ATALHO, BLOCOS_INICIO, carregar, PADRAO, salvar, validar } from "./preferencias";
+import { BLOCOS_ATALHO, BLOCOS_INICIO, carregar, PADRAO, salvar, SECOES_MENU, validar } from "./preferencias";
 
 class Memoria implements Storage {
   private dados = new Map<string, string>();
@@ -53,6 +53,19 @@ describe("preferências", () => {
     expect(r.inicio.ordem).toHaveLength(BLOCOS_INICIO.length);
     // Os atalhos de módulo que a pessoa ainda não viu entram escondidos: o Início não muda sem aviso.
     expect(r.inicio.ocultos).toEqual(["novidades", ...BLOCOS_ATALHO]);
+  });
+
+  it("menu guarda ordem válida, acrescenta seções novas no fim e não esconde as travadas", () => {
+    const r = validar({ menu: { ordem: ["ajustes", "xyz", "ajustes", "foco"], ocultos: ["dinheiro", "inicio", "aparencia", "ajustes", "nada", "dinheiro"] } });
+    expect(r.menu.ordem.slice(0, 2)).toEqual(["ajustes", "foco"]);
+    expect(r.menu.ordem).toHaveLength(SECOES_MENU.length);
+    expect(new Set(r.menu.ordem).size).toBe(SECOES_MENU.length);
+    // As que faltavam vêm depois, na ordem de fábrica.
+    expect(r.menu.ordem.slice(2)).toEqual(SECOES_MENU.filter((s) => s !== "ajustes" && s !== "foco"));
+    expect(r.menu.ocultos).toEqual(["dinheiro"]);
+    // Preferências antigas, sem menu: tudo à mostra, na ordem de fábrica.
+    expect(validar({ fonte: "lexend" }).menu).toEqual({ ordem: [...SECOES_MENU], ocultos: [] });
+    expect(validar({ menu: "estragado" }).menu).toEqual(PADRAO.menu);
   });
 
   it("não quebra com texto corrompido", () => {
