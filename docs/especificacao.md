@@ -412,6 +412,13 @@ docs/                especificação e registro de decisões
 
 **Distribuição.** No Windows e no Mac, instalador próprio com botão de atualização. **Feito no Windows (versão 0.20.0)**: instaladores assinados publicados no repositório público `orbita-versoes`; em Ajustes > Atualizações, "Procurar atualização" mostra o que mudou, com "Instalar agora" e "Agora não"; ao abrir, o Órbita só avisa (opção que dá para desligar). Detalhes em `docs/decisoes/0009-atualizacao.md`. No mobile, as lojas exigem conta de desenvolvedor: a Apple cobra cerca de US$ 99 por ano e a Google, uma taxa única de US$ 25 (valores a confirmar). Uma versão web instalável é a alternativa sem custo.
 
+**Versão de navegador (teste no iPad, adiantada da Onda 3; versão 0.44.4).** Para Dan testar no iPad sem custo, o mesmo app roda no navegador e vira um app na tela de início ("Adicionar à Tela de Início": ícone e tela cheia). Decisões:
+- **Mesmos dados, mesma proteção do Windows, só que no aparelho.** Liga com `VITE_ORBITA_WEB=1` no build. A chave dos dados é aleatória e fica trancada pela senha (opcional), pelas 6 palavras (sempre) e pelo aparelho (PIN ou abrir direto), com a criptografia do próprio navegador (PBKDF2-SHA-256 e AES-GCM). Os dados ficam trancados no armazenamento do navegador (IndexedDB). Código em `apps/desktop/src/web/`.
+- **Os dados não se encontram com os do Windows** até a sincronização da Onda 3. O backup da versão de navegador é um arquivo criptografado próprio; o backup do Windows ainda não abre no navegador.
+- **Nada muda sem aviso:** um service worker guarda cada versão; o app continua na versão de agora, inclusive sem internet, até a pessoa aceitar a nova pelo aviso de atualização (com o que mudou).
+- **Publicação:** no repositório público `orbita-versoes`, branch `site`, pelo GitHub Pages (`https://danielsampaiorodrigues.github.io/orbita-versoes/`), disparada à mão no workflow (escolha "navegador"), só na máquina Linux. Vão só os arquivos prontos; o código-fonte continua privado.
+- **Ainda não existe no navegador:** IA (avisa e pede para usar no Windows), ditado do computador (no iPad, usa-se o microfone do teclado), backup automático numa pasta, livros EPUB/PDF na Leitura e lembretes com o app fechado.
+
 ## Ondas de construção
 
 A arquitetura nasce completa, mas a construção vem em quatro ondas. As duas primeiras entregam o programa completo no Windows; Mac e mobile só entram depois dos testes. Cada onda só começa quando a anterior passa pelo seu portão.
