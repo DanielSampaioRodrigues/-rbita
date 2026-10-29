@@ -154,8 +154,9 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
         {!imersivo && (
           <div className="setas-navegacao">
             {recolhido && (
-              <Button className="botao-icone menu-recolhido" onPress={() => setMenuAberto((v) => !v)} aria-label={textos.moldura.menu} aria-expanded={menuAberto}>
-                <List aria-hidden="true" size="1.2em" />
+              <Button className="menu-recolhido" onPress={() => setMenuAberto((v) => !v)} aria-label={textos.moldura.menu} aria-expanded={menuAberto}>
+                <List aria-hidden="true" size="1.35em" />
+                <span aria-hidden="true">{textos.moldura.menuCurto}</span>
               </Button>
             )}
             <Button className="botao-icone" aria-label={`${textos.navegacao.voltar} (Alt + ←)`} isDisabled={!navegacao.podeVoltar} onPress={navegacao.voltar}>

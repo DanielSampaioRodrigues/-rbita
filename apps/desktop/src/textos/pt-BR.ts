@@ -38,6 +38,7 @@ export const textos = {
     bloquear: "Bloquear",
     verAtalhos: "Atalhos",
     menu: "Abrir o menu",
+    menuCurto: "Menu",
     recolherMenu: "Recolher o menu",
     fixarMenu: "Deixar o menu sempre aberto",
   },

@@ -133,7 +133,27 @@
 
 /* Menu recolhido (fora do caderno): o botão de menu fica junto das setas. */
 .lateral-marca .lateral-recolher { margin-left: auto; }
-.moldura.recolhida .setas-navegacao .menu-recolhido { margin-right: var(--espaco-2); }
+/* Grande e com o nome escrito, para achar e tocar sem esforço (44 px, o mínimo para o dedo). */
+.menu-recolhido {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espaco-2);
+  height: 2.75rem;
+  padding: 0 var(--espaco-3);
+  margin-right: var(--espaco-2);
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--canto);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+/* O botão é mais alto que as setas: a página desce um pouco para o título não encostar. */
+.moldura.recolhida .pagina { padding-top: calc(var(--espaco-7) + var(--espaco-4)); }
+.menu-recolhido[data-hovered] { background: var(--cor-superficie-alternativa); }
+.menu-recolhido[data-focus-visible] { outline: 2px solid var(--cor-destaque); outline-offset: 2px; }
 
 /* Janela estreita com o menu fixo: a barra lateral fica só com os ícones.
    O texto some só da tela; o leitor de tela continua lendo o nome. */
