@@ -1,4 +1,4 @@
-import { Tags, Trash2 } from "../icones";
+import { Lightbulb, Tags, Trash2 } from "../icones";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { api, type CorEtiqueta, type Etiqueta, type Ideia } from "../api";
@@ -86,21 +86,42 @@ export function Ideias() {
     });
   }, [ideias, etiquetas, busca, filtro]);
 
-  const propsVisao = { ideias: visiveis, etiquetas, aoAbrir: setAberta };
+  const etiquetaFiltro = etiquetas.find((e) => e.id === filtro) ?? null;
+  const quantas = (id: string) => ideias.filter((i) => i.etiquetas.includes(id)).length;
+
+  // Com um filtro de etiqueta ligado, a ideia nova já entra com essa etiqueta (o aviso abaixo do campo diz isso).
+  const guardar = () =>
+    nova.trim() &&
+    executar(async () => {
+      const criada = await api.criarIdeia(nova);
+      if (etiquetaFiltro) await api.definirEtiquetasItem(criada.id, [etiquetaFiltro.id]);
+      setNova("");
+    });
+
+  const propsVisao = { ideias: visiveis, etiquetas, aoAbrir: setAberta, aoVirarProjeto: virarProjeto };
 
   return (
     <div className="pagina">
       <h1>{t.titulo}</h1>
       <p className="pagina-intro">{t.intro}</p>
 
-      <Form className="linha-campo largura-leitura" onSubmit={(e) => (e.preventDefault(), nova.trim() && executar(async () => (await api.criarIdeia(nova), setNova(""))))}>
-        <Campo rotulo={textos.captura.campo} valor={nova} aoMudar={setNova} />
-        <Button className="botao principal" type="submit" isDisabled={!nova.trim()}>{textos.captura.guardar}</Button>
-      </Form>
+      {/* Captura sempre à vista: fica presa no alto enquanto a lista rola. */}
+      <div className="ideias-captura">
+        <Form className="linha-campo largura-leitura" onSubmit={(e) => (e.preventDefault(), guardar())}>
+          <Campo rotulo={textos.captura.campo} valor={nova} aoMudar={setNova} />
+          <Button className="botao principal" type="submit" isDisabled={!nova.trim()}>{textos.captura.guardar}</Button>
+        </Form>
+        {etiquetaFiltro && <p className="texto-suave pequeno">{t.comEtiqueta(etiquetaFiltro.nome)}</p>}
+      </div>
       <Aviso>{erro}</Aviso>
 
       {ideias.length === 0 ? (
-        <p className="texto-suave">{t.vazio}</p>
+        <div className="ideias-vazio largura-leitura">
+          <span className="ideias-vazio-icone" aria-hidden="true"><Lightbulb size="1.6em" /></span>
+          <h2>{t.vazioTitulo}</h2>
+          <p>{t.vazioTexto}</p>
+          <p className="texto-suave pequeno">{t.vazioDica}</p>
+        </div>
       ) : (
         <>
           <div className="barra-ideias">
@@ -125,7 +146,7 @@ export function Ideias() {
             <ToggleButton className="etiqueta-alternar" isSelected={filtro === null} onChange={() => setFiltro(null)}>{t.todas}</ToggleButton>
             {etiquetas.map((e) => (
               <ToggleButton key={e.id} className="etiqueta-alternar" isSelected={filtro === e.id} onChange={(sim) => setFiltro(sim ? e.id : null)}>
-                <ChipEtiqueta etiqueta={e} />
+                <ChipEtiqueta etiqueta={e} /> <span className="texto-suave">{quantas(e.id)}</span>
               </ToggleButton>
             ))}
             <Button className="botao pequeno com-icone" onPress={() => setGerenciando(true)}>

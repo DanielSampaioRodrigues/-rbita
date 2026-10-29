@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Pause, Pencil, Play, RotateCcw, Sparkles, Trash2 } from "../icones";
+import { ArrowLeft, CheckCircle2, Pause, Pencil, RotateCcw, Sparkles, Trash2 } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { api, type Etiqueta, type EstadoProjeto, type ProvedorVisivel, type Projeto as TipoProjeto, type Tarefa } from "../api";
@@ -100,8 +100,19 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
         <h1 className="quebra">{projeto.titulo}</h1>
         <span className={`etiqueta-estado estado-${projeto.estado}`}>{t.estados[projeto.estado]}</span>
       </div>
+      <p className="texto-suave projeto-resumo">{textos.projetos.progresso(projeto.tarefasFeitas, projeto.tarefasTotal)}</p>
 
-      <div className="botoes">
+      {/* "Onde parei" em destaque, logo no alto: retomar importa tanto quanto começar. */}
+      <div className="largura-leitura esticado">
+        <CartaoOndeParei
+          projeto={projeto}
+          tarefas={tarefas}
+          aoEditar={() => setJanela("anotar")}
+          aoRetomar={projeto.estado === "pausado" ? () => mudarEstado("ativo") : undefined}
+        />
+      </div>
+
+      <div className="botoes projeto-acoes">
         {projeto.estado === "ativo" && (
           <>
             <Button className="botao" onPress={() => setJanela("pausar")}>
@@ -111,11 +122,6 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
               <CheckCircle2 aria-hidden="true" size="1.1em" /> {t.concluir}
             </Button>
           </>
-        )}
-        {projeto.estado === "pausado" && (
-          <Button className="botao principal" onPress={() => mudarEstado("ativo")}>
-            <Play aria-hidden="true" size="1.1em" /> {t.retomar}
-          </Button>
         )}
         {projeto.estado === "concluido" && (
           <Button className="botao" onPress={() => mudarEstado("ativo")}>
@@ -144,10 +150,6 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
           valor={projeto.prazo ?? ""}
           aoMudar={(v) => executar(() => api.definirDatasProjeto(id, projeto.inicio, v || null))}
         />
-      </div>
-
-      <div className="largura-leitura esticado">
-        <CartaoOndeParei projeto={projeto} aoEditar={() => setJanela("anotar")} />
       </div>
 
       <section className="secao-relacoes" aria-labelledby="titulo-relacoes">

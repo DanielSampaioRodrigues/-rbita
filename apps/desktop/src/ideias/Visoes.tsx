@@ -1,5 +1,5 @@
-import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { ChevronRight, Link2, StickyNote } from "../icones";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
+import { FolderPlus, Link2, StickyNote } from "../icones";
 import { useRef, type ReactNode } from "react";
 import { textoSimples } from "../componentes/textoSimples";
 import { Button } from "react-aria-components";
@@ -7,7 +7,8 @@ import { api, type Etiqueta, type Ideia } from "../api";
 import { useRecado } from "../app/Recado";
 import { pularEntreColunas } from "../componentes/tecladoColunas";
 import { avisarMudanca } from "../dados";
-import { formatoData } from "../projetos/OndeParei";
+import { formatoDia } from "../projetos/OndeParei";
+import { useSensoresArrastar } from "../projetos/sensores";
 import { textos } from "../textos/pt-BR";
 import { ChipEtiqueta } from "./etiquetas";
 
@@ -20,6 +21,8 @@ interface Props {
   ideias: Ideia[];
   etiquetas: Etiqueta[];
   aoAbrir: (i: Ideia) => void;
+  /** Só a lista mostra o botão; as outras visões fazem isso pela janela da ideia. */
+  aoVirarProjeto?: (i: Ideia) => void;
 }
 
 const etiquetasDe = (i: Ideia, todas: Etiqueta[]) => i.etiquetas.map((id) => todas.find((e) => e.id === id)).filter((e): e is Etiqueta => !!e);
@@ -37,21 +40,28 @@ function Detalhes({ ideia, etiquetas }: { ideia: Ideia; etiquetas: Etiqueta[] })
   );
 }
 
-export function ListaIdeias({ ideias, etiquetas, aoAbrir }: Props) {
+/** Lista compacta: a cor da primeira etiqueta na borda, o texto, os sinais e "virar projeto" num toque. */
+export function ListaIdeias({ ideias, etiquetas, aoAbrir, aoVirarProjeto }: Props) {
   return (
-    <ul className="lista-cartoes largura-leitura">
-      {ideias.map((i) => (
-        <li key={i.id}>
-          <Button className="cartao compacto ideia-cartao" onPress={() => aoAbrir(i)} aria-label={t.abrir(i.texto)}>
-            <span className="ideia-linha">
+    <ul className="lista-cartoes ideias-lista largura-leitura">
+      {ideias.map((i) => {
+        const cor = etiquetasDe(i, etiquetas)[0]?.cor;
+        return (
+          <li key={i.id} className={cor ? `ideia-item borda-${cor}` : "ideia-item"}>
+            <Button className="ideia-abrir" onPress={() => aoAbrir(i)} aria-label={t.abrir(i.texto)}>
               <span className="quebra ideia-texto">{i.texto}</span>
-              <ChevronRight aria-hidden="true" size="1.1em" />
-            </span>
-            <Detalhes ideia={i} etiquetas={etiquetas} />
-            <span className="texto-suave pequeno">{t.guardadaEm(formatoData.format(i.criadoEm))}</span>
-          </Button>
-        </li>
-      ))}
+              <Detalhes ideia={i} etiquetas={etiquetas} />
+              <span className="texto-suave pequeno">{t.guardadaEm(formatoDia.format(i.criadoEm))}</span>
+            </Button>
+            {aoVirarProjeto && (
+              <Button className="botao-icone ideia-virar" onPress={() => aoVirarProjeto(i)} aria-label={t.virarProjetoDe(i.texto)}>
+                <FolderPlus aria-hidden="true" size="1.15em" />
+                <span className="ideia-virar-texto" aria-hidden="true">{t.virarProjeto}</span>
+              </Button>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -90,11 +100,8 @@ function grupos(ideias: Ideia[], etiquetas: Etiqueta[], todos = false) {
 const SEM = "sem";
 
 export function QuadroIdeias({ ideias, etiquetas, aoAbrir }: Props) {
-  const sensores = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    // Enter fica para abrir a ideia; Espaço pega e solta.
-    useSensor(KeyboardSensor, { keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] }, coordinateGetter: pularEntreColunas }),
-  );
+  // Enter fica para abrir a ideia; Espaço pega e solta. No dedo, segurar um instante antes de arrastar.
+  const sensores = useSensoresArrastar({ keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] }, coordinateGetter: pularEntreColunas });
   const recado = useRecado();
   // Depois de arrastar com o mouse, o clique que vem junto não deve abrir a ideia.
   const arrastou = useRef(false);

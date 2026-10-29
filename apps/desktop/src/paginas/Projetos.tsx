@@ -8,7 +8,7 @@ import { Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useComLimite } from "../projetos/Limite";
 import { SeletorLimite } from "../projetos/SeletorLimite";
-import { formatoDia } from "../projetos/OndeParei";
+import { linhaPausa } from "../projetos/tempo";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.projetos;
@@ -113,17 +113,29 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
   );
 }
 
-/** Resumo de um projeto: título, próximo passo e progresso. O cartão inteiro abre o projeto. */
+/**
+ * Resumo de um projeto: título, onde parou e progresso discreto. O cartão inteiro abre o projeto.
+ * Pausado: "Pausado há 3 dias — última coisa: …", para lembrar o contexto sem precisar abrir.
+ */
 export function CartaoProjeto({ projeto: p, aoAbrir }: { projeto: Projeto; aoAbrir: () => void }) {
   const proximo = p.ondeParei?.proximoPasso;
+  const pausa = linhaPausa(p);
   return (
-    <Button className="cartao compacto cartao-projeto" onPress={aoAbrir} aria-label={`${t.abrir}: ${p.titulo}`}>
+    <Button className={`cartao compacto cartao-projeto projeto-${p.estado}`} onPress={aoAbrir} aria-label={`${t.abrir}: ${p.titulo}`}>
       <span className="cartao-projeto-texto">
         <span className="cartao-projeto-titulo quebra">{p.titulo}</span>
-        <span className={proximo ? "quebra" : "texto-suave"}>{proximo ? t.proximo(proximo) : t.semProximo}</span>
-        <span className="texto-suave pequeno">
-          {t.progresso(p.tarefasFeitas, p.tarefasTotal)}
-          {p.estado === "pausado" && p.pausadoEm ? ` · ${t.pausadoEm(formatoDia.format(p.pausadoEm))}` : ""}
+        {pausa ? (
+          <span className="projeto-contexto quebra">{pausa}</span>
+        ) : (
+          <span className={proximo ? "projeto-contexto quebra" : "texto-suave"}>{proximo ? t.proximo(proximo) : t.semProximo}</span>
+        )}
+        <span className="projeto-progresso">
+          {p.tarefasTotal > 0 && (
+            <span className="projeto-progresso-trilho" aria-hidden="true">
+              <span className="projeto-progresso-feito" style={{ width: `${(p.tarefasFeitas / p.tarefasTotal) * 100}%` }} />
+            </span>
+          )}
+          <span className="texto-suave pequeno">{t.progresso(p.tarefasFeitas, p.tarefasTotal)}</span>
         </span>
       </span>
       <ChevronRight aria-hidden="true" size="1.2em" className="cartao-projeto-seta" />

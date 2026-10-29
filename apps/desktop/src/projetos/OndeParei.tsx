@@ -2,13 +2,16 @@ import { useState } from "react";
 import { CampoRico } from "../componentes/CampoRico";
 import { TextoRico } from "../componentes/TextoRico";
 import { Button, Form } from "react-aria-components";
-import { api, type Projeto } from "../api";
+import { api, type Projeto, type Tarefa } from "../api";
+import { Play } from "../icones";
+import { haQuanto } from "./tempo";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
 import { avisarMudanca } from "../dados";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.projeto;
+const tt = textos.projetos.tempo;
 export const formatoData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeStyle: "short" });
 export const formatoDia = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" });
 
@@ -71,36 +74,61 @@ function Formulario({ projeto, modo, aoFechar, aoConcluir }: Props & { projeto: 
   );
 }
 
-/** Mostra o cartão "onde parei" de um projeto (ou o convite para anotar). */
-export function CartaoOndeParei({ projeto, aoEditar }: { projeto: Projeto; aoEditar: () => void }) {
+/**
+ * O cartão "onde parei", em destaque no alto do projeto: o próximo passo (ou a próxima tarefa da lista),
+ * a última anotação, os links e quando foi anotado. Se o projeto está pausado, diz há quanto tempo
+ * e oferece retomar dali.
+ */
+export function CartaoOndeParei({ projeto, aoEditar, tarefas = [], aoRetomar }: { projeto: Projeto; aoEditar: () => void; tarefas?: Tarefa[]; aoRetomar?: () => void }) {
   const o = projeto.ondeParei;
   const vazio = !o || (!o.texto && !o.proximoPasso && o.links.length === 0);
+  // Sem próximo passo anotado, a próxima tarefa da lista serve de ponto de partida.
+  const proximaTarefa = o?.proximoPasso ? null : (tarefas.find((x) => x.estado === "fazendo") ?? tarefas.find((x) => x.estado === "a_fazer") ?? null);
+  const pausa = projeto.estado === "pausado" ? (projeto.pausadoEm ? tt.pausadoHa(haQuanto(projeto.pausadoEm)) : tt.pausado) : null;
   return (
-    <section className="cartao onde-parei" aria-labelledby={`onde-${projeto.id}`}>
+    <section className={pausa ? "cartao onde-parei onde-parei-destaque pausado" : "cartao onde-parei onde-parei-destaque"} aria-labelledby={`onde-${projeto.id}`}>
       <div className="linha-ajuste">
         <h2 id={`onde-${projeto.id}`}>{t.ondeParei}</h2>
         <Button className="botao" onPress={aoEditar}>{vazio ? t.anotar : t.editar}</Button>
       </div>
-      {vazio ? (
-        <p className="texto-suave">{t.ondePareiVazio}</p>
+      {pausa && <p className="onde-parei-pausa">{pausa}</p>}
+      {o?.proximoPasso ? (
+        <p className="proximo-passo">
+          <span className="proximo-passo-rotulo">{t.proximoRotulo}</span>
+          <span className="quebra proximo-passo-texto">{o.proximoPasso}</span>
+        </p>
+      ) : proximaTarefa ? (
+        <p className="proximo-passo">
+          <span className="proximo-passo-rotulo">{t.proximaDaLista}</span>
+          <span className="quebra proximo-passo-texto">{proximaTarefa.titulo}</span>
+        </p>
+      ) : null}
+      {o?.texto ? (
+        <div className="onde-parei-nota">
+          <span className="proximo-passo-rotulo">{t.ultimaAnotacao}</span>
+          <TextoRico markdown={o.texto} className="quebra" />
+        </div>
       ) : (
-        <>
-          {o.texto && <TextoRico markdown={o.texto} className="quebra" />}
-          {o.proximoPasso && (
-            <p className="proximo-passo">
-              <span className="proximo-passo-rotulo">{t.proximoRotulo}</span>
-              <span className="quebra">{o.proximoPasso}</span>
-            </p>
-          )}
-          {o.links.length > 0 && (
-            <ul className="lista-links">
-              {o.links.map((l) => (
-                <li key={l} className="quebra">{l}</li>
-              ))}
-            </ul>
-          )}
-          {o.atualizadoEm > 0 && <p className="texto-suave pequeno">{t.atualizadoEm(formatoData.format(o.atualizadoEm))}</p>}
-        </>
+        vazio && <p className="texto-suave">{t.ondePareiVazio}</p>
+      )}
+      {o && o.links.length > 0 && (
+        <ul className="lista-links">
+          {o.links.map((l) => (
+            <li key={l} className="quebra">{l}</li>
+          ))}
+        </ul>
+      )}
+      {o && o.atualizadoEm > 0 && (
+        <p className="texto-suave pequeno">
+          {t.atualizadoEm(formatoData.format(o.atualizadoEm))} ({haQuanto(o.atualizadoEm)})
+        </p>
+      )}
+      {aoRetomar && (
+        <div className="botoes">
+          <Button className="botao principal" onPress={aoRetomar}>
+            <Play aria-hidden="true" size="1.1em" /> {t.retomarDaqui}
+          </Button>
+        </div>
       )}
     </section>
   );
