@@ -300,6 +300,19 @@ Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela qui
   - **Apple:** "Entrar com Apple" com iCloud chega com as versões de Mac e iPhone (Onda 3), porque exige a conta de desenvolvedor da Apple. No Windows, quem usa Apple pode escolher a conta Microsoft ou guardar o backup na pasta do iCloud Drive para Windows.
   - Na Onda 3, a mesma base vira a sincronização entre computador e celular.
 
+### Entrar com Google e sincronizar (decisão de Dan, 29/10/2026; ainda não feito)
+
+Dan vai testar no Windows e no iPad ao mesmo tempo e quer que tudo apareça nos dois. O modelo combinado:
+
+- **Entrar com Google é o caminho principal**, em destaque na primeira tela, com nome e foto do perfil. Outros provedores (Microsoft, Apple…) entram depois. "Usar sem conta" continua existindo, menor, porque o app funciona sem conta.
+- **Google só na primeira vez em cada aparelho** (ou depois de sair da conta). No dia a dia abre pelo PIN, sem internet.
+- **Sincronização automática** pela pasta escondida do app no Google Drive da própria pessoa, sem servidor do Órbita. Sem internet, as mudanças ficam guardadas e sobem quando ela volta. Cada aparelho guarda **uma cópia completa**. Mesmo item editado em dois aparelhos sem internet: vale o mais recente (depois, avaliar guardar os dois).
+- **Senha simples, escolhida pela pessoa**, pedida junto com o Google **num aparelho novo**. Os dados vão para o Drive trancados com ela: nem o Google lê. Ao criar, a tela explica para que serve.
+- **Esqueceu a senha:** **PIN + 6 perguntas pessoais** que a própria pessoa escreve (respostas conferidas sem ligar para acento e maiúscula). Por isso o **PIN passa a ser o mesmo em todos os aparelhos**. A tela avisa o limite: alguém muito próximo pode saber as respostas. As 6 palavras deixam de ser obrigatórias.
+- **Perdeu o Google:** nos aparelhos que já usa, tudo continua lá e abre pelo PIN; dali faz backup e liga outra conta. Só perde tudo quem perder o Google **e** todos os aparelhos sem ter backup: por isso o backup automático é oferecido no cadastro.
+- **Endereço da versão de navegador:** `orbita.arcano3.com.br` (subdomínio do domínio de Dan, só um apontamento no registro.br), configurado **depois** da confirmação do nome, porque o login do Google fica preso ao endereço.
+- **Ordem:** (1) login com Google no navegador; (2) sincronizar navegador e Drive; (3) login e sincronização no Windows (aproveitando o cliente Google da 0.22.0).
+
 ### Contas para guardar a recuperação: plano por plataforma
 
 Decisão de Dan (25/10/2026): a opção "Guardar na minha conta" precisa existir em **todas as plataformas** do Órbita e com **todas as contas** que fizerem sentido. Cada combinação pede um cadastro próprio no provedor e um jeito próprio de voltar do login para o app.
@@ -456,7 +469,7 @@ Já decidido (25/10/2026): interface em React; backup básico na Onda 1; senha f
 
 Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto e no Prelo; a IA entra com escolha de provedor; o nome é Órbita.
 
-- [ ] Consultar o nome Órbita no INPI.
+- [ ] Consultar o nome Órbita no INPI (classes 9 e 42), antes de configurar o endereço e o login do Google. Busca na internet (29/10/2026): nenhum app de organização pessoal chamado "Órbita" em português; existem a Orbita (empresa americana de assistentes de saúde por IA) e um projeto de código aberto em inglês. "Orbi" está mais ocupado (planejador com IA para iPhone, de 2026, e o Wi-Fi da Netgear).
 - [ ] Código aberto ou não, decidido no lançamento.
 - [ ] Motor de temas compartilhado com o Escuta ou totalmente separado.
 - [ ] Qual modelo local oferecer como opção sem chave.
@@ -465,4 +478,4 @@ Já decidido: o crédito de US$ 250 do Claude na nuvem será usado neste projeto
 - [ ] Onde hospedar os instaladores e a página de doação.
 - [ ] Como o Escuta vai receber o motor de leitura (dependência direta do repositório no GitHub ou pacote privado), decidido na Onda 2.
 - [ ] Assinatura digital do instalador do Windows (até lá, o Windows mostra um aviso ao instalar).
-- [ ] Sincronização (Onda 3): onde ficam os dados sincronizados (pasta da própria pessoa no Drive, OneDrive ou iCloud, sem servidor do Órbita; ou um servidor pequeno, mais simples no celular, com custo e manutenção) e como resolver edições feitas em dois aparelhos sem internet.
+- [x] Sincronização: pasta da própria pessoa no Google Drive, sem servidor do Órbita; edições em dois aparelhos sem internet: vale a mais recente. Ver "Entrar com Google e sincronizar" (29/10/2026).
