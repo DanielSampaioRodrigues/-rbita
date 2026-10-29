@@ -5,6 +5,7 @@ import atkinsonUrl from "@fontsource-variable/atkinson-hyperlegible-next/files/a
 import lexendUrl from "@fontsource-variable/lexend/files/lexend-latin-wght-normal.woff2?url";
 import dyslexicUrl from "../fontes/opendyslexic/OpenDyslexic-Regular.woff2?url";
 import { api, type Anotacao, type CorEtiqueta, type Livro } from "../api";
+import { lerComMigracao } from "../valores";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
@@ -43,15 +44,11 @@ const tracosDoLivro = (lista: Anotacao[]): Traco[] =>
     .filter((a) => a.tipo === "traco")
     .map((a) => ({ id: a.id, pagina: a.pdfPagina, cor: corHex(a.cor), espessura: a.espessura, pontos: a.pontos }));
 
-function lerConfig(): ConfigLeitura {
-  try {
-    const salvo = localStorage.getItem(CHAVE_CONFIG);
-    if (salvo) return { ...CONFIG_PADRAO, ...JSON.parse(salvo) };
-  } catch {
-    // Sem armazenamento: usa o padrão.
-  }
-  return CONFIG_PADRAO;
-}
+// Ajustes do leitor e posição em cada livro ficam no cofre (antes, no localStorage; migram sozinhos).
+const validarConfig = (bruto: unknown): ConfigLeitura => ({ ...CONFIG_PADRAO, ...(typeof bruto === "object" && bruto ? (bruto as Partial<ConfigLeitura>) : {}) });
+const validarPos = (bruto: unknown): Localizacao | undefined => (typeof bruto === "object" && bruto ? (bruto as Localizacao) : undefined);
+const lerConfig = () => lerComMigracao("leitura.config", CHAVE_CONFIG, validarConfig).then((c) => c ?? CONFIG_PADRAO, () => CONFIG_PADRAO);
+const lerPos = (id: string) => lerComMigracao(`leitura.posicao.${id}`, chavePos(id), validarPos).then((p) => p ?? undefined, () => undefined);
 
 function base64ParaBytes(b64: string): ArrayBuffer {
   const bin = atob(b64);
@@ -64,7 +61,18 @@ function base64ParaBytes(b64: string): ArrayBuffer {
 export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () => void }) {
   const alvo = useRef<HTMLDivElement>(null);
   const motor = useRef<Leitor | null>(null);
-  const [config, setConfig] = useState<ConfigLeitura>(lerConfig);
+  const [config, setConfig] = useState<ConfigLeitura>(CONFIG_PADRAO);
+  // A posição muda a cada página virada: grava com uma pequena espera, e na hora ao fechar.
+  const posPendente = useRef<Localizacao | null>(null);
+  const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gravarPos = () => {
+    if (posTimer.current) clearTimeout(posTimer.current);
+    posTimer.current = null;
+    const p = posPendente.current;
+    if (!p) return;
+    posPendente.current = null;
+    void api.gravarValor(`leitura.posicao.${livro.id}`, p).catch(() => {});
+  };
   const [carregando, setCarregando] = useState(true);
   const [mostrarAjustes, setMostrarAjustes] = useState(false);
   const [mostrarAnotacoes, setMostrarAnotacoes] = useState(false);
@@ -94,11 +102,9 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
     leitor.definirFontes(FONTES_ARQUIVOS);
     motor.current = leitor;
     leitor.aoMudarLocalizacao((loc) => {
-      try {
-        localStorage.setItem(chavePos(livro.id), JSON.stringify(loc));
-      } catch {
-        // Conveniência; se não der para guardar, tudo bem.
-      }
+      posPendente.current = loc;
+      if (posTimer.current) clearTimeout(posTimer.current);
+      posTimer.current = setTimeout(gravarPos, 800);
     });
     // Selecionar texto no EPUB abre o painel de grifar.
     leitor.aoSelecionarTexto((s) => {
@@ -136,14 +142,10 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
           setCarregando(false);
           return;
         }
-        let inicial: Localizacao | undefined;
-        try {
-          const p = localStorage.getItem(chavePos(livro.id));
-          if (p) inicial = JSON.parse(p);
-        } catch {
-          // sem posição guardada
-        }
-        await leitor.abrir(base64ParaBytes(b64), livro.formato as "epub" | "pdf", lerConfig(), inicial);
+        const [cfg, inicial] = await Promise.all([lerConfig(), lerPos(livro.id)]);
+        if (!vivo) return;
+        setConfig(cfg);
+        await leitor.abrir(base64ParaBytes(b64), livro.formato as "epub" | "pdf", cfg, inicial);
         const lista = await api.listarAnotacoes(livro.id);
         if (!vivo) return;
         setAnotacoes(lista);
@@ -162,6 +164,7 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
     })();
     return () => {
       vivo = false;
+      gravarPos();
       leitor.destruir();
       motor.current = null;
     };
@@ -177,11 +180,7 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
   const mudarConfig = (mudanca: Partial<ConfigLeitura>) => {
     const novo = { ...config, ...mudanca };
     setConfig(novo);
-    try {
-      localStorage.setItem(CHAVE_CONFIG, JSON.stringify(novo));
-    } catch {
-      // sem armazenamento
-    }
+    void api.gravarValor("leitura.config", novo).catch(() => {});
     void motor.current?.aplicarConfig(novo);
   };
 
