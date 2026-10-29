@@ -29,7 +29,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { CampoData } from "../componentes/CampoData";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { ArrowDown, ArrowUp, CalendarDays, Check, ChevronLeft, GripVertical, LayoutGrid, ListChecks, Palette, Pencil, Plus, Trash2 } from "../icones";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CalendarDays, Check, ChevronLeft, GripVertical, LayoutGrid, ListChecks, Palette, Pencil, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { CORES_ORG, classeCor, estiloCor } from "./cores";
@@ -437,6 +437,22 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
     setPintandoColuna(col);
     await salvarColuna(col);
   };
+  // Mudar a coluna de lugar: troca a ordem com a vizinha e guarda as duas.
+  const moverColuna = async (col: Coluna, delta: number) => {
+    const i = colunas.findIndex((c) => c.id === col.id);
+    const vizinha = colunas[i + delta];
+    if (!vizinha) return;
+    try {
+      // Ordens iguais (dados antigos) usariam a posição na lista para desempatar.
+      const ordemA = col.ordem === vizinha.ordem ? i + delta : vizinha.ordem;
+      const ordemB = col.ordem === vizinha.ordem ? i : col.ordem;
+      await api.salvarColuna({ ...col, ordem: ordemA });
+      await api.salvarColuna({ ...vizinha, ordem: ordemB });
+      await aoRecarregar();
+    } catch (e) {
+      aoErro(mensagem(e));
+    }
+  };
   const excluirColuna = async () => {
     if (!excluindoColuna) return;
     await api.excluirColuna(excluindoColuna.id);
@@ -458,10 +474,13 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
         accessibility={{ screenReaderInstructions: { draggable: t.arrastarInstrucoes }, announcements: anuncios }}
       >
         <div className="org-quadro">
-          {colunas.map((col) => (
+          {colunas.map((col, i) => (
             <ColunaQuadro
               key={col.id}
               coluna={col}
+              primeira={i === 0}
+              ultima={i === colunas.length - 1}
+              aoMover={(delta) => void moverColuna(col, delta)}
               cartoes={(grupos[col.id] ?? []).map((id) => porId.get(id)).filter((c): c is CartaoOrg => !!c)}
               arrastou={arrastou}
               aoAdicionar={(texto) => aoAdicionar(col.id, texto)}
@@ -498,9 +517,12 @@ function VisaoQuadro({ quadro, colunas, cartoes, aoRecarregar, aoAdicionar, aoMa
   );
 }
 
-function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoRenomear, aoPintar, aoExcluir }: {
+function ColunaQuadro({ coluna, cartoes, primeira, ultima, aoMover, arrastou, aoAdicionar, aoMarcar, aoEditar, aoApagar, aoReordenar, aoRenomear, aoPintar, aoExcluir }: {
   coluna: Coluna;
   cartoes: CartaoOrg[];
+  primeira: boolean;
+  ultima: boolean;
+  aoMover: (delta: number) => void;
   arrastou: React.MutableRefObject<boolean>;
   aoAdicionar: (texto: string) => Promise<void>;
   aoMarcar: (c: CartaoOrg, feito: boolean) => void;
@@ -545,6 +567,8 @@ function ColunaQuadro({ coluna, cartoes, arrastou, aoAdicionar, aoMarcar, aoEdit
           </button>
         )}
         <span className="org-coluna-acoes">
+          <Button className="botao-icone org-icone" onPress={() => aoMover(-1)} isDisabled={primeira} aria-label={`${t.coluna.esquerda}: ${nomeVisivel}`}><ArrowLeft aria-hidden="true" size="1em" /></Button>
+          <Button className="botao-icone org-icone" onPress={() => aoMover(1)} isDisabled={ultima} aria-label={`${t.coluna.direita}: ${nomeVisivel}`}><ArrowRight aria-hidden="true" size="1em" /></Button>
           <Button className="botao-icone org-icone" onPress={aoPintar} aria-label={`${t.coluna.cor}: ${nomeVisivel}`}><Palette aria-hidden="true" size="1em" /></Button>
           <Button className="botao-icone org-icone" onPress={aoExcluir} aria-label={`${t.coluna.excluir}: ${nomeVisivel}`}><Trash2 aria-hidden="true" size="1em" /></Button>
         </span>

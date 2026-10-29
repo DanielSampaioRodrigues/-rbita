@@ -1725,6 +1725,8 @@ export const textos = {
       adicionar: "Nova coluna",
       nome: "Nome da coluna",
       renomear: "Renomear coluna",
+      esquerda: "Mover coluna para a esquerda",
+      direita: "Mover coluna para a direita",
       excluir: "Apagar coluna",
       confirmarExcluir: (nome: string) => `Apagar a coluna "${nome}" e seus cartões?`,
       salvar: "Salvar",
