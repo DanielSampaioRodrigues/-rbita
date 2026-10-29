@@ -9,6 +9,8 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   Backpack: "mochila de costas com alça no topo, bolso frontal e alças laterais",
   BatteryLow: "retângulo de bateria com um terço preenchido, terminal à direita",
   BatteryMedium: "retângulo de bateria com metade preenchida, terminal à direita",
+  BatteryCharging: "retângulo de bateria com um raio no meio, terminal à direita",
+  Waves: "três linhas onduladas horizontais, uma sobre a outra",
   BedDouble: "cama de casal vista de lado, com dois travesseiros na cabeceira",
   BellRing: "sino com badalo e pequenos arcos de vibração nas laterais",
   Bold: "letra B em negrito, com traços grossos",

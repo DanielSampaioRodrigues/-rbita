@@ -9,6 +9,7 @@ import { Interruptor } from "../componentes/Interruptor";
 import { avisarMudanca, useMudancas } from "../dados";
 import { usePreferencias } from "../estado";
 import { textos } from "../textos/pt-BR";
+import { SugestaoReposicao } from "./Contas";
 import { RegistroRapido } from "./Energia";
 
 const t = textos.baixaEnergia;
@@ -100,6 +101,8 @@ export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCap
             <p className="texto-suave">{t.nenhumaTarefa}</p>
           )}
         </section>
+
+        <SugestaoReposicao comTitulo />
 
         {hoje.length > 0 && (
           <section className="cartao">

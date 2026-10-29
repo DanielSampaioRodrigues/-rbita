@@ -4,9 +4,12 @@ import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-compon
 import { chaveDia, inicioDoDia, somarDias } from "../agenda/datas";
 import { api, type RegistroEnergia, type TarefaSugerida } from "../api";
 import { useRecado } from "../app/Recado";
+import { ATALHOS } from "../atalhos";
 import { Aviso, Campo } from "../componentes/Campo";
+import { Teclas } from "../componentes/Teclas";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
+import { GastaRepoe, SinaisSobrecarga } from "./Contas";
 
 const t = textos.energia;
 const fmtHora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -93,17 +96,27 @@ export function PaginaEnergia({ aoLigarBaixa, aoAbrirProjeto }: { aoLigarBaixa: 
     <div className="pagina">
       <h1>{t.titulo}</h1>
       <p className="pagina-intro">{t.intro}</p>
-      <section className="cartao largura-leitura esticado">
+      <section className="cartao largura-leitura esticado energia-agora">
         <RegistroRapido />
       </section>
 
-      <section className="cartao largura-leitura esticado">
-        <h2>{t.baixaEnergia}</h2>
-        <p className="texto-suave">{t.baixaEnergiaExplicacao}</p>
-        <Button className="botao principal" onPress={aoLigarBaixa}>
-          <BatteryLow aria-hidden="true" size="1.1em" /> {t.ligarBaixa}
-        </Button>
-      </section>
+      <div className="energia-dupla largura-leitura esticado">
+        <SinaisSobrecarga aoLigarBaixa={aoLigarBaixa} />
+        <section className="cartao energia-baixa" aria-labelledby="energia-baixa-titulo">
+          <h2 id="energia-baixa-titulo">
+            <BatteryLow aria-hidden="true" size="1em" className="energia-titulo-icone" /> {t.baixaEnergia}
+          </h2>
+          <p className="texto-suave">{t.baixaEnergiaExplicacao}</p>
+          <div className="botoes">
+            <Button className="botao principal energia-alvo" onPress={aoLigarBaixa}>
+              {t.ligarBaixa}
+            </Button>
+            <Teclas combinacoes={ATALHOS.find((a) => a.acao === "alternarBaixaEnergia")?.teclas ?? []} />
+          </div>
+        </section>
+      </div>
+
+      <GastaRepoe />
 
       <section className="cartao largura-leitura esticado" aria-labelledby="historico">
         <h2 id="historico">{t.historico}</h2>
