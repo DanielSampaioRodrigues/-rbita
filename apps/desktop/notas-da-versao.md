@@ -44,6 +44,17 @@
 
 - **Projetos ativos — limite do seu jeito**: o limite (antes fixo em 6) agora é um número que você escolhe, de 1 a 50, nos Ajustes **e** dentro de Projetos ("Mudar o limite").
 
+- **Caderno — a grande revisão**:
+  - **Ferramenta de seleção** própria (o cursor, primeira da barra): toca e seleciona, arrasta no vazio e faz um retângulo de seleção, Shift (ou "Acrescentar" no toque) soma; mover, redimensionar pelos cantos, girar pela alça; Delete apaga, setas movem, Ctrl+A pega a página. O laço continua.
+  - **Pressão da Apple Pencil** funciona de verdade: a largura acompanha a força (de 0,4× a 1,6×), suavizada. Mouse e dedo ficam fixos.
+  - **Texto refeito**: a caixa de edição é transparente (só um tracejado fino); ao confirmar vira texto puro, sem caixa nem borda. As opções (negrito, tamanho, fonte, alinhamento, listas…) aparecem numa faixa da barra.
+  - **Agrupar/desagrupar** (Ctrl+G / Ctrl+Shift+G); **camadas por nível** (um para a frente / um para trás, além de "de tudo").
+  - **Régua** mostra o ângulo, aceita digitar, gruda em 15° e escolhe mm ou cm.
+  - **Borracha com dois modos**: por pedaço (agora apaga também imagens e figuras) e objeto inteiro.
+  - **Formas** que se estendem (retângulo, círculo, triângulo, linha, losango, estrela) e a **seta virou ferramenta própria com conector**: começa ou termina em cima de um objeto e fica presa a ele.
+  - **Rejeição de palma**: a opção **"Escrever só com a caneta"** liga sozinha na primeira vez que uma caneta aparece; com ela, o dedo nunca risca — um dedo rola, dois fazem **zoom de pinça** (50% a 400%; Ctrl + roda no computador). Dá para desligar.
+  - **Engrenagem** na barra abre as configurações do Caderno: só caneta, rolagem vertical ou **lateral**, unidade da régua, modo da borracha, lugar e cor da barra, zoom.
+
 - **Caderno — cor na hora e página nova no iPad**: tocar numa cor marca na hora (antes, o caderno inteiro se redesenhava e travava). Novo botão **"+ Página"** na barra, e **rolar além da última página cria uma nova** (como no GoodNotes), se a última não estiver vazia. No iPad, depois de usar a Apple Pencil uma vez, o **dedo passa a rolar** e a caneta escreve.
 
 ---

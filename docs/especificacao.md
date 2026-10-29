@@ -404,6 +404,8 @@ Uma base de código única gera todas as versões. O Windows vem primeiro; Mac, 
 
 **Estrutura de dados.** Todos os módulos compartilham alguns tipos básicos: item (ideia, projeto, tarefa, leitura), evento (agenda), registro (energia, sintoma, gasto, sessão) e anexo (imagem, arquivo, link). Cada tipo tem etiquetas e ligações com outros itens. É isso que permite ver os mesmos dados em várias visualizações e conectar os módulos.
 
+**Cofre de valores.** `valores(chave, json)` para dados pequenos de módulo, dentro do banco criptografado (na tabela `config`, com o prefixo `valor:`, que a interface não consegue ultrapassar), no backup e na exportação JSON. Rotinas (`rotinas.personalizacao`, `rotinas.feitos`), Foco (`foco.salvos`), Energia (`energia.contas`), Leitura (`leitura.estante`), mapa mental dos projetos (`projetos.mapa.<id>`) e Estudos (`estudos.extras`) usam. Dado pessoal nunca fica no `localStorage`; o que estava lá migra sozinho para o cofre na primeira leitura e sai de lá.
+
 **Preparado para sincronizar.** Desde a Onda 1, todo registro tem identificador único, data de alteração e exclusão marcada (em vez de apagar de fato). Isso deixa a sincronização da Onda 3 possível sem refazer o banco.
 
 **Estrutura de pastas.**
@@ -454,6 +456,7 @@ docs/                especificação e registro de decisões
 - **Aparência (redesenho):** abas Tema/Fundo/Letras/Tela/Baixo estímulo, prévia ao vivo fixa, saída rápida no topo; coleção "Rua" com 11 fundos SVG determinísticos em `packages/temas/src/urbanos.ts` (versão tinta p/ claro, neon suave p/ escuro; lisos no baixo estímulo; contraste medido nos pixels); 6 fontes extras via `@fontsource` (só latino, +599 KB carregados sob demanda, em `fontes/extras.css` e `fontes/catalogo.ts`). Pendência: lista de fontes do Caderno ainda com as 3 antigas.
 - **Aparência:** editor de tema abre no modo atual (claro/escuro); imagem própria de fundo vai para o IndexedDB (limite 8 MB), não para as preferências.
 - **Ajustes:** menu curto por assuntos (8 entradas, busca, duas colunas quando a página tem ≥ 736 px de largura, seção lembrada na sessão); bloqueio automático até 7 dias (aviso literal a partir de 1 dia; contagem por carimbo de tempo, vale em segundo plano); limite de projetos ativos de 1 a 50 (padrão 6), nos Ajustes e em Projetos.
+- **Caderno (revisão grande):** seleção própria (marquee, Shift, alças, teclado), pressão real da caneta no motor (`packages/caderno`: antes fingia pela velocidade), texto sem caixa, grupos, camadas por nível, régua com ângulo/unidade, borracha por pedaço ou objeto (pega imagens), formas estendidas e seta com conector (prende na caixa do objeto, não no contorno), "escrever só com a caneta" (liga sozinha ao detectar caneta), pinça 50–400 %, rolagem lateral, painel de configurações do Caderno (localStorage, não sensível). Lógica de edição sem tela em `caderno/edicao.ts`.
 - **Caderno:** traços e folhas em cache (cor marca na hora); botão "+ Página" e página nova ao rolar além da última; no Safari, após a primeira Pencil, dedo rola e caneta escreve.
 - **Em espera (INPI):** endereço `orbita.arcano3.com.br` e login com Google.
 
