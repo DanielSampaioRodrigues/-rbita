@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@fontsource-variable/atkinson-hyperlegible-next/wght.css";
 import "@fontsource-variable/lexend/wght.css";
 import "./fontes/opendyslexic/opendyslexic.css";
+import { MODO_WEB } from "./api";
 import { aplicarAparencia } from "./aparencia";
 import { App } from "./app/App";
 import { ProvedorPreferencias } from "./estado";
@@ -14,6 +15,12 @@ import "./estilos/paginas.css";
 
 // Aplica a aparência antes do primeiro desenho, para a tela não piscar com outras cores.
 aplicarAparencia(carregar());
+
+// Versão de navegador (iPad): guarda os arquivos do app para abrir sem internet
+// e para nunca trocar de versão sem a pessoa aceitar (ver web-publico/sw.js).
+if (MODO_WEB && "serviceWorker" in navigator) {
+  void navigator.serviceWorker.register("./sw.js").catch((e) => console.error("Órbita: service worker", e));
+}
 
 // No app instalado, F5 e Ctrl+R recarregariam a janela como num navegador.
 if (import.meta.env.PROD) {

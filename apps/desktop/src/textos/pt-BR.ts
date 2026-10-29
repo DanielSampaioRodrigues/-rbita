@@ -1931,6 +1931,7 @@ export const textos = {
     semNotas: "Esta versão não trouxe lista de mudanças.",
     comoInstala:
       "Ao instalar, o Órbita baixa a versão nova, fecha, instala e abre de novo, em menos de um minuto. Seus dados ficam onde estão. A versão é conferida pela assinatura antes de instalar.",
+    comoInstalaWeb: "Ao instalar, o Órbita guarda a versão nova e recarrega a tela. Seus dados ficam onde estão. Até você instalar, ele continua abrindo a versão de agora, mesmo sem internet.",
     instalarAgora: "Instalar agora",
     baixando: "Baixando a versão nova...",
     baixandoPorcento: (n: number) => `Baixando a versão nova: ${n}%`,

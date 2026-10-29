@@ -7,6 +7,7 @@ import { Janela } from "../componentes/Janela";
 import { TextoRico } from "../componentes/TextoRico";
 import { usePreferencias } from "../estado";
 import { textos } from "../textos/pt-BR";
+import { MODO_WEB } from "../api";
 import { useAtualizacao, type Atualizacao } from "./atualizacao";
 
 const t = textos.atualizacao;
@@ -55,7 +56,7 @@ export function JanelaAtualizacao({ atualizacao, aoFechar, aoAdiar }: { atualiza
         <div className="formulario">
           <h3>{t.oQueMudou}</h3>
           {atualizacao.notas.trim() ? <TextoRico markdown={atualizacao.notas} /> : <p className="texto-suave">{t.semNotas}</p>}
-          <p className="texto-suave pequeno">{t.comoInstala}</p>
+          <p className="texto-suave pequeno">{MODO_WEB ? t.comoInstalaWeb : t.comoInstala}</p>
           {instalando && (
             <div className="barra-progresso" role="status">
               <span>{progresso === null ? t.baixando : t.baixandoPorcento(Math.round((progresso ?? 0) * 100))}</span>

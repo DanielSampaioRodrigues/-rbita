@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { noApp } from "../api";
+import { MODO_WEB, noApp } from "../api";
 import { textos } from "../textos/pt-BR";
 
 // Atualização dentro do app (princípio 1: nada muda sem aviso).
@@ -15,7 +15,51 @@ export interface Atualizacao {
 
 const t = textos.atualizacao;
 
+/** Versão de navegador: pede ao service worker para passar a abrir a versão
+ *  mais nova (que ele já guardou) e espera a troca. */
+async function trocarParaUltimaVersao(): Promise<void> {
+  const reg = await navigator.serviceWorker.ready;
+  await reg.update().catch(() => {});
+  const novo = reg.installing ?? reg.waiting;
+  if (novo && novo.state !== "activated") {
+    await new Promise<void>((pronto) => {
+      const ver = () => (novo.state === "activated" || novo.state === "redundant") && pronto();
+      novo.addEventListener("statechange", ver);
+      ver();
+    });
+  }
+  const ativo = reg.active;
+  if (!ativo) return;
+  await new Promise<void>((pronto) => {
+    const limite = setTimeout(pronto, 8000);
+    const ouvir = (e: MessageEvent) => {
+      if (e.data?.tipo !== "versao-trocada") return;
+      clearTimeout(limite);
+      navigator.serviceWorker.removeEventListener("message", ouvir);
+      pronto();
+    };
+    navigator.serviceWorker.addEventListener("message", ouvir);
+    ativo.postMessage({ tipo: "usar-ultima" });
+  });
+}
+
 async function consultar(): Promise<Atualizacao | null> {
+  if (MODO_WEB) {
+    // A versão publicada no site; a que está aberta só muda se a pessoa instalar.
+    const r = await fetch("./versao.json", { cache: "no-store" });
+    if (!r.ok) throw new Error(`versao.json: ${r.status}`);
+    const { versao, notas } = (await r.json()) as { versao: string; notas: string };
+    if (versao === __VERSAO__) return null;
+    return {
+      versao,
+      notas,
+      instalar: async (aoProgresso) => {
+        aoProgresso(null);
+        await trocarParaUltimaVersao();
+        location.reload();
+      },
+    };
+  }
   if (!noApp) {
     // Simulação no navegador: `?atualizacao=1` mostra uma versão nova.
     if (!new URLSearchParams(globalThis.location?.search ?? "").get("atualizacao")) return null;
