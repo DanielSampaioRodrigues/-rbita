@@ -55,6 +55,8 @@
   - **Rejeição de palma**: a opção **"Escrever só com a caneta"** liga sozinha na primeira vez que uma caneta aparece; com ela, o dedo nunca risca — um dedo rola, dois fazem **zoom de pinça** (50% a 400%; Ctrl + roda no computador). Dá para desligar.
   - **Engrenagem** na barra abre as configurações do Caderno: só caneta, rolagem vertical ou **lateral**, unidade da régua, modo da borracha, lugar e cor da barra, zoom.
 
+- **Tudo dentro do cofre**: os dados pequenos de módulo (rotinas personalizadas, focos salvos, atividades e sinais da Energia, estante da Leitura, posições do mapa mental, extras de Estudos) passam a ficar **criptografados no cofre e dentro do backup**, no Windows e no navegador. Quem já tinha algo guardado no jeito antigo é migrado sozinho na primeira abertura.
+
 - **Caderno — cor na hora e página nova no iPad**: tocar numa cor marca na hora (antes, o caderno inteiro se redesenhava e travava). Novo botão **"+ Página"** na barra, e **rolar além da última página cria uma nova** (como no GoodNotes), se a última não estiver vazia. No iPad, depois de usar a Apple Pencil uma vez, o **dedo passa a rolar** e a caneta escreve.
 
 ---

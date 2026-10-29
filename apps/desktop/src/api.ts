@@ -307,6 +307,23 @@ export interface Gasto {
   interesse: boolean;
   descricao: string;
   momento: number;
+  /** Nota livre (opcional), além do "o que foi". */
+  nota?: string;
+}
+
+/** Opcionais ao registrar um gasto: o dia (ms; sem ele, agora) e uma nota. */
+export interface ExtrasGasto {
+  momento?: number;
+  nota?: string;
+}
+
+/** Dinheiro que entrou (salário, venda, presente...), em centavos. */
+export interface Entrada {
+  id: string;
+  centavos: number;
+  /** De onde veio, em texto livre. */
+  descricao: string;
+  momento: number;
 }
 
 /** Grupo de gasto (categoria personalizável), com cor. */
@@ -756,6 +773,11 @@ export interface Api {
   basicosDoDia(data: string): Promise<Basico[]>;
   definirBasicos(lista: string[]): Promise<void>;
   marcarBasico(data: string, texto: string, feito: boolean): Promise<void>;
+  /** Cofre de valores: dados pequenos de módulo, em JSON, dentro do banco criptografado.
+   *  `chave` só com letras minúsculas, números, ponto, hífen e sublinhado. null = nada guardado. */
+  lerValor(chave: string): Promise<unknown | null>;
+  gravarValor(chave: string, valor: unknown): Promise<void>;
+  apagarValor(chave: string): Promise<void>;
   tarefasSugeridas(): Promise<TarefaSugerida[]>;
   listarRemedios(): Promise<Remedio[]>;
   salvarRemedio(remedio: Remedio): Promise<Remedio>;
@@ -795,9 +817,13 @@ export interface Api {
   listarAulas(): Promise<Aula[]>;
   salvarAula(aula: Aula): Promise<Aula>;
   excluirAula(id: string): Promise<void>;
-  registrarGasto(centavos: number, grupoId: string, descricao: string, interesse: boolean): Promise<Gasto>;
+  registrarGasto(centavos: number, grupoId: string, descricao: string, interesse: boolean, extras?: ExtrasGasto): Promise<Gasto>;
   listarGastos(de: number, ate: number): Promise<Gasto[]>;
   excluirGasto(id: string): Promise<void>;
+  /** Dinheiro que entrou. `momento` opcional (sem ele, agora). */
+  registrarEntrada(centavos: number, descricao: string, momento?: number): Promise<Entrada>;
+  listarEntradas(de: number, ate: number): Promise<Entrada[]>;
+  excluirEntrada(id: string): Promise<void>;
   listarGruposGasto(): Promise<Grupo[]>;
   salvarGrupoGasto(grupo: Grupo): Promise<Grupo>;
   excluirGrupoGasto(id: string): Promise<void>;
@@ -1024,9 +1050,13 @@ const nativa: Api = {
   listarAulas: () => chamar("listar_aulas"),
   salvarAula: (aula) => chamar("salvar_aula", { aula }),
   excluirAula: (id) => chamar("excluir_aula", { id }),
-  registrarGasto: (centavos, grupoId, descricao, interesse) => chamar("registrar_gasto", { centavos, grupoId, descricao, interesse }),
+  registrarGasto: (centavos, grupoId, descricao, interesse, extras) =>
+    chamar("registrar_gasto", { centavos, grupoId, descricao, interesse, momento: extras?.momento ?? null, nota: extras?.nota ?? null }),
   listarGastos: (de, ate) => chamar("listar_gastos", { de, ate }),
   excluirGasto: (id) => chamar("excluir_gasto", { id }),
+  registrarEntrada: (centavos, descricao, momento) => chamar("registrar_entrada", { centavos, descricao, momento: momento ?? null }),
+  listarEntradas: (de, ate) => chamar("listar_entradas", { de, ate }),
+  excluirEntrada: (id) => chamar("excluir_entrada", { id }),
   listarGruposGasto: () => chamar("listar_grupos_gasto"),
   salvarGrupoGasto: (grupo) => chamar("salvar_grupo_gasto", { grupo }),
   excluirGrupoGasto: (id) => chamar("excluir_grupo_gasto", { id }),
@@ -1084,6 +1114,12 @@ const nativa: Api = {
   excluirAnotacao: (id) => chamar("excluir_anotacao", { id }),
   definirBasicos: (lista) => chamar("definir_basicos", { lista }),
   marcarBasico: (data, texto, feito) => chamar("marcar_basico", { data, texto, feito }),
+  lerValor: async (chave) => {
+    const json = await chamar<string | null>("valor_ler", { chave });
+    return json == null ? null : (JSON.parse(json) as unknown);
+  },
+  gravarValor: (chave, valor) => chamar("valor_gravar", { chave, json: JSON.stringify(valor ?? null) }),
+  apagarValor: (chave) => chamar("valor_apagar", { chave }),
   tarefasSugeridas: () => chamar("tarefas_sugeridas"),
   definirPesoTarefa: (id, peso) => chamar("definir_peso_tarefa", { id, peso }),
   definirDatasProjeto: (id, inicio, prazo) => chamar("definir_datas_projeto", { id, inicio, prazo }),
@@ -1541,6 +1577,28 @@ function simularEnergia() {
   };
 }
 
+/** Cofre de valores na simulação: um mapa guardável (na versão web, entra no backup). */
+function simularValores() {
+  const valores = guardarMapa("valores", new Map<string, unknown>());
+  const conferir = (chave: string) => {
+    if (!/^[a-z0-9._-]{1,80}$/.test(chave)) throw new ErroOrbita("interno", `nome de valor inválido: ${chave}`);
+  };
+  return {
+    lerValor: async (chave: string) => {
+      conferir(chave);
+      return valores.has(chave) ? structuredClone(valores.get(chave)) : null;
+    },
+    gravarValor: async (chave: string, valor: unknown) => {
+      conferir(chave);
+      valores.set(chave, JSON.parse(JSON.stringify(valor ?? null)) as unknown);
+    },
+    apagarValor: async (chave: string) => {
+      conferir(chave);
+      valores.delete(chave);
+    },
+  };
+}
+
 function simularSaude() {
   const remedios: Remedio[] = [];
   guardarLista("saude.remedios", remedios);
@@ -1811,17 +1869,35 @@ function simularDinheiro() {
   const contas: Conta[] = [];
   const desejos: Desejo[] = [];
   const metas: Meta[] = [];
+  const entradas: Entrada[] = [];
   guardarLista("dinheiro.gastos", gastos);
   guardarLista("dinheiro.grupos", grupos);
   guardarLista("dinheiro.contas", contas);
   guardarLista("dinheiro.desejos", desejos);
   guardarLista("dinheiro.metas", metas);
+  guardarLista("dinheiro.entradas", entradas);
   return {
-    registrarGasto: async (centavos: number, grupoId: string, descricao: string, interesse: boolean) => {
+    registrarGasto: async (centavos: number, grupoId: string, descricao: string, interesse: boolean, extras?: ExtrasGasto) => {
       if (centavos < 0) throw new ErroOrbita("interno", "O valor não pode ser negativo.");
-      const g: Gasto = { id: crypto.randomUUID(), centavos, grupoId: grupoId.trim(), categoria: "", interesse, descricao: descricao.trim(), momento: Date.now() };
+      const nota = extras?.nota?.trim() ?? "";
+      const g: Gasto = {
+        id: crypto.randomUUID(), centavos, grupoId: grupoId.trim(), categoria: "", interesse, descricao: descricao.trim(),
+        momento: extras?.momento ?? Date.now(), ...(nota ? { nota } : {}),
+      };
       gastos.push(g);
       return { ...g };
+    },
+    registrarEntrada: async (centavos: number, descricao: string, momento?: number) => {
+      if (centavos <= 0) throw new ErroOrbita("interno", "Escreva quanto entrou, maior que zero.");
+      const e: Entrada = { id: crypto.randomUUID(), centavos, descricao: descricao.trim(), momento: momento ?? Date.now() };
+      entradas.push(e);
+      return { ...e };
+    },
+    listarEntradas: async (de: number, ate: number) =>
+      entradas.filter((e) => e.momento >= de && e.momento < ate).sort((a, b) => b.momento - a.momento).map((e) => ({ ...e })),
+    excluirEntrada: async (id: string) => {
+      const i = entradas.findIndex((e) => e.id === id);
+      if (i >= 0) entradas.splice(i, 1);
     },
     listarGruposGasto: async () => grupos.map((x) => ({ ...x })).sort((a, b) => a.nome.localeCompare(b.nome)),
     salvarGrupoGasto: async (grupo: Grupo) => {
@@ -2307,6 +2383,7 @@ function criarSimulacao(): Api {
     ...simularAgenda(),
     ...simularRotinas(comItens, comAnexos),
     ...simularEnergia(),
+    ...simularValores(),
     ...simularSaude(),
     ...simularCuidado(),
     ...simularAcademico(),

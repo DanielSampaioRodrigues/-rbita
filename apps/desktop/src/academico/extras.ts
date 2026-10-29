@@ -1,10 +1,11 @@
 // Extras do módulo de Estudos: o nível escolhido, créditos/semestre da disciplina,
 // o tipo de verdade e o bimestre da atividade, e o projeto de pesquisa da pós.
-// Enquanto a parte nativa não guarda esses campos, ficam neste computador
-// (localStorage), como já acontece com a personalização das rotinas.
+// Ficam no cofre de valores (banco criptografado, entra no backup), chave
+// "estudos.extras". Antes ficavam no localStorage; migram sozinhos.
 // Tudo é lido com cuidado: dado estranho vira o valor padrão, sem quebrar a tela.
 
-import { useCallback, useState } from "react";
+import { useSyncExternalStore } from "react";
+import { criarLoja, useLoja } from "../valores";
 import { ehNivel, TIPOS_ATIVIDADE, type NivelOuTodos, type TipoAtividade } from "./nivel";
 
 export interface ExtrasMateria {
@@ -63,7 +64,8 @@ export interface ExtrasAcademico {
   pesquisa: Pesquisa;
 }
 
-export const CHAVE_EXTRAS = "orbita.academico.extras";
+/** Onde ficavam antes (localStorage). */
+export const CHAVE_EXTRAS_ANTIGA = "orbita.academico.extras";
 
 export const pesquisaVazia = (): Pesquisa => ({ titulo: "", orientador: "", coorientador: "", programa: "", prazos: [], leituras: [], reunioes: [] });
 export const extrasVazios = (): ExtrasAcademico => ({ materias: {}, atividades: {}, pesquisa: pesquisaVazia() });
@@ -108,34 +110,22 @@ export function normalizarExtras(bruto: unknown): ExtrasAcademico {
   return saida;
 }
 
-export function lerExtras(armazenamento?: Storage): ExtrasAcademico {
-  try {
-    const arm = armazenamento ?? localStorage;
-    const t = arm.getItem(CHAVE_EXTRAS);
-    return t ? normalizarExtras(JSON.parse(t)) : extrasVazios();
-  } catch {
-    return extrasVazios();
-  }
-}
-
-export function gravarExtras(extras: ExtrasAcademico, armazenamento?: Storage): void {
-  try {
-    (armazenamento ?? localStorage).setItem(CHAVE_EXTRAS, JSON.stringify(extras));
-  } catch {
-    // Sem armazenamento: a tela segue funcionando, só não lembra.
-  }
-}
+/** Os extras de Estudos, no cofre. */
+export const lojaExtras = criarLoja<ExtrasAcademico>({
+  chave: "estudos.extras",
+  antiga: CHAVE_EXTRAS_ANTIGA,
+  vazio: extrasVazios,
+  validar: normalizarExtras,
+});
 
 export const novoId = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
-/** Estado dos extras ligado ao armazenamento. `mudar` recebe o valor atual e devolve o novo. */
-export function useExtras(): [ExtrasAcademico, (f: (atual: ExtrasAcademico) => ExtrasAcademico) => void] {
-  const [extras, setExtras] = useState<ExtrasAcademico>(() => lerExtras());
-  const mudar = useCallback((f: (atual: ExtrasAcademico) => ExtrasAcademico) => {
-    // Lê de novo antes de mudar: outra janela/formulário pode ter gravado.
-    const novo = f(lerExtras());
-    gravarExtras(novo);
-    setExtras(novo);
-  }, []);
-  return [extras, mudar];
+/**
+ * Estado dos extras ligado ao cofre. `mudar` recebe o valor atual e devolve o novo.
+ * `pronto` fica falso até a primeira leitura do cofre (para não mostrar a escolha de nível à toa).
+ */
+export function useExtras(): [ExtrasAcademico, (f: (atual: ExtrasAcademico) => ExtrasAcademico) => void, boolean] {
+  const extras = useLoja(lojaExtras);
+  const pronto = useSyncExternalStore(lojaExtras.assinar, lojaExtras.carregado);
+  return [extras, lojaExtras.mudar, pronto];
 }

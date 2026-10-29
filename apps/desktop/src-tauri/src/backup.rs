@@ -402,6 +402,7 @@ mod testes {
         let passo = rotinas::salvar_passo(&conn, &rotina.id, rotinas::Passo { titulo: "Tomar água".into(), minutos: Some(1), ..Default::default() }).unwrap();
         crate::banco::anexos::anexar_arquivo(&conn, &passo.id, "copo.png", b"imagem-do-copo").unwrap();
         energia::registrar(&conn, 2, "dia pesado").unwrap();
+        crate::banco::valores::gravar(&conn, "foco.salvos", r#"[{"id":"a","nome":"Estudar","minutos":45,"pausa":10}]"#).unwrap();
         let claude = ia::Provedor { id: String::new(), tipo: ia::TipoProvedor::Claude, nome: "Claude".into(), url: "https://api.anthropic.com".into(), modelo: "claude-opus-5-5".into() };
         ia::salvar_provedor(&conn, claude, Some("sk-ant-chave-1234")).unwrap();
 
@@ -433,6 +434,8 @@ mod testes {
         let img = r[0].passos[0].imagem.clone().expect("imagem do passo");
         assert_eq!(crate::banco::anexos::conteudo(&conn, &img).unwrap(), b"imagem-do-copo");
         assert_eq!(energia::listar(&conn, 0, i64::MAX).unwrap()[0].nota, "dia pesado");
+        // O cofre de valores (focos salvos, rotinas, energia) volta junto.
+        assert_eq!(crate::banco::valores::ler(&conn, "foco.salvos").unwrap().as_deref(), Some(r#"[{"id":"a","nome":"Estudar","minutos":45,"pausa":10}]"#));
         let e = ia::estado(&conn).unwrap();
         assert_eq!(e.provedores[0].final_chave.as_deref(), Some("1234"));
         // A senha continua abrindo o cofre restaurado.

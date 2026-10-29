@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import type { Atividade } from "../api";
-import { extrasVazios, gravarExtras, lerExtras, normalizarExtras } from "./extras";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { api, type Atividade } from "../api";
+import { CHAVE_EXTRAS_ANTIGA, extrasVazios, lojaExtras, normalizarExtras } from "./extras";
 import { mediasPorBimestre } from "./media";
 import { aceitaNota, bimestreDaData, diaDaSemana, diasAte, perfilDoNivel, tipoMostrado, tipoNativo } from "./nivel";
 import { textos } from "../textos/pt-BR";
@@ -59,27 +59,48 @@ describe("nível de estudo", () => {
 });
 
 describe("extras do módulo", () => {
-  it("guarda e lê de volta; sem nada guardado, nível fica em aberto", () => {
-    const arm = new Memoria();
-    expect(lerExtras(arm).nivel).toBeUndefined();
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    await api.apagarValor("estudos.extras");
+  });
+
+  it("guarda no cofre e lê de volta; sem nada guardado, nível fica em aberto", async () => {
+    vi.stubGlobal("localStorage", new Memoria());
+    await lojaExtras.carregar();
+    expect(lojaExtras.obter().nivel).toBeUndefined();
     const e = extrasVazios();
     e.nivel = "pos";
     e.materias.m1 = { creditos: 4, periodo: "2026.2" };
     e.atividades.a1 = { tipo: "leitura", bimestre: null };
     e.pesquisa.orientador = "Profa. Ana";
     e.pesquisa.reunioes.push({ id: "r1", data: "2026-11-03", pauta: "Capítulo 2", combinado: "" });
-    gravarExtras(e, arm);
-    const lido = lerExtras(arm);
+    lojaExtras.mudar(() => e);
+    await lojaExtras.gravarAgora();
+    await lojaExtras.carregar();
+    const lido = lojaExtras.obter();
+    expect(normalizarExtras(await api.lerValor("estudos.extras"))).toEqual(lido);
     expect(lido.nivel).toBe("pos");
     expect(lido.materias.m1.creditos).toBe(4);
     expect(lido.atividades.a1.tipo).toBe("leitura");
     expect(lido.pesquisa.reunioes[0].pauta).toBe("Capítulo 2");
   });
 
-  it("dado estranho vira padrão, sem quebrar", () => {
+  it("passa o que estava no localStorage para o cofre e apaga de lá", async () => {
     const arm = new Memoria();
-    arm.setItem("orbita.academico.extras", "{não é json");
-    expect(lerExtras(arm)).toEqual(extrasVazios());
+    arm.setItem(CHAVE_EXTRAS_ANTIGA, JSON.stringify({ nivel: "graduacao", materias: { m: { creditos: 2 } } }));
+    vi.stubGlobal("localStorage", arm);
+    await lojaExtras.carregar();
+    expect(lojaExtras.obter().nivel).toBe("graduacao");
+    expect(((await api.lerValor("estudos.extras")) as { nivel?: string }).nivel).toBe("graduacao");
+    expect(arm.getItem(CHAVE_EXTRAS_ANTIGA)).toBeNull();
+  });
+
+  it("dado estranho vira padrão, sem quebrar", async () => {
+    const arm = new Memoria();
+    arm.setItem(CHAVE_EXTRAS_ANTIGA, "{não é json");
+    vi.stubGlobal("localStorage", arm);
+    await lojaExtras.carregar();
+    expect(lojaExtras.obter()).toEqual(extrasVazios());
     const n = normalizarExtras({
       nivel: "doutorado",
       atividades: { a: { tipo: "outro", bimestre: 9 } },

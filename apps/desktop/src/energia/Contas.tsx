@@ -1,14 +1,14 @@
 import { BatteryCharging, BatteryLow, Plus, Trash2, Waves } from "../icones";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { chaveDia } from "../agenda/datas";
 import { useRecado } from "../app/Recado";
 import { Campo } from "../componentes/Campo";
 import { textos } from "../textos/pt-BR";
+import { useLoja } from "../valores";
 import {
   balanco,
-  gravar,
-  ler,
+  lojaContas,
   marcar,
   novoId,
   PESOS,
@@ -24,18 +24,10 @@ const tc = textos.energia.contas;
 const ts = textos.energia.sinais;
 const fmtQuando = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-// Um só lugar com os dados, para a página e o modo baixa energia verem a mesma coisa.
-let atual: DadosEnergia | null = null;
-const ouvintes = new Set<() => void>();
-const obter = () => (atual ??= ler());
-
+// Um só lugar com os dados (no cofre), para a página e o modo baixa energia verem a mesma coisa.
 export function useContas(): [DadosEnergia, (f: (d: DadosEnergia) => DadosEnergia) => void] {
-  const dados = useSyncExternalStore((f) => (ouvintes.add(f), () => void ouvintes.delete(f)), obter);
-  const mudar = (f: (d: DadosEnergia) => DadosEnergia) => {
-    atual = podar(f(obter()), chaveDia(new Date()));
-    gravar(atual);
-    ouvintes.forEach((o) => o());
-  };
+  const dados = useLoja(lojaContas);
+  const mudar = (f: (d: DadosEnergia) => DadosEnergia) => lojaContas.mudar((d) => podar(f(d), chaveDia(new Date())));
   return [dados, mudar];
 }
 
@@ -200,7 +192,6 @@ export function GastaRepoe() {
               <Button className="botao principal energia-alvo" type="submit" isDisabled={!nome.trim()}>
                 <Plus aria-hidden="true" size="1.1em" /> {tc.adicionar}
               </Button>
-              <span className="campo-ajuda">{tc.guardadoAqui}</span>
             </div>
           </Form>
         </div>

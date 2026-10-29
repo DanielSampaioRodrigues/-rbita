@@ -57,7 +57,7 @@ export function PaginaEstudos() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [aprovacao, setAprovacao] = useState(6);
-  const [extras, mudarExtras] = useExtras();
+  const [extras, mudarExtras, extrasProntos] = useExtras();
   const [trocandoNivel, setTrocandoNivel] = useState(false);
   const [aba, setAba] = useState<Aba>(lerAba);
   const [editandoMateria, setEditandoMateria] = useState<Materia | null>(null);
@@ -126,6 +126,15 @@ export function PaginaEstudos() {
     setExcluindoAtividade(null);
     avisarMudanca();
   };
+
+  // Ainda lendo do cofre: espera, sem mostrar a escolha de nível à toa.
+  if (!extrasProntos && !trocandoNivel) {
+    return (
+      <div className="pagina estudos">
+        <h1>{t.titulo}</h1>
+      </div>
+    );
+  }
 
   // Primeira abertura (ou "Mudar nível"): a escolha ocupa a página.
   if (nivel === undefined || trocandoNivel) {

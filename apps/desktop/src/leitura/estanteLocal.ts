@@ -1,52 +1,99 @@
 import type { GrupoLivro, Livro } from "../api";
+import { chavesAntigasCom, criarLoja, useLoja, type Antigo } from "../valores";
 
 /*
-  Preferências da estante que ficam guardadas neste aparelho (como a posição de leitura,
-  que o leitor já guarda assim): ordem das prateleiras, último livro aberto e quanto já leu.
-  Se o armazenamento falhar, a estante continua funcionando com a ordem padrão.
+  Preferências da estante: ordem das prateleiras, último livro aberto e quanto já leu.
+  Ficam no cofre de valores (banco criptografado, entra no backup), chave "leitura.estante".
+  Antes ficavam no localStorage; migram sozinhas na primeira leitura.
 */
+
+export interface Estante {
+  ordem: string[];
+  ultimo: { id: string; em: number } | null;
+  /** livro → quanto já leu, de 0 a 100 */
+  progresso: Record<string, number>;
+}
 
 const CHAVE_ORDEM = "orbita.leitura.ordemPrateleiras";
 const CHAVE_ULTIMO = "orbita.leitura.ultimoAberto";
-const chaveProgresso = (id: string) => `orbita.leitura.progresso.${id}`;
+const PREFIXO_PROGRESSO = "orbita.leitura.progresso.";
 
-function ler<T>(chave: string, padrao: T): T {
-  try {
-    const v = localStorage.getItem(chave);
-    return v ? (JSON.parse(v) as T) : padrao;
-  } catch {
-    return padrao;
+const limitar = (v: number) => Math.min(100, Math.max(0, Math.round(v)));
+
+/** Aceita qualquer coisa vinda do armazenamento e devolve uma estante válida. */
+export function validarEstante(bruto: unknown): Estante {
+  const b = (bruto && typeof bruto === "object" ? bruto : {}) as { ordem?: unknown; ultimo?: unknown; progresso?: unknown };
+  const ordem = Array.isArray(b.ordem) ? b.ordem.filter((x): x is string => typeof x === "string") : [];
+  const u = b.ultimo as { id?: unknown; em?: unknown } | null | undefined;
+  const ultimo = u && typeof u === "object" && typeof u.id === "string" ? { id: u.id, em: typeof u.em === "number" ? u.em : 0 } : null;
+  const progresso: Record<string, number> = {};
+  if (b.progresso && typeof b.progresso === "object") {
+    for (const [id, v] of Object.entries(b.progresso as Record<string, unknown>)) {
+      if (typeof v === "number" && Number.isFinite(v)) progresso[id] = limitar(v);
+    }
   }
+  return { ordem, ultimo, progresso };
 }
 
-function gravar(chave: string, valor: unknown) {
-  try {
-    if (valor === null) localStorage.removeItem(chave);
-    else localStorage.setItem(chave, JSON.stringify(valor));
-  } catch {
-    // Conveniência; se não der para guardar, tudo bem.
-  }
-}
-
-export const lerOrdem = (): string[] => {
-  const v = ler<unknown>(CHAVE_ORDEM, []);
-  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+/** As chaves antigas (uma por coisa, e uma por livro no progresso) viram uma estante só. */
+const antigo: Antigo = {
+  ler: () => {
+    const chaves = [CHAVE_ORDEM, CHAVE_ULTIMO, ...chavesAntigasCom(PREFIXO_PROGRESSO)];
+    const texto = (k: string) => {
+      try {
+        return globalThis.localStorage?.getItem(k) ?? null;
+      } catch {
+        return null;
+      }
+    };
+    if (chaves.every((k) => texto(k) === null)) return undefined;
+    const json = (k: string): unknown => {
+      try {
+        return JSON.parse(texto(k) ?? "null");
+      } catch {
+        return null;
+      }
+    };
+    const progresso: Record<string, unknown> = {};
+    for (const k of chavesAntigasCom(PREFIXO_PROGRESSO)) progresso[k.slice(PREFIXO_PROGRESSO.length)] = json(k);
+    return { ordem: json(CHAVE_ORDEM), ultimo: json(CHAVE_ULTIMO), progresso };
+  },
+  apagar: () => {
+    for (const k of [CHAVE_ORDEM, CHAVE_ULTIMO, ...chavesAntigasCom(PREFIXO_PROGRESSO)]) {
+      try {
+        globalThis.localStorage?.removeItem(k);
+      } catch {
+        // Sem armazenamento: nada a apagar.
+      }
+    }
+  },
 };
-export const gravarOrdem = (ids: string[]) => gravar(CHAVE_ORDEM, ids);
 
-export const lerUltimo = (): { id: string; em: number } | null => {
-  const v = ler<{ id?: unknown; em?: unknown } | null>(CHAVE_ULTIMO, null);
-  return v && typeof v.id === "string" ? { id: v.id, em: typeof v.em === "number" ? v.em : 0 } : null;
-};
-export const marcarUltimo = (id: string) => gravar(CHAVE_ULTIMO, { id, em: Date.now() });
+export const lojaEstante = criarLoja<Estante>({
+  chave: "leitura.estante",
+  antiga: antigo,
+  vazio: () => ({ ordem: [], ultimo: null, progresso: {} }),
+  validar: validarEstante,
+});
+
+/** Lê do cofre ao montar e redesenha quando a estante muda. */
+export const useEstante = () => useLoja(lojaEstante);
+
+export const lerOrdem = (): string[] => lojaEstante.obter().ordem;
+export const gravarOrdem = (ids: string[]) => lojaEstante.mudar((e) => ({ ...e, ordem: [...ids] }));
+
+export const lerUltimo = (): { id: string; em: number } | null => lojaEstante.obter().ultimo;
+export const marcarUltimo = (id: string) => lojaEstante.mudar((e) => ({ ...e, ultimo: { id, em: Date.now() } }));
 
 /** Quanto já leu, de 0 a 100; null = não informado. */
-export const lerProgresso = (id: string): number | null => {
-  const v = ler<unknown>(chaveProgresso(id), null);
-  return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : null;
-};
+export const lerProgresso = (id: string): number | null => lojaEstante.obter().progresso[id] ?? null;
 export const gravarProgresso = (id: string, valor: number | null) =>
-  gravar(chaveProgresso(id), valor === null ? null : Math.min(100, Math.max(0, Math.round(valor))));
+  lojaEstante.mudar((e) => {
+    const progresso = { ...e.progresso };
+    if (valor === null || !Number.isFinite(valor)) delete progresso[id];
+    else progresso[id] = limitar(valor);
+    return { ...e, progresso };
+  });
 
 /** Prateleiras na ordem escolhida pela pessoa; as que não estão na lista vão para o fim, por data de criação. */
 export function ordenarPrateleiras(grupos: GrupoLivro[], ordem: string[]): GrupoLivro[] {

@@ -6,6 +6,7 @@ import { Escolha } from "../componentes/Escolha";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { EditarTexto } from "../paginas/Ideias";
 import { textos } from "../textos/pt-BR";
+import { lerComMigracao } from "../valores";
 import { curva, enquadrar, moverPorTecla, paraMundo, paraTela, posicoesAutomaticas, toqueDuplo, zoomEm, type Ponto, type Toque, type Vista } from "./mapaGeometria";
 import { EtiquetaPrazo } from "./prazos";
 
@@ -29,29 +30,33 @@ interface Props {
   aoSugerirPassos?: (alvo: { id: string; titulo: string }) => void;
 }
 
-// Posições e vista ficam guardadas neste computador, por projeto (só números e ids, nada do conteúdo).
+// Posições e vista ficam no cofre de valores, uma chave por projeto (só números e ids,
+// nada do conteúdo). Antes ficavam no localStorage (`orbita.mapa.<id>`); migram sozinhas.
 interface Guardado {
   pos: Record<string, [number, number]>;
   vista?: Vista;
 }
-const chave = (projetoId: string) => `orbita.mapa.${projetoId}`;
+const chaveMapa = (projetoId: string) => `projetos.mapa.${projetoId.toLowerCase()}`;
+const chaveMapaAntiga = (projetoId: string) => `orbita.mapa.${projetoId}`;
 
-function lerGuardado(projetoId: string): Guardado {
-  try {
-    const g = JSON.parse(localStorage.getItem(chave(projetoId)) ?? "null") as Guardado | null;
-    return g && typeof g.pos === "object" ? g : { pos: {} };
-  } catch {
-    return { pos: {} };
+const numero = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+/** Aceita qualquer coisa vinda do armazenamento e devolve posições válidas. */
+function validarGuardado(bruto: unknown): Guardado {
+  if (!bruto || typeof bruto !== "object") return { pos: {} };
+  const b = bruto as { pos?: unknown; vista?: unknown };
+  const pos: Guardado["pos"] = {};
+  if (b.pos && typeof b.pos === "object") {
+    for (const [id, p] of Object.entries(b.pos as Record<string, unknown>)) {
+      if (Array.isArray(p) && p.length === 2 && numero(p[0]) && numero(p[1])) pos[id] = [p[0], p[1]];
+    }
   }
+  const v = b.vista as Partial<Vista> | undefined;
+  const vista = v && typeof v === "object" && numero(v.x) && numero(v.y) && numero(v.z) ? { x: v.x, y: v.y, z: v.z } : undefined;
+  return vista ? { pos, vista } : { pos };
 }
 
-function gravar(projetoId: string, g: Guardado) {
-  try {
-    localStorage.setItem(chave(projetoId), JSON.stringify(g));
-  } catch {
-    // Sem armazenamento: o mapa só não lembra das posições.
-  }
-}
+const lerMapa = (projetoId: string) => lerComMigracao(chaveMapa(projetoId), chaveMapaAntiga(projetoId), validarGuardado);
 
 /** O que o ponteiro está fazendo agora. */
 type Gesto =
@@ -89,10 +94,26 @@ export function MapaMental({ projetoId, titulo, tarefas, executar, aoSugerirPass
   }, [raiz]);
 
   const automaticas = useMemo(() => posicoesAutomaticas(raiz), [raiz]);
-  const [manuais, setManuais] = useState<Record<string, Ponto>>(() =>
-    Object.fromEntries(Object.entries(lerGuardado(projetoId).pos).map(([id, [x, y]]) => [id, { x, y }])),
-  );
-  const [vista, setVista] = useState<Vista | null>(() => lerGuardado(projetoId).vista ?? null);
+  const [manuais, setManuais] = useState<Record<string, Ponto>>({});
+  const [vista, setVista] = useState<Vista | null>(null);
+  // Só grava depois de ler do cofre, para não apagar posições guardadas.
+  const [lido, setLido] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    setLido(false);
+    lerMapa(projetoId).then(
+      (g) => {
+        if (!vivo) return;
+        if (g) {
+          setManuais(Object.fromEntries(Object.entries(g.pos).map(([id, [x, y]]) => [id, { x, y }])));
+          if (g.vista) setVista(g.vista);
+        }
+        setLido(true);
+      },
+      () => {}, // cofre bloqueado: o mapa funciona, só não lembra
+    );
+    return () => void (vivo = false);
+  }, [projetoId]);
   const posDe = useCallback((id: string): Ponto => manuais[id] ?? automaticas[id] ?? { x: 0, y: 0 }, [manuais, automaticas]);
 
   const [ligacoes, setLigacoes] = useState<[string, string][]>([]);
@@ -140,12 +161,14 @@ export function MapaMental({ projetoId, titulo, tarefas, executar, aoSugerirPass
 
   // Guarda posições e vista (um instante depois de parar de mexer).
   useEffect(() => {
+    if (!lido) return;
     const id = window.setTimeout(() => {
       const pos = Object.fromEntries(Object.entries(manuais).filter(([k]) => ids.has(k)).map(([k, p]) => [k, [Math.round(p.x), Math.round(p.y)] as [number, number]]));
-      gravar(projetoId, { pos, vista: vista ?? undefined });
+      const g: Guardado = vista ? { pos, vista } : { pos };
+      api.gravarValor(chaveMapa(projetoId), g).catch(() => {});
     }, 300);
     return () => window.clearTimeout(id);
-  }, [manuais, vista, ids, projetoId]);
+  }, [manuais, vista, ids, projetoId, lido]);
 
   const tamanhoTela = () => {
     const r = tela.current?.getBoundingClientRect();

@@ -473,6 +473,23 @@ pub async fn listar_energia(estado: State<'_, Estado>, de: i64, ate: i64) -> Res
     estado.com_sessao(|s| energia::listar(&s.conn, de, ate))
 }
 
+// ── Cofre de valores (dados pequenos de módulo, em JSON) ────────────────────
+
+#[tauri::command]
+pub async fn valor_ler(estado: State<'_, Estado>, chave: String) -> Result<Option<String>, Erro> {
+    estado.com_sessao(|s| banco::valores::ler(&s.conn, &chave))
+}
+
+#[tauri::command]
+pub async fn valor_gravar(estado: State<'_, Estado>, chave: String, json: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| banco::valores::gravar(&s.conn, &chave, &json))
+}
+
+#[tauri::command]
+pub async fn valor_apagar(estado: State<'_, Estado>, chave: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| banco::valores::apagar(&s.conn, &chave))
+}
+
 #[tauri::command]
 pub async fn basicos_do_dia(estado: State<'_, Estado>, data: String) -> Result<Vec<energia::Basico>, Erro> {
     estado.com_sessao(|s| energia::basicos_do_dia(&s.conn, &data))
@@ -1277,8 +1294,31 @@ pub async fn excluir_aula(estado: State<'_, Estado>, id: String) -> Result<(), E
 // ---------- Dinheiro ----------
 
 #[tauri::command]
-pub async fn registrar_gasto(estado: State<'_, Estado>, centavos: i64, grupo_id: String, descricao: String, interesse: bool) -> Result<dinheiro::Gasto, Erro> {
-    estado.com_sessao(|s| dinheiro::registrar_gasto(&s.conn, centavos, &grupo_id, &descricao, interesse))
+pub async fn registrar_gasto(
+    estado: State<'_, Estado>,
+    centavos: i64,
+    grupo_id: String,
+    descricao: String,
+    interesse: bool,
+    momento: Option<i64>,
+    nota: Option<String>,
+) -> Result<dinheiro::Gasto, Erro> {
+    estado.com_sessao(|s| dinheiro::registrar_gasto(&s.conn, centavos, &grupo_id, &descricao, interesse, momento, nota.as_deref()))
+}
+
+#[tauri::command]
+pub async fn registrar_entrada(estado: State<'_, Estado>, centavos: i64, descricao: String, momento: Option<i64>) -> Result<dinheiro::Entrada, Erro> {
+    estado.com_sessao(|s| dinheiro::registrar_entrada(&s.conn, centavos, &descricao, momento))
+}
+
+#[tauri::command]
+pub async fn listar_entradas(estado: State<'_, Estado>, de: i64, ate: i64) -> Result<Vec<dinheiro::Entrada>, Erro> {
+    estado.com_sessao(|s| dinheiro::listar_entradas(&s.conn, de, ate))
+}
+
+#[tauri::command]
+pub async fn excluir_entrada(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| dinheiro::excluir_entrada(&s.conn, &id))
 }
 
 #[tauri::command]

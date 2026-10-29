@@ -5,6 +5,7 @@ import { Aviso } from "../componentes/Campo";
 import { CalendarDays, Download, FileText, Wallet } from "../icones";
 import { eventosParaICS, gastosParaCSV, montarJSON, paraMarkdown, registrosSaudeParaCSV } from "../exportar/exportar";
 import { textos } from "../textos/pt-BR";
+import { lerValoresParaExportar } from "../valores";
 
 const t = textos.exportar;
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -64,7 +65,10 @@ export function Exportar() {
       api.listarHobbies().catch(vazio), api.listarQuadros().catch(vazio), api.listarLivros().catch(vazio),
       api.listarGruposLivro().catch(vazio), api.listarRegistrosSaude(INICIO, FIM).catch(vazio),
     ]);
+    // Cofre de valores: personalização das rotinas, focos salvos, energia, estante, estudos.
+    const valores = await lerValoresParaExportar().catch(() => ({}));
     return {
+      valores,
       ideias, projetos, rotinas, agenda, remedios, planosDeSaude, profissionais, materias, atividades, aulas,
       gruposDeGasto, gastos, contas, desejos, metas, hobbies, quadros, livros, gruposDeLivro, registrosDeSaude,
     };

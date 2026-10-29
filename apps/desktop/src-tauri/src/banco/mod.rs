@@ -20,6 +20,7 @@ pub mod eventos;
 pub mod itens;
 pub mod rotinas;
 pub mod saude;
+pub mod valores;
 
 use std::path::Path;
 

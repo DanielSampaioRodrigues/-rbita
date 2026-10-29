@@ -70,7 +70,6 @@ export function PainelPesquisa({ pesquisa, mudar, hoje }: { pesquisa: Pesquisa; 
             <Pencil aria-hidden="true" size="1em" /> {t.editarProjeto}
           </Button>
         </div>
-        <p className="campo-ajuda">{t.ondeFica}</p>
       </section>
 
       <section className="estudos-bloco" aria-labelledby="pesq-prazos">

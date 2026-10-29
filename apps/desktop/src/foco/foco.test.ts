@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { api } from "../api";
 import { validar } from "../preferencias";
 import { anguloPonteiro, areiaAmpulheta } from "./Mostradores";
-import { CHAVE_SALVOS, gravarSalvos, lerSalvos, limitarMinutos, MAXIMO_SALVOS, validarSalvos } from "./salvos";
+import { CHAVE_SALVOS_ANTIGA, limitarMinutos, lojaSalvos, MAXIMO_SALVOS, validarSalvos } from "./salvos";
 
 class Memoria implements Storage {
   private dados = new Map<string, string>();
@@ -39,18 +40,40 @@ describe("estilo do foco", () => {
 });
 
 describe("focos salvos", () => {
-  it("grava e lê de volta", () => {
-    const m = new Memoria();
-    expect(lerSalvos(m)).toEqual([]);
-    const lista = [{ id: "a", nome: "Estudar", minutos: 45, pausa: 10 }];
-    gravarSalvos(lista, m);
-    expect(lerSalvos(m)).toEqual(lista);
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    await api.apagarValor("foco.salvos");
   });
 
-  it("deixa de fora o que vier estranho e corrige os minutos", () => {
+  it("grava no cofre e lê de volta", async () => {
+    vi.stubGlobal("localStorage", new Memoria());
+    await lojaSalvos.carregar();
+    expect(lojaSalvos.obter()).toEqual([]);
+    const lista = [{ id: "a", nome: "Estudar", minutos: 45, pausa: 10 }];
+    lojaSalvos.mudar(() => lista);
+    await lojaSalvos.gravarAgora();
+    expect(await api.lerValor("foco.salvos")).toEqual(lista);
+    await lojaSalvos.carregar();
+    expect(lojaSalvos.obter()).toEqual(lista);
+  });
+
+  it("passa o que estava no localStorage para o cofre e apaga de lá", async () => {
     const m = new Memoria();
-    m.setItem(CHAVE_SALVOS, "não é json");
-    expect(lerSalvos(m)).toEqual([]);
+    m.setItem(CHAVE_SALVOS_ANTIGA, JSON.stringify([{ id: "b", nome: "Ler", minutos: 20, pausa: 5 }]));
+    vi.stubGlobal("localStorage", m);
+    await lojaSalvos.carregar();
+    expect(lojaSalvos.obter()).toEqual([{ id: "b", nome: "Ler", minutos: 20, pausa: 5 }]);
+    expect(await api.lerValor("foco.salvos")).toEqual([{ id: "b", nome: "Ler", minutos: 20, pausa: 5 }]);
+    expect(m.getItem(CHAVE_SALVOS_ANTIGA)).toBeNull();
+  });
+
+  it("deixa de fora o que vier estranho e corrige os minutos", async () => {
+    const m = new Memoria();
+    m.setItem(CHAVE_SALVOS_ANTIGA, "não é json");
+    vi.stubGlobal("localStorage", m);
+    await lojaSalvos.carregar();
+    expect(lojaSalvos.obter()).toEqual([]);
+    expect(m.getItem(CHAVE_SALVOS_ANTIGA)).toBeNull();
     expect(
       validarSalvos([
         { id: "a", nome: "  Ler  ", minutos: 500, pausa: -2 },

@@ -20,7 +20,7 @@ import { CapaLivro } from "./CapaLivro";
 import { corDaCapa, corDoTitulo } from "./capa";
 import {
   gravarOrdem, gravarProgresso, lerOrdem, lerProgresso, lerUltimo, livroParaContinuar,
-  marcarUltimo, moverNaOrdem, ordenarPrateleiras,
+  marcarUltimo, moverNaOrdem, ordenarPrateleiras, useEstante,
 } from "./estanteLocal";
 
 const SEM = "sem";
@@ -48,7 +48,9 @@ function livroNovo(grupoId = ""): Livro {
 export function PaginaLeitura() {
   const [livros, setLivros] = useState<Livro[]>([]);
   const [grupos, setGrupos] = useState<GrupoLivro[]>([]);
-  const [ordem, setOrdem] = useState<string[]>(lerOrdem);
+  // Ordem, último aberto e progresso vêm do cofre; a página redesenha quando chegam.
+  useEstante();
+  const ordem = lerOrdem();
   const [editando, setEditando] = useState<Livro | null>(null);
   const [excluindo, setExcluindo] = useState<Livro | null>(null);
   const [excluindoGrupo, setExcluindoGrupo] = useState<GrupoLivro | null>(null);
@@ -87,10 +89,7 @@ export function PaginaLeitura() {
     avisarMudanca();
   };
 
-  const mudarOrdem = (ids: string[]) => {
-    gravarOrdem(ids);
-    setOrdem(ids);
-  };
+  const mudarOrdem = (ids: string[]) => gravarOrdem(ids);
 
   if (lendo) return <LeitorLivro livro={lendo} aoFechar={() => setLendo(null)} />;
 

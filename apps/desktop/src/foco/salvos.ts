@@ -1,6 +1,6 @@
 // Focos salvos: atalhos com nome, minutos de foco e (se quiser) minutos de pausa.
-// Ficam no mesmo lugar do estado do timer (armazenamento local do aparelho),
-// assim funcionam igual no Windows e na versão de navegador.
+// Ficam no cofre de valores (banco criptografado, entra no backup), chave "foco.salvos".
+import { criarLoja } from "../valores";
 
 export interface FocoSalvo {
   id: string;
@@ -11,7 +11,8 @@ export interface FocoSalvo {
   pausa: number;
 }
 
-export const CHAVE_SALVOS = "orbita.foco.salvos";
+/** Onde ficavam antes (localStorage); migrados para o cofre na primeira leitura. */
+export const CHAVE_SALVOS_ANTIGA = "orbita.foco.salvos";
 export const MAXIMO_SALVOS = 30;
 export const MAXIMO_NOME = 60;
 
@@ -44,21 +45,13 @@ export function validarSalvos(bruto: unknown): FocoSalvo[] {
   return lista;
 }
 
-export function lerSalvos(armazenamento: Storage = localStorage): FocoSalvo[] {
-  try {
-    return validarSalvos(JSON.parse(armazenamento.getItem(CHAVE_SALVOS) ?? "[]"));
-  } catch {
-    return [];
-  }
-}
-
-export function gravarSalvos(lista: FocoSalvo[], armazenamento: Storage = localStorage): void {
-  try {
-    armazenamento.setItem(CHAVE_SALVOS, JSON.stringify(lista));
-  } catch {
-    // Sem armazenamento: a lista vale só enquanto o app estiver aberto.
-  }
-}
+/** Os focos salvos, no cofre. Use `useLoja(lojaSalvos)` na tela. */
+export const lojaSalvos = criarLoja<FocoSalvo[]>({
+  chave: "foco.salvos",
+  antiga: CHAVE_SALVOS_ANTIGA,
+  vazio: () => [],
+  validar: validarSalvos,
+});
 
 export const novoId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `f${Date.now()}${Math.random().toString(36).slice(2)}`;

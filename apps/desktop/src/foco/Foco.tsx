@@ -10,7 +10,8 @@ import { notificar } from "../notificar";
 import { ESTILOS_FOCO, type EstiloFoco } from "../preferencias";
 import { textos } from "../textos/pt-BR";
 import { Miniatura, Mostrador } from "./Mostradores";
-import { gravarSalvos, lerSalvos, limitarMinutos, MAXIMO_NOME, MAXIMO_SALVOS, novoId, type FocoSalvo } from "./salvos";
+import { limitarMinutos, lojaSalvos, MAXIMO_NOME, MAXIMO_SALVOS, novoId, type FocoSalvo } from "./salvos";
+import { useLoja } from "../valores";
 
 export { Relogio } from "./Mostradores";
 
@@ -253,15 +254,12 @@ type Rascunho = { id: string | null; nome: string; minutos: string; pausa: strin
 /** Lista de focos salvos: um toque começa; editar e excluir ficam no próprio cartão. */
 function FocosSalvos() {
   const { estado, restante, comecarSalvo } = useFoco();
-  const [salvos, setSalvos] = useState<FocoSalvo[]>(lerSalvos);
+  const salvos = useLoja(lojaSalvos);
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
   const [excluindo, setExcluindo] = useState<FocoSalvo | null>(null);
   const ocupado = restante != null;
 
-  const atualizar = (lista: FocoSalvo[]) => {
-    setSalvos(lista);
-    gravarSalvos(lista);
-  };
+  const atualizar = (lista: FocoSalvo[]) => lojaSalvos.mudar(() => lista);
 
   const novo = () =>
     setRascunho({

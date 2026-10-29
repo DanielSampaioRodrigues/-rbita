@@ -2,9 +2,9 @@
 // Ideia da contabilidade de energia (Maja Toudal): cada coisa do dia tira ou põe energia,
 // e a lista é da pessoa. Ver docs/pesquisa-energia.md.
 //
-// Enquanto a parte nativa não guarda esses dados no cofre, ficam neste computador
-// (localStorage), como as personalizações das rotinas. São dados pessoais: quando a
-// parte nativa ganhar os comandos, mudar para o cofre criptografado.
+// São dados pessoais: ficam no cofre de valores (banco criptografado, entra no
+// backup), chave "energia.contas". Antes ficavam no localStorage; migram sozinhos.
+import { criarLoja } from "../valores";
 
 export interface Atividade {
   id: string;
@@ -30,7 +30,8 @@ export interface DadosEnergia {
 export const PESOS = [-3, -2, -1, 1, 2, 3] as const;
 const DIAS_GUARDADOS = 90;
 const SENTIDOS_GUARDADOS = 200;
-const CHAVE = "orbita.energia.contas";
+/** Onde ficavam antes (localStorage). */
+export const CHAVE_ANTIGA = "orbita.energia.contas";
 
 export const VAZIO: DadosEnergia = { atividades: [], feitos: {}, sinais: [], sentidos: [] };
 
@@ -73,22 +74,13 @@ export function podar(d: DadosEnergia, hoje: string): DadosEnergia {
   return { ...d, feitos, sentidos: d.sentidos.slice(-SENTIDOS_GUARDADOS) };
 }
 
-export function ler(armazenamento: Storage = localStorage): DadosEnergia {
-  try {
-    const texto = armazenamento.getItem(CHAVE);
-    return texto ? validar(JSON.parse(texto)) : structuredClone(VAZIO);
-  } catch {
-    return structuredClone(VAZIO);
-  }
-}
-
-export function gravar(d: DadosEnergia, armazenamento: Storage = localStorage) {
-  try {
-    armazenamento.setItem(CHAVE, JSON.stringify(d));
-  } catch {
-    // Sem armazenamento: a tela segue funcionando, só não lembra.
-  }
-}
+/** Atividades, marcações do dia, sinais e "estou sentindo isso", no cofre. */
+export const lojaContas = criarLoja<DadosEnergia>({
+  chave: "energia.contas",
+  antiga: CHAVE_ANTIGA,
+  vazio: () => structuredClone(VAZIO),
+  validar,
+});
 
 export function novoId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;

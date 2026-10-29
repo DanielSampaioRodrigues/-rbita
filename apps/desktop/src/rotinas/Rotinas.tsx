@@ -12,7 +12,7 @@ import { textos } from "../textos/pt-BR";
 import { ICONES } from "./icones";
 import {
   PALETA, hexDaCor, limparEmoji, marcarPasso, passosFeitosHoje, personalizacaoDe, resumoDeDias,
-  salvarPersonalizacao, textoSobre, valeNoDia, type Personalizacao,
+  salvarPersonalizacao, textoSobre, useRotinasGuardadas, valeNoDia, type Personalizacao,
 } from "./personalizacao";
 
 const t = textos.rotinas;
@@ -50,10 +50,9 @@ function estiloDaCor(p: Personalizacao) {
 
 /** Cartão de uma rotina: quem é, quantos passos, o que já foi marcado hoje (sem cobrança). */
 function CartaoRotina({ rotina, aoComecar, aoEditar }: { rotina: Rotina; aoComecar: () => void; aoEditar: () => void }) {
-  const mudancas = useMudancas();
+  useRotinasGuardadas();
   const p = personalizacaoDe(rotina);
-  const [feitos, setFeitos] = useState<string[]>(() => passosFeitosHoje(rotina.id));
-  useEffect(() => setFeitos(passosFeitosHoje(rotina.id)), [mudancas, rotina.id]);
+  const feitos = passosFeitosHoje(rotina.id);
   const total = rotina.passos.length;
   const feitosValidos = rotina.passos.filter((x) => feitos.includes(x.id)).length;
   const vale = valeNoDia(p.dias, new Date().getDay());
@@ -99,7 +98,6 @@ function CartaoRotina({ rotina, aoComecar, aoEditar }: { rotina: Rotina; aoComec
                     isSelected={feito}
                     onChange={(v) => {
                       marcarPasso(rotina.id, x.id, v);
-                      setFeitos(passosFeitosHoje(rotina.id));
                     }}
                     aria-label={t.marcarPasso(x.titulo)}
                   >
@@ -190,6 +188,7 @@ export function Rotinas() {
 function EditarRotina({ rotina, aoVoltar }: { rotina: Rotina; aoVoltar: () => void }) {
   const [passo, setPasso] = useState<Passo | null>(null);
   const [janela, setJanela] = useState<"renomear" | "excluir" | "personalizar" | null>(null);
+  useRotinasGuardadas();
   const pers = personalizacaoDe(rotina);
   const [erro, setErro] = useState<string | null>(null);
 
