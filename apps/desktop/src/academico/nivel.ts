@@ -2,11 +2,11 @@
 // A pessoa escolhe o nível uma vez; o módulo esconde o que não faz sentido
 // (bimestre na faculdade, créditos na escola) sem apagar nada.
 
-export type Nivel = "fundamental" | "medio" | "graduacao" | "pos";
+export type Nivel = "fundamental" | "medio" | "tecnico" | "graduacao" | "pos" | "livre" | "personalizado";
 /** "todos" = a pessoa preferiu não escolher: o módulo mostra tudo. */
 export type NivelOuTodos = Nivel | "todos";
 
-export const NIVEIS: Nivel[] = ["fundamental", "medio", "graduacao", "pos"];
+export const NIVEIS: Nivel[] = ["fundamental", "medio", "tecnico", "graduacao", "pos", "livre", "personalizado"];
 
 export interface PerfilNivel {
   /** Como o ano se divide. `null` = não mostra período. */
@@ -21,15 +21,27 @@ export interface PerfilNivel {
   vocabulario: "materia" | "disciplina";
 }
 
-export function perfilDoNivel(nivel: NivelOuTodos): PerfilNivel {
+/** Perfil de partida do nível "personalizado" (a pessoa ajusta cada opção). */
+export const PERFIL_PERSONALIZADO_PADRAO: PerfilNivel = { periodo: "semestre", notas: true, creditos: false, pesquisa: false, vocabulario: "disciplina" };
+
+/** `personalizado` é o perfil montado pela pessoa; só vale para o nível "personalizado". */
+export function perfilDoNivel(nivel: NivelOuTodos, personalizado?: PerfilNivel): PerfilNivel {
   switch (nivel) {
     case "fundamental":
     case "medio":
       return { periodo: "bimestre", notas: true, creditos: false, pesquisa: false, vocabulario: "materia" };
+    case "tecnico":
+      // Curso técnico: módulos semestrais, nota por disciplina, sem créditos nem pesquisa.
+      return { periodo: "semestre", notas: true, creditos: false, pesquisa: false, vocabulario: "disciplina" };
     case "graduacao":
       return { periodo: "semestre", notas: true, creditos: true, pesquisa: false, vocabulario: "disciplina" };
     case "pos":
       return { periodo: "semestre", notas: false, creditos: true, pesquisa: true, vocabulario: "disciplina" };
+    case "livre":
+      // Curso livre, idioma, concurso: sem período, sem nota obrigatória, sem créditos.
+      return { periodo: null, notas: false, creditos: false, pesquisa: false, vocabulario: "materia" };
+    case "personalizado":
+      return personalizado ?? PERFIL_PERSONALIZADO_PADRAO;
     default:
       return { periodo: "bimestre", notas: true, creditos: true, pesquisa: true, vocabulario: "materia" };
   }
@@ -37,6 +49,19 @@ export function perfilDoNivel(nivel: NivelOuTodos): PerfilNivel {
 
 export function ehNivel(v: unknown): v is NivelOuTodos {
   return v === "todos" || NIVEIS.includes(v as Nivel);
+}
+
+/** Confere um perfil vindo do armazenamento; o que faltar vem do padrão. */
+export function normalizarPerfil(bruto: unknown): PerfilNivel {
+  const o = (bruto && typeof bruto === "object" ? bruto : {}) as Partial<Record<keyof PerfilNivel, unknown>>;
+  const p = PERFIL_PERSONALIZADO_PADRAO;
+  return {
+    periodo: o.periodo === "bimestre" || o.periodo === "semestre" || o.periodo === null ? o.periodo : p.periodo,
+    notas: typeof o.notas === "boolean" ? o.notas : p.notas,
+    creditos: typeof o.creditos === "boolean" ? o.creditos : p.creditos,
+    pesquisa: typeof o.pesquisa === "boolean" ? o.pesquisa : p.pesquisa,
+    vocabulario: o.vocabulario === "materia" || o.vocabulario === "disciplina" ? o.vocabulario : p.vocabulario,
+  };
 }
 
 /** Tipos de atividade que a tela oferece. */

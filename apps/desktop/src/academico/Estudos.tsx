@@ -19,6 +19,8 @@ import {
   PenLine,
   Plus,
   RotateCcw,
+  SlidersHorizontal,
+  Sparkles,
   Trash2,
   Upload,
   type LucideIcon,
@@ -30,7 +32,9 @@ import { FormAtividade, nomeTipo, novaAtividade } from "./FormAtividade";
 import { aulasDoDia, GradeHorario } from "./Grade";
 import { mediaPonderada, mediasPorBimestre, situacao } from "./media";
 import { useExtras, type ExtrasAcademico, type PrazoPesquisa } from "./extras";
-import { bimestreDaData, diasAte, NIVEIS, perfilDoNivel, tipoMostrado, TIPOS_ATIVIDADE, type Nivel, type NivelOuTodos, type PerfilNivel, type TipoAtividade } from "./nivel";
+import { bimestreDaData, diasAte, NIVEIS, PERFIL_PERSONALIZADO_PADRAO, perfilDoNivel, tipoMostrado, TIPOS_ATIVIDADE, type Nivel, type NivelOuTodos, type PerfilNivel, type TipoAtividade } from "./nivel";
+import { Interruptor } from "../componentes/Interruptor";
+import { Segmentado } from "../componentes/Segmentado";
 import { PainelPesquisa } from "./Pesquisa";
 
 const t = textos.estudos;
@@ -39,7 +43,7 @@ const numeroBonito = (n: number) => n.toFixed(1).replace(".", ",");
 const dataLegivel = (iso: string) => (iso ? fmtData.format(new Date(`${iso}T00:00:00`)) : t.semData);
 
 const ICONE_TIPO: Record<TipoAtividade, LucideIcon> = { prova: FileText, trabalho: PenLine, dever: ListChecks, leitura: BookOpen, entrega: Upload };
-const ICONE_NIVEL: Record<Nivel, LucideIcon> = { fundamental: Backpack, medio: Books, graduacao: Laptop, pos: Lightbulb };
+const ICONE_NIVEL: Record<Nivel, LucideIcon> = { fundamental: Backpack, medio: Books, tecnico: ListChecks, graduacao: Laptop, pos: Lightbulb, livre: Sparkles, personalizado: SlidersHorizontal };
 
 type Aba = "semana" | "materias" | "grade" | "notas" | "pesquisa";
 const CHAVE_ABA = "orbita.academico.aba";
@@ -75,7 +79,7 @@ export function PaginaEstudos() {
   }, [mudancas]);
 
   const nivel = extras.nivel;
-  const perfil = perfilDoNivel(nivel ?? "todos");
+  const perfil = perfilDoNivel(nivel ?? "todos", extras.perfilPersonalizado);
   const disciplina = perfil.vocabulario === "disciplina";
   const temNotaLancada = atividades.some((a) => a.nota != null);
   const mostraNotas = perfil.notas || temNotaLancada;
@@ -87,10 +91,11 @@ export function PaginaEstudos() {
     try { localStorage.setItem(CHAVE_ABA, a); } catch { /* só não lembra */ }
   };
 
-  const escolherNivel = (n: NivelOuTodos) => {
-    mudarExtras((x) => ({ ...x, nivel: n }));
+  const escolherNivel = (n: NivelOuTodos, personalizado?: { nome: string; perfil: PerfilNivel }) => {
+    mudarExtras((x) => (personalizado ? { ...x, nivel: n, nivelNome: personalizado.nome, perfilPersonalizado: personalizado.perfil } : { ...x, nivel: n }));
     setTrocandoNivel(false);
   };
+  const nomeDoNivel = (n: NivelOuTodos) => (n === "todos" ? t.nivel.todos : n === "personalizado" && extras.nivelNome ? extras.nivelNome : t.nivel.nomes[n]);
 
   const porMateria = useMemo(() => new Map(materias.map((m) => [m.id, m])), [materias]);
   const tipoDe = (a: Atividade) => tipoMostrado(a.tipo, extras.atividades[a.id]?.tipo);
@@ -141,7 +146,7 @@ export function PaginaEstudos() {
     return (
       <div className="pagina estudos">
         <h1>{t.titulo}</h1>
-        <EscolhaNivel atual={nivel} aoEscolher={escolherNivel} aoCancelar={nivel !== undefined ? () => setTrocandoNivel(false) : undefined} />
+        <EscolhaNivel atual={nivel} nomeAtual={extras.nivelNome} perfilAtual={extras.perfilPersonalizado} aoEscolher={escolherNivel} aoCancelar={nivel !== undefined ? () => setTrocandoNivel(false) : undefined} />
       </div>
     );
   }
@@ -167,7 +172,7 @@ export function PaginaEstudos() {
         <div className="estudos-nivel">
           <span className="estudos-nivel-chip">
             {nivel !== "todos" && (() => { const I = ICONE_NIVEL[nivel]; return <I aria-hidden="true" size="1em" />; })()}
-            {t.nivel.atual(nivel === "todos" ? t.nivel.todos : t.nivel.nomes[nivel])}
+            {t.nivel.atual(nomeDoNivel(nivel))}
           </span>
           <Button className="estudos-link" onPress={() => setTrocandoNivel(true)}>{t.nivel.mudar}</Button>
         </div>
@@ -274,7 +279,32 @@ export function PaginaEstudos() {
 
 // ---------- Escolha de nível ----------
 
-function EscolhaNivel({ atual, aoEscolher, aoCancelar }: { atual?: NivelOuTodos; aoEscolher: (n: NivelOuTodos) => void; aoCancelar?: () => void }) {
+function EscolhaNivel({ atual, nomeAtual, perfilAtual, aoEscolher, aoCancelar }: { atual?: NivelOuTodos; nomeAtual?: string; perfilAtual?: PerfilNivel; aoEscolher: (n: NivelOuTodos, personalizado?: { nome: string; perfil: PerfilNivel }) => void; aoCancelar?: () => void }) {
+  // "Personalizado": a pessoa dá um nome e liga o que quer ver.
+  const [montando, setMontando] = useState(false);
+  const [nome, setNome] = useState(nomeAtual ?? "");
+  const [perfil, setPerfil] = useState<PerfilNivel>(perfilAtual ?? PERFIL_PERSONALIZADO_PADRAO);
+  const tp = t.nivel.personalizar;
+  if (montando) {
+    return (
+      <section className="estudos-escolha" aria-labelledby="montar-nivel">
+        <h2 id="montar-nivel" className="estudos-escolha-titulo">{tp.titulo}</h2>
+        <p className="texto-suave">{tp.texto}</p>
+        <div className="formulario">
+          <Campo rotulo={tp.nome} valor={nome} aoMudar={setNome} maximo={40} semDitado autoFocus descricao={tp.nomeAjuda} />
+          <Segmentado rotulo={tp.periodo} valor={perfil.periodo ?? "nenhum"} opcoes={[{ valor: "bimestre", nome: tp.bimestre }, { valor: "semestre", nome: tp.semestre }, { valor: "nenhum", nome: tp.semPeriodo }]} aoMudar={(v) => setPerfil({ ...perfil, periodo: v === "nenhum" ? null : (v as "bimestre" | "semestre") })} />
+          <Segmentado rotulo={tp.vocabulario} valor={perfil.vocabulario} opcoes={[{ valor: "materia", nome: tp.materia }, { valor: "disciplina", nome: tp.disciplina }]} aoMudar={(v) => setPerfil({ ...perfil, vocabulario: v })} />
+          <Interruptor rotulo={tp.notas} ligado={perfil.notas} aoMudar={(v) => setPerfil({ ...perfil, notas: v })} />
+          <Interruptor rotulo={tp.creditos} ligado={perfil.creditos} aoMudar={(v) => setPerfil({ ...perfil, creditos: v })} />
+          <Interruptor rotulo={tp.pesquisa} ligado={perfil.pesquisa} aoMudar={(v) => setPerfil({ ...perfil, pesquisa: v })} />
+          <div className="botoes">
+            <Button className="botao" onPress={() => setMontando(false)}>{textos.comum.voltar}</Button>
+            <Button className="botao principal" onPress={() => aoEscolher("personalizado", { nome: nome.trim() || t.nivel.nomes.personalizado, perfil })}>{tp.usar}</Button>
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="estudos-escolha" aria-labelledby="escolha-nivel">
       <h2 id="escolha-nivel" className="estudos-escolha-titulo">{t.nivel.perguntaTitulo}</h2>
@@ -282,9 +312,10 @@ function EscolhaNivel({ atual, aoEscolher, aoCancelar }: { atual?: NivelOuTodos;
       <ul className="estudos-niveis">
         {NIVEIS.map((n) => {
           const Icone = ICONE_NIVEL[n];
+          const escolher = () => (n === "personalizado" ? setMontando(true) : aoEscolher(n));
           return (
             <li key={n}>
-              <Button className={`estudos-nivel-cartao nivel-${n}${atual === n ? " atual" : ""}`} onPress={() => aoEscolher(n)} aria-label={t.nivel.escolher(t.nivel.nomes[n])} aria-pressed={atual === n}>
+              <Button className={`estudos-nivel-cartao nivel-${n}${atual === n ? " atual" : ""}`} onPress={escolher} aria-label={t.nivel.escolher(t.nivel.nomes[n])} aria-pressed={atual === n}>
                 <span className="estudos-nivel-icone" aria-hidden="true"><Icone size="1.6em" /></span>
                 <span className="estudos-nivel-nome">{t.nivel.nomes[n]}</span>
                 <span className="estudos-nivel-desc">{t.nivel.descricoes[n]}</span>

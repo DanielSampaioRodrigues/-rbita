@@ -6,7 +6,7 @@
 
 import { useSyncExternalStore } from "react";
 import { criarLoja, useLoja } from "../valores";
-import { ehNivel, TIPOS_ATIVIDADE, type NivelOuTodos, type TipoAtividade } from "./nivel";
+import { ehNivel, normalizarPerfil, TIPOS_ATIVIDADE, type NivelOuTodos, type PerfilNivel, type TipoAtividade } from "./nivel";
 
 export interface ExtrasMateria {
   /** Créditos ou carga horária (graduação e pós). */
@@ -59,6 +59,10 @@ export interface Pesquisa {
 export interface ExtrasAcademico {
   /** `undefined` = ainda não escolheu (mostra a tela de escolha). */
   nivel?: NivelOuTodos;
+  /** Nome que a pessoa deu ao nível "personalizado" (ex.: "Curso de inglês"). */
+  nivelNome?: string;
+  /** O que o nível "personalizado" mostra. */
+  perfilPersonalizado?: PerfilNivel;
   materias: Record<string, ExtrasMateria>;
   atividades: Record<string, ExtrasAtividade>;
   pesquisa: Pesquisa;
@@ -80,6 +84,8 @@ export function normalizarExtras(bruto: unknown): ExtrasAcademico {
   const o = objeto(bruto);
   const saida = extrasVazios();
   if (ehNivel(o.nivel)) saida.nivel = o.nivel;
+  if (texto(o.nivelNome).trim()) saida.nivelNome = texto(o.nivelNome).trim().slice(0, 40);
+  if (o.perfilPersonalizado && typeof o.perfilPersonalizado === "object") saida.perfilPersonalizado = normalizarPerfil(o.perfilPersonalizado);
   for (const [id, v] of Object.entries(objeto(o.materias))) {
     const m = objeto(v);
     saida.materias[id] = { creditos: numeroOuNulo(m.creditos), periodo: texto(m.periodo) };
