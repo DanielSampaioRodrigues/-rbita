@@ -443,7 +443,7 @@ docs/                especificação e registro de decisões
 - **Rotinas:** cor, ícone/emoji, dias da semana e horário sugerido por rotina; progresso de hoje sem culpa. **Pendência:** por enquanto guardado só no aparelho (fora do cofre e do backup) — falta o lado Rust guardar esses campos.
 - **Foco:** quatro mostradores (disco, ponteiro, ampulheta, barra) e focos salvos (nome, foco, pausa). **Pendência:** focos salvos fora do cofre e do backup até existir o comando Rust.
 - **Aparência:** editor de tema abre no modo atual (claro/escuro); imagem própria de fundo vai para o IndexedDB (limite 8 MB), não para as preferências.
-- **Ajustes:** bloqueio automático até 7 dias (aviso literal a partir de 1 dia; contagem por carimbo de tempo, vale em segundo plano); limite de projetos ativos de 1 a 50 (padrão 6), nos Ajustes e em Projetos.
+- **Ajustes:** menu curto por assuntos (8 entradas, busca, duas colunas quando a página tem ≥ 736 px de largura, seção lembrada na sessão); bloqueio automático até 7 dias (aviso literal a partir de 1 dia; contagem por carimbo de tempo, vale em segundo plano); limite de projetos ativos de 1 a 50 (padrão 6), nos Ajustes e em Projetos.
 - **Caderno:** traços e folhas em cache (cor marca na hora); botão "+ Página" e página nova ao rolar além da última; no Safari, após a primeira Pencil, dedo rola e caneta escreve.
 - **Em espera (INPI):** endereço `orbita.arcano3.com.br` e login com Google.
 

@@ -14,6 +14,8 @@
 
 - **Foco com estilos e focos salvos**: escolha como ver o tempo — **disco** (o de antes), **relógio de ponteiro**, **ampulheta** ou **barra** — por botõezinhos na própria tela. E agora dá para **salvar focos** (nome, minutos de foco e de pausa) que ficam em cartões abaixo do timer: um toque e começa. Nada muda sozinho: a pausa só começa quando você apertar.
 
+- **Ajustes em menu curto, como no iPhone**: em vez de uma página longa, os Ajustes abrem com uma lista de **8 assuntos** (Segurança, Avisos, Projetos, Backup e nuvem, Exportar, Janela e atualizações, IA, Ditado). Toca num, entra; "← Ajustes" volta. Em tela larga, a lista fica à esquerda e o assunto à direita. Tem um campo **"Procurar nos ajustes"** que acha por nome ou palavra (ex.: "senha", "voz"). Nada mudou de função, só a organização.
+
 - **Ajustes — bloqueio automático mais longo**: além de até 1 hora, agora tem 2 h, 4 h, 8 h, 1 dia, 3 dias e 7 dias. A partir de 1 dia aparece um aviso literal: o Órbita fica aberto por dias e quem pegar o aparelho vê seus dados. A contagem também vale com o app em segundo plano.
 
 - **Projetos ativos — limite do seu jeito**: o limite (antes fixo em 6) agora é um número que você escolhe, de 1 a 50, nos Ajustes **e** dentro de Projetos ("Mudar o limite").
