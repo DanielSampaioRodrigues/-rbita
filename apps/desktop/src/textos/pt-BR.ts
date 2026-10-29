@@ -1127,6 +1127,10 @@ export const textos = {
       contagem: (dias: number) => (dias === 0 ? "É hoje." : dias === 1 ? "É amanhã." : `Faltam ${dias} dias.`),
       quando: (data: string, dias: number) => (dias === 0 ? `Hoje, ${data}.` : dias === 1 ? `Amanhã, ${data}.` : `${data[0].toUpperCase()}${data.slice(1)}. Faltam ${dias} dias.`),
       passou: (data: string) => `A data marcada (${data}) já passou. Quando souber a próxima, é só marcar.`,
+      naAgenda: "Marcar também na Agenda (dia inteiro)",
+      naAgendaAjuda: "Cria um compromisso na Agenda com o nome do profissional. Mudar ou tirar a data aqui atualiza lá também.",
+      tituloAgenda: (nome: string, especialidade: string) => (especialidade ? `Consulta: ${nome} (${especialidade})` : `Consulta: ${nome}`),
+      notaAgenda: "Marcada pela seção Cuidado.",
     },
     lembrar: {
       botao: "Quero lembrar de falar disso",

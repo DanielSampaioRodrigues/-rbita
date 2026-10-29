@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { chaveDia } from "../agenda/datas";
 import { api, type Profissional } from "../api";
@@ -6,6 +6,8 @@ import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
 import { CampoData } from "../componentes/CampoData";
 import { Janela } from "../componentes/Janela";
+import { Interruptor } from "../componentes/Interruptor";
+import { eventosDaConsulta, sincronizarConsultaNaAgenda } from "./agenda";
 import { Segmentado } from "../componentes/Segmentado";
 import { avisarMudanca } from "../dados";
 import { textos } from "../textos/pt-BR";
@@ -56,6 +58,15 @@ function FormConsulta({ profissionais, fixo, aoFechar }: { profissionais: Profis
   const [especialidade, setEspecialidade] = useState("");
   const [data, setData] = useState(fixo?.proximaConsulta || chaveDia(new Date()));
   const [erro, setErro] = useState<string | null>(null);
+  // Ligado por padrão; se este profissional já tem compromisso na Agenda, começa como está lá.
+  const [naAgenda, setNaAgenda] = useState(true);
+  useEffect(() => {
+    const id = fixo?.id ?? (quem !== NOVO ? quem : "");
+    if (!id) return;
+    let vivo = true;
+    eventosDaConsulta(id).then((evs) => { if (vivo && fixo?.proximaConsulta) setNaAgenda(evs.length > 0); }, () => {});
+    return () => { vivo = false; };
+  }, [fixo, quem]);
   const recado = useRecado();
 
   const salvar = async (proximaConsulta: string) => {
@@ -65,7 +76,9 @@ function FormConsulta({ profissionais, fixo, aoFechar }: { profissionais: Profis
       const prof: Profissional = base
         ? { ...base, proximaConsulta }
         : { id: "", nome, especialidade, sobre: "", proximaConsulta, criadoEm: 0 };
-      await api.salvarProfissional(prof);
+      const salvo = await api.salvarProfissional(prof);
+      // A Agenda acompanha: se falhar, a consulta já ficou guardada aqui e a pessoa vê o erro.
+      await sincronizarConsultaNaAgenda(salvo, naAgenda);
       avisarMudanca();
       recado(proximaConsulta ? t.salva : t.tirada);
       aoFechar();
@@ -100,6 +113,8 @@ function FormConsulta({ profissionais, fixo, aoFechar }: { profissionais: Profis
         </>
       )}
       <CampoData rotulo={t.data} tipo="date" valor={data} aoMudar={setData} />
+      <Interruptor rotulo={t.naAgenda} ligado={naAgenda} aoMudar={setNaAgenda} />
+      <p className="texto-suave pequeno">{t.naAgendaAjuda}</p>
       <Aviso>{erro}</Aviso>
       <div className="janela-acoes">
         {fixo?.proximaConsulta && (
