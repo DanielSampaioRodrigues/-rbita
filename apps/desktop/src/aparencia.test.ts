@@ -1,7 +1,7 @@
 import { TEMAS, type Tema } from "@orbita/temas";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { aplicarAparencia, definirPreviaTema, forcarTrava } from "./aparencia";
-import { PADRAO } from "./preferencias";
+import { FONTES, PADRAO, validar } from "./preferencias";
 
 // Um <html> de mentira: guarda as variáveis CSS e os data-*.
 function raizFalsa() {
@@ -41,5 +41,23 @@ describe("aparência", () => {
     // A prévia reaplica sozinha no <html> de verdade; aqui confere pela mesma regra.
     aplicarAparencia({ ...PADRAO, semTrava: true }, el);
     expect(vars.get("--cor-fundo")).toBe("#ffeedd");
+  });
+});
+
+describe("fontes", () => {
+  it("as fontes novas valem na hora e continuam escolhidas ao abrir de novo", () => {
+    escuro(false);
+    for (const fonte of ["andika", "comicNeue", "nunito", "inter", "literata", "jetbrainsMono"] as const) {
+      const { vars, el } = raizFalsa();
+      aplicarAparencia({ ...PADRAO, fonte }, el);
+      expect(vars.get("--fonte-texto")).toBe(FONTES[fonte].css);
+      // O que fica guardado volta igual (a validação aceita a fonte nova).
+      expect(validar(JSON.parse(JSON.stringify({ ...PADRAO, fonte }))).fonte).toBe(fonte);
+    }
+  });
+
+  it("um fundo da coleção Rua fica guardado como escolhido", () => {
+    escuro(false);
+    expect(validar({ ...PADRAO, fundo: { tipo: "padrao", nome: "respingos" } }).fundo).toEqual({ tipo: "padrao", nome: "respingos" });
   });
 });

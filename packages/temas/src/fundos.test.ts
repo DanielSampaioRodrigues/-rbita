@@ -70,3 +70,28 @@ describe("tamanhoDoLadrilho", () => {
     expect(tamanhoDoLadrilho("<svg></svg>")).toBe("200px 200px");
   });
 });
+
+describe("coleção Rua (fundos urbanos)", () => {
+  it("cada fundo tem variante clara e escura, e fica liso no baixo estímulo", async () => {
+    const { URBANOS, varianteUrbana } = await import("./urbanos");
+    expect(Object.keys(URBANOS).length).toBeGreaterThanOrEqual(8);
+    const claro = papel.claro;
+    const escuro = papel.escuro;
+    expect(varianteUrbana(claro.fundo)).toBe("claro");
+    expect(varianteUrbana(escuro.fundo)).toBe("escuro");
+    for (const nome of Object.keys(URBANOS)) {
+      const c = camadaDeFundo({ tipo: "padrao", nome }, claro, { baixoEstimulo: false, reduzirAnimacao: false });
+      const e = camadaDeFundo({ tipo: "padrao", nome }, escuro, { baixoEstimulo: false, reduzirAnimacao: false });
+      expect(c.imagem).toMatch(/^url\("data:image\/svg\+xml/);
+      // A cor de fundo do tema fica por baixo do desenho, e as variantes mudam as cores.
+      expect(decodeURIComponent(c.imagem)).toContain(claro.fundo);
+      expect(decodeURIComponent(e.imagem)).toContain(escuro.fundo);
+      expect(c.imagem).not.toBe(e.imagem);
+      // Mesmo desenho a cada abertura.
+      expect(camadaDeFundo({ tipo: "padrao", nome }, claro, { baixoEstimulo: false, reduzirAnimacao: false }).imagem).toBe(c.imagem);
+      expect(camadaDeFundo({ tipo: "padrao", nome }, claro, { baixoEstimulo: true, reduzirAnimacao: false }).imagem).toBe("none");
+      // Desenho do próprio Órbita: nada de script nem link para fora.
+      expect(decodeURIComponent(c.imagem)).not.toMatch(/<script|href=|https?:\/\/(?!www\.w3\.org)/);
+    }
+  });
+});

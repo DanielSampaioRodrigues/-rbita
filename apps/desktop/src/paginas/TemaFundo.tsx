@@ -1,4 +1,4 @@
-import { GRADIENTES, ICONES_PADRAO, gravarArquivoTema, lerArquivoTema, limparSvg, PADROES, paletaFinal, SvgInvalido, TEMAS, camadaDeFundo, type Fundo, type Tema } from "@orbita/temas";
+import { GRADIENTES, ICONES_PADRAO, gravarArquivoTema, lerArquivoTema, limparSvg, PADROES, paletaFinal, SvgInvalido, TEMAS, URBANOS, camadaDeFundo, type Fundo, type Tema } from "@orbita/temas";
 import { Download, ImagePlus, Palette, Plus, Shapes, Trash2, Upload } from "../icones";
 import { Button } from "react-aria-components";
 import { exportarTema } from "../api";
@@ -19,6 +19,16 @@ const t = textos.temaFundo;
 /** Chave única de cada opção de fundo, para o grupo de escolha. */
 const chaveDe = (f: Fundo | null) =>
   !f ? "tema" : f.tipo === "gradiente" || f.tipo === "padrao" ? `${f.tipo}:${f.nome}` : f.tipo;
+
+/** Nome do fundo em uso, para a legenda da prévia. */
+export function nomeDoFundo(f: Fundo | null): string {
+  if (!f) return t.fundoDoTema;
+  if (f.tipo === "cor") return t.cor;
+  if (f.tipo === "imagem") return t.imagem;
+  if (f.tipo === "svg") return t.svg;
+  if (f.tipo === "gradiente") return GRADIENTES[f.nome]?.nome ?? t.cor;
+  return PADROES[f.nome]?.nome ?? URBANOS[f.nome]?.nome ?? t.cor;
+}
 
 /** Tema novo, sem nome, com as cores neutras do Papel, sem fundo e com os ícones padrão. */
 function temaDoZero(): Tema {
@@ -45,7 +55,11 @@ function Controle({ rotulo, valor, min, max, passo, formatar, aoMudar }: { rotul
   );
 }
 
-export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void }) {
+/**
+ * Escolha de tema (parte "tema") e de fundo com os controles de contraste (parte "fundo").
+ * A página Aparência mostra cada parte na sua aba.
+ */
+export function TemaFundo({ aoEditarTema, parte }: { aoEditarTema: (tema: Tema) => void; parte: "tema" | "fundo" }) {
   const { prefs, mudar } = usePreferencias();
   const recado = useRecado();
   const entradaTema = useRef<HTMLInputElement>(null);
@@ -68,12 +82,14 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
     return () => (clearInterval(intervalo), clearTimeout(parar));
   }, [prefs.fundo, prefs.tema, prefs.fundoVisivel, modo]);
 
-  const miniatura = (f: Fundo) => {
+  // `escala`: ladrilhos grandes (coleção Rua) aparecem menores na miniatura, para caber o desenho todo.
+  const miniatura = (f: Fundo, escala = 1) => {
     const c = camadaDeFundo(f, paleta, { baixoEstimulo: false, reduzirAnimacao: true });
+    const tamanho = c.tamanho === "cover" || escala === 1 ? c.tamanho : c.tamanho.replace(/[\d.]+px/g, (v) => `${Math.round(parseFloat(v) * escala)}px`);
     return {
       backgroundColor: paleta.fundo,
       backgroundImage: c.imagem,
-      backgroundSize: c.tamanho === "cover" ? "cover" : c.tamanho,
+      backgroundSize: tamanho,
       backgroundRepeat: c.repetir,
     };
   };
@@ -92,18 +108,16 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
     mudar({ fundo: { tipo: tipo as "gradiente" | "padrao", nome } });
   };
 
-  const opcoes: { chave: string; nome: string; estilo?: React.CSSProperties; icone?: React.ReactNode }[] = [
+  type Opcao = { chave: string; nome: string; estilo?: React.CSSProperties; icone?: React.ReactNode };
+  const temImagem = (fundo?.tipo === "imagem" && fundo.dados) || prefs.imagemFundo;
+  const basicos: Opcao[] = [
     { chave: "tema", nome: t.fundoDoTema, estilo: miniatura(temaAtual.fundoPadrao ?? { tipo: "cor" }) },
     { chave: "cor", nome: t.cor, estilo: miniatura({ tipo: "cor" }) },
-    ...Object.entries(GRADIENTES).map(([nome, g]) => ({ chave: `gradiente:${nome}`, nome: g.nome, estilo: miniatura({ tipo: "gradiente", nome }) })),
-    ...Object.entries(PADROES).map(([nome, pd]) => ({ chave: `padrao:${nome}`, nome: pd.nome, estilo: miniatura({ tipo: "padrao", nome }) })),
     {
       chave: "imagem",
       nome: t.imagem,
-      estilo: (fundo?.tipo === "imagem" && fundo.dados) || prefs.imagemFundo
-        ? { backgroundImage: `url("${fundo?.tipo === "imagem" ? fundo.dados : prefs.imagemFundo}")`, backgroundSize: "cover" }
-        : undefined,
-      icone: (fundo?.tipo === "imagem" && fundo.dados) || prefs.imagemFundo ? undefined : <ImagePlus aria-hidden="true" size="1.4em" />,
+      estilo: temImagem ? { backgroundImage: `url("${fundo?.tipo === "imagem" ? fundo.dados : prefs.imagemFundo}")`, backgroundSize: "cover" } : undefined,
+      icone: temImagem ? undefined : <ImagePlus aria-hidden="true" size="1.4em" />,
     },
     {
       chave: "svg",
@@ -112,80 +126,106 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
       icone: fundo?.tipo === "svg" ? undefined : <Shapes aria-hidden="true" size="1.4em" />,
     },
   ];
+  const grupos: { id: string; titulo: string; dica?: string; opcoes: Opcao[] }[] = [
+    { id: "basicos", titulo: t.basicos, opcoes: basicos },
+    {
+      id: "rua",
+      titulo: t.rua,
+      dica: t.ruaDica,
+      opcoes: Object.entries(URBANOS).map(([nome, u]) => ({ chave: `padrao:${nome}`, nome: u.nome, estilo: miniatura({ tipo: "padrao", nome }, 0.5) })),
+    },
+    { id: "gradientes", titulo: t.gradientes, opcoes: Object.entries(GRADIENTES).map(([nome, g]) => ({ chave: `gradiente:${nome}`, nome: g.nome, estilo: miniatura({ tipo: "gradiente", nome }) })) },
+    { id: "padroes", titulo: t.padroes, opcoes: Object.entries(PADROES).map(([nome, pd]) => ({ chave: `padrao:${nome}`, nome: pd.nome, estilo: miniatura({ tipo: "padrao", nome }) })) },
+  ];
+
+  if (parte === "tema") {
+    return (
+      <>
+        <RadioGroup className="campo" value={prefs.tema} onChange={(tema) => mudar({ tema })}>
+          <Label className="visualmente-oculto">{t.tema}</Label>
+          <div className="grade-temas aparencia-grade-temas">
+            {[...TEMAS, ...prefs.temasProprios].map((tema) => {
+              const p = paletaFinal(tema, modo, false);
+              return (
+                <Radio key={tema.id} value={tema.id} className="opcao-tema">
+                  <span className="amostra-tema" aria-hidden="true" style={{ background: p.fundo, borderRadius: `calc(0.5rem * ${tema.cantos ?? 1})` }}>
+                    <span style={{ background: p.superficie, borderColor: p.borda }} className="amostra-painel">
+                      <span style={{ background: p.texto }} className="amostra-linha" />
+                      <span style={{ background: p.textoSuave }} className="amostra-linha curta" />
+                      <span style={{ background: p.destaque }} className="amostra-botao" />
+                    </span>
+                  </span>
+                  <span>{tema.nome}</span>
+                </Radio>
+              );
+            })}
+          </div>
+        </RadioGroup>
+
+        <div className="botoes">
+          <Button className="botao" onPress={() => aoEditarTema(temaDoZero())}>
+            <Plus aria-hidden="true" size="1.1em" /> {t.criarDoZero}
+          </Button>
+          <Button className="botao" onPress={() => aoEditarTema(proprio ? temaAtual : { ...temaAtual, id: `proprio-${Date.now().toString(36)}`, nome: `${temaAtual.nome} (meu)`, fundoPadrao: prefs.fundo?.tipo === "imagem" ? temaAtual.fundoPadrao : (prefs.fundo ?? temaAtual.fundoPadrao) })}>
+            <Palette aria-hidden="true" size="1.1em" /> {proprio ? t.editar : t.criarAPartir}
+          </Button>
+          <Button className="botao" onPress={async () => { if (await exportarTema(temaAtual.nome, gravarArquivoTema(temaAtual))) recado(t.exportado); }}>
+            <Download aria-hidden="true" size="1.1em" /> {t.exportar}
+          </Button>
+          <Button className="botao" onPress={() => entradaTema.current?.click()}>
+            <Upload aria-hidden="true" size="1.1em" /> {t.importar}
+          </Button>
+          {proprio && (
+            <Button className="botao" onPress={() => mudar({ tema: "papel", temasProprios: prefs.temasProprios.filter((x) => x.id !== temaAtual.id) })}>
+              <Trash2 aria-hidden="true" size="1.1em" /> {t.excluir}
+            </Button>
+          )}
+        </div>
+        <input
+          ref={entradaTema}
+          type="file"
+          accept=".orbita-tema,application/json"
+          hidden
+          onChange={async (e) => {
+            const arquivo = e.target.files?.[0];
+            e.target.value = "";
+            if (!arquivo) return;
+            try {
+              const { tema, ajustado } = lerArquivoTema(await arquivo.text(), { corrigir: !prefs.semTrava });
+              mudar({ temasProprios: [...prefs.temasProprios, tema], tema: tema.id });
+              recado(ajustado ? t.importadoAjustado(tema.nome) : t.importado(tema.nome));
+            } catch (err) {
+              setErro(err instanceof Error ? err.message : String(err));
+            }
+          }}
+        />
+        <Aviso>{erro}</Aviso>
+      </>
+    );
+  }
+
+  const fundoEmUso = fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" };
 
   return (
-    <section className="cartao">
-      <h2>{t.titulo}</h2>
+    <>
+      {prefs.baixoEstimulo && <p className="aparencia-aviso">{t.baixoEstimulo}</p>}
 
-      <RadioGroup className="campo" value={prefs.tema} onChange={(tema) => mudar({ tema })}>
-        <Label className="campo-rotulo">{t.tema}</Label>
-        <div className="grade-temas">
-          {[...TEMAS, ...prefs.temasProprios].map((tema) => {
-            const p = paletaFinal(tema, modo, false);
-            return (
-              <Radio key={tema.id} value={tema.id} className="opcao-tema">
-                <span className="amostra-tema" aria-hidden="true" style={{ background: p.fundo, borderRadius: `calc(0.5rem * ${tema.cantos ?? 1})` }}>
-                  <span style={{ background: p.superficie, borderColor: p.borda }} className="amostra-painel">
-                    <span style={{ background: p.texto }} className="amostra-linha" />
-                    <span style={{ background: p.textoSuave }} className="amostra-linha curta" />
-                    <span style={{ background: p.destaque }} className="amostra-botao" />
-                  </span>
-                </span>
-                <span>{tema.nome}</span>
-              </Radio>
-            );
-          })}
-        </div>
-      </RadioGroup>
-
-      <div className="botoes">
-        <Button className="botao" onPress={() => aoEditarTema(temaDoZero())}>
-          <Plus aria-hidden="true" size="1.1em" /> {t.criarDoZero}
-        </Button>
-        <Button className="botao" onPress={() => aoEditarTema(proprio ? temaAtual : { ...temaAtual, id: `proprio-${Date.now().toString(36)}`, nome: `${temaAtual.nome} (meu)`, fundoPadrao: prefs.fundo?.tipo === "imagem" ? temaAtual.fundoPadrao : (prefs.fundo ?? temaAtual.fundoPadrao) })}>
-          <Palette aria-hidden="true" size="1.1em" /> {proprio ? t.editar : t.criarAPartir}
-        </Button>
-        <Button className="botao" onPress={async () => { if (await exportarTema(temaAtual.nome, gravarArquivoTema(temaAtual))) recado(t.exportado); }}>
-          <Download aria-hidden="true" size="1.1em" /> {t.exportar}
-        </Button>
-        <Button className="botao" onPress={() => entradaTema.current?.click()}>
-          <Upload aria-hidden="true" size="1.1em" /> {t.importar}
-        </Button>
-        {proprio && (
-          <Button className="botao" onPress={() => mudar({ tema: "papel", temasProprios: prefs.temasProprios.filter((x) => x.id !== temaAtual.id) })}>
-            <Trash2 aria-hidden="true" size="1.1em" /> {t.excluir}
-          </Button>
-        )}
-      </div>
-      <input
-        ref={entradaTema}
-        type="file"
-        accept=".orbita-tema,application/json"
-        hidden
-        onChange={async (e) => {
-          const arquivo = e.target.files?.[0];
-          e.target.value = "";
-          if (!arquivo) return;
-          try {
-            const { tema, ajustado } = lerArquivoTema(await arquivo.text(), { corrigir: !prefs.semTrava });
-            mudar({ temasProprios: [...prefs.temasProprios, tema], tema: tema.id });
-            recado(ajustado ? t.importadoAjustado(tema.nome) : t.importado(tema.nome));
-          } catch (err) {
-            setErro(err instanceof Error ? err.message : String(err));
-          }
-        }}
-      />
-
-      <RadioGroup className="campo" value={chaveDe(fundo)} onChange={escolher}>
-        <Label className="campo-rotulo">{t.fundo}</Label>
-        <div className="grade-fundos">
-          {opcoes.map((o) => (
-            <Radio key={o.chave} value={o.chave} className="opcao-fundo">
-              <span className="amostra-fundo" aria-hidden="true" style={o.estilo}>{o.icone}</span>
-              <span>{o.nome}</span>
-            </Radio>
-          ))}
-        </div>
+      <RadioGroup className="campo aparencia-fundos" value={chaveDe(fundo)} onChange={escolher}>
+        <Label className="visualmente-oculto">{t.fundo}</Label>
+        {grupos.map((g) => (
+          <div key={g.id} className="aparencia-grupo-fundos" role="group" aria-labelledby={`grupo-fundo-${g.id}`}>
+            <h3 id={`grupo-fundo-${g.id}`} className="aparencia-subtitulo">{g.titulo}</h3>
+            {g.dica && <p className="campo-ajuda">{g.dica}</p>}
+            <div className="grade-fundos aparencia-grade-fundos">
+              {g.opcoes.map((o) => (
+                <Radio key={o.chave} value={o.chave} className="opcao-fundo">
+                  <span className="amostra-fundo" aria-hidden="true" style={o.estilo}>{o.icone}</span>
+                  <span>{o.nome}</span>
+                </Radio>
+              ))}
+            </div>
+          </div>
+        ))}
       </RadioGroup>
 
       <input
@@ -225,6 +265,7 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
           }
         }}
       />
+      <Aviso>{erro}</Aviso>
 
       {fundo?.tipo === "imagem" && (
         <div className="formulario">
@@ -257,23 +298,23 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
         </div>
       )}
 
-      {!prefs.baixoEstimulo && !(prefs.semTrava && prefs.fundoNatural) && (fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
-        <div className="formulario">
-          <div className="campo">
-            <Controle rotulo={t.visivel} valor={prefs.fundoVisivel} min={0} max={100} passo={10} formatar={(v) => t.visivelValor(v, prefs.semTrava)} aoMudar={(fundoVisivel) => mudar({ fundoVisivel })} />
-            <p className="campo-ajuda">{prefs.fundoVisivel > 0 ? t.visivelAviso : prefs.semTrava ? t.visivelAjudaSemTrava : t.visivelAjuda}</p>
-          </div>
+      <h3 className="aparencia-subtitulo">{t.contraste}</h3>
+
+      {!prefs.baixoEstimulo && !(prefs.semTrava && prefs.fundoNatural) && fundoEmUso.tipo !== "cor" && (
+        <div className="campo">
+          <Controle rotulo={t.visivel} valor={prefs.fundoVisivel} min={0} max={100} passo={10} formatar={(v) => t.visivelValor(v, prefs.semTrava)} aoMudar={(fundoVisivel) => mudar({ fundoVisivel })} />
+          <p className="campo-ajuda">{prefs.fundoVisivel > 0 ? t.visivelAviso : prefs.semTrava ? t.visivelAjudaSemTrava : t.visivelAjuda}</p>
         </div>
       )}
 
-      {!prefs.baixoEstimulo && (fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
+      {!prefs.baixoEstimulo && fundoEmUso.tipo !== "cor" && (
         <div className="campo">
           <Controle rotulo={t.vidro} valor={prefs.vidro} min={0} max={100} passo={10} formatar={t.vidroValor} aoMudar={(vidro) => mudar({ vidro })} />
           <p className="campo-ajuda">{prefs.semTrava ? t.vidroAjudaSemTrava : t.vidroAjuda}</p>
         </div>
       )}
 
-      {(fundo ?? temaAtual.fundoPadrao ?? { tipo: "cor" }).tipo !== "cor" && (
+      {fundoEmUso.tipo !== "cor" && (
         <div className="campo">
           <Interruptor
             rotulo={t.natural}
@@ -296,12 +337,7 @@ export function TemaFundo({ aoEditarTema }: { aoEditarTema: (tema: Tema) => void
         </div>
       )}
 
-      {prefs.baixoEstimulo ? (
-        <p className="campo-ajuda">{t.baixoEstimulo}</p>
-      ) : (
-        opacidade < 1 && opacidade > 0 && !prefs.semTrava && <p className="campo-ajuda">{t.opacidade(Math.round(opacidade * 100))}</p>
-      )}
-      <Aviso>{erro}</Aviso>
-    </section>
+      {!prefs.baixoEstimulo && opacidade < 1 && opacidade > 0 && !prefs.semTrava && <p className="campo-ajuda">{t.opacidade(Math.round(opacidade * 100))}</p>}
+    </>
   );
 }

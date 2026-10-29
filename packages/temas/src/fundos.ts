@@ -3,6 +3,7 @@
 import { contraste, lerHex } from "./contraste";
 import { congelarSvg, pintarSvg, svgComoUrl } from "./svg";
 import type { Fundo, Paleta } from "./tipos";
+import { desenhoUrbano, URBANOS } from "./urbanos";
 
 export type Rgb = [number, number, number];
 
@@ -88,7 +89,20 @@ export function camadaDeFundo(fundo: Fundo, paleta: Paleta, opcoes: { baixoEstim
     }
     case "padrao": {
       const pd = PADROES[fundo.nome];
-      if (!pd) return liso;
+      if (!pd) {
+        // Coleção "Rua" (urbanos.ts): desenho colorido, na variante clara ou escura do tema.
+        const desenho = desenhoUrbano(fundo.nome, paleta.fundo);
+        const u = URBANOS[fundo.nome];
+        if (!desenho || !u) return liso;
+        return {
+          ...liso,
+          imagem: svgComoUrl(desenho),
+          tamanho: u.tamanho === "cover" ? "cover" : `${u.tamanho.largura}px ${u.tamanho.altura}px`,
+          repetir: u.tamanho === "cover" ? "no-repeat" : "repeat",
+          // Cores vivas: a conta de contraste lê os pixels de verdade (com canvas).
+          amostrasConhecidas: null,
+        };
+      }
       return {
         ...liso,
         imagem: svgComoUrl(pintarSvg(pd.svg, paleta.textoSuave)),

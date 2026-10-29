@@ -7,6 +7,13 @@ export const FONTES = {
   atkinson: { nome: "Atkinson Hyperlegible", css: '"Atkinson Hyperlegible Next Variable", "Segoe UI", sans-serif' },
   lexend: { nome: "Lexend", css: '"Lexend Variable", "Segoe UI", sans-serif' },
   opendyslexic: { nome: "OpenDyslexic", css: '"OpenDyslexic", "Segoe UI", sans-serif' },
+  // Fontes extras (arquivos em fontes/extras.css; descrições na página Aparência).
+  andika: { nome: "Andika", css: '"Andika", "Segoe UI", sans-serif' },
+  comicNeue: { nome: "Comic Neue", css: '"Comic Neue", "Comic Sans MS", sans-serif' },
+  nunito: { nome: "Nunito", css: '"Nunito Variable", "Segoe UI", sans-serif' },
+  inter: { nome: "Inter", css: '"Inter Variable", "Segoe UI", sans-serif' },
+  literata: { nome: "Literata", css: '"Literata Variable", Georgia, serif' },
+  jetbrainsMono: { nome: "JetBrains Mono", css: '"JetBrains Mono Variable", Consolas, monospace' },
 } as const;
 
 /** Tamanho da letra base, em pixels, para cada um dos 5 níveis. */
