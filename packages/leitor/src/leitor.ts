@@ -20,6 +20,9 @@ export async function lerMetadados(bytes: ArrayBuffer, formato: Formato): Promis
       const livro: any = ePub(bytes);
       const meta = await livro.loaded.metadata;
       const r = { titulo: (meta?.title ?? "").trim(), autor: (meta?.creator ?? "").trim() };
+      // Fechar só depois de o epub.js terminar de carregar o resto (sumário, estilos);
+      // fechar antes faz ele tropeçar no livro já destruído.
+      await Promise.resolve(livro.ready).catch(() => undefined);
       livro.destroy?.();
       return r;
     }

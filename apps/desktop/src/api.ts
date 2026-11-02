@@ -2740,8 +2740,8 @@ export async function escolherArquivoParaAnexar(soImagens = false): Promise<stri
 
 /** Escolhe um arquivo EPUB ou PDF para a estante. */
 export async function escolherLivro(): Promise<string | null> {
-  // Os livros (EPUB/PDF) ainda não ficam guardados na versão de navegador.
-  if (MODO_WEB) return null;
+  // No navegador o livro vira anexo dentro do banco (até 25 MB; ver modoWeb.ts).
+  if (MODO_WEB) return escolherArquivoWeb(".epub,.pdf,application/epub+zip,application/pdf");
   if (!noApp) return "C:\\Users\\Dan\\Livros\\dom-casmurro.epub";
   const caminho = await open({ multiple: false, directory: false, filters: [{ name: "Livros", extensions: ["epub", "pdf"] }] });
   return typeof caminho === "string" ? caminho : null;

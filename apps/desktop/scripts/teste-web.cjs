@@ -51,6 +51,7 @@ if (!fs.existsSync(path.join(DIST, "index.html"))) {
 
 // Imagem de teste (PNG 1x1) e servidor estático simples.
 const IMAGEM = path.join(TMP, "teste.png");
+const LIVRO = path.join(__dirname, "fixtures", "livro-teste.epub");
 fs.writeFileSync(IMAGEM, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkqPhfDwAFhAJ/wlseKgAAAABJRU5ErkJggg==", "base64"));
 const TIPOS = { ".wasm": "application/wasm", ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".json": "application/json", ".webmanifest": "application/manifest+json", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
 const servidor = http.createServer((q, s) => {
@@ -371,13 +372,15 @@ async function criarDados(p) {
   await p.getByRole("button", { name: "Voltar para a lista" }).click();
   await espera(p);
 
-  passo("Leitura: livro (sem arquivo: EPUB/PDF ainda não existe no navegador)");
+  passo("Leitura: livro com arquivo EPUB (desde a 0.46.0)");
   await ir(p, "Leitura");
   await p.getByRole("button", { name: "Adicionar livro" }).click();
   d = dialogo(p);
   await d.getByLabel("Título").fill("Dom Casmurro");
   await d.getByLabel("Autor").fill("Machado de Assis");
   await d.locator("textarea").first().fill("Capítulo 3");
+  await escolherArquivo(p, d.getByRole("button", { name: "Escolher arquivo" }), LIVRO);
+  await espera(p, 1500);
   await d.getByRole("button", { name: "Salvar livro" }).click();
   await espera(p, 1000);
 
@@ -491,6 +494,16 @@ async function conferir(p, onde) {
   await p.getByRole("button", { name: "Voltar para a lista" }).click();
   await espera(p, 400);
   await ver("Leitura", ["Dom Casmurro"]);
+  // O livro tem arquivo: tocar na capa abre o leitor com o texto do capítulo.
+  await p.getByRole("button", { name: /^Dom Casmurro, de .*Abrir para ler$/ }).first().click();
+  let achou = false;
+  for (let i = 0; i < 20 && !achou; i++) {
+    await espera(p, 500);
+    for (const f of p.frames()) if ((await f.content().catch(() => "")).includes("órbita tranquila")) achou = true;
+  }
+  if (!achou) falhar("Leitura: o EPUB não abriu no leitor (texto do capítulo não apareceu)");
+  await p.getByRole("button", { name: "Fechar o livro" }).click();
+  await espera(p, 600);
   await ver("Caderno", ["Caderno de testes"]);
   await p.getByRole("button", { name: "Abrir: Caderno de testes" }).click();
   await espera(p, 1500);

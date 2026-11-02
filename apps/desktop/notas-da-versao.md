@@ -4,6 +4,10 @@
 
 - **Atenção, só para o navegador:** o que estava guardado no navegador **antes desta versão não passa para o motor novo** (eram dados de teste). Se tiver algo ali que queira guardar, anote antes de aceitar a atualização. Os dados do Windows não mudam em nada.
 
+- **Livros EPUB e PDF no navegador**: no iPad e no celular agora dá para anexar o arquivo do livro (até 25 MB) e ler dentro do Órbita, como no PC. O título e o autor são puxados do arquivo.
+
+- **Leitura mais estável**: ao escolher um EPUB, o Órbita fechava o livro antes de terminar de lê-lo, o que gerava erros escondidos. Corrigido (vale também para o Windows).
+
 - **Restaurar backup ficou mais seguro no navegador**: os dados de antes são guardados numa cópia no aparelho, sem apagar nada, como a tela já prometia.
 
 ---
