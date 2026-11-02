@@ -271,6 +271,14 @@ pub fn run() {
             comandos::excluir_pagina_caderno,
             comandos::carregar_cena_caderno,
             comandos::salvar_cena_caderno,
+            comandos::sincronia_situacao,
+            comandos::sincronia_criar_chave,
+            comandos::sincronia_entrar,
+            comandos::sincronia_meu_pacote,
+            comandos::sincronia_juntar,
+            comandos::sincronia_conteudo,
+            comandos::sincronia_guardar_conteudo,
+            comandos::sincronia_sair,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

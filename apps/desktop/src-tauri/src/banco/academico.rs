@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::{agora_ms, gravar_config, ler_config, novo_id};
 use crate::erro::Erro;
 
-const CONFIG_MEDIA: &str = "media_aprovacao";
+pub(crate) const CONFIG_MEDIA: &str = "media_aprovacao";
 const SUBTIPOS: [&str; 3] = ["prova", "trabalho", "dever"];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -25,6 +25,8 @@ getrandom = { version = "0.3", features = ["wasm_js"] }
 argon2 = { version = "0.5", features = ["zeroize"] }
 chacha20poly1305 = "0.10"
 sha2 = "0.10"
+# Comprime o retrato da sincronização (o mesmo do Windows).
+miniz_oxide = "0.8"
 rand = "0.8"
 # O rand 0.8 usa o getrandom 0.2, que no navegador precisa da opção "js".
 getrandom02 = { package = "getrandom", version = "0.2", features = ["js"] }

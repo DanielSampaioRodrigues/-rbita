@@ -213,10 +213,13 @@ pub fn backup_abrir(bytes: &[u8], senha: Option<String>, palavras: Option<String
     conn.deserialize_read_exact(rusqlite::MAIN_DB, a.banco.as_slice(), a.banco.len(), false)
         .map_err(|_| js(Erro::BackupInvalido("os dados dentro dele estão danificados".into())))?;
     banco::migrar(&conn).map_err(js)?;
+    // O backup pode estar indo para outro aparelho: ganha um id de sincronização novo.
+    banco::sincronia::esquecer_aparelho(&conn).map_err(js)?;
     let palavras = banco::ler_config(&conn, CONFIG_PALAVRAS).map_err(js)?;
+    let banco = conn.serialize(rusqlite::MAIN_DB).map_err(interno)?.to_vec();
     Ok(BackupAberto {
         dek: a.chave.to_vec(),
-        banco: a.banco.to_vec(),
+        banco,
         envelopes: serde_json::to_string(&a.cabecalho.envelopes).map_err(interno)?,
         palavras,
     })

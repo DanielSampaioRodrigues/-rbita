@@ -703,6 +703,24 @@ export interface Sugestao {
   local: boolean;
 }
 
+/** Sincronização entre aparelhos (motor; ver docs/decisoes/0012-sincronizacao.md). */
+export interface SituacaoSincronia {
+  /** Este aparelho tem a chave de sincronização. */
+  temChave: boolean;
+  /** Id deste aparelho (nomeia o arquivo dele no Drive). */
+  aparelho: string;
+}
+export interface ResumoSincronia {
+  /** Aparelho de onde veio o pacote. */
+  aparelho: string;
+  entraram: number;
+  mudaram: number;
+  ignoradas: number;
+  configuracoes: number;
+  /** SHA-256 dos conteúdos de anexo que faltam aqui. */
+  faltamConteudos: string[];
+}
+
 export interface Api {
   situacao(): Promise<Situacao>;
   /** `senha` é opcional: sem ela, as 6 palavras fazem o papel de senha. */
@@ -946,6 +964,19 @@ export interface Api {
   /** Fechar a janela deixa o Órbita na bandeja do sistema. */
   bandejaLigada(): Promise<boolean>;
   definirBandeja(ligar: boolean): Promise<void>;
+  /** Sincronização (motor; bytes em base64, trancados com a chave de sincronização). */
+  sincroniaSituacao(): Promise<SituacaoSincronia>;
+  /** Cria a chave (ou reaproveita a que existe) e devolve o envelope, em base64, para o Drive. */
+  sincroniaCriarChave(senha: string): Promise<string>;
+  /** Aparelho novo: abre o envelope com a senha de sincronização. */
+  sincroniaEntrar(envelope: string, senha: string): Promise<void>;
+  sincroniaMeuPacote(): Promise<string>;
+  sincroniaJuntar(pacote: string): Promise<ResumoSincronia>;
+  /** Conteúdo de anexo pelo SHA-256, trancado; null se não existe aqui. */
+  sincroniaConteudo(sha: string): Promise<string | null>;
+  /** Devolve em quantos anexos guardou. */
+  sincroniaGuardarConteudo(sha: string, conteudo: string): Promise<number>;
+  sincroniaSair(): Promise<void>;
 }
 
 /** Como o app conversa com o motor: no Windows pelo Tauri; no navegador, com o motor em WebAssembly. */
@@ -1173,6 +1204,14 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   nuvemConcluirRecuperacao: (modo, pin) => chamar("nuvem_concluir_recuperacao", { modo, pin: pin ?? null }),
   bandejaLigada: () => chamar("bandeja_ligada"),
   definirBandeja: (ligar) => chamar("definir_bandeja", { ligar }),
+  sincroniaSituacao: () => chamar("sincronia_situacao"),
+  sincroniaCriarChave: (senha) => chamar("sincronia_criar_chave", { senha }),
+  sincroniaEntrar: (envelope, senha) => chamar("sincronia_entrar", { envelope, senha }),
+  sincroniaMeuPacote: () => chamar("sincronia_meu_pacote"),
+  sincroniaJuntar: (pacote) => chamar("sincronia_juntar", { pacote }),
+  sincroniaConteudo: (sha) => chamar("sincronia_conteudo", { sha }),
+  sincroniaGuardarConteudo: (sha, conteudo) => chamar("sincronia_guardar_conteudo", { sha, conteudo }),
+  sincroniaSair: () => chamar("sincronia_sair"),
   ouvirProgressoDitado: (aoMudar) => listen<{ baixado: number; total: number }>("ditado-progresso", (e) => aoMudar(e.payload.baixado, e.payload.total)),
   };
 }
@@ -2307,6 +2346,8 @@ function simularLeitura() {
 }
 
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
+const semSincronia = (): Promise<never> => Promise.reject(new ErroOrbita("interno", "A sincronização não existe na simulação."));
+
 function criarSimulacao(): Api {
   const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
   const s = { existe: false, modo: null as ModoAbrir | null, senha: "", pin: "", erradas: 0, aberto: false };
@@ -2434,6 +2475,15 @@ function criarSimulacao(): Api {
     ...simularNuvem(params0.get("nuvem"), async (modo, pin) => Object.assign(s, { existe: true, modo, pin: pin ?? "", senha: "", aberto: true })),
     bandejaLigada: async () => bandeja,
     definirBandeja: async (ligar) => void (bandeja = ligar),
+    // A simulação não sincroniza (o motor de verdade é que junta os bancos).
+    sincroniaSituacao: semSincronia,
+    sincroniaCriarChave: semSincronia,
+    sincroniaEntrar: semSincronia,
+    sincroniaMeuPacote: semSincronia,
+    sincroniaJuntar: semSincronia,
+    sincroniaConteudo: semSincronia,
+    sincroniaGuardarConteudo: semSincronia,
+    sincroniaSair: semSincronia,
     // A IA de mentira não conhece os projetos: liga a tarefa ao primeiro ativo.
     organizarTextoIa: async (texto, sensivel) => {
       const o = await comIa.organizarTextoIa(texto, sensivel);

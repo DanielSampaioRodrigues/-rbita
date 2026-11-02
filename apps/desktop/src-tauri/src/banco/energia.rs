@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::{agora_ms, gravar_config, ler_config, novo_id};
 use crate::erro::Erro;
 
-const CONFIG_BASICOS: &str = "basicos_do_dia";
+pub(crate) const CONFIG_BASICOS: &str = "basicos_do_dia";
 
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

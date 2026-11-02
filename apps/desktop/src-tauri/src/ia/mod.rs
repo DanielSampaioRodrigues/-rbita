@@ -20,8 +20,8 @@ use zeroize::Zeroizing;
 use crate::banco;
 use crate::erro::Erro;
 
-const CONFIG_IA: &str = "ia";
-const PREFIXO_CHAVE: &str = "ia_chave:";
+pub(crate) const CONFIG_IA: &str = "ia";
+pub(crate) const PREFIXO_CHAVE: &str = "ia_chave:";
 
 /// Funções que podem usar IA, cada uma com o seu provedor.
 /// "personalizacao": criar temas e desenhar ícones.

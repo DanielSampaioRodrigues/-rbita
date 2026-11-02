@@ -66,8 +66,8 @@ pub fn editar(conn: &Connection, id: &str, nome: &str, cor: &str) -> Result<(), 
 /// Exclui a etiqueta e tira ela de todos os itens. Os itens ficam.
 pub fn excluir(conn: &Connection, id: &str) -> Result<(), Erro> {
     let agora = agora_ms();
-    conn.execute("UPDATE etiqueta SET excluido_em = ?2 WHERE id = ?1", params![id, agora])?;
-    conn.execute("UPDATE etiquetagem SET excluido_em = ?2 WHERE etiqueta_id = ?1 AND excluido_em IS NULL", params![id, agora])?;
+    conn.execute("UPDATE etiqueta SET excluido_em = ?2, alterado_em = ?2 WHERE id = ?1", params![id, agora])?;
+    conn.execute("UPDATE etiquetagem SET excluido_em = ?2, alterado_em = ?2 WHERE etiqueta_id = ?1 AND excluido_em IS NULL", params![id, agora])?;
     Ok(())
 }
 
@@ -88,7 +88,7 @@ pub fn definir_do_item(conn: &Connection, item: &str, etiquetas: &[String]) -> R
     let agora = agora_ms();
     for tirar in atuais.iter().filter(|a| !etiquetas.contains(a)) {
         conn.execute(
-            "UPDATE etiquetagem SET excluido_em = ?3 WHERE alvo_tipo = 'item' AND alvo_id = ?1 AND etiqueta_id = ?2 AND excluido_em IS NULL",
+            "UPDATE etiquetagem SET excluido_em = ?3, alterado_em = ?3 WHERE alvo_tipo = 'item' AND alvo_id = ?1 AND etiqueta_id = ?2 AND excluido_em IS NULL",
             params![item, tirar, agora],
         )?;
     }
@@ -141,7 +141,7 @@ pub fn ligar(conn: &Connection, a: &str, b: &str, ligar: bool) -> Result<(), Err
         )?;
     } else if !ligar {
         conn.execute(
-            "UPDATE ligacao SET excluido_em = ?3 WHERE tipo = 'relacionado' AND excluido_em IS NULL
+            "UPDATE ligacao SET excluido_em = ?3, alterado_em = ?3 WHERE tipo = 'relacionado' AND excluido_em IS NULL
              AND ((origem_id = ?1 AND destino_id = ?2) OR (origem_id = ?2 AND destino_id = ?1))",
             params![a, b, agora],
         )?;

@@ -147,6 +147,8 @@ pub fn restaurar(cofre: &Cofre, origem: &Path, segredo: &Segredo, escolha: Optio
             gravar_cifrado(&simples, &chave, &novo)?;
         }
         let conn = banco::abrir(&novo, &chave)?;
+        // O backup pode estar indo para outro aparelho: ganha um id de sincronização novo.
+        banco::sincronia::esquecer_aparelho(&conn)?;
         // As 6 palavras ficam no banco para "Ver a chave". Se o backup não as trouxe
         // e a pessoa acabou de digitá-las, guarda agora.
         if let Segredo::Palavras(texto) = segredo {

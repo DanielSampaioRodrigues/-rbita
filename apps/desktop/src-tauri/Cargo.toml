@@ -36,6 +36,8 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 # Ditado local: transcrição com whisper.cpp (o modelo é baixado à parte).
 whisper-rs = "0.16"
 sha1 = "0.10"
+# Comprime o retrato da sincronização (puro Rust, compila também para o navegador).
+miniz_oxide = "0.8"
 base64 = "0.22"
 
 [target.'cfg(any(windows, target_os = "macos", target_os = "linux"))'.dependencies]

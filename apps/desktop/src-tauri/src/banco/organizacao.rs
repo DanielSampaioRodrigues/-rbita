@@ -192,7 +192,7 @@ pub fn salvar_coluna(conn: &Connection, mut col: Coluna) -> Result<Coluna, Erro>
         }
         let mut nova = criar_coluna_interna(conn, &col.quadro_id, &col.nome, col.ordem)?;
         if !col.cor.is_empty() {
-            conn.execute("UPDATE item SET dados = ?2 WHERE id = ?1", params![nova.id, gravar_cor(&col.cor)?])?;
+            conn.execute("UPDATE item SET dados = ?2, alterado_em = ?3 WHERE id = ?1", params![nova.id, gravar_cor(&col.cor)?, agora])?;
             nova.cor = col.cor;
         }
         return Ok(nova);

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, anotacoes, caderno, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, organizacao, quadro, rotinas, saude};
+use crate::banco::{self, academico, anexos, anotacoes, caderno, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, organizacao, quadro, rotinas, saude, sincronia};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1626,4 +1626,55 @@ pub async fn carregar_cena_caderno(estado: State<'_, Estado>, pagina_id: String)
 #[tauri::command]
 pub async fn salvar_cena_caderno(estado: State<'_, Estado>, pagina_id: String, cena: String) -> Result<(), Erro> {
     estado.com_sessao(|s| caderno::salvar_cena(&s.conn, &pagina_id, &cena))
+}
+
+// ---------- Sincronização entre aparelhos (motor; ver docs/decisoes/0012-sincronizacao.md) ----------
+// Só banco e bytes: os mesmos comandos rodam no navegador (ponte gerada).
+
+/// Se este aparelho tem a chave de sincronização e o id dele.
+#[tauri::command]
+pub async fn sincronia_situacao(estado: State<'_, Estado>) -> Result<sincronia::Situacao, Erro> {
+    estado.com_sessao(|s| sincronia::situacao(&s.conn))
+}
+
+/// Primeiro aparelho: cria a chave e devolve o envelope (base64) para guardar no Drive.
+#[tauri::command]
+pub async fn sincronia_criar_chave(estado: State<'_, Estado>, senha: String) -> Result<String, Erro> {
+    estado.com_sessao(|s| sincronia::criar_chave(&s.conn, &senha))
+}
+
+/// Aparelho novo: abre o envelope (base64) com a senha de sincronização.
+#[tauri::command]
+pub async fn sincronia_entrar(estado: State<'_, Estado>, envelope: String, senha: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| sincronia::entrar(&s.conn, &envelope, &senha))
+}
+
+/// O retrato deste aparelho, trancado (base64), para gravar no Drive.
+#[tauri::command]
+pub async fn sincronia_meu_pacote(estado: State<'_, Estado>) -> Result<String, Erro> {
+    estado.com_sessao(|s| sincronia::meu_pacote(&s.conn))
+}
+
+/// Junta aqui o pacote (base64) de outro aparelho.
+#[tauri::command]
+pub async fn sincronia_juntar(estado: State<'_, Estado>, pacote: String) -> Result<sincronia::Resumo, Erro> {
+    estado.com_sessao(|s| sincronia::juntar_pacote(&s.conn, &pacote))
+}
+
+/// O conteúdo de um anexo pelo SHA-256, trancado (base64), ou nada se não existe aqui.
+#[tauri::command]
+pub async fn sincronia_conteudo(estado: State<'_, Estado>, sha: String) -> Result<Option<String>, Erro> {
+    estado.com_sessao(|s| sincronia::conteudo_trancado(&s.conn, &sha))
+}
+
+/// Guarda o conteúdo trancado (base64) de um anexo que veio de outro aparelho.
+#[tauri::command]
+pub async fn sincronia_guardar_conteudo(estado: State<'_, Estado>, sha: String, conteudo: String) -> Result<u32, Erro> {
+    estado.com_sessao(|s| sincronia::guardar_conteudo_trancado(&s.conn, &sha, &conteudo))
+}
+
+/// Desliga a sincronização neste aparelho (apaga a chave daqui; os dados ficam).
+#[tauri::command]
+pub async fn sincronia_sair(estado: State<'_, Estado>) -> Result<(), Erro> {
+    estado.com_sessao(|s| sincronia::sair(&s.conn))
 }

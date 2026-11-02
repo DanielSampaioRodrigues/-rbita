@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{agora_ms, etiquetas, gravar_config, ler_config, novo_id};
 use crate::erro::Erro;
 
-const CONFIG_LIMITE: &str = "limite_projetos_ativos";
+pub(crate) const CONFIG_LIMITE: &str = "limite_projetos_ativos";
 pub const LIMITE_PADRAO: u32 = 6;
 
 #[derive(Debug, Serialize, PartialEq)]

@@ -161,7 +161,7 @@ pub fn conteudo(conn: &Connection, id: &str) -> Result<Vec<u8>, Erro> {
 pub fn excluir(conn: &Connection, id: &str) -> Result<(), Erro> {
     let agora = agora_ms();
     conn.execute("UPDATE anexo SET excluido_em = ?2, alterado_em = ?2 WHERE id = ?1", params![id, agora])?;
-    conn.execute("UPDATE ligacao SET excluido_em = ?2 WHERE destino_id = ?1 AND destino_tipo = 'anexo' AND excluido_em IS NULL", params![id, agora])?;
+    conn.execute("UPDATE ligacao SET excluido_em = ?2, alterado_em = ?2 WHERE destino_id = ?1 AND destino_tipo = 'anexo' AND excluido_em IS NULL", params![id, agora])?;
     conn.execute("DELETE FROM anexo_conteudo WHERE anexo_id = ?1", [id])?;
     Ok(())
 }

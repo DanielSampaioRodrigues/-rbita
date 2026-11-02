@@ -12,7 +12,7 @@ use rusqlite::Connection;
 use super::{apagar_config, gravar_config, ler_config};
 use crate::erro::Erro;
 
-const PREFIXO: &str = "valor:";
+pub(crate) const PREFIXO: &str = "valor:";
 /// Tamanho máximo do nome da chave.
 pub const MAXIMO_CHAVE: usize = 80;
 /// Tamanho máximo do JSON guardado (2 MB). É para dados pequenos.

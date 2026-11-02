@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{agora_ms, ler_config, novo_id};
 use crate::erro::Erro;
 
-const CONFIG_PLANO: &str = "plano_de_crise";
+pub(crate) const CONFIG_PLANO: &str = "plano_de_crise";
 
 /// Um remédio cadastrado. Os campos próprios ficam em JSON na coluna `dados`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

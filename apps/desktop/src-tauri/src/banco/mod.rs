@@ -20,6 +20,7 @@ pub mod eventos;
 pub mod itens;
 pub mod rotinas;
 pub mod saude;
+pub mod sincronia;
 pub mod valores;
 
 use std::path::Path;
@@ -140,6 +141,30 @@ pub(crate) const MIGRACOES: &[&str] = &[
         conteudo BLOB NOT NULL
     );
     "#,
+    // 4 · sincronização entre aparelhos (docs/decisoes/0012-sincronizacao.md).
+    //     `config` ganha data de alteração; apagar uma configuração que viaja deixa
+    //     uma lápide em `config_excluida`; `anexo_resumo` guarda o SHA-256 do
+    //     conteúdo de cada anexo (o daqui ou o que falta baixar). As linhas que
+    //     foram apagadas sem marcar a alteração passam a ter alterado_em = excluido_em.
+    r#"
+    ALTER TABLE config ADD COLUMN alterado_em INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE config_excluida (
+        chave TEXT PRIMARY KEY,
+        excluido_em INTEGER NOT NULL
+    );
+    CREATE TABLE anexo_resumo (
+        anexo_id TEXT PRIMARY KEY,
+        sha256 TEXT NOT NULL
+    );
+    CREATE INDEX anexo_resumo_sha ON anexo_resumo (sha256);
+    UPDATE item SET alterado_em = excluido_em WHERE excluido_em > alterado_em;
+    UPDATE evento SET alterado_em = excluido_em WHERE excluido_em > alterado_em;
+    UPDATE registro SET alterado_em = excluido_em WHERE excluido_em > alterado_em;
+    UPDATE anexo SET alterado_em = excluido_em WHERE excluido_em > alterado_em;
+    UPDATE etiqueta SET alterado_em = excluido_em WHERE excluido_em > alterado_em;
+    UPDATE etiquetagem SET alterado_em = excluido_em WHERE excluido_em > alterado_em;
+    UPDATE ligacao SET alterado_em = excluido_em WHERE excluido_em > alterado_em;
+    "#,
 ];
 
 /// Hora atual em milissegundos. Pelo `chrono`, que também funciona no navegador
@@ -196,16 +221,30 @@ pub fn ler_config(conn: &Connection, chave: &str) -> Result<Option<String>, Erro
     Ok(conn.query_row("SELECT valor FROM config WHERE chave = ?1", params![chave], |r| r.get(0)).optional()?)
 }
 
+/// Grava e marca a hora da alteração (para a sincronização saber qual é a mais recente).
+/// Gravar o mesmo valor de novo não muda nada.
 pub fn gravar_config(conn: &Connection, chave: &str, valor: &str) -> Result<(), Erro> {
     conn.execute(
-        "INSERT INTO config (chave, valor) VALUES (?1, ?2) ON CONFLICT (chave) DO UPDATE SET valor = excluded.valor",
-        params![chave, valor],
+        "INSERT INTO config (chave, valor, alterado_em) VALUES (?1, ?2, ?3)
+         ON CONFLICT (chave) DO UPDATE SET valor = excluded.valor, alterado_em = excluded.alterado_em
+         WHERE config.valor IS NOT excluded.valor",
+        params![chave, valor, agora_ms()],
     )?;
+    conn.execute("DELETE FROM config_excluida WHERE chave = ?1", params![chave])?;
     Ok(())
 }
 
+/// Apaga. Se a configuração viaja entre aparelhos, deixa uma lápide com a hora,
+/// para os outros aparelhos também apagarem (ver `sincronia`).
 pub fn apagar_config(conn: &Connection, chave: &str) -> Result<(), Erro> {
-    conn.execute("DELETE FROM config WHERE chave = ?1", params![chave])?;
+    let n = conn.execute("DELETE FROM config WHERE chave = ?1", params![chave])?;
+    if n > 0 && sincronia::config_viaja(chave) {
+        conn.execute(
+            "INSERT INTO config_excluida (chave, excluido_em) VALUES (?1, ?2)
+             ON CONFLICT (chave) DO UPDATE SET excluido_em = excluded.excluido_em",
+            params![chave, agora_ms()],
+        )?;
+    }
     Ok(())
 }
 
