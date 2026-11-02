@@ -1,3 +1,15 @@
+- **Um motor só para o PC e o navegador**: a versão de navegador (iPad, celular) agora roda **o mesmo motor do Windows**, em vez de uma cópia à parte. Os dois guardam tudo do mesmo jeito. É a base para a sincronização com o Google, que vem nas próximas versões.
+
+- **Backup que abre nos dois lados**: um backup feito no PC abre no iPad, e um feito no iPad abre no PC (Ajustes → Backup, ou "Já tenho um backup do Órbita" na primeira tela). Abre com a senha ou com as 6 palavras. Backups feitos no Windows **antes desta versão** continuam abrindo no Windows; para levar ao navegador, faça um backup novo depois de atualizar.
+
+- **Atenção, só para o navegador:** o que estava guardado no navegador **antes desta versão não passa para o motor novo** (eram dados de teste). Se tiver algo ali que queira guardar, anote antes de aceitar a atualização. Os dados do Windows não mudam em nada.
+
+- **Restaurar backup ficou mais seguro no navegador**: os dados de antes são guardados numa cópia no aparelho, sem apagar nada, como a tela já prometia.
+
+---
+
+<!-- Abaixo: o que veio na 0.45.2. -->
+
 - **Caderno — a mão não atrapalha mais**: com "Escrever só com a caneta" ligado, nenhum toque rola nem dá zoom enquanto a caneta encosta e logo depois; a **palma apoiada** (toque largo) é ignorada. Novo **cadeado "Travar a folha"** (na barra e na engrenagem): trava rolagem e zoom por toque, só a caneta escreve, e aparecem setas "‹ Página ›" para trocar de página.
 
 - **"Só caneta" já vem ligado** no iPad, em tablets e celulares (dá para desligar).
