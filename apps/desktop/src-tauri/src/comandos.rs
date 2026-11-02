@@ -1106,6 +1106,26 @@ pub async fn nuvem_concluir_recuperacao(estado: State<'_, Estado>, modo: ModoAbr
     Ok(modo)
 }
 
+/// Acesso de curta duração ao Drive, para a sincronização no Windows: a interface fala
+/// com o Drive direto (o mesmo `driveRest.ts` do navegador). Só a pasta escondida do app;
+/// a renovação continua guardada no banco criptografado e nunca vai para a interface.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenGoogle {
+    token: String,
+    /// Milissegundos desde 1970.
+    expira_em: i64,
+}
+
+#[tauri::command]
+pub async fn nuvem_token_google(estado: State<'_, Estado>) -> Result<TokenGoogle, Erro> {
+    let config = estado.com_sessao(ler_nuvem)?.ok_or_else(|| nuvem::erro("desligada", "Nenhuma conta Google ligada. Ligue a conta em Ajustes."))?;
+    if config.provedor != ProvedorNuvem::Google {
+        return Err(nuvem::erro("indisponivel", "A sincronização usa uma conta Google; a conta ligada é de outro tipo."));
+    }
+    let (token, validade) = nuvem::acesso_google(&config.renovacao).await?;
+    Ok(TokenGoogle { token, expira_em: banco::agora_ms() + (validade as i64) * 1000 })
+}
 
 // ---------- Saúde: medicação ----------
 
@@ -1671,6 +1691,12 @@ pub async fn sincronia_conteudo(estado: State<'_, Estado>, sha: String) -> Resul
 #[tauri::command]
 pub async fn sincronia_guardar_conteudo(estado: State<'_, Estado>, sha: String, conteudo: String) -> Result<u32, Erro> {
     estado.com_sessao(|s| sincronia::guardar_conteudo_trancado(&s.conn, &sha, &conteudo))
+}
+
+/// A marca do estado daqui (muda só quando algo que viaja muda) e os anexos que tem e que faltam.
+#[tauri::command]
+pub async fn sincronia_marca(estado: State<'_, Estado>) -> Result<sincronia::Marca, Erro> {
+    estado.com_sessao(|s| sincronia::marca(&s.conn))
 }
 
 /// Desliga a sincronização neste aparelho (apaga a chave daqui; os dados ficam).

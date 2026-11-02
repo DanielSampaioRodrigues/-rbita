@@ -72,8 +72,25 @@ pub async fn renovar(cred: Credenciais, renovacao: &str) -> Result<(String, Opti
         campos.push(("client_secret", s));
     }
     let corpo = pedir_token(&campos).await?;
+    let (acesso, _) = acesso_da_resposta(&corpo)?;
+    Ok((acesso, corpo["refresh_token"].as_str().map(str::to_string)))
+}
+
+/// Acesso de curta duração e por quantos segundos vale (o Google costuma dar 3.599).
+/// Usado pela sincronização no Windows: a interface fala com o Drive direto, com este acesso.
+pub async fn renovar_com_validade(cred: Credenciais, renovacao: &str) -> Result<(String, u64), Erro> {
+    let mut campos = vec![("client_id", cred.id), ("refresh_token", renovacao), ("grant_type", "refresh_token")];
+    if let Some(s) = cred.segredo {
+        campos.push(("client_secret", s));
+    }
+    acesso_da_resposta(&pedir_token(&campos).await?)
+}
+
+fn acesso_da_resposta(corpo: &Value) -> Result<(String, u64), Erro> {
     let acesso = corpo["access_token"].as_str().ok_or_else(|| erro("resposta", "O Google respondeu sem o acesso. Tente de novo."))?;
-    Ok((acesso.to_string(), corpo["refresh_token"].as_str().map(str::to_string)))
+    // Sem a validade na resposta, supõe a padrão do Google (1 hora).
+    let validade = corpo["expires_in"].as_u64().unwrap_or(3600);
+    Ok((acesso.to_string(), validade))
 }
 
 const SEM_PERMISSAO_DRIVE: &str = "Na tela do Google, a permissão do Drive ficou desmarcada, então o Órbita não consegue guardar a cópia. Desligue a conta, ligue de novo e deixe marcada a opção \"Ver, criar e excluir os próprios dados de configuração no Google Drive\".";
@@ -179,6 +196,14 @@ mod testes {
         let corpo = json!({"error": {"errors": [{"reason": "accessNotConfigured"}]}});
         assert!(matches!(motivo_do_erro(reqwest::StatusCode::FORBIDDEN, &corpo), Erro::Nuvem { motivo: "servico", .. }));
         assert!(matches!(motivo_do_erro(reqwest::StatusCode::FORBIDDEN, &Value::Null), Erro::Nuvem { motivo: "acesso", .. }));
+    }
+
+    #[test]
+    fn le_o_acesso_e_a_validade() {
+        let (a, v) = acesso_da_resposta(&json!({"access_token": "ya29.x", "expires_in": 3599})).unwrap();
+        assert_eq!((a.as_str(), v), ("ya29.x", 3599));
+        assert_eq!(acesso_da_resposta(&json!({"access_token": "y"})).unwrap().1, 3600);
+        assert!(acesso_da_resposta(&json!({"expires_in": 10})).is_err());
     }
 
     #[test]

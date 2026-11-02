@@ -113,6 +113,13 @@ pub async fn acesso(provedor: ProvedorNuvem, renovacao: &str) -> Result<(String,
     }
 }
 
+/// Acesso do Google e quantos segundos ele vale (para a sincronização, ver
+/// docs/decisoes/0012-sincronizacao.md). A renovação nunca sai do lado nativo.
+pub async fn acesso_google(renovacao: &str) -> Result<(String, u64), Erro> {
+    let cred = ProvedorNuvem::Google.credenciais().ok_or_else(|| erro("indisponivel", "Esta versão do Órbita não tem a conta configurada."))?;
+    google::renovar_com_validade(cred, renovacao).await
+}
+
 pub async fn enviar(provedor: ProvedorNuvem, acesso: &str, nome: &str, dados: Vec<u8>) -> Result<(), Erro> {
     match provedor {
         ProvedorNuvem::Google => google::enviar(acesso, nome, dados).await,

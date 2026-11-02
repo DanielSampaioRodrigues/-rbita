@@ -89,6 +89,7 @@ pub fn run() {
             comandos::nuvem_desconectar,
             comandos::nuvem_buscar_para_recuperar,
             comandos::nuvem_concluir_recuperacao,
+            comandos::nuvem_token_google,
             comandos::mudar_modo,
             comandos::bloquear,
             comandos::fazer_backup,
@@ -279,6 +280,7 @@ pub fn run() {
             comandos::sincronia_conteudo,
             comandos::sincronia_guardar_conteudo,
             comandos::sincronia_sair,
+            comandos::sincronia_marca,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");
