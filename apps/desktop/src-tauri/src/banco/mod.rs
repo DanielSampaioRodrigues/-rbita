@@ -142,10 +142,10 @@ pub(crate) const MIGRACOES: &[&str] = &[
     "#,
 ];
 
+/// Hora atual em milissegundos. Pelo `chrono`, que também funciona no navegador
+/// (o relógio de `std::time` não existe lá e derrubaria o motor).
 pub fn agora_ms() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_millis() as i64)
+    chrono::Utc::now().timestamp_millis()
 }
 
 pub fn novo_id() -> String {
@@ -181,7 +181,7 @@ pub fn abrir(caminho: &Path, chave: &Chave) -> Result<Connection, Erro> {
     Ok(conn)
 }
 
-fn migrar(conn: &Connection) -> Result<(), Erro> {
+pub(crate) fn migrar(conn: &Connection) -> Result<(), Erro> {
     let versao: usize = conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))? as usize;
     for (i, sql) in MIGRACOES.iter().enumerate().skip(versao) {
         let tx = conn.unchecked_transaction()?;

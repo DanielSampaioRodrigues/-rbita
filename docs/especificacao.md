@@ -312,6 +312,8 @@ Dan vai testar no Windows e no iPad ao mesmo tempo e quer que tudo apareça nos 
 - **Perdeu o Google:** nos aparelhos que já usa, tudo continua lá e abre pelo PIN; dali faz backup e liga outra conta. Só perde tudo quem perder o Google **e** todos os aparelhos sem ter backup: por isso o backup automático é oferecido no cadastro.
 - **Endereço da versão de navegador:** `orbita.arcano3.com.br` (subdomínio do domínio de Dan, só um apontamento no registro.br), configurado **depois** da confirmação do nome, porque o login do Google fica preso ao endereço.
 - **Ordem:** (1) login com Google no navegador; (2) sincronizar navegador e Drive; (3) login e sincronização no Windows (aproveitando o cliente Google da 0.22.0).
+- **Antes de tudo, um motor só (decisão de 02/11/2026, ver `docs/decisoes/0011-motor-unico.md`):** o navegador passa a rodar o mesmo código Rust do banco do Windows, compilado para WebAssembly (prova feita: compila sem mudança, SQLCipher roda no navegador, 693 KB comprimido). Assim os dois guardam igual, o backup abre nos dois lados e a sincronização fica simples. Os dados de teste do navegador não passam para o motor novo. Amigos testam depois desta etapa.
+- **Não esperar o INPI:** começar no endereço atual (`danielsampaiorodrigues.github.io`). Com a sincronização, mudar de endereço depois só pede acrescentar a origem nova no Google; os dados voltam do Drive. O identificador do app no Windows (`br.com.arcano3.orbita`) **nunca muda**, mesmo que o nome mude: é ele que aponta para a pasta dos dados.
 
 ### Contas para guardar a recuperação: plano por plataforma
 
