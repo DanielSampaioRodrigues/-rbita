@@ -265,3 +265,23 @@
   .moldura.organizando-menu.menu-aberto > .lateral { width: 18.5rem; }
 }
 .moldura:is(.imersivo, .recolhida).organizando-menu.menu-aberto > .lateral { width: 18.5rem; }
+
+/* Aviso da sincronização, ao lado das setas: pequeno, sem animação; só o texto muda. */
+.sinc-aviso { display: flex; align-items: center; margin-left: var(--espaco-2); min-width: 0; height: 2.75rem; }
+.sinc-botao {
+  display: inline-flex; align-items: center; gap: var(--espaco-2); min-height: 2.25rem; max-width: min(24rem, 42vw);
+  padding: var(--espaco-1) var(--espaco-3); border: 1px solid transparent; border-radius: 999px;
+  background: rgb(var(--cor-fundo-rgb) / 0.72); color: var(--cor-texto-suave); font: inherit; font-size: 0.85rem; cursor: pointer;
+}
+.sinc-botao .sinc-texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sinc-botao svg { flex: none; }
+.sinc-botao[data-hovered] { background: var(--cor-superficie-alternativa); color: var(--cor-texto); }
+.sinc-botao[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+/* Precisa de atenção: borda e texto normais, nunca vermelho. */
+.sinc-botao.atencao { border-color: var(--cor-borda-controle); color: var(--cor-texto); }
+.sinc-painel { max-width: min(22rem, calc(100vw - 2rem)); }
+.sinc-dialogo { display: grid; gap: var(--espaco-2); padding: var(--espaco-3); outline: none; }
+.sinc-dialogo p { margin: 0; }
+.sinc-titulo { margin: 0; font-size: 1rem; }
+.sinc-estado { font-weight: 600; }
+.sinc-dialogo .botao { justify-self: start; margin-top: var(--espaco-1); }

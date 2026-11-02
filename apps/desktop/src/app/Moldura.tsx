@@ -14,6 +14,7 @@ import { formatarRestante, useFoco } from "../foco/Foco";
 import { useImersivo } from "./Imersivo";
 import { Marca } from "./Marca";
 import { ProvedorOrganizar, useOrganizar, type Organizar } from "./Organizar";
+import { AvisoSincronia } from "../sincronia/AvisoSincronia";
 
 /** As seções do app (a lista e a ordem de fábrica ficam em preferencias.ts, junto da validação do menu). */
 export type Secao = SecaoMenu;
@@ -287,6 +288,7 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
             <Button className="botao-icone seta-nav" aria-label={`${textos.navegacao.avancar} (Alt + →)`} isDisabled={!navegacao.podeAvancar} onPress={navegacao.avancar}>
               <ArrowRight aria-hidden="true" size="1.5em" strokeWidth={2.25} />
             </Button>
+            <AvisoSincronia />
           </div>
         )}
         {children}

@@ -8,6 +8,12 @@ export function avisarMudanca(): void {
   for (const ouvir of ouvintes) ouvir();
 }
 
+/** Ouve os avisos fora de um componente (a sincronização usa). Devolve como parar. */
+export function ouvirMudancas(ouvir: () => void): () => void {
+  ouvintes.add(ouvir);
+  return () => void ouvintes.delete(ouvir);
+}
+
 /** Número que muda a cada aviso; use como dependência para recarregar. */
 export function useMudancas(): number {
   const [versao, setVersao] = useState(0);

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import pacote from "./package.json" with { type: "json" };
@@ -66,9 +67,25 @@ function versaoDeNavegador(): Plugin {
   };
 }
 
+// Em desenvolvimento, a "pasta de mentira" da sincronização em /__pasta-teste/ (só com
+// localStorage "orbita-sync-teste" ligado ou ?sync-teste no endereço; ver src/sincronia/).
+function pastaDeTeste(): Plugin {
+  return {
+    name: "orbita-pasta-teste",
+    apply: "serve",
+    configureServer(servidor) {
+      const { criarPasta } = createRequire(import.meta.url)("./scripts/pasta-teste.cjs") as { criarPasta: () => { atender: (q: unknown, s: unknown) => boolean } };
+      const pasta = criarPasta();
+      servidor.middlewares.use((q, s, seguir) => {
+        if (!pasta.atender(q, s)) seguir();
+      });
+    },
+  };
+}
+
 // Porta fixa para o Tauri encontrar a interface durante o desenvolvimento.
 export default defineConfig({
-  plugins: [react(), ...(WEB ? [versaoDeNavegador()] : [])],
+  plugins: [react(), pastaDeTeste(), ...(WEB ? [versaoDeNavegador()] : [])],
   clearScreen: false,
   define: { __VERSAO__: JSON.stringify(pacote.version) },
   // Na web, caminhos relativos: o app funciona em qualquer subpasta do site.

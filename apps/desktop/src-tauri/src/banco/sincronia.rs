@@ -647,6 +647,30 @@ pub fn meu_pacote(conn: &Connection) -> Result<String, Erro> {
     Ok(B64.encode(trancar(&json, &chave, ROTULO_RETRATO, true)?))
 }
 
+/// Retrato do estado daqui, sem trancar, para o maestro decidir o que mandar.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Marca {
+    /// SHA-256 do retrato (sem a hora de montagem): muda se, e só se, algo que viaja mudou aqui.
+    pub marca: String,
+    /// SHA-256 dos conteúdos de anexo que este aparelho tem (para enviar os que faltam no Drive).
+    pub conteudos: Vec<String>,
+    /// SHA-256 dos conteúdos de anexo que faltam aqui (para buscar no Drive).
+    pub faltam: Vec<String>,
+}
+
+/// A marca do estado daqui. O retrato é montado na mesma ordem sempre (tabelas por id,
+/// configurações por chave), então o mesmo banco dá sempre a mesma marca.
+pub fn marca(conn: &Connection) -> Result<Marca, Erro> {
+    let mut retrato = montar_retrato(conn)?;
+    retrato.criado_em = 0;
+    let json = serde_json::to_vec(&retrato).map_err(|e| Erro::Interno(e.to_string()))?;
+    let mut conteudos: Vec<String> = retrato.conteudos.into_values().collect();
+    conteudos.sort();
+    conteudos.dedup();
+    Ok(Marca { marca: sha_hex(&json), conteudos, faltam: conteudos_que_faltam(conn)? })
+}
+
 /// Abre o pacote de outro aparelho e junta aqui. Chave errada: erro, e nada muda.
 pub fn juntar_pacote(conn: &Connection, pacote_b64: &str) -> Result<Resumo, Erro> {
     let chave = exigir_chave(conn)?;
@@ -863,6 +887,20 @@ mod testes {
         for c in [crate::portatil::CONFIG_PALAVRAS, "nuvem", "backup_auto_pasta", "backup_auto_ultimo", "backup_auto_erro", CONFIG_APARELHO, CONFIG_CHAVE, "valor:", "iaa"] {
             assert!(!config_viaja(c), "{c}");
         }
+    }
+
+    #[test]
+    fn marca_so_muda_quando_algo_que_viaja_muda() {
+        let (_d, a) = banco_de_teste();
+        let m1 = marca(&a).unwrap();
+        assert_eq!(m1.marca, marca(&a).unwrap().marca, "o mesmo banco dá a mesma marca");
+        dados_a(&a);
+        let m2 = marca(&a).unwrap();
+        assert_ne!(m1.marca, m2.marca, "dado novo muda a marca");
+        assert_eq!(m2.marca, marca(&a).unwrap().marca);
+        // Configuração que não viaja (do aparelho) não muda a marca.
+        crate::banco::gravar_config(&a, "backup_auto_pasta", "x").unwrap();
+        assert_eq!(m2.marca, marca(&a).unwrap().marca);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # 0012 · Sincronização entre aparelhos pelo Drive da pessoa
 
-**Data:** 02/11/2026 · **Situação:** em construção (2a feita; 2b a seguir; 2c espera a credencial do Google) ·
+**Data:** 02/11/2026 · **Situação:** em construção (2a e 2b feitas; 2c espera a credencial do Google) ·
 **Base:** `0011-motor-unico.md` (Windows e navegador rodam o mesmo banco).
 
 ## O que Dan pediu (especificação, "Entrar com Google e sincronizar")
@@ -103,13 +103,82 @@ trancar 79 ms; juntar num banco vazio 172 ms; juntar de novo (nada muda) 39 ms. 
 (Argon2) levou ~0,2 s. Motor do navegador: 2,18 MB, **~800 KB comprimido** (+~55 KB).
 
 
+## Como ficou na prática (etapa 2b, 02/11/2026)
+
+**Maestro** (`apps/desktop/src/sincronia/maestro.ts`, TypeScript puro, igual no Windows e no navegador).
+Um ciclo: (1) só segue se o motor diz que este aparelho tem a chave; (2) lista a pasta **numa chamada só**
+e baixa só os `aparelho-*` cuja `versao` mudou desde a última vez, juntando cada um; (3) busca os
+`anexo-<sha>` que faltam aqui (os que ainda não estão na pasta ficam para o próximo ciclo); (4) manda os
+conteúdos de anexo daqui que faltam na pasta (antes do retrato, para quem ler o retrato já achar o anexo);
+(5) manda o próprio retrato se algo mudou. Retrato de outro aparelho que não abre (estragado, outra chave)
+não trava o resto: o ciclo segue, o aviso mostra o erro e aquele arquivo é tentado de novo no próximo ciclo.
+
+**Como saber se algo mudou aqui: a "marca" do motor.** Comando novo `sincronia_marca` (`api.sincroniaMarca()`):
+SHA-256 do retrato **sem a hora de montagem** (o retrato sai sempre na mesma ordem, então o mesmo banco dá a
+mesma marca), mais a lista dos conteúdos de anexo que este aparelho tem e dos que faltam. Escolhi isso, e não
+um "houve mudança" na interface, porque nem toda gravação passa pelo aviso de mudança das telas; a marca pega
+qualquer mudança no que viaja e ignora o que não viaja. Custa montar o retrato (~55 ms no banco médio, sem
+trancar), uma vez por ciclo. Depois de juntar algo de outro aparelho a marca muda e o retrato daqui é
+reenviado uma vez; o outro lado junta, nada muda lá, e para (converge).
+
+**O que o maestro lembra fica só na memória** (versão vista de cada arquivo, última marca enviada). Guardar no
+cofre de valores faria esse controle **viajar** (as chaves `valor:*` viajam) e mudar a própria marca a cada
+ciclo, num vaivém sem fim. Custo: ao abrir o app, o primeiro ciclo baixa todos os retratos uma vez e manda o
+daqui uma vez.
+
+**Quando** (`src/sincronia/agenda.ts`): ao abrir (cofre desbloqueado), a cada 60 s com o app visível, ao voltar
+para o app (`visibilitychange`/`focus`, com folga de 5 s para os dois eventos não pedirem dois ciclos) e 3 s
+depois de uma mudança feita aqui (`avisarMudanca`; várias seguidas viram um ciclo só). **Nunca dois ciclos ao
+mesmo tempo:** pedido no meio de um ciclo vira "mais um logo depois" (mudança e "Sincronizar agora") ou é
+ignorado (relógio, voltar). Bloquear desmonta o provedor e para tudo; desbloquear sincroniza de novo. Depois de
+juntar algo que mudou, o maestro chama `avisarMudanca` (as telas recarregam); esse aviso não conta como mudança
+daqui.
+
+**Aviso discreto** (`src/sincronia/AvisoSincronia.tsx`), ao lado das setas de navegação, no alto da área de
+conteúdo: fica visível com o menu recolhido, some no modo imersivo (caderno) e no modo de baixa energia. Só
+aparece com a sincronização ligada (há pasta e chave). Textos literais (bloco `sincronia` em `textos/pt-BR.ts`):
+"Sincronizado agora", "Sincronizado há 1 min" (h, dias), "Sincronizando…", "Sem internet: guardado neste
+aparelho", "Precisa entrar de novo na conta", "Não deu para sincronizar: <motivo>". Princípio 2: sem animação;
+"Sincronizando…" só aparece se o ciclo passa de 1,2 s (os de todo minuto são rápidos e o texto não pisca);
+durante um ciclo rápido continua o estado de antes. Problema = borda e texto normais, nunca vermelho. Toque abre um
+painel pequeno: estado, "Última vez: hoje às 14:32", uma frase do que acontece agora e "Sincronizar agora".
+Acessível: botão com foco por teclado, painel com título (Esc fecha), e uma região `role="status"`
+`aria-live="polite"` que só fala quando o **tipo** de estado muda (não a cada minuto, nem o primeiro
+"sincronizado" ao abrir; só a volta depois de um problema).
+
+**Ligar no app.** `ProvedorSincronia` (montado em `App.tsx` só com o cofre aberto) cria o maestro quando
+`armazenamentoAtual()` devolve uma pasta. Hoje devolve `null` (o Drive é da 2c), ou a **pasta de mentira** no modo
+de teste: `localStorage["orbita-sync-teste"] = "1"` ou `?sync-teste` no endereço (fica lembrado). A pasta de teste
+é sempre no mesmo site (`/__pasta-teste/`), nunca outro endereço. Funções `ligarComoPrimeiro(senha)` (cria a chave e
+grava `chave.orbita-sync`) e `entrarComSenha(senha)` (baixa o envelope e abre) ficam prontas para a tela da 2d; no
+modo de teste, elas e a `api` ficam em `window.__orbitaSincronia` para o teste de ponta a ponta.
+
+**Pasta de mentira** (`src/sincronia/pastaDeMentira.ts`): `PastaNaMemoria` (testes do maestro; finge sem internet e
+acesso negado) e `PastaHttp`, que fala com `scripts/pasta-teste.cjs` (arquivos na memória do servidor; com "sem
+internet" responde 503, com "negado" 401). Escolhi o servidor HTTP porque dois contextos do Playwright não dividem
+IndexedDB nem nada: só um servidor deixa dois navegadores trocarem arquivos. O `pnpm dev` também serve a pasta.
+
+**Testes.** `src/sincronia/maestro.test.ts` (vitest, com um motor de mentira): convergência criar/editar/apagar,
+só baixa o que mudou e só envia quando muda, anexo uma vez só, anexo que chega depois, sem internet guarda e manda
+depois, acesso negado, retrato estragado não trava, nunca dois ciclos, parar, textos do aviso e a agenda (relógio
+falso). `src/banco/sincronia.rs`: a marca só muda quando algo que viaja muda. **Ponta a ponta**
+(`scripts/teste-sync.cjs`, com o build web): dois navegadores; liga no A com senha e entra no B; ideia criada na
+tela do A vai sozinha em ~3 s e aparece na tela do B; editada no B muda no A ao voltar para o app; apagada no A
+some no B; imagem anexada chega igual e trancada na pasta; bloqueado busca ao abrir; sem internet e acesso negado
+mostram o aviso certo e recuperam; painel abre pelo teclado. Tudo certo, 0 erros de console.
+
 
 - **2a** motor da sincronização (Rust) e testes de convergência entre dois bancos.
-- **2b** maestro, adaptador de mentira, aviso "Sincronizado há…", e teste com dois navegadores.
+- **2b** maestro, adaptador de mentira, aviso "Sincronizado há…", e teste com dois navegadores. **Feita.**
 - **2c** login com Google no navegador + adaptador do Drive (precisa da credencial "Aplicativo da Web").
 - **2d** telas de aparelho novo: senha de sincronização, PIN igual em todos os aparelhos, 6 perguntas.
 
 ## Limites conhecidos
+
+- `ligarComoPrimeiro` sobrescreve `chave.orbita-sync`: a tela da 2d precisa conferir antes se já existe um
+  envelope na pasta (aí é "entrar", não "criar"), senão um segundo aparelho trocaria a chave dos outros.
+- Se o envelope sumir da pasta, os aparelhos que já têm a chave continuam sincronizando, mas um aparelho novo não
+  entra até alguém gravar o envelope de novo (precisa da senha; fica para a 2d).
 
 - Edição do **mesmo item** em dois aparelhos sem internet: o texto de um dos lados some (vale o mais
   recente, linha inteira, não campo a campo). Avaliar depois guardar os dois.

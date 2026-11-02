@@ -44,6 +44,7 @@ import { Moldura, type Lugar, type Secao } from "./Moldura";
 import { ProvedorRecado } from "./Recado";
 import { ProvedorAtualizacao } from "../atualizacao/atualizacao";
 import { AvisoAtualizacao } from "../atualizacao/TelasAtualizacao";
+import { ProvedorSincronia } from "../sincronia/ProvedorSincronia";
 
 export function App() {
   const { prefs, mudar } = usePreferencias();
@@ -214,6 +215,7 @@ export function App() {
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
     tela = (
       <ProvedorAtualizacao procurarAoAbrir={prefs.procurarAtualizacao}>
+       <ProvedorSincronia>
         <ProvedorLimite>
           <ProvedorFoco>
            <ProvedorImersivo>
@@ -240,6 +242,7 @@ export function App() {
            </ProvedorImersivo>
           </ProvedorFoco>
         </ProvedorLimite>
+       </ProvedorSincronia>
       </ProvedorAtualizacao>
     );
   }

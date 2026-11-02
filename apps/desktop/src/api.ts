@@ -720,6 +720,15 @@ export interface ResumoSincronia {
   /** SHA-256 dos conteúdos de anexo que faltam aqui. */
   faltamConteudos: string[];
 }
+/** O estado daqui para o maestro (ver src/sincronia/maestro.ts). */
+export interface MarcaSincronia {
+  /** Muda se, e só se, algo que viaja mudou neste aparelho. */
+  marca: string;
+  /** SHA-256 dos conteúdos de anexo que este aparelho tem. */
+  conteudos: string[];
+  /** SHA-256 dos conteúdos de anexo que faltam aqui. */
+  faltam: string[];
+}
 
 export interface Api {
   situacao(): Promise<Situacao>;
@@ -977,6 +986,8 @@ export interface Api {
   /** Devolve em quantos anexos guardou. */
   sincroniaGuardarConteudo(sha: string, conteudo: string): Promise<number>;
   sincroniaSair(): Promise<void>;
+  /** Marca do estado daqui e anexos que tem e que faltam (barato: não tranca nada). */
+  sincroniaMarca(): Promise<MarcaSincronia>;
 }
 
 /** Como o app conversa com o motor: no Windows pelo Tauri; no navegador, com o motor em WebAssembly. */
@@ -1212,6 +1223,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   sincroniaConteudo: (sha) => chamar("sincronia_conteudo", { sha }),
   sincroniaGuardarConteudo: (sha, conteudo) => chamar("sincronia_guardar_conteudo", { sha, conteudo }),
   sincroniaSair: () => chamar("sincronia_sair"),
+  sincroniaMarca: () => chamar("sincronia_marca"),
   ouvirProgressoDitado: (aoMudar) => listen<{ baixado: number; total: number }>("ditado-progresso", (e) => aoMudar(e.payload.baixado, e.payload.total)),
   };
 }
@@ -2484,6 +2496,7 @@ function criarSimulacao(): Api {
     sincroniaConteudo: semSincronia,
     sincroniaGuardarConteudo: semSincronia,
     sincroniaSair: semSincronia,
+    sincroniaMarca: semSincronia,
     // A IA de mentira não conhece os projetos: liga a tarefa ao primeiro ativo.
     organizarTextoIa: async (texto, sensivel) => {
       const o = await comIa.organizarTextoIa(texto, sensivel);
