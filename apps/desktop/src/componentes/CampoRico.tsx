@@ -50,6 +50,8 @@ interface Props {
   descricao?: string;
   autoFocus?: boolean;
   placeholder?: string;
+  /** Esconde o rótulo da vista (continua para leitor de tela), quando um título já diz o mesmo. */
+  rotuloOculto?: boolean;
 }
 
 /**
@@ -57,7 +59,7 @@ interface Props {
  * link, destaque), guardada em Markdown, um formato aberto. Atalhos de
  * teclado de sempre (Ctrl + B, Ctrl + I, Ctrl + U, Ctrl + Z), microfone e IA.
  */
-export function CampoRico({ rotulo, valor, aoMudar, descricao, autoFocus, placeholder }: Props) {
+export function CampoRico({ rotulo, valor, aoMudar, descricao, autoFocus, placeholder, rotuloOculto }: Props) {
   const id = useId();
   const ultimo = useRef(valor);
   const editor = useEditor({
@@ -120,7 +122,7 @@ export function CampoRico({ rotulo, valor, aoMudar, descricao, autoFocus, placeh
 
   return (
     <div className="campo rico" onKeyDown={(e) => ditar.aoTeclar(e)}>
-      <span className="campo-rotulo" id={`${id}-rotulo`}>{rotulo}</span>
+      <span className={rotuloOculto ? "visualmente-oculto" : "campo-rotulo"} id={`${id}-rotulo`}>{rotulo}</span>
       <div className="rico-caixa">
         <Toolbar className="rico-barra" aria-label={t.barra(rotulo)}>
           {alternar(t.negrito, Bold, ativo.negrito, () => cadeia().toggleBold().run(), "Ctrl + B")}

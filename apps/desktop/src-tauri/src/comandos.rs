@@ -398,6 +398,11 @@ pub async fn marcar_projeto_revisado(estado: State<'_, Estado>, id: String) -> R
 }
 
 #[tauri::command]
+pub async fn salvar_anotacoes_projeto(estado: State<'_, Estado>, id: String, texto: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::salvar_anotacoes_projeto(&s.conn, &id, &texto))
+}
+
+#[tauri::command]
 pub async fn salvar_onde_parei(estado: State<'_, Estado>, id: String, onde_parei: itens::OndeParei) -> Result<(), Erro> {
     estado.com_sessao(|s| itens::salvar_onde_parei(&s.conn, &id, onde_parei))
 }

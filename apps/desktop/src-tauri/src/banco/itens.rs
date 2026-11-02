@@ -65,6 +65,10 @@ struct DadosProjeto {
     /// Quando a pessoa olhou o projeto pela última vez (começo da contagem do lembrete).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     revisado_em: Option<i64>,
+    /// Anotações livres do projeto (texto longo). Ausente: a pessoa nunca escreveu aqui, e a
+    /// leitura mostra a nota da ideia de origem, se houver. Texto vazio: a pessoa apagou.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    anotacoes: Option<String>,
     /// Campos que outras partes do app guardam (por exemplo, o peso das tarefas).
     #[serde(flatten)]
     outros: serde_json::Map<String, serde_json::Value>,
@@ -90,6 +94,11 @@ pub struct Projeto {
     pub alterado_em: i64,
     /// Ids das etiquetas.
     pub etiquetas: Vec<String>,
+    /// Anotações livres. Projetos que vieram de uma ideia antes de existir este campo
+    /// mostram a nota da ideia até a pessoa editar (a leitura não grava nada).
+    pub anotacoes: String,
+    /// Quando a ideia de origem foi criada, se o projeto veio de uma ideia.
+    pub ideia_criada_em: Option<i64>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -184,7 +193,7 @@ pub fn criar_ideia(conn: &Connection, texto: &str) -> Result<Ideia, Erro> {
 
 /// A nota mais longa da ideia (vazia apaga).
 pub fn salvar_nota_ideia(conn: &Connection, id: &str, nota: &str) -> Result<(), Erro> {
-    let nota: String = nota.trim().chars().take(20_000).collect();
+    let nota: String = nota.trim().chars().take(MAXIMO_ANOTACOES).collect();
     let n = conn.execute(
         "UPDATE item SET dados = json_set(dados, '$.nota', ?2), alterado_em = ?3 WHERE id = ?1 AND tipo = 'ideia' AND excluido_em IS NULL",
         params![id, nota, agora_ms()],
@@ -227,20 +236,39 @@ pub fn editar_ideia(conn: &Connection, id: &str, texto: &str) -> Result<(), Erro
     Ok(())
 }
 
-/// A ideia vira projeto. O texto da ideia vira o título e fica ligada ao projeto.
+/// A ideia vira projeto. O texto da ideia vira o título, a nota vira as anotações do
+/// projeto, as etiquetas e os anexos vão junto (os anexos são os mesmos, sem copiar o
+/// arquivo), e a ideia fica ligada ao projeto. Tudo num passo só: ou vai tudo, ou nada.
 pub fn ideia_para_projeto(conn: &Connection, id: &str, ativo: bool) -> Result<Projeto, Erro> {
-    let texto: String = conn
-        .query_row("SELECT conteudo FROM item WHERE id = ?1 AND tipo = 'ideia' AND excluido_em IS NULL", [id], |r| r.get(0))
+    let (texto, nota): (String, String) = conn
+        .query_row(
+            "SELECT conteudo, coalesce(json_extract(dados, '$.nota'), '') FROM item WHERE id = ?1 AND tipo = 'ideia' AND excluido_em IS NULL",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
         .optional()?
         .ok_or(Erro::NaoEncontrado)?;
-    let projeto = criar_projeto(conn, &texto, ativo)?;
+    let tx = conn.unchecked_transaction()?;
+    let projeto = criar_projeto(&tx, &texto, ativo)?;
+    if !nota.trim().is_empty() {
+        let mut dados = ler_dados(&tx, &projeto.id)?;
+        dados.anotacoes = Some(limitar_anotacoes(&nota));
+        gravar_dados(&tx, &projeto.id, &dados)?;
+    }
+    let etiquetas_da_ideia = etiquetas::do_item(&tx, id)?;
+    if !etiquetas_da_ideia.is_empty() {
+        etiquetas::definir_do_item(&tx, &projeto.id, &etiquetas_da_ideia)?;
+    }
+    super::anexos::ligar_os_do_item(&tx, id, &projeto.id)?;
     let agora = agora_ms();
-    conn.execute("UPDATE item SET estado = 'virou_projeto', alterado_em = ?2 WHERE id = ?1", params![id, agora])?;
-    conn.execute(
+    tx.execute("UPDATE item SET estado = 'virou_projeto', alterado_em = ?2 WHERE id = ?1", params![id, agora])?;
+    tx.execute(
         "INSERT INTO ligacao (id, origem_tipo, origem_id, destino_tipo, destino_id, tipo, criado_em, alterado_em)
          VALUES (?1, 'item', ?2, 'item', ?3, 'virou', ?4, ?4)",
         params![novo_id(), id, projeto.id, agora],
     )?;
+    let projeto = obter_projeto(&tx, &projeto.id)?;
+    tx.commit()?;
     Ok(projeto)
 }
 
@@ -289,16 +317,36 @@ fn gravar_dados(conn: &Connection, id: &str, dados: &DadosProjeto) -> Result<(),
     Ok(())
 }
 
+/// Limite das anotações do projeto (e da nota da ideia): 20 000 caracteres.
+const MAXIMO_ANOTACOES: usize = 20_000;
+
+fn limitar_anotacoes(texto: &str) -> String {
+    texto.chars().take(MAXIMO_ANOTACOES).collect()
+}
+
+// As duas últimas colunas vêm da ideia de origem (ligação "virou"), se houver.
 const SELECAO_PROJETO: &str = "
     SELECT p.id, p.titulo, p.estado, p.dados, p.alterado_em, p.criado_em,
       (SELECT count(*) FROM item t WHERE t.tipo = 'tarefa' AND t.excluido_em IS NULL AND t.estado = 'feita'
          AND (t.pai_id = p.id OR t.pai_id IN (SELECT e.id FROM item e WHERE e.pai_id = p.id))),
       (SELECT count(*) FROM item t WHERE t.tipo = 'tarefa' AND t.excluido_em IS NULL
-         AND (t.pai_id = p.id OR t.pai_id IN (SELECT e.id FROM item e WHERE e.pai_id = p.id)))
+         AND (t.pai_id = p.id OR t.pai_id IN (SELECT e.id FROM item e WHERE e.pai_id = p.id))),
+      (SELECT i.criado_em FROM ligacao l JOIN item i ON i.id = l.origem_id AND i.tipo = 'ideia' AND i.excluido_em IS NULL
+         WHERE l.tipo = 'virou' AND l.destino_id = p.id AND l.excluido_em IS NULL ORDER BY l.criado_em LIMIT 1),
+      (SELECT coalesce(json_extract(i.dados, '$.nota'), '') FROM ligacao l JOIN item i ON i.id = l.origem_id AND i.tipo = 'ideia' AND i.excluido_em IS NULL
+         WHERE l.tipo = 'virou' AND l.destino_id = p.id AND l.excluido_em IS NULL ORDER BY l.criado_em LIMIT 1)
     FROM item p WHERE p.tipo = 'projeto' AND p.excluido_em IS NULL";
 
 fn projeto_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Projeto> {
     let dados: DadosProjeto = serde_json::from_str(&r.get::<_, String>(3)?).unwrap_or_default();
+    // Projeto que nunca teve anotações gravadas e veio de uma ideia (antes desta versão):
+    // mostra a nota da ideia. Não grava na leitura, para não mexer no alterado_em
+    // (a sincronização mescla linha a linha por ele); grava quando a pessoa editar.
+    let nota_da_ideia: Option<String> = r.get(9)?;
+    let anotacoes = match dados.anotacoes {
+        Some(a) => a,
+        None => nota_da_ideia.map(|n| limitar_anotacoes(&n)).unwrap_or_default(),
+    };
     Ok(Projeto {
         id: r.get(0)?,
         titulo: r.get(1)?,
@@ -314,6 +362,8 @@ fn projeto_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Projeto> {
         tarefas_feitas: r.get(6)?,
         tarefas_total: r.get(7)?,
         etiquetas: vec![],
+        anotacoes,
+        ideia_criada_em: r.get(8)?,
     })
 }
 
@@ -401,6 +451,14 @@ pub fn definir_revisao_projeto(conn: &Connection, id: &str, meses: Option<u32>) 
 pub fn marcar_projeto_revisado(conn: &Connection, id: &str) -> Result<(), Erro> {
     let mut dados = ler_dados(conn, id)?;
     dados.revisado_em = Some(agora_ms());
+    gravar_dados(conn, id, &dados)
+}
+
+/// As anotações livres do projeto (até 20 000 caracteres). Texto vazio fica gravado como
+/// vazio: a pessoa apagou de propósito, e a nota da ideia de origem não volta.
+pub fn salvar_anotacoes_projeto(conn: &Connection, id: &str, texto: &str) -> Result<(), Erro> {
+    let mut dados = ler_dados(conn, id)?;
+    dados.anotacoes = Some(limitar_anotacoes(texto));
     gravar_dados(conn, id, &dados)
 }
 
@@ -666,6 +724,90 @@ mod testes {
         assert_eq!(listar_ideias(&conn).unwrap().len(), 1);
         let ligacoes: i64 = conn.query_row("SELECT count(*) FROM ligacao WHERE origem_id = ?1", [&a.id], |r| r.get(0)).unwrap();
         assert_eq!(ligacoes, 1);
+    }
+
+    /// O relato de Dan: a ideia com anotação virou projeto e a anotação sumiu.
+    #[test]
+    fn ideia_vira_projeto_levando_nota_etiquetas_e_anexos() {
+        let (_p, conn) = banco();
+        let ideia = criar_ideia(&conn, "MCP").unwrap();
+        salvar_nota_ideia(&conn, &ideia.id, "MCP para programas Adobe\ncomeçar pelo Photoshop").unwrap();
+        let app = etiquetas::criar(&conn, "APP", "rosa").unwrap();
+        let adobe = etiquetas::criar(&conn, "Adobe", "mar").unwrap();
+        etiquetas::definir_do_item(&conn, &ideia.id, &[app.id.clone(), adobe.id.clone()]).unwrap();
+        let img = super::super::anexos::anexar_arquivo(&conn, &ideia.id, "tela.png", b"\x89PNG").unwrap();
+        let link = super::super::anexos::anexar_link(&conn, &ideia.id, "Docs", "https://exemplo.com/mcp").unwrap();
+
+        let projeto = ideia_para_projeto(&conn, &ideia.id, true).unwrap();
+        assert_eq!(projeto.anotacoes, "MCP para programas Adobe\ncomeçar pelo Photoshop");
+        assert_eq!(projeto.ideia_criada_em, Some(ideia.criado_em));
+        let mut etqs = projeto.etiquetas.clone();
+        etqs.sort();
+        let mut esperado = vec![app.id.clone(), adobe.id.clone()];
+        esperado.sort();
+        assert_eq!(etqs, esperado);
+        let anexos: Vec<String> = super::super::anexos::listar_do_item(&conn, &projeto.id).unwrap().into_iter().map(|a| a.id).collect();
+        assert_eq!(anexos, vec![img.id.clone(), link.id.clone()]);
+        // O mesmo anexo, sem duplicar o arquivo.
+        let conteudos: i64 = conn.query_row("SELECT count(*) FROM anexo_conteudo", [], |r| r.get(0)).unwrap();
+        assert_eq!(conteudos, 1);
+        // As anotações ficaram gravadas no projeto (não dependem mais da ideia).
+        let gravado: Option<String> = conn.query_row("SELECT json_extract(dados, '$.anotacoes') FROM item WHERE id = ?1", [&projeto.id], |r| r.get(0)).unwrap();
+        assert_eq!(gravado.as_deref(), Some("MCP para programas Adobe\ncomeçar pelo Photoshop"));
+        assert_eq!(listar_projetos(&conn).unwrap()[0].anotacoes, projeto.anotacoes);
+
+        // Editar as anotações guarda no projeto; apagar tudo não traz a nota de volta.
+        salvar_anotacoes_projeto(&conn, &projeto.id, "nova anotação").unwrap();
+        assert_eq!(obter_projeto(&conn, &projeto.id).unwrap().anotacoes, "nova anotação");
+        salvar_anotacoes_projeto(&conn, &projeto.id, "").unwrap();
+        assert_eq!(obter_projeto(&conn, &projeto.id).unwrap().anotacoes, "");
+        // Limite de 20 000 caracteres.
+        salvar_anotacoes_projeto(&conn, &projeto.id, &"á".repeat(20_050)).unwrap();
+        assert_eq!(obter_projeto(&conn, &projeto.id).unwrap().anotacoes.chars().count(), 20_000);
+        assert!(matches!(salvar_anotacoes_projeto(&conn, "nao-existe", "x"), Err(Erro::NaoEncontrado)));
+    }
+
+    #[test]
+    fn ideia_sem_nota_vira_projeto_com_anotacoes_vazias() {
+        let (_p, conn) = banco();
+        let ideia = criar_ideia(&conn, "horta").unwrap();
+        let projeto = ideia_para_projeto(&conn, &ideia.id, false).unwrap();
+        assert_eq!((projeto.anotacoes.as_str(), projeto.etiquetas.len()), ("", 0));
+        assert_eq!(projeto.estado, "pausado");
+        // Projeto criado direto não veio de ideia.
+        let direto = criar_projeto(&conn, "Mudança", true).unwrap();
+        assert_eq!((direto.anotacoes.as_str(), direto.ideia_criada_em), ("", None));
+    }
+
+    /// Projetos que viraram projeto antes desta versão: a nota ficou só na ideia.
+    #[test]
+    fn projeto_antigo_mostra_a_nota_da_ideia_sem_gravar_na_leitura() {
+        let (_p, conn) = banco();
+        let ideia = criar_ideia(&conn, "Livro").unwrap();
+        salvar_nota_ideia(&conn, &ideia.id, "contos sobre faróis").unwrap();
+        // Como a versão antiga fazia: só o título, estado e a ligação "virou".
+        let projeto = criar_projeto(&conn, "Livro", true).unwrap();
+        conn.execute("UPDATE item SET estado = 'virou_projeto' WHERE id = ?1", [&ideia.id]).unwrap();
+        conn.execute(
+            "INSERT INTO ligacao (id, origem_tipo, origem_id, destino_tipo, destino_id, tipo, criado_em, alterado_em) VALUES ('l1', 'item', ?1, 'item', ?2, 'virou', 5, 5)",
+            params![ideia.id, projeto.id],
+        )
+        .unwrap();
+        conn.execute("UPDATE item SET alterado_em = 7 WHERE id = ?1", [&projeto.id]).unwrap();
+
+        let lido = obter_projeto(&conn, &projeto.id).unwrap();
+        assert_eq!(lido.anotacoes, "contos sobre faróis");
+        assert_eq!(lido.ideia_criada_em, Some(ideia.criado_em));
+        assert_eq!(listar_projetos(&conn).unwrap()[0].anotacoes, "contos sobre faróis");
+        // Ler não grava: o alterado_em fica igual (a sincronização depende dele).
+        assert_eq!(lido.alterado_em, 7);
+        let gravado: Option<String> = conn.query_row("SELECT json_extract(dados, '$.anotacoes') FROM item WHERE id = ?1", [&projeto.id], |r| r.get(0)).unwrap();
+        assert_eq!(gravado, None);
+        // Quando a pessoa edita, passa a valer o que ela escreveu.
+        salvar_anotacoes_projeto(&conn, &projeto.id, "contos sobre faróis\ne mapas").unwrap();
+        let lido = obter_projeto(&conn, &projeto.id).unwrap();
+        assert_eq!(lido.anotacoes, "contos sobre faróis\ne mapas");
+        assert!(lido.alterado_em > 7);
     }
 
     #[test]

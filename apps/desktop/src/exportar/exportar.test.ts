@@ -87,6 +87,16 @@ describe("exportar (puro)", () => {
     expect(md).not.toContain("## Remédios");
   });
 
+  it("Markdown: projeto leva as anotações", () => {
+    const projeto = {
+      id: "p1", titulo: "MCP", estado: "ativo" as const, ondeParei: null, pausadoEm: null, inicio: null, prazo: null, revisarMeses: null, revisadoEm: null,
+      criadoEm: 0, tarefasFeitas: 1, tarefasTotal: 3, alteradoEm: 0, etiquetas: [], anotacoes: "para programas Adobe", ideiaCriadaEm: 0,
+    };
+    const md = paraMarkdown({ projetos: [projeto, { ...projeto, id: "p2", titulo: "Horta", anotacoes: "" }] });
+    expect(md).toContain("- **MCP** (ativo) · 1/3 tarefas — para programas Adobe");
+    expect(md).toContain("- **Horta** (ativo) · 1/3 tarefas\n");
+  });
+
   it("JSON empacota com versão e data", () => {
     const j = JSON.parse(montarJSON({ ideias: [{ id: "1" }] }, 0));
     expect(j.versao).toBe(1);

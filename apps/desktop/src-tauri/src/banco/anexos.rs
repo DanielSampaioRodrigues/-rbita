@@ -77,6 +77,19 @@ fn ligar(conn: &Connection, item: &str, anexo: &str, agora: i64) -> Result<(), E
     Ok(())
 }
 
+/// Liga ao item `para` os mesmos anexos do item `de` (usado quando a ideia vira projeto).
+/// Não copia o arquivo: é o mesmo anexo, com uma ligação a mais. Pula os já ligados.
+pub fn ligar_os_do_item(conn: &Connection, de: &str, para: &str) -> Result<(), Erro> {
+    let ja: Vec<String> = listar_do_item(conn, para)?.into_iter().map(|a| a.id).collect();
+    let agora = agora_ms();
+    for a in listar_do_item(conn, de)? {
+        if !ja.contains(&a.id) {
+            ligar(conn, para, &a.id, agora)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn anexar_arquivo(conn: &Connection, item: &str, nome: &str, conteudo: &[u8]) -> Result<Anexo, Erro> {
     if conteudo.len() > MAXIMO_BYTES {
         return Err(erro(&format!("o arquivo passa de {MAXIMO_MB} MB, o limite para anexos")));

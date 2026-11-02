@@ -185,7 +185,7 @@ export function paraMarkdown(dados: DadosResumo, agora = Date.now()): string {
     `# Meus dados do Órbita`,
     `Gerado em ${dataHoraLocal(agora)}.`,
     secao("Ideias", dados.ideias, (i) => `**${i.texto}**${i.nota ? ` — ${i.nota}` : ""}`),
-    secao("Projetos", dados.projetos, (p) => `**${p.titulo}** (${p.estado})${p.prazo ? ` · entrega ${dataBR(p.prazo)}` : ""} · ${p.tarefasFeitas}/${p.tarefasTotal} tarefas`),
+    secao("Projetos", dados.projetos, (p) => `**${p.titulo}** (${p.estado})${p.prazo ? ` · entrega ${dataBR(p.prazo)}` : ""} · ${p.tarefasFeitas}/${p.tarefasTotal} tarefas${p.anotacoes ? ` — ${p.anotacoes}` : ""}`),
     secao("Agenda", dados.agenda, (e) => `**${e.titulo}** — ${e.diaInteiro ? dataHoraLocal(e.inicio).slice(0, 10) : dataHoraLocal(e.inicio)}${e.repeticao ? " (repete)" : ""}`),
     secao("Remédios", dados.remedios, (r) => `**${r.nome}**${r.dose ? ` — ${r.dose}` : ""}${r.horarios.length ? ` · ${r.horarios.join(", ")}` : ""}${r.estado === "pausado" ? " · pausado" : ""}`),
     secao("Registros de saúde", dados.registrosDeSaude, (r) => `${dataHoraLocal(r.momento)} · ${ROTULO_TIPO_SAUDE[r.tipo] ?? r.tipo}${r.intensidade != null ? ` (${r.intensidade}/5)` : ""}${r.nota ? ` — ${r.nota}` : ""}`),

@@ -91,6 +91,10 @@ export interface Projeto {
   alteradoEm: number;
   /** Ids das etiquetas. */
   etiquetas: string[];
+  /** Anotações livres (Markdown). Projeto que veio de uma ideia começa com a nota dela. */
+  anotacoes: string;
+  /** Quando a ideia de origem foi criada (ms), se o projeto veio de uma ideia. */
+  ideiaCriadaEm: number | null;
 }
 
 export interface Repeticao {
@@ -850,6 +854,8 @@ export interface Api {
   renomear(id: string, titulo: string): Promise<void>;
   mudarEstadoProjeto(id: string, novo: EstadoProjeto, ondeParei?: Omit<OndeParei, "atualizadoEm">): Promise<Projeto>;
   salvarOndeParei(id: string, ondeParei: Omit<OndeParei, "atualizadoEm">): Promise<void>;
+  /** Anotações livres do projeto (até 20 000 caracteres). */
+  salvarAnotacoesProjeto(id: string, texto: string): Promise<void>;
   /** Liga (1 a 24 meses) ou desliga (null) o lembrete "rever a cada N meses". */
   definirRevisaoProjeto(id: string, meses: number | null): Promise<void>;
   /** "Olhei": reinicia a contagem do lembrete. */
@@ -1145,6 +1151,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   mudarEstadoProjeto: (id, novo, ondeParei) =>
     chamar("mudar_estado_projeto", { id, novo, ondeParei: ondeParei ? { ...ondeParei, atualizadoEm: 0 } : null }),
   salvarOndeParei: (id, ondeParei) => chamar("salvar_onde_parei", { id, ondeParei: { ...ondeParei, atualizadoEm: 0 } }),
+  salvarAnotacoesProjeto: (id, texto) => chamar("salvar_anotacoes_projeto", { id, texto }),
   definirRevisaoProjeto: (id, meses) => chamar("definir_revisao_projeto", { id, meses }),
   marcarProjetoRevisado: (id) => chamar("marcar_projeto_revisado", { id }),
   limiteProjetos: () => chamar("limite_projetos"),
@@ -1385,7 +1392,7 @@ function guardarValor<T>(chave: string, ler: () => T, escrever: (v: T) => void) 
 }
 
 function simularItens() {
-  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; revisarMeses?: number | null; revisadoEm?: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null; nota?: string; etiquetas?: string[]; cor?: CorEtiqueta | null };
+  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; revisarMeses?: number | null; revisadoEm?: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null; nota?: string; etiquetas?: string[]; cor?: CorEtiqueta | null; anotacoes?: string; ideiaCriadaEm?: number | null };
   let etiquetas: Etiqueta[] = [];
   let ligacoes: [string, string][] = [];
   const itens: Item[] = [];
@@ -1412,7 +1419,8 @@ function simularItens() {
     const t = tarefasDe(p.id);
     return { id: p.id, titulo: p.texto, estado: p.estado as EstadoProjeto, ondeParei: p.ondeParei, pausadoEm: p.pausadoEm,
       inicio: p.inicio ?? null, prazo: p.prazo ?? null, revisarMeses: p.revisarMeses ?? null, revisadoEm: p.revisadoEm ?? null, criadoEm: p.criadoEm,
-      tarefasFeitas: t.filter((x) => x.estado === "feita").length, tarefasTotal: t.length, alteradoEm: p.alteradoEm, etiquetas: vivas(p) };
+      tarefasFeitas: t.filter((x) => x.estado === "feita").length, tarefasTotal: t.length, alteradoEm: p.alteradoEm, etiquetas: vivas(p),
+      anotacoes: p.anotacoes ?? "", ideiaCriadaEm: p.ideiaCriadaEm ?? null };
   };
   const vivas = (i: Item) => (i.etiquetas ?? []).filter((e) => etiquetas.some((x) => x.id === e));
   const achar = (id: string) => {
@@ -1502,8 +1510,9 @@ function simularItens() {
     ideiaParaProjeto: async (id: string, ativo: boolean) => {
       const ideia = achar(id);
       const p = await criarProjeto(ideia.texto, ativo);
+      Object.assign(achar(p.id), { anotacoes: (ideia.nota ?? "").slice(0, 20_000), etiquetas: [...(ideia.etiquetas ?? [])], ideiaCriadaEm: ideia.criadoEm });
       ideia.estado = "virou_projeto";
-      return p;
+      return comoProjeto(achar(p.id));
     },
     excluirItem: async (id: string) => {
       const fora = new Set([id]);
@@ -1535,6 +1544,7 @@ function simularItens() {
     marcarProjetoRevisado: async (id: string) => void (achar(id).revisadoEm = agora()),
     salvarOndeParei: async (id: string, o: Omit<OndeParei, "atualizadoEm">) =>
       void (achar(id).ondeParei = { ...o, links: o.links.filter((l) => l.trim()), atualizadoEm: agora() }),
+    salvarAnotacoesProjeto: async (id: string, texto: string) => void Object.assign(achar(id), { anotacoes: texto.slice(0, 20_000), alteradoEm: agora() }),
     limiteProjetos: async () => limite,
     definirLimiteProjetos: async (n: number) => void (limite = n),
     listarTarefas: async (pid: string) =>

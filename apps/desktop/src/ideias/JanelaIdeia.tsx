@@ -78,6 +78,23 @@ export function JanelaIdeia({
     gravarNaHora(() => api.definirCorIdeia(ideia.id, c));
   };
 
+  // Virar projeto leva a nota: grava antes o que foi escrito e ainda não foi salvo.
+  const virarProjeto = async () => {
+    if (!texto.trim()) return;
+    setOcupado(true);
+    setErro(null);
+    try {
+      if (texto.trim() !== ideia.texto) await api.editarIdeia(ideia.id, texto);
+      if (nota.trim() !== ideia.nota) await api.salvarNotaIdeia(ideia.id, nota);
+      await fila.current;
+      aoVirarProjeto({ ...ideia, texto: texto.trim(), nota: nota.trim() });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setOcupado(false);
+    }
+  };
+
   const salvar = async () => {
     if (!texto.trim()) return;
     setOcupado(true);
@@ -139,8 +156,9 @@ export function JanelaIdeia({
         <AnexosDoItem id={ideia.id} />
 
         <Aviso>{erro}</Aviso>
+        <p className="campo-ajuda">{t.virarProjetoAjuda}</p>
         <div className="janela-acoes">
-          <Button className="botao separado com-icone" onPress={() => aoVirarProjeto(ideia)}>
+          <Button className="botao separado com-icone" onPress={virarProjeto} isDisabled={ocupado || !texto.trim()}>
             <FolderPlus aria-hidden="true" size="1em" /> {t.virarProjeto}
           </Button>
           <Button className="botao com-icone" onPress={() => aoExcluir(ideia)}>

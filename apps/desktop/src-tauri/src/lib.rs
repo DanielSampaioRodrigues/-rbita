@@ -110,6 +110,7 @@ pub fn run() {
             comandos::mudar_estado_projeto,
             comandos::definir_revisao_projeto,
             comandos::marcar_projeto_revisado,
+            comandos::salvar_anotacoes_projeto,
             comandos::salvar_onde_parei,
             comandos::limite_projetos,
             comandos::definir_limite_projetos,

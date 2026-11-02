@@ -9,6 +9,7 @@ import { Confirmar, Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useComLimite } from "../projetos/Limite";
 import { CartaoOndeParei, JanelaOndeParei } from "../projetos/OndeParei";
+import { AnotacoesProjeto } from "../projetos/Anotacoes";
 import { ListaTarefas } from "../projetos/ListaTarefas";
 import { QuadroTarefas } from "../projetos/QuadroTarefas";
 import { MapaMental } from "../projetos/MapaMental";
@@ -168,6 +169,8 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
           aoMudar={(v) => executar(() => api.definirDatasProjeto(id, projeto.inicio, v || null))}
         />
       </div>
+
+      <AnotacoesProjeto key={projeto.id} projeto={projeto} />
 
       <section className="secao-relacoes" aria-labelledby="titulo-relacoes">
         <h2 id="titulo-relacoes">{textos.relacoes.titulo}</h2>
