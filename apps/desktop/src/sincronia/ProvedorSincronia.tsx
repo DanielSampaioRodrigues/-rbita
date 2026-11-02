@@ -147,6 +147,16 @@ export function entrarAntesDoCofre(): Promise<PerfilGoogle> {
   return loginGoogle().entrar();
 }
 
+// A conta (nome, e-mail, foto) fica guardada dentro do cofre, como dica para o
+// Google: ao reabrir o app, um toque basta para voltar a sincronizar (decisão de
+// Dan, 03/11/2026). O acesso do Google em si nunca é guardado.
+const CHAVE_CONTA = "sincronia.conta";
+let contaGuardada: PerfilGoogle | null = null;
+const guardarConta = (p: PerfilGoogle) => {
+  contaGuardada = p;
+  void api.gravarValor(CHAVE_CONTA, { nome: p.nome, email: p.email, foto: p.foto }).catch(() => undefined);
+};
+
 // O PIN fica só na memória, nunca em armazenamento do navegador.
 let continuacao: { pin: string } | null = null;
 /** A primeira tela entrou no Google e criou o cofre com este PIN: o app abre o assistente. */
@@ -167,6 +177,25 @@ export function ProvedorSincronia({ children }: { children: ReactNode }) {
   const [disponibilidade, setDisponibilidade] = useState<Disponibilidade>(() => disponibilidadeInicial(plataforma));
   const [conta, setConta] = useState<PerfilGoogle | null>(() => (plataforma === "navegador" && googleDisponivel() ? loginGoogle().perfil() : plataforma === "teste" ? contaDeTeste : null));
   const [versao, setVersao] = useState(0);
+  // Ao abrir: traz a conta guardada (para a tela e como dica); guarda a que veio da primeira tela.
+  useEffect(() => {
+    if (plataforma !== "navegador") return;
+    const atual = googleDisponivel() ? loginGoogle().perfil() : null;
+    if (atual) {
+      guardarConta(atual);
+      return;
+    }
+    let vivo = true;
+    api.lerValor(CHAVE_CONTA).then((v) => {
+      const p = v as PerfilGoogle | null;
+      if (!vivo || !p || typeof p.email !== "string") return;
+      contaGuardada = p;
+      setConta((c) => c ?? p);
+    }, () => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [plataforma]);
   const [assistente, setAssistente] = useState<{ inicio: InicioAssistente; pin?: string } | null>(() => {
     if (!continuacao) return null;
     const c = continuacao;
@@ -236,8 +265,8 @@ export function ProvedorSincronia({ children }: { children: ReactNode }) {
     if (plataforma === "navegador") {
       // Primeira coisa: chamar o Google (ainda dentro do toque).
       return loginGoogle()
-        .entrar({ dica: loginGoogle().perfil()?.email || undefined })
-        .then((p) => (setConta(p), p));
+        .entrar({ dica: loginGoogle().perfil()?.email || contaGuardada?.email || undefined })
+        .then((p) => (setConta(p), guardarConta(p), p));
     }
     if (plataforma === "teste") {
       contaDeTeste = PERFIL_TESTE;
