@@ -40,6 +40,7 @@ class MotorFalso implements ApiSincronia {
   }
   sincroniaSituacao = () => this.passo<SituacaoSincronia>(() => ({ temChave: this.temChave, aparelho: this.id }));
   sincroniaCriarChave = (senha: string) => this.passo(() => ((this.temChave = true), `envelope:${senha}`));
+  sincroniaCriarChaveConta = () => this.passo(() => ((this.temChave = true), "chave-aberta"));
   sincroniaEntrar = (envelope: string, senha: string) =>
     this.passo(() => {
       if (envelope !== `envelope:${senha}`) throw new Error("senha_errada");

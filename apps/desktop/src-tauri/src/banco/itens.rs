@@ -27,6 +27,9 @@ pub struct Ideia {
     pub etiquetas: Vec<String>,
     /// Ids das outras ideias ligadas a esta.
     pub ligadas: Vec<String>,
+    /// Cor própria da ideia (paleta das etiquetas). Sem cor própria: `None`, e a tela usa
+    /// a cor da primeira etiqueta. Guardada em `dados` (campo opcional; ideias antigas não têm).
+    pub cor: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -137,13 +140,16 @@ fn texto_limpo(texto: &str) -> Result<String, Erro> {
 
 pub fn listar_ideias(conn: &Connection) -> Result<Vec<Ideia>, Erro> {
     let mut c = conn.prepare(
-        "SELECT id, conteudo, criado_em, coalesce(json_extract(dados, '$.nota'), '') FROM item
+        "SELECT id, conteudo, criado_em, coalesce(json_extract(dados, '$.nota'), ''), json_extract(dados, '$.cor') FROM item
          WHERE tipo = 'ideia' AND estado = 'guardada' AND excluido_em IS NULL
          ORDER BY criado_em DESC, id DESC",
     )?;
     let mut ideias = c
         .query_map([], |r| {
-            Ok(Ideia { id: r.get(0)?, texto: r.get(1)?, criado_em: r.get(2)?, nota: r.get(3)?, etiquetas: vec![], ligadas: vec![] })
+            let cor: Option<String> = r.get::<_, Option<String>>(4).unwrap_or(None);
+            // Uma cor que esta versão não conhece (ex.: vinda de uma versão mais nova) vale como "sem cor".
+            let cor = cor.filter(|c| etiquetas::CORES.contains(&c.as_str()));
+            Ok(Ideia { id: r.get(0)?, texto: r.get(1)?, criado_em: r.get(2)?, nota: r.get(3)?, etiquetas: vec![], ligadas: vec![], cor })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     let guardadas: Vec<String> = ideias.iter().map(|i| i.id.clone()).collect();
@@ -156,7 +162,7 @@ pub fn listar_ideias(conn: &Connection) -> Result<Vec<Ideia>, Erro> {
 }
 
 pub fn criar_ideia(conn: &Connection, texto: &str) -> Result<Ideia, Erro> {
-    let ideia = Ideia { id: novo_id(), texto: texto_limpo(texto)?, criado_em: agora_ms(), nota: String::new(), etiquetas: vec![], ligadas: vec![] };
+    let ideia = Ideia { id: novo_id(), texto: texto_limpo(texto)?, criado_em: agora_ms(), nota: String::new(), etiquetas: vec![], ligadas: vec![], cor: None };
     conn.execute(
         "INSERT INTO item (id, tipo, conteudo, estado, criado_em, alterado_em) VALUES (?1, 'ideia', ?2, 'guardada', ?3, ?3)",
         params![ideia.id, ideia.texto, ideia.criado_em],
@@ -171,6 +177,30 @@ pub fn salvar_nota_ideia(conn: &Connection, id: &str, nota: &str) -> Result<(), 
         "UPDATE item SET dados = json_set(dados, '$.nota', ?2), alterado_em = ?3 WHERE id = ?1 AND tipo = 'ideia' AND excluido_em IS NULL",
         params![id, nota, agora_ms()],
     )?;
+    if n == 0 {
+        return Err(Erro::NaoEncontrado);
+    }
+    Ok(())
+}
+
+/// A cor própria da ideia, da paleta das etiquetas. `None` (ou texto vazio) tira a cor própria.
+pub fn definir_cor_ideia(conn: &Connection, id: &str, cor: Option<&str>) -> Result<(), Erro> {
+    let cor = cor.map(str::trim).filter(|c| !c.is_empty());
+    if let Some(c) = cor {
+        if !etiquetas::CORES.contains(&c) {
+            return Err(Erro::Interno(format!("cor desconhecida: {c}")));
+        }
+    }
+    let n = match cor {
+        Some(c) => conn.execute(
+            "UPDATE item SET dados = json_set(dados, '$.cor', ?2), alterado_em = ?3 WHERE id = ?1 AND tipo = 'ideia' AND excluido_em IS NULL",
+            params![id, c, agora_ms()],
+        )?,
+        None => conn.execute(
+            "UPDATE item SET dados = json_remove(dados, '$.cor'), alterado_em = ?2 WHERE id = ?1 AND tipo = 'ideia' AND excluido_em IS NULL",
+            params![id, agora_ms()],
+        )?,
+    };
     if n == 0 {
         return Err(Erro::NaoEncontrado);
     }
@@ -540,6 +570,43 @@ mod testes {
         let pasta = tempfile::tempdir().unwrap();
         let conn = abrir(&pasta.path().join("orbita.db"), &nova_chave()).unwrap();
         (pasta, conn)
+    }
+
+    /// O caminho do relato de Dan: ideia com nota, etiqueta criada, ligada, e a lista traz a etiqueta.
+    #[test]
+    fn ideia_ganha_etiqueta_e_a_lista_mostra() {
+        let (_p, conn) = banco();
+        let ideia = criar_ideia(&conn, "MCP").unwrap();
+        salvar_nota_ideia(&conn, &ideia.id, "MCP para programas Adobe").unwrap();
+        let app = etiquetas::criar(&conn, "APP", "rosa").unwrap();
+        etiquetas::definir_do_item(&conn, &ideia.id, &[app.id.clone()]).unwrap();
+        let lida = listar_ideias(&conn).unwrap().into_iter().find(|i| i.id == ideia.id).unwrap();
+        assert_eq!(lida.etiquetas, vec![app.id.clone()]);
+        assert_eq!(lida.nota, "MCP para programas Adobe");
+        assert_eq!(lida.cor, None);
+    }
+
+    #[test]
+    fn ideia_tem_cor_propria_opcional() {
+        let (_p, conn) = banco();
+        let ideia = criar_ideia(&conn, "farol").unwrap();
+        salvar_nota_ideia(&conn, &ideia.id, "nota fica").unwrap();
+        let alterado = |conn: &Connection| -> i64 { conn.query_row("SELECT alterado_em FROM item WHERE id = ?1", [&ideia.id], |r| r.get(0)).unwrap() };
+        conn.execute("UPDATE item SET alterado_em = 1 WHERE id = ?1", [&ideia.id]).unwrap();
+        definir_cor_ideia(&conn, &ideia.id, Some("lavanda")).unwrap();
+        assert!(alterado(&conn) > 1, "a sincronização depende do alterado_em");
+        let lida = listar_ideias(&conn).unwrap().remove(0);
+        assert_eq!((lida.cor.as_deref(), lida.nota.as_str()), (Some("lavanda"), "nota fica"));
+        assert!(definir_cor_ideia(&conn, &ideia.id, Some("vermelho-neon")).is_err());
+        assert_eq!(listar_ideias(&conn).unwrap()[0].cor.as_deref(), Some("lavanda"));
+        conn.execute("UPDATE item SET alterado_em = 1 WHERE id = ?1", [&ideia.id]).unwrap();
+        definir_cor_ideia(&conn, &ideia.id, Some("")).unwrap();
+        assert!(alterado(&conn) > 1);
+        assert_eq!(listar_ideias(&conn).unwrap()[0].cor, None);
+        // Retrocompatível: cor desconhecida guardada (versão mais nova) vale como sem cor.
+        conn.execute("UPDATE item SET dados = json_set(dados, '$.cor', 'neon') WHERE id = ?1", [&ideia.id]).unwrap();
+        assert_eq!(listar_ideias(&conn).unwrap()[0].cor, None);
+        assert!(matches!(definir_cor_ideia(&conn, "nao-existe", Some("mar")), Err(Erro::NaoEncontrado)));
     }
 
     #[test]

@@ -27,6 +27,9 @@ interface Props {
 
 const etiquetasDe = (i: Ideia, todas: Etiqueta[]) => i.etiquetas.map((id) => todas.find((e) => e.id === id)).filter((e): e is Etiqueta => !!e);
 
+/** A cor da ideia: a própria, se a pessoa escolheu; senão, a da primeira etiqueta. */
+export const corDaIdeia = (i: Ideia, todas: Etiqueta[]) => i.cor ?? etiquetasDe(i, todas)[0]?.cor;
+
 /** Sinais pequenos e escritos: etiquetas, nota e ligações. */
 function Detalhes({ ideia, etiquetas }: { ideia: Ideia; etiquetas: Etiqueta[] }) {
   const minhas = etiquetasDe(ideia, etiquetas);
@@ -40,12 +43,12 @@ function Detalhes({ ideia, etiquetas }: { ideia: Ideia; etiquetas: Etiqueta[] })
   );
 }
 
-/** Lista compacta: a cor da primeira etiqueta na borda, o texto, os sinais e "virar projeto" num toque. */
+/** Lista compacta: a cor da ideia (a própria ou a da primeira etiqueta) na borda, o texto, os sinais e "virar projeto" num toque. */
 export function ListaIdeias({ ideias, etiquetas, aoAbrir, aoVirarProjeto }: Props) {
   return (
     <ul className="lista-cartoes ideias-lista largura-leitura">
       {ideias.map((i) => {
-        const cor = etiquetasDe(i, etiquetas)[0]?.cor;
+        const cor = corDaIdeia(i, etiquetas);
         return (
           <li key={i.id} className={cor ? `ideia-item borda-${cor}` : "ideia-item"}>
             <Button className="ideia-abrir" onPress={() => aoAbrir(i)} aria-label={t.abrir(i.texto)}>
@@ -71,7 +74,7 @@ export function MuralIdeias({ ideias, etiquetas, aoAbrir }: Props) {
   return (
     <ul className="mural">
       {ideias.map((i) => {
-        const cor = etiquetasDe(i, etiquetas)[0]?.cor;
+        const cor = corDaIdeia(i, etiquetas);
         return (
           <li key={i.id}>
             <Button className={cor ? `cartao mural-cartao borda-${cor}` : "cartao mural-cartao"} onPress={() => aoAbrir(i)} aria-label={t.abrir(i.texto)}>

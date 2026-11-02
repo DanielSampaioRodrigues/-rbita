@@ -733,6 +733,11 @@ pub async fn salvar_nota_ideia(estado: State<'_, Estado>, id: String, nota: Stri
 }
 
 #[tauri::command]
+pub async fn definir_cor_ideia(estado: State<'_, Estado>, id: String, cor: Option<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::definir_cor_ideia(&s.conn, &id, cor.as_deref()))
+}
+
+#[tauri::command]
 pub async fn listar_etiquetas(estado: State<'_, Estado>) -> Result<Vec<etiquetas::Etiqueta>, Erro> {
     estado.com_sessao(|s| etiquetas::listar(&s.conn))
 }
@@ -1667,6 +1672,36 @@ pub async fn sincronia_criar_chave(estado: State<'_, Estado>, senha: String) -> 
 #[tauri::command]
 pub async fn sincronia_entrar(estado: State<'_, Estado>, envelope: String, senha: String) -> Result<(), Erro> {
     estado.com_sessao(|s| sincronia::entrar(&s.conn, &envelope, &senha))
+}
+
+/// Primeiro aparelho, modo conta (padrão, "só o Google"): cria a chave e devolve o arquivo aberto (base64).
+#[tauri::command]
+pub async fn sincronia_criar_chave_conta(estado: State<'_, Estado>) -> Result<String, Erro> {
+    estado.com_sessao(|s| sincronia::criar_chave_conta(&s.conn))
+}
+
+/// Aparelho novo, modo conta: entra a partir do arquivo aberto (base64), sem senha.
+#[tauri::command]
+pub async fn sincronia_entrar_por_conta(estado: State<'_, Estado>, arquivo: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| sincronia::entrar_por_conta(&s.conn, &arquivo))
+}
+
+/// Liga a proteção extra: envelope com senha (base64) da chave que este aparelho já tem.
+#[tauri::command]
+pub async fn sincronia_ligar_protecao(estado: State<'_, Estado>, senha: String) -> Result<String, Erro> {
+    estado.com_sessao(|s| sincronia::ligar_protecao(&s.conn, &senha))
+}
+
+/// Desliga a proteção extra: arquivo aberto (base64) da mesma chave.
+#[tauri::command]
+pub async fn sincronia_desligar_protecao(estado: State<'_, Estado>) -> Result<String, Erro> {
+    estado.com_sessao(|s| sincronia::desligar_protecao(&s.conn))
+}
+
+/// O modo do arquivo da chave (base64): "conta" ou "senha".
+#[tauri::command]
+pub async fn sincronia_modo_da_chave(estado: State<'_, Estado>, arquivo: String) -> Result<sincronia::ModoChave, Erro> {
+    estado.com_sessao(|_s| sincronia::modo_da_chave(&arquivo))
 }
 
 /// O retrato deste aparelho, trancado (base64), para gravar no Drive.

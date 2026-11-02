@@ -10,8 +10,10 @@
 //! - **Juntar**: linha a linha, vale a versão mais recente (`alterado_em`). Todos os
 //!   aparelhos decidem igual, em qualquer ordem, e juntar de novo não muda nada.
 //! - **Tranca**: uma chave de sincronização aleatória (32 bytes) tranca tudo com
-//!   XChaCha20-Poly1305; ela viaja num envelope aberto pela senha de sincronização
-//!   (Argon2id, como os backups). No aparelho, fica na tabela `config` (que não viaja).
+//!   XChaCha20-Poly1305. No Drive, ela fica aberta (modo "conta", o padrão: a conta
+//!   Google basta) ou num envelope aberto pela senha de sincronização (modo "senha", a
+//!   "proteção extra"; Argon2id, como os backups). No aparelho, fica na tabela `config`
+//!   (que não viaja).
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -129,6 +131,92 @@ pub fn abrir_envelope(bruto: &[u8], senha: &str) -> Result<Chave, Erro> {
     let kdf = env.envelope.kdf.ok_or_else(|| Erro::Interno("o envelope da sincronização está danificado".into()))?;
     let tranca = cripto::derivar(senha.as_bytes(), &env.envelope.sal, kdf, None)?;
     cripto::destrancar(&env.envelope, &tranca, ROTULO_ENVELOPE).ok_or(Erro::SenhaErrada)
+}
+
+// ── Dois modos da tranca da chave (decisão de Dan, 03/11/2026) ────────────────
+//
+// - **conta** (padrão): entrar na conta Google basta. O arquivo `chave.orbita-sync` guarda a
+//   chave de sincronização aberta, num JSON versionado e explícito:
+//   `{"formato":"orbita-chave","versao":2,"modo":"conta","chave":"<base64>"}`. Os dados
+//   continuam trancados no Drive (o Google não lê sem a chave), mas quem entrar na conta
+//   Google da pessoa consegue abrir.
+// - **senha** ("proteção extra"): o envelope de sempre (`EnvelopeSync`, versão 1), aberto
+//   pela senha de sincronização. Continua sendo gravado no formato antigo, para versões
+//   anteriores do Órbita seguirem lendo.
+//
+// Ligar ou desligar a proteção não troca a chave: só muda o jeito de guardá-la no Drive.
+// Os aparelhos que já sincronizam continuam iguais, e os pacotes antigos continuam abrindo.
+
+/// Nome do formato do arquivo da chave no modo conta.
+pub const FORMATO_CHAVE: &str = "orbita-chave";
+/// Versão do arquivo da chave no modo conta (a 1 é o envelope com senha).
+pub const VERSAO_CHAVE_CONTA: u32 = 2;
+
+/// Como a chave de sincronização está guardada no Drive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ModoChave {
+    /// Só a conta Google: a chave fica aberta no arquivo.
+    Conta,
+    /// Proteção extra: a chave fica no envelope aberto pela senha de sincronização.
+    Senha,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ChaveAberta {
+    formato: String,
+    versao: u32,
+    modo: String,
+    chave: String,
+}
+
+fn arquivo_danificado() -> Erro {
+    Erro::Interno("o arquivo da chave de sincronização está danificado".into())
+}
+
+/// O arquivo da chave no modo conta (JSON).
+pub fn arquivo_da_chave_aberta(chave: &Chave) -> Result<Vec<u8>, Erro> {
+    let c = ChaveAberta { formato: FORMATO_CHAVE.into(), versao: VERSAO_CHAVE_CONTA, modo: "conta".into(), chave: B64.encode(chave.as_ref()) };
+    serde_json::to_vec(&c).map_err(|e| Erro::Interno(e.to_string()))
+}
+
+/// Lê o arquivo da chave e diz o modo. O formato antigo (envelope versão 1) é o modo senha.
+pub fn modo_do_arquivo(bruto: &[u8]) -> Result<ModoChave, Erro> {
+    let v: Value = serde_json::from_slice(bruto).map_err(|_| arquivo_danificado())?;
+    let obj = v.as_object().ok_or_else(arquivo_danificado)?;
+    if let Some(formato) = obj.get("formato") {
+        if formato.as_str() != Some(FORMATO_CHAVE) {
+            return Err(arquivo_danificado());
+        }
+        let versao = obj.get("versao").and_then(Value::as_u64).ok_or_else(arquivo_danificado)?;
+        if versao > VERSAO_CHAVE_CONTA as u64 {
+            return Err(Erro::Interno("a chave de sincronização foi guardada por uma versão mais nova do Órbita; atualize o Órbita".into()));
+        }
+        return match obj.get("modo").and_then(Value::as_str) {
+            Some("conta") => Ok(ModoChave::Conta),
+            _ => Err(arquivo_danificado()),
+        };
+    }
+    match obj.get("versao").and_then(Value::as_u64) {
+        Some(1) if obj.contains_key("cifra") => Ok(ModoChave::Senha),
+        Some(n) if n > 1 => Err(Erro::Interno("o envelope foi feito por uma versão mais nova do Órbita; atualize o Órbita".into())),
+        _ => Err(arquivo_danificado()),
+    }
+}
+
+/// Abre o arquivo do modo conta (sem senha).
+pub fn abrir_chave_aberta(bruto: &[u8]) -> Result<Chave, Erro> {
+    if modo_do_arquivo(bruto)? != ModoChave::Conta {
+        return Err(Erro::Interno("este arquivo pede a senha de sincronização".into()));
+    }
+    let c: ChaveAberta = serde_json::from_slice(bruto).map_err(|_| arquivo_danificado())?;
+    let bytes = Zeroizing::new(B64.decode(c.chave.trim()).map_err(|_| arquivo_danificado())?);
+    if bytes.len() != 32 {
+        return Err(arquivo_danificado());
+    }
+    let mut chave = Zeroizing::new([0u8; 32]);
+    chave.copy_from_slice(&bytes);
+    Ok(chave)
 }
 
 // ── Tranca de bytes ─────────────────────────────────────────────────────────────
@@ -629,10 +717,51 @@ pub fn criar_chave(conn: &Connection, senha: &str) -> Result<String, Erro> {
     Ok(B64.encode(envelope))
 }
 
-/// Aparelho novo: abre o envelope com a senha e guarda a chave aqui.
+/// Aparelho novo: abre o arquivo da chave e guarda a chave aqui. No modo senha, com a
+/// senha; no modo conta, a senha não é usada (o arquivo já está aberto).
 pub fn entrar(conn: &Connection, envelope_b64: &str, senha: &str) -> Result<(), Erro> {
-    let chave = abrir_envelope(&b64(envelope_b64)?, senha)?;
+    let bruto = b64(envelope_b64)?;
+    let chave = match modo_do_arquivo(&bruto)? {
+        ModoChave::Conta => abrir_chave_aberta(&bruto)?,
+        ModoChave::Senha => abrir_envelope(&bruto, senha)?,
+    };
     guardar_chave(conn, &chave)
+}
+
+/// O modo do arquivo `chave.orbita-sync` (base64): "conta" ou "senha".
+pub fn modo_da_chave(arquivo_b64: &str) -> Result<ModoChave, Erro> {
+    modo_do_arquivo(&b64(arquivo_b64)?)
+}
+
+/// Primeiro aparelho, modo conta (padrão): cria a chave (ou usa a que já existe aqui) e
+/// devolve o arquivo aberto (base64) para guardar no Drive.
+pub fn criar_chave_conta(conn: &Connection) -> Result<String, Erro> {
+    let chave = match chave_guardada(conn)? {
+        Some(c) => c,
+        None => cripto::nova_chave(),
+    };
+    let arquivo = arquivo_da_chave_aberta(&chave)?;
+    guardar_chave(conn, &chave)?;
+    Ok(B64.encode(arquivo))
+}
+
+/// Aparelho novo, modo conta: guarda a chave do arquivo aberto (base64). No modo senha, recusa.
+pub fn entrar_por_conta(conn: &Connection, arquivo_b64: &str) -> Result<(), Erro> {
+    let chave = abrir_chave_aberta(&b64(arquivo_b64)?)?;
+    guardar_chave(conn, &chave)
+}
+
+/// Liga a proteção extra: a partir da chave que este aparelho já tem, o envelope com a
+/// senha (base64). A chave é a mesma: os aparelhos já conectados continuam funcionando.
+pub fn ligar_protecao(conn: &Connection, senha: &str) -> Result<String, Erro> {
+    let chave = exigir_chave(conn)?;
+    Ok(B64.encode(envelope_da_chave(&chave, senha)?))
+}
+
+/// Desliga a proteção extra: o arquivo aberto (base64) da mesma chave.
+pub fn desligar_protecao(conn: &Connection) -> Result<String, Erro> {
+    let chave = exigir_chave(conn)?;
+    Ok(B64.encode(arquivo_da_chave_aberta(&chave)?))
 }
 
 /// Desliga a sincronização neste aparelho (apaga a chave daqui; os dados ficam).
@@ -1398,5 +1527,98 @@ mod testes {
         assert_eq!(ler_config(&a, "nuvem").unwrap().as_deref(), Some("conta"));
         criar_chave(&a, "gato azul na janela").unwrap();
         assert!(esvaziar_antes_de_entrar(&a).is_err());
+    }
+
+    #[test]
+    fn modo_conta_ida_e_volta_e_entrar_sem_senha() {
+        let (_pa, a) = banco_de_teste();
+        let (_pb, b) = banco_de_teste();
+        let arquivo = criar_chave_conta(&a).unwrap();
+        // Formato explícito e versionado, com a chave aberta.
+        let json: Value = serde_json::from_slice(&B64.decode(&arquivo).unwrap()).unwrap();
+        assert_eq!(json["formato"], "orbita-chave");
+        assert_eq!(json["versao"], 2);
+        assert_eq!(json["modo"], "conta");
+        assert_eq!(modo_da_chave(&arquivo).unwrap(), ModoChave::Conta);
+        assert_eq!(B64.decode(json["chave"].as_str().unwrap()).unwrap(), chave_guardada(&a).unwrap().unwrap().to_vec());
+        // Criar de novo não troca a chave.
+        assert_eq!(criar_chave_conta(&a).unwrap(), arquivo);
+
+        entrar_por_conta(&b, &arquivo).unwrap();
+        assert!(situacao(&b).unwrap().tem_chave);
+        dados_a(&a);
+        juntar_pacote(&b, &meu_pacote(&a).unwrap()).unwrap();
+        assert_eq!(estado(&a), estado(&b));
+        // `entrar` também aceita o arquivo do modo conta (a senha é ignorada).
+        let (_pc, c) = banco_de_teste();
+        entrar(&c, &arquivo, "").unwrap();
+        juntar_pacote(&c, &meu_pacote(&a).unwrap()).unwrap();
+        assert_eq!(estado(&a), estado(&c));
+    }
+
+    #[test]
+    fn ligar_e_desligar_protecao_mantem_a_mesma_chave() {
+        let (_pa, a) = banco_de_teste();
+        let (_pb, b) = banco_de_teste();
+        let (_pc, c) = banco_de_teste();
+        assert!(ligar_protecao(&a, "gato azul na janela").is_err(), "sem chave não há o que proteger");
+        assert!(desligar_protecao(&a).is_err());
+        let aberto = criar_chave_conta(&a).unwrap();
+        entrar_por_conta(&b, &aberto).unwrap();
+        dados_a(&a);
+        let pacote_antigo = meu_pacote(&a).unwrap();
+
+        // Liga a proteção: modo senha, abre só com a senha, e é a mesma chave.
+        assert!(matches!(ligar_protecao(&a, "curta"), Err(Erro::SenhaCurta)));
+        let envelope = ligar_protecao(&a, "gato azul na janela").unwrap();
+        assert_eq!(modo_da_chave(&envelope).unwrap(), ModoChave::Senha);
+        assert!(!String::from_utf8(B64.decode(&envelope).unwrap()).unwrap().contains(&B64.encode(chave_guardada(&a).unwrap().unwrap().as_ref())));
+        assert!(entrar_por_conta(&c, &envelope).is_err(), "modo senha não entra sem senha");
+        assert!(matches!(entrar(&c, &envelope, "senha errada errada"), Err(Erro::SenhaErrada)));
+        assert!(!situacao(&c).unwrap().tem_chave);
+        entrar(&c, &envelope, "gato azul na janela").unwrap();
+        assert_eq!(chave_guardada(&c).unwrap().unwrap().to_vec(), chave_guardada(&a).unwrap().unwrap().to_vec());
+        // O B (entrou antes, pelo modo conta) continua abrindo o que vem do A, e o pacote antigo também abre.
+        juntar_pacote(&b, &meu_pacote(&a).unwrap()).unwrap();
+        juntar_pacote(&c, &pacote_antigo).unwrap();
+        assert_eq!(estado(&a), estado(&c));
+
+        // Desliga: o arquivo aberto volta, com a mesma chave.
+        let de_novo = desligar_protecao(&c).unwrap();
+        assert_eq!(modo_da_chave(&de_novo).unwrap(), ModoChave::Conta);
+        assert_eq!(de_novo, aberto, "a mesma chave dá o mesmo arquivo aberto");
+        let (_pd, d) = banco_de_teste();
+        entrar_por_conta(&d, &de_novo).unwrap();
+        juntar_pacote(&d, &pacote_antigo).unwrap();
+        juntar_pacote(&d, &meu_pacote(&b).unwrap()).unwrap();
+        assert_eq!(estado(&a), estado(&d));
+    }
+
+    #[test]
+    fn arquivo_do_formato_antigo_e_lido_como_modo_senha() {
+        let (_pa, a) = banco_de_teste();
+        let (_pb, b) = banco_de_teste();
+        // `criar_chave` grava o envelope do jeito de antes (versão 1, sem "formato").
+        let antigo = criar_chave(&a, "gato azul na janela").unwrap();
+        let json: Value = serde_json::from_slice(&B64.decode(&antigo).unwrap()).unwrap();
+        assert_eq!(json["versao"], 1);
+        assert!(json.get("formato").is_none());
+        assert_eq!(modo_da_chave(&antigo).unwrap(), ModoChave::Senha);
+        entrar(&b, &antigo, "gato azul na janela").unwrap();
+        assert!(situacao(&b).unwrap().tem_chave);
+
+        // Arquivos estranhos: danificado, ou de versão mais nova (pede para atualizar).
+        let enc = |v: Value| B64.encode(serde_json::to_vec(&v).unwrap());
+        assert!(modo_da_chave(&enc(serde_json::json!({"formato": "outro", "versao": 2, "modo": "conta"}))).is_err());
+        assert!(modo_da_chave(&enc(serde_json::json!({"formato": "orbita-chave", "versao": 2, "modo": "estranho"}))).is_err());
+        let nova = modo_da_chave(&enc(serde_json::json!({"formato": "orbita-chave", "versao": 3, "modo": "conta"}))).unwrap_err();
+        assert!(nova.to_string().contains("atualize"), "{nova}");
+        assert!(modo_da_chave(&enc(serde_json::json!({"versao": 1}))).is_err());
+        assert!(modo_da_chave(&B64.encode(b"nada")).is_err());
+        // Chave aberta com tamanho errado não entra.
+        let (_pc, c) = banco_de_teste();
+        let curta = enc(serde_json::json!({"formato": "orbita-chave", "versao": 2, "modo": "conta", "chave": B64.encode([1u8; 8])}));
+        assert!(entrar_por_conta(&c, &curta).is_err());
+        assert!(!situacao(&c).unwrap().tem_chave);
     }
 }

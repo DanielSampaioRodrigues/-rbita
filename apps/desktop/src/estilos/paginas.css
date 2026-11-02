@@ -574,8 +574,11 @@
 .ideia-cartao-quadro { width: 100%; text-align: left; font: inherit; color: var(--cor-texto); cursor: pointer; }
 
 .grupo-campos { border: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
-.nova-etiqueta summary { cursor: pointer; color: var(--cor-destaque); font-weight: 600; width: fit-content; }
-.nova-etiqueta[open] summary { margin-bottom: var(--espaco-3); }
+/* Criar etiqueta: sempre à vista, num quadro suave para não se misturar com as etiquetas existentes. */
+.nova-etiqueta { border: 1px solid var(--cor-borda-suave, var(--cor-borda)); border-radius: var(--canto); padding: var(--espaco-3); margin-top: var(--espaco-2); }
+.nova-etiqueta > legend { float: left; width: 100%; padding: 0; margin-bottom: var(--espaco-2); }
+.nova-etiqueta > legend + * { clear: both; }
+.etiqueta-cor.cor-nenhuma { background: transparent; border: 1.5px dashed var(--cor-borda-controle); box-sizing: border-box; }
 .cores-etiqueta { display: flex; flex-wrap: wrap; gap: var(--espaco-2); }
 .cor-opcao { display: inline-flex; align-items: center; gap: 0.4em; padding: var(--espaco-1) var(--espaco-2); border: 1px solid var(--cor-borda-controle); border-radius: var(--canto); cursor: pointer; }
 .cor-opcao[data-selected] { border-color: var(--cor-destaque); border-width: 2px; font-weight: 650; }

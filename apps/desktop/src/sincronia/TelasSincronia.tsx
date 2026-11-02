@@ -1,11 +1,13 @@
 // Telas da etapa 2d (ver docs/decisoes/0012-sincronizacao.md e a especificação,
 // "Entrar com Google e sincronizar"): ligar no primeiro aparelho, entrar num aparelho
 // novo (senha, ou PIN + 6 perguntas), PIN igual em todos os aparelhos e juntar os dados.
+// Desde 03/11/2026 (decisão de Dan) a senha de sincronização é opcional: o padrão é "só o
+// Google"; a "proteção extra" (senha + recuperação por PIN e 6 perguntas) é uma caixinha.
 // Um passo por vez, sem tempo limite, sem animação (princípios 2 e 7).
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Button, Dialog, Form, Heading, Label, Modal, ModalOverlay, Radio, RadioGroup } from "react-aria-components";
+import { Button, Checkbox, Dialog, Form, Heading, Label, Modal, ModalOverlay, Radio, RadioGroup } from "react-aria-components";
 import { avaliarPin, avaliarSenha } from "../acesso/validacao";
-import { api, comoErro, escolherOndeSalvarBackup, type Confirmacao, type ModoAbrir } from "../api";
+import { api, comoErro, escolherOndeSalvarBackup, type Confirmacao, type ModoAbrir, type ModoChaveSincronia } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { useConfirmarIdentidade } from "../componentes/ConfirmarIdentidade";
 import { Check, Cloud, Lock, RefreshCw, Smartphone } from "../icones";
@@ -15,9 +17,11 @@ import { AcessoNegado, SemInternet } from "./armazenamento";
 import {
   avaliarPerguntas,
   conferirPin,
+  entrarPelaConta,
   entrarPorRecuperacao,
   guardarPin,
   guardarRecuperacao,
+  ligarProtecao,
   olharPasta,
   perguntasDaPasta,
   QUANTAS_PERGUNTAS,
@@ -30,11 +34,12 @@ import { useSincronia } from "./ProvedorSincronia";
 const t = textos.sincronia;
 
 /** Por onde o assistente começa. */
-export type InicioAssistente = "ligar" | "perguntas" | "senhaNova";
+export type InicioAssistente = "ligar" | "perguntas" | "senhaNova" | "protecao";
 
 type Passo =
   | "conta"
   | "olhando"
+  | "protecao"
   | "senhaNova"
   | "pinPrimeiro"
   | "perguntas"
@@ -151,7 +156,7 @@ interface PropsAssistente {
 export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAssistente) {
   const s = useSincronia();
   const arm = s.armazenamento;
-  const [passo, setPasso] = useState<Passo>(inicio === "perguntas" ? "perguntas" : inicio === "senhaNova" ? "senhaNova" : "conta");
+  const [passo, setPasso] = useState<Passo>(inicio === "perguntas" ? "perguntas" : inicio === "senhaNova" || inicio === "protecao" ? "senhaNova" : "conta");
   const [caminho, setCaminho] = useState<"primeiro" | "novo" | null>(inicio === "ligar" ? null : "primeiro");
   const [cofre, setCofre] = useState<{ modo: ModoAbrir | null; temSenha: boolean }>({ modo: pinConhecido ? "pin" : null, temSenha: false });
   const [temRecuperacao, setTemRecuperacao] = useState(false);
@@ -170,6 +175,11 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
   const [recPerguntas, setRecPerguntas] = useState<string[] | null>(null);
   const [recRespostas, setRecRespostas] = useState<string[]>(vazias);
   const [pelaRecuperacao, setPelaRecuperacao] = useState(false);
+  /** Primeiro aparelho: a "proteção extra" (senha de sincronização). Desligada por padrão. */
+  const [protecao, setProtecao] = useState(false);
+  /** Aparelho novo: como a chave está guardada na pasta ("conta": entra sem senha). */
+  const [modoPasta, setModoPasta] = useState<ModoChaveSincronia | null>(null);
+  const [pelaConta, setPelaConta] = useState(false);
   const [senhaNova, setSenhaNova] = useState<string | null>(null);
   /** O PIN conferido com o dos outros aparelhos (ou null: ainda não há resumo na pasta). */
   const [pinNaPasta, setPinNaPasta] = useState<boolean | null>(null);
@@ -237,13 +247,42 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
       try {
         const o = await olharPasta(arm);
         setTemRecuperacao(o.temRecuperacao);
-        setCaminho(o.temChave ? "novo" : "primeiro");
-        setPasso(o.temChave ? "senha" : "senhaNova");
+        if (!o.temChave) {
+          setCaminho("primeiro");
+          setPasso("protecao");
+          return;
+        }
+        setCaminho("novo");
+        setInfo(null);
+        await entrarNaExistente();
       } catch (e) {
         setPasso("conta");
         throw e;
       }
     });
+  /**
+   * Já há chave na pasta: no modo conta, entra direto (sem senha) e segue para o PIN;
+   * no modo senha, vai para "Digite a senha de sincronização".
+   */
+  async function entrarNaExistente() {
+    if (!arm) throw new Error(t.indisponivel);
+    const modo = await entrarPelaConta(arm, api);
+    modoDaChaveAgora.current = modo;
+    setModoPasta(modo);
+    if (modo === "conta") {
+      entrouSemConcluir.current = true;
+      setPelaConta(true);
+      setPelaRecuperacao(false);
+      setPasso("pinAparelho");
+    } else if (modo === "senha") {
+      setPasso("senha");
+    } else {
+      // A chave sumiu da pasta enquanto isso: começa como primeiro aparelho.
+      setCaminho("primeiro");
+      setPasso("protecao");
+    }
+  }
+  const modoDaChaveAgora = useRef<ModoChaveSincronia | null>(null);
   const pulouConta = useRef(false);
   useEffect(() => {
     if (inicio === "ligar" && pinConhecido && s.conta && arm && !pulouConta.current) {
@@ -264,18 +303,27 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
   };
 
   // ── Numeração dos passos ──
-  const totalPrimeiro = pinConhecido ? 3 : 4;
-  const totalNovo = 2 + (dadosLocais > 0 ? 1 : 0) + 1;
+  // O total se ajusta: sem a proteção extra, não há senha nem perguntas; no modo conta, o
+  // aparelho novo não tem o passo da senha.
+  const ordemPrimeiro: Passo[] = [
+    "conta",
+    "protecao",
+    ...(protecao ? (["senhaNova"] as Passo[]) : []),
+    ...(pinConhecido ? [] : (["pinPrimeiro"] as Passo[])),
+    ...(protecao ? (["perguntas"] as Passo[]) : []),
+  ];
+  const ordemNovo: Passo[] = ["conta", ...(modoPasta === "conta" ? [] : (["senha"] as Passo[])), "pinAparelho", ...(dadosLocais > 0 ? (["juntar"] as Passo[]) : [])];
+  const totalPrimeiro = ordemPrimeiro.length;
+  const totalNovo = ordemNovo.length;
   const numero = (p: Passo): string | undefined => {
     if (inicio !== "ligar") return undefined;
     if (p === "conta") return t.passo(1, caminho === "novo" ? totalNovo : totalPrimeiro);
     if (caminho === "primeiro") {
-      const ordem: Passo[] = pinConhecido ? ["conta", "senhaNova", "perguntas"] : ["conta", "senhaNova", "pinPrimeiro", "perguntas"];
-      const i = ordem.indexOf(p === "pularPerguntas" ? "perguntas" : p);
+      const i = ordemPrimeiro.indexOf(p === "pularPerguntas" ? "perguntas" : p);
       return i >= 0 ? t.passo(i + 1, totalPrimeiro) : undefined;
     }
     if (caminho === "novo") {
-      const ordem: Passo[] = ["conta", "senha", "pinAparelho", ...(dadosLocais > 0 ? (["juntar"] as Passo[]) : [])];
+      const ordem = ordemNovo;
       const i = ordem.indexOf(p === "esqueci" || p === "senhaDepois" ? "senha" : p);
       return i >= 0 ? t.passo(i + 1, totalNovo) : undefined;
     }
@@ -302,9 +350,10 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
 
   async function ligarPrimeiro(com: boolean = comPerguntas) {
     if (!arm) return;
+    com = com && protecao; // sem a proteção extra não há perguntas (elas abrem o envelope da senha)
     setComPerguntas(com);
     const lista: Etapa[] = [
-      { id: "chave", texto: t.etapaChave, estado: "esperando" },
+      { id: "chave", texto: protecao ? t.etapaChave : t.etapaChaveConta, estado: "esperando" },
       { id: "pin", texto: t.etapaPin, estado: "esperando" },
       ...(com ? [{ id: "perguntas", texto: t.etapaPerguntas, estado: "esperando" as const }] : []),
       { id: "primeira", texto: t.etapaPrimeira, estado: "esperando" },
@@ -313,7 +362,7 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
     setPasso("trabalhando");
     setErro(null);
     try {
-      await etapa("chave", () => ligarComoPrimeiro(arm, api, senha));
+      await etapa("chave", () => ligarComoPrimeiro(arm, api, protecao ? senha : null));
       await etapa("pin", () => guardarPin(arm, api, pin));
       if (com) await etapa("perguntas", () => guardarRecuperacao(arm, api, pin, perguntas, respostas));
       await etapa("primeira", async () => {
@@ -328,8 +377,14 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
         setTemRecuperacao((await olharPasta(arm).catch(() => null))?.temRecuperacao ?? false);
         setSenha("");
         setSenha2("");
-        setInfo(t.jaExiste);
-        setPasso("senha");
+        try {
+          await entrarNaExistente();
+        } catch (x) {
+          setPasso("conta");
+          setErro(mensagemDe(x));
+          return;
+        }
+        setInfo(modoDaChaveAgora.current === "conta" ? t.jaExisteConta : t.jaExiste);
         return;
       }
       setErro(t.falhou(mensagemDe(e)));
@@ -339,7 +394,9 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
   /** Entra de novo (depois de esvaziar), do mesmo jeito que entrou antes. */
   async function entrarDeNovo() {
     if (!arm) return;
-    if (pelaRecuperacao) await entrarPorRecuperacao(arm, api, pin, recRespostas);
+    if (pelaConta) {
+      if ((await entrarPelaConta(arm, api)) !== "conta") throw new Error(t.senhaTexto);
+    } else if (pelaRecuperacao) await entrarPorRecuperacao(arm, api, pin, recRespostas);
     else await entrarComSenha(arm, api, senha);
   }
 
@@ -455,9 +512,46 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
         <p role="status">{t.olhando}</p>
       </>
     );
+  } else if (passo === "protecao") {
+    corpo = (
+      <Form
+        className="formulario"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (ocupado) return;
+          if (protecao) ir("senhaNova");
+          else if (pinConhecido) void ligarPrimeiro(false);
+          else ir("pinPrimeiro");
+        }}
+      >
+        <Topo icone={<Lock size="1.4em" strokeWidth={1.75} />} passo={numero("protecao")} titulo={t.protecaoTitulo} tituloRef={tituloRef} />
+        <p>{t.protecaoTexto}</p>
+        <div className="sinc-protecao">
+          <Checkbox className="caixa" isSelected={protecao} onChange={setProtecao} aria-describedby="sinc-protecao-troca">
+            <span className="caixa-quadrado" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
+            </span>
+            <span className="sinc-protecao-rotulo">{t.protecaoCaixa}</span>
+          </Checkbox>
+          <ul id="sinc-protecao-troca" className="sinc-protecao-troca">
+            <li>{t.protecaoSem}</li>
+            <li>{t.protecaoCom}</li>
+          </ul>
+        </div>
+        <p className="texto-suave pequeno">{t.protecaoDepois}</p>
+        <Aviso>{erro}</Aviso>
+        <div className="janela-acoes">
+          {botaoCancelar}
+          <Button className="botao principal" type="submit" isDisabled={ocupado}>
+            {ocupado ? textos.comum.aguarde : t.continuar}
+          </Button>
+        </div>
+      </Form>
+    );
   } else if (passo === "senhaNova") {
     const av = avaliarSenha(senha, senha2);
     const soTrocar = inicio === "senhaNova";
+    const ligandoProtecao = inicio === "protecao";
     corpo = (
       <Form
         className="formulario"
@@ -471,18 +565,31 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
               setInfo(t.senhaTrocada);
               setPasso("pronto");
             });
+          } else if (ligandoProtecao) {
+            // Liga a proteção já (mesma chave) e oferece as perguntas em seguida.
+            void fazer(async () => {
+              if (!arm) throw new Error(t.indisponivel);
+              await ligarProtecao(arm, api, senha);
+              setPasso("perguntas");
+            });
           } else ir(pinConhecido ? "perguntas" : "pinPrimeiro");
         }}
       >
-        <Topo icone={<Lock size="1.4em" strokeWidth={1.75} />} passo={numero("senhaNova")} titulo={soTrocar ? t.senhaNovaAjustesTitulo : t.senhaNovaTitulo} tituloRef={tituloRef} />
-        {soTrocar ? <p>{t.senhaNovaAjustesTexto}</p> : <Pontos itens={t.senhaNovaExplica} />}
+        <Topo
+          icone={<Lock size="1.4em" strokeWidth={1.75} />}
+          passo={numero("senhaNova")}
+          titulo={soTrocar ? t.senhaNovaAjustesTitulo : ligandoProtecao ? t.ligarProtecaoTitulo : t.senhaNovaTitulo}
+          tituloRef={tituloRef}
+        />
+        {soTrocar ? <p>{t.senhaNovaAjustesTexto}</p> : ligandoProtecao ? <p>{t.ligarProtecaoTexto}</p> : <Pontos itens={t.senhaNovaExplica} />}
         <Campo rotulo={t.senhaRotulo} valor={senha} aoMudar={setSenha} secreto autoComplete="new-password" descricao={av.dica ?? t.senhaDica} />
         <Campo rotulo={t.senhaConfirmar} valor={senha2} aoMudar={setSenha2} secreto autoComplete="new-password" />
         <Aviso>{av.erro ?? erro}</Aviso>
         <div className="janela-acoes">
+          {inicio === "ligar" && <Button className="botao separado" onPress={() => ir("protecao")}>{t.voltar}</Button>}
           {botaoCancelar}
           <Button className="botao principal" type="submit" isDisabled={!av.ok || ocupado}>
-            {ocupado ? textos.comum.aguarde : soTrocar ? t.criarSenha : t.continuar}
+            {ocupado ? textos.comum.aguarde : soTrocar ? t.criarSenha : ligandoProtecao ? t.ligarProtecaoBotao : t.continuar}
           </Button>
         </div>
       </Form>
@@ -497,30 +604,35 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
         onSubmit={(e) => {
           e.preventDefault();
           if (!avPin.ok || ocupado) return;
-          if (!jaUsaPin) return ir("perguntas");
+          // Sem a proteção extra, o PIN é o último passo: liga em seguida.
+          const seguir = () => (protecao ? ir("perguntas") : void ligarPrimeiro(false));
+          if (!jaUsaPin) return seguir();
           // Confere com o PIN deste aparelho (sem mudar nada).
           void fazer(async () => {
             await api.verPalavras({ tipo: "pin", valor: pin });
-            setPasso("perguntas");
+            seguir();
           });
         }}
       >
         <Topo icone={<Smartphone size="1.4em" strokeWidth={1.75} />} passo={numero("pinPrimeiro")} titulo={jaUsaPin ? t.pinConfirmarTitulo : t.pinEscolherTitulo} tituloRef={tituloRef} />
         <p>{jaUsaPin ? t.pinConfirmarTexto : t.pinEscolherTexto(comoAbre)}</p>
-        <p className="texto-suave pequeno">{t.pinParaQue}</p>
+        {protecao && <p className="texto-suave pequeno">{t.pinParaQue}</p>}
         <Campo rotulo={textos.pin.rotulo} valor={pin} aoMudar={setPin} secreto numerico maximo={8} descricao={textos.pin.dica} />
         {!jaUsaPin && <Campo rotulo={textos.pin.confirmar} valor={pin2} aoMudar={setPin2} secreto numerico maximo={8} />}
         <Aviso>{avPin.erro ?? erro}</Aviso>
         <div className="janela-acoes">
-          <Button className="botao separado" onPress={() => ir("senhaNova")}>{t.voltar}</Button>
+          <Button className="botao separado" onPress={() => ir(protecao ? "senhaNova" : "protecao")}>{t.voltar}</Button>
           {botaoCancelar}
-          <Button className="botao principal" type="submit" isDisabled={!avPin.ok || ocupado}>{ocupado ? t.conferindo : t.continuar}</Button>
+          <Button className="botao principal" type="submit" isDisabled={!avPin.ok || ocupado}>
+            {ocupado ? t.conferindo : protecao ? t.continuar : t.ligarAgora}
+          </Button>
         </div>
       </Form>
     );
   } else if (passo === "perguntas") {
     const av = avaliarPerguntas(perguntas, respostas);
-    const soPerguntas = inicio === "perguntas";
+    // Ajustes: "Fazer as perguntas" ou logo depois de "Ligar a proteção extra".
+    const soPerguntas = inicio === "perguntas" || inicio === "protecao";
     const pinOk = /^\d{4,8}$/.test(pin);
     const pronto = av.ok && (!soPerguntas || pinOk);
     const aviso = soPerguntas && pin && !pinOk ? textos.pin.soNumeros : av.repetidas ? t.perguntasRepetidas : null;
@@ -540,6 +652,7 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
             if (igual === false) throw new Error(t.pinDiferente);
             if (igual === null) await guardarPin(arm, api, pin);
             await guardarRecuperacao(arm, api, pin, perguntas, respostas);
+            setComPerguntas(true);
             setInfo(t.perguntasGuardadas);
             setPasso("pronto");
           });
@@ -578,7 +691,21 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
               {t.voltar}
             </Button>
           )}
-          {soPerguntas ? botaoCancelar : <Button className="botao" onPress={() => ir("pularPerguntas")}>{t.fazerDepois}</Button>}
+          {inicio === "protecao" ? (
+            <Button
+              className="botao"
+              onPress={() => {
+                setComPerguntas(false);
+                ir("pronto");
+              }}
+            >
+              {t.fazerDepois}
+            </Button>
+          ) : soPerguntas ? (
+            botaoCancelar
+          ) : (
+            <Button className="botao" onPress={() => ir("pularPerguntas")}>{t.fazerDepois}</Button>
+          )}
           <Button className="botao principal" type="submit" isDisabled={!pronto || ocupado}>
             {ocupado ? textos.comum.aguarde : soPerguntas ? t.guardarPerguntas : t.guardarELigar}
           </Button>
@@ -728,6 +855,7 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
         cofre={cofre}
         pinConhecido={pinConhecido}
         pinDaRecuperacao={pelaRecuperacao ? pin : null}
+        aviso={pelaConta ? info : null}
         aoCancelar={fechar}
         conferir={async (p) => (arm ? conferirPin(arm, api, p) : null)}
         aoConcluir={(p, naPasta) => {
@@ -804,15 +932,17 @@ export function AssistenteSincronia({ inicio, pinConhecido, aoFechar }: PropsAss
   } else {
     // pronto
     const soAjuste = inicio !== "ligar";
+    const tituloAjuste = inicio === "protecao" ? t.protecaoLigadaAviso : (info ?? t.prontoTitulo);
     corpo = (
       <>
-        <Topo icone={<Check size="1.4em" strokeWidth={2} />} titulo={soAjuste ? (info ?? t.prontoTitulo) : t.prontoTitulo} tituloRef={tituloRef} />
+        <Topo icone={<Check size="1.4em" strokeWidth={2} />} titulo={soAjuste ? tituloAjuste : t.prontoTitulo} tituloRef={tituloRef} />
+        {inicio === "protecao" && <p>{comPerguntas ? t.perguntasGuardadas : t.prontoSemPerguntas}</p>}
         {!soAjuste && (
           <>
             {etapas.length > 0 && <Progresso etapas={etapas} />}
-            <p>{caminho === "novo" ? t.prontoNovo : t.prontoPrimeiro}</p>
+            <p>{caminho === "novo" ? t.prontoNovo : protecao ? t.prontoPrimeiro : t.prontoPrimeiroConta}</p>
             <p className="texto-suave">{t.prontoAviso}</p>
-            {caminho === "primeiro" && !comPerguntas && <p className="texto-suave pequeno">{t.prontoSemPerguntas}</p>}
+            {caminho === "primeiro" && protecao && !comPerguntas && <p className="texto-suave pequeno">{t.prontoSemPerguntas}</p>}
           </>
         )}
         <div className="janela-acoes">
@@ -864,11 +994,14 @@ function PassoPinAparelho({
   cofre,
   pinConhecido,
   pinDaRecuperacao,
+  aviso,
   aoCancelar,
   conferir,
   aoConcluir,
 }: {
   topo: ReactNode;
+  /** Recado calmo no alto (ex.: outro aparelho ligou antes e este entrou na mesma sincronização). */
+  aviso?: string | null;
   cofre: { modo: ModoAbrir | null; temSenha: boolean };
   pinConhecido?: string;
   pinDaRecuperacao: string | null;
@@ -919,6 +1052,7 @@ function PassoPinAparelho({
     return (
       <>
         {topo}
+        {aviso && <Aviso tipo="info">{aviso}</Aviso>}
         <p role="status">{t.conferindo}</p>
       </>
     );
@@ -938,6 +1072,7 @@ function PassoPinAparelho({
       }}
     >
       {topo}
+      {aviso && <Aviso tipo="info">{aviso}</Aviso>}
       <p>{diferente && pinConhecido ? t.pinAparelhoDiferente : sabido ? t.pinAparelhoConhecido : t.pinAparelhoTexto}</p>
       {!sabido && (
         <>

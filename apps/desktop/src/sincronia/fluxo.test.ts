@@ -5,9 +5,13 @@ import {
   ARQUIVO_RECUPERACAO,
   avaliarPerguntas,
   conferirPin,
+  desligarProtecao,
+  entrarPelaConta,
   entrarPorRecuperacao,
   guardarPin,
   guardarRecuperacao,
+  ligarProtecao,
+  modoDaPasta,
   normalizarResposta,
   olharPasta,
   perguntasDaPasta,
@@ -26,13 +30,33 @@ class MotorChave implements ApiFluxo {
   sincroniaCriarChave = async (senha: string) => {
     this.criarChave(senha);
     this.chave ??= `chave-de-${this.id}`;
-    return JSON.stringify({ chave: this.chave, senha });
+    return JSON.stringify({ modo: "senha", chave: this.chave, senha });
+  };
+  sincroniaCriarChaveConta = async () => {
+    this.criarChave(null);
+    this.chave ??= `chave-de-${this.id}`;
+    return JSON.stringify({ modo: "conta", chave: this.chave });
   };
   sincroniaEntrar = async (envelope: string, senha: string) => {
-    const e = JSON.parse(envelope) as { chave: string; senha: string };
-    if (e.senha !== senha) throw new Error("senha_errada");
+    const e = JSON.parse(envelope) as { modo: string; chave: string; senha?: string };
+    if (e.modo === "senha" && e.senha !== senha) throw new Error("senha_errada");
     this.chave = e.chave;
   };
+  sincroniaEntrarPorConta = async (arquivo: string) => {
+    const e = JSON.parse(arquivo) as { modo: string; chave: string };
+    if (e.modo !== "conta") throw new Error("este arquivo pede a senha de sincronização");
+    this.chave = e.chave;
+  };
+  sincroniaLigarProtecao = async (senha: string) => {
+    if (!this.chave) throw new Error("sem chave");
+    if (senha.length < 12) throw new Error("senha_curta");
+    return JSON.stringify({ modo: "senha", chave: this.chave, senha });
+  };
+  sincroniaDesligarProtecao = async () => {
+    if (!this.chave) throw new Error("sem chave");
+    return JSON.stringify({ modo: "conta", chave: this.chave });
+  };
+  sincroniaModoDaChave = async (arquivo: string) => (JSON.parse(arquivo) as { modo: "conta" | "senha" }).modo;
   sincroniaCriarRecuperacao = async (pin: string, perguntas: string[], respostas: string[]) => {
     if (!this.chave) throw new Error("sem chave");
     return JSON.stringify({ perguntas, segredo: [pin, ...respostas.map(normalizarResposta)].join("|"), chave: this.chave });
@@ -141,5 +165,71 @@ describe("ligar a sincronização (etapa 2d)", () => {
     expect(await m.sincronizar()).toBeNull();
     expect(api.sincroniaSituacao).not.toHaveBeenCalled();
     expect(pasta.contas.listar).toBe(0);
+  });
+});
+
+describe("dois modos da chave (decisão de Dan, 03/11/2026)", () => {
+  it("padrão \"só o Google\": o primeiro liga sem senha e o aparelho novo entra sem senha", async () => {
+    const pasta = new PastaNaMemoria();
+    const a = new MotorChave("a");
+    const b = new MotorChave("b");
+    expect(await modoDaPasta(pasta, a)).toBeNull();
+    expect(await entrarPelaConta(pasta, b)).toBeNull();
+    await ligarComoPrimeiro(pasta, a, null);
+    expect(a.criarChave).toHaveBeenCalledWith(null);
+    expect(await modoDaPasta(pasta, b)).toBe("conta");
+    expect(await entrarPelaConta(pasta, b)).toBe("conta");
+    expect(b.chave).toBe(a.chave);
+  });
+
+  it("proteção extra: o aparelho novo precisa da senha; sem ela, nada muda aqui", async () => {
+    const pasta = new PastaNaMemoria();
+    const a = new MotorChave("a");
+    const b = new MotorChave("b");
+    await ligarComoPrimeiro(pasta, a, "senha comprida de teste");
+    expect(await modoDaPasta(pasta, b)).toBe("senha");
+    expect(await entrarPelaConta(pasta, b)).toBe("senha");
+    expect(b.chave).toBeNull();
+    await b.sincroniaEntrar(pasta.arquivos.get(ARQUIVO_CHAVE)!.conteudo, "senha comprida de teste");
+    expect(b.chave).toBe(a.chave);
+  });
+
+  it("ligar como primeiro sem senha também recusa se a pasta já tem chave (de qualquer modo)", async () => {
+    const pasta = new PastaNaMemoria();
+    const a = new MotorChave("a");
+    const b = new MotorChave("b");
+    await ligarComoPrimeiro(pasta, a, "senha comprida de teste");
+    const envelope = pasta.arquivos.get(ARQUIVO_CHAVE)!.conteudo;
+    await expect(ligarComoPrimeiro(pasta, b, null)).rejects.toBeInstanceOf(JaExisteChave);
+    expect(b.criarChave).not.toHaveBeenCalled();
+    expect(pasta.arquivos.get(ARQUIVO_CHAVE)!.conteudo).toBe(envelope);
+  });
+
+  it("ligar e desligar a proteção mantêm a mesma chave; quem já entrou continua", async () => {
+    const pasta = new PastaNaMemoria();
+    const a = new MotorChave("a");
+    const b = new MotorChave("b");
+    await expect(ligarProtecao(pasta, a, "senha comprida de teste")).rejects.toThrow();
+    await ligarComoPrimeiro(pasta, a, null);
+    await entrarPelaConta(pasta, b);
+    const chave = a.chave;
+
+    await ligarProtecao(pasta, a, "senha comprida de teste");
+    expect(await modoDaPasta(pasta, a)).toBe("senha");
+    expect(a.chave).toBe(chave);
+    expect(b.chave).toBe(chave); // o B não precisa fazer nada
+    const c = new MotorChave("c");
+    expect(await entrarPelaConta(pasta, c)).toBe("senha");
+    await expect(c.sincroniaEntrar(pasta.arquivos.get(ARQUIVO_CHAVE)!.conteudo, "outra senha qualquer")).rejects.toThrow("senha_errada");
+    // "Esqueci a senha" continua valendo no modo senha.
+    await guardarRecuperacao(pasta, a, "2580", PERGUNTAS, RESPOSTAS);
+    await entrarPorRecuperacao(pasta, c, "2580", RESPOSTAS);
+    expect(c.chave).toBe(chave);
+
+    await desligarProtecao(pasta, c);
+    expect(await modoDaPasta(pasta, a)).toBe("conta");
+    const d = new MotorChave("d");
+    expect(await entrarPelaConta(pasta, d)).toBe("conta");
+    expect(d.chave).toBe(chave);
   });
 });

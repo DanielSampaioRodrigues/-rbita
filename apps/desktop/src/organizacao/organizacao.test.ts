@@ -65,4 +65,39 @@ describe("organização: quadros e listas (simulação)", () => {
     expect(await api.listarColunas(q.id)).toHaveLength(0);
     expect(await api.listarCartoesOrg(q.id)).toHaveLength(0);
   });
+
+  it("quadro novo sem tipo vira quadro; vista, etiquetas e fundo ficam guardados", async () => {
+    const q = await api.salvarQuadro({ id: "", nome: "Sem tipo", estilo: "quadro", criadoEm: 0 });
+    expect(q.vista).toBe("quadro");
+    expect(await api.listarColunas(q.id)).toHaveLength(3);
+    await api.salvarQuadro({ ...q, vista: "lista", etiquetas: [{ id: "", nome: " Urgente ", cor: "pessego" }], fundo: { tipo: "gradiente", valor: "aurora" } });
+    const lido = (await api.listarQuadros()).find((x) => x.id === q.id)!;
+    expect([lido.vista, lido.etiquetas?.[0].nome, lido.fundo?.tipo]).toEqual(["lista", "Urgente", "gradiente"]);
+    expect(lido.etiquetas?.[0].id).toBeTruthy();
+    const antiga = await api.salvarQuadro(quadro("Lista antiga", "lista"));
+    expect(antiga.vista).toBe("lista");
+  });
+
+  it("cartão completo: descrição, checklist, etiquetas, capa, hora e arquivado", async () => {
+    const q = await api.salvarQuadro(quadro("Completo", "quadro"));
+    const col = (await api.listarColunas(q.id))[0];
+    const c = await api.salvarCartaoOrg({
+      id: "", colunaId: col.id, texto: "Relatório", feito: false, cor: "", prazo: "2026-11-05", hora: "14:30", ordem: 0, criadoEm: 0,
+      descricao: "**Importante**", etiquetas: ["e1", "e1"], capa: { tipo: "cor", valor: "ceu" },
+      checklists: [{ id: "", nome: "Passos", itens: [{ id: "", texto: "um", feito: true }, { id: "", texto: " ", feito: false }] }],
+    });
+    const lido = (await api.listarCartoesOrg(q.id)).find((x) => x.id === c.id)!;
+    expect([lido.descricao, lido.hora, lido.etiquetas, lido.capa?.valor, lido.checklists?.[0].itens.length, lido.arquivado]).toEqual(["**Importante**", "14:30", ["e1"], "ceu", 1, false]);
+    await api.salvarCartaoOrg({ ...lido, arquivado: true, prazo: "" });
+    const arq = (await api.listarCartoesOrg(q.id)).find((x) => x.id === c.id)!;
+    expect([arq.arquivado, arq.hora]).toEqual([true, ""]);
+  });
+
+  it("coluna recolhe e arquiva", async () => {
+    const q = await api.salvarQuadro(quadro("Colunas", "quadro"));
+    const col = (await api.listarColunas(q.id))[0];
+    await api.salvarColuna({ ...col, recolhida: true, arquivada: true });
+    const lida = (await api.listarColunas(q.id)).find((x) => x.id === col.id)!;
+    expect([lida.recolhida, lida.arquivada]).toEqual([true, true]);
+  });
 });

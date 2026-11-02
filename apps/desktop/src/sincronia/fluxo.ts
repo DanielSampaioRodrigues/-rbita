@@ -5,7 +5,11 @@
 // Arquivos na pasta, além dos do maestro:
 //   recuperacao.orbita-sync  as 6 perguntas (abertas) + a chave trancada por PIN e respostas
 //   pin.orbita-sync          resumo do PIN, trancado pela chave (aparelho novo confere se é o mesmo)
-import type { Api } from "../api";
+//
+// Dois modos da chave (decisão de Dan, 03/11/2026): "conta" (padrão, só o Google: a chave
+// fica aberta em chave.orbita-sync) e "senha" (proteção extra: envelope aberto pela senha;
+// só nele valem a recuperação por PIN + 6 perguntas).
+import type { Api, ModoChaveSincronia } from "../api";
 import type { Armazenamento } from "./armazenamento";
 import { ARQUIVO_CHAVE, JaExisteChave } from "./maestro";
 
@@ -18,7 +22,12 @@ export type ApiFluxo = Pick<
   Api,
   | "sincroniaSituacao"
   | "sincroniaCriarChave"
+  | "sincroniaCriarChaveConta"
   | "sincroniaEntrar"
+  | "sincroniaEntrarPorConta"
+  | "sincroniaLigarProtecao"
+  | "sincroniaDesligarProtecao"
+  | "sincroniaModoDaChave"
   | "sincroniaCriarRecuperacao"
   | "sincroniaPerguntas"
   | "sincroniaEntrarPorRecuperacao"
@@ -65,6 +74,39 @@ export function avaliarPerguntas(perguntas: string[], respostas: string[]): { ok
   const escritas = perguntas.map((p) => normalizarResposta(p)).filter(Boolean);
   const repetidas = new Set(escritas).size !== escritas.length;
   return { ok: faltam === 0 && !repetidas, faltam, repetidas };
+}
+
+/** O modo da chave guardada na pasta ("conta" ou "senha"), ou null se ainda não há chave. */
+export async function modoDaPasta(arm: Armazenamento, api: ApiFluxo): Promise<ModoChaveSincronia | null> {
+  const arquivo = await arm.baixar(ARQUIVO_CHAVE);
+  return arquivo === null ? null : api.sincroniaModoDaChave(arquivo);
+}
+
+/**
+ * Aparelho novo, modo conta: entra sem senha. Devolve o modo que achou: "conta" (entrou),
+ * "senha" (precisa da senha; nada mudou aqui) ou null (ainda não há chave na pasta).
+ */
+export async function entrarPelaConta(arm: Armazenamento, api: ApiFluxo): Promise<ModoChaveSincronia | null> {
+  const arquivo = await arm.baixar(ARQUIVO_CHAVE);
+  if (arquivo === null) return null;
+  const modo = await api.sincroniaModoDaChave(arquivo);
+  if (modo === "conta") await api.sincroniaEntrarPorConta(arquivo);
+  return modo;
+}
+
+/**
+ * Liga a proteção extra: troca o arquivo aberto pelo envelope com a senha, da MESMA chave
+ * (os aparelhos já conectados continuam funcionando).
+ */
+export async function ligarProtecao(arm: Armazenamento, api: ApiFluxo, senha: string): Promise<void> {
+  if (!(await api.sincroniaSituacao()).temChave) throw new Error("A sincronização não está ligada neste aparelho.");
+  await arm.enviar(ARQUIVO_CHAVE, await api.sincroniaLigarProtecao(senha));
+}
+
+/** Desliga a proteção extra: volta o arquivo aberto, da MESMA chave. */
+export async function desligarProtecao(arm: Armazenamento, api: ApiFluxo): Promise<void> {
+  if (!(await api.sincroniaSituacao()).temChave) throw new Error("A sincronização não está ligada neste aparelho.");
+  await arm.enviar(ARQUIVO_CHAVE, await api.sincroniaDesligarProtecao());
 }
 
 /** Troca a senha de sincronização (este aparelho já tem a chave): novo envelope da MESMA chave. */

@@ -248,25 +248,30 @@ export class Maestro {
 
 // ── Ligar a sincronização (para as telas da etapa 2d e para os testes) ──────────
 
-/** Já existe uma chave na pasta: este aparelho precisa entrar com a senha, nunca criar outra. */
+/** Já existe uma chave na pasta: este aparelho precisa entrar, nunca criar outra. */
 export class JaExisteChave extends Error {
   constructor() {
-    super("Já existe uma sincronização nesta conta. Entre com a senha de sincronização.");
+    super("Já existe uma sincronização nesta conta. Entre nela em vez de criar outra.");
   }
 }
 
 /**
- * Primeiro aparelho: cria a chave com a senha e guarda o envelope na pasta.
+ * Primeiro aparelho: cria a chave e guarda o arquivo dela na pasta. Sem senha (`null`), o
+ * modo "só o Google" (padrão): o arquivo guarda a chave aberta. Com senha, a "proteção
+ * extra": o envelope aberto pela senha.
  * Proteção: se a pasta já tem `chave.orbita-sync`, lança `JaExisteChave` e não mexe em
  * nada (trocar a chave deixaria os outros aparelhos de fora).
  */
-export async function ligarComoPrimeiro(arm: Armazenamento, api: Pick<ApiSincronia, "sincroniaCriarChave">, senha: string): Promise<void> {
+export async function ligarComoPrimeiro(arm: Armazenamento, api: Pick<Api, "sincroniaCriarChave" | "sincroniaCriarChaveConta">, senha: string | null): Promise<void> {
   if ((await arm.baixar(ARQUIVO_CHAVE)) !== null) throw new JaExisteChave();
-  const envelope = await api.sincroniaCriarChave(senha);
-  await arm.enviar(ARQUIVO_CHAVE, envelope);
+  const arquivo = senha === null ? await api.sincroniaCriarChaveConta() : await api.sincroniaCriarChave(senha);
+  await arm.enviar(ARQUIVO_CHAVE, arquivo);
 }
 
-/** Aparelho novo: baixa o envelope da pasta e abre com a senha. Devolve false se não há envelope. */
+/**
+ * Aparelho novo: baixa o arquivo da chave e entra. No modo senha, com a senha; no modo
+ * conta, a senha não é usada. Devolve false se não há arquivo.
+ */
 export async function entrarComSenha(arm: Armazenamento, api: Pick<ApiSincronia, "sincroniaEntrar">, senha: string): Promise<boolean> {
   const envelope = await arm.baixar(ARQUIVO_CHAVE);
   if (envelope === null) return false;

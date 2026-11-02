@@ -47,6 +47,8 @@ export interface Ideia {
   etiquetas: string[];
   /** Ids das outras ideias ligadas a esta. */
   ligadas: string[];
+  /** Cor própria da ideia. Ausente ou null: vale a cor da primeira etiqueta. */
+  cor?: CorEtiqueta | null;
 }
 
 /** Cores das etiquetas (sempre mostradas junto do nome). */
@@ -425,18 +427,37 @@ export interface Anotacao {
   criadoEm: number;
 }
 
-/** "Minha organização": um quadro (estilo Trello) ou uma lista. */
+/** "Minha organização": uma etiqueta colorida de um quadro (cada quadro tem as suas). */
+export interface EtiquetaOrg {
+  id: string;
+  nome: string;
+  /** Nome de cor da paleta de organizacao/cores.ts. */
+  cor: string;
+}
+
+/** Fundo de um quadro: do tema, cor da paleta, gradiente suave ou imagem (id do anexo). */
+export interface FundoOrg {
+  tipo: "tema" | "cor" | "gradiente" | "imagem";
+  valor: string;
+}
+
+/** "Minha organização": um quadro (estilo Trello). Os campos novos são opcionais (dados antigos). */
 export interface Quadro {
   id: string;
   nome: string;
-  /** "quadro" (colunas com cartões) ou "lista" (itens com caixinha). */
+  /** Estilo de criação, só por compatibilidade: quadros antigos "lista" abrem na vista Lista. */
   estilo: "quadro" | "lista";
   criadoEm: number;
   /** Cor do cartão na página principal (vazio ou ausente = sem cor). */
   cor?: string;
+  /** Forma de ver, trocável a qualquer momento: colunas lado a lado ou tudo em lista. */
+  vista?: "quadro" | "lista";
+  /** Etiquetas coloridas deste quadro. */
+  etiquetas?: EtiquetaOrg[];
+  fundo?: FundoOrg;
 }
 
-/** Uma coluna de um quadro (na lista, uma só, sem título). */
+/** Uma coluna de um quadro. */
 export interface Coluna {
   id: string;
   quadroId: string;
@@ -444,18 +465,52 @@ export interface Coluna {
   ordem: number;
   /** Cor da coluna inteira (vazio ou ausente = sem cor). */
   cor?: string;
+  /** Recolhida: vira uma faixa fina com o nome. */
+  recolhida?: boolean;
+  /** Arquivada: some do quadro, mas volta pelo painel "Arquivados". */
+  arquivada?: boolean;
 }
 
-/** Um cartão/item de "Minha organização". */
+export interface ItemChecklist {
+  id: string;
+  texto: string;
+  feito: boolean;
+}
+
+export interface Checklist {
+  id: string;
+  nome: string;
+  itens: ItemChecklist[];
+}
+
+/** Capa do cartão: cor da paleta ou imagem anexada ao cartão. Tipo vazio = sem capa. */
+export interface CapaCartaoOrg {
+  tipo: "" | "cor" | "imagem";
+  valor: string;
+}
+
+/** Um cartão de "Minha organização". */
 export interface CartaoOrg {
   id: string;
   colunaId: string;
+  /** Título do cartão. */
   texto: string;
   feito: boolean;
-  /** Cor da etiqueta (vazio = sem cor). */
+  /** Cor do cartão (vazio = sem cor). */
   cor: string;
-  /** Prazo em "AAAA-MM-DD" (vazio = sem prazo). */
+  /** Data de entrega em "AAAA-MM-DD" (vazio = sem data). */
   prazo: string;
+  /** Hora da entrega, "HH:MM" (opcional). */
+  hora?: string;
+  /** Descrição longa, em Markdown. */
+  descricao?: string;
+  checklists?: Checklist[];
+  /** Ids das etiquetas do quadro. */
+  etiquetas?: string[];
+  capa?: CapaCartaoOrg;
+  arquivado?: boolean;
+  /** Quantos anexos o cartão tem (só leitura). */
+  anexos?: number;
   ordem: number;
   criadoEm: number;
 }
@@ -721,6 +776,9 @@ export interface ResumoSincronia {
   /** SHA-256 dos conteúdos de anexo que faltam aqui. */
   faltamConteudos: string[];
 }
+/** Como a chave de sincronização está guardada no Drive: "conta" (só o Google) ou "senha" (proteção extra). */
+export type ModoChaveSincronia = "conta" | "senha";
+
 /** O estado daqui para o maestro (ver src/sincronia/maestro.ts). */
 export interface MarcaSincronia {
   /** Muda se, e só se, algo que viaja mudou neste aparelho. */
@@ -755,6 +813,8 @@ export interface Api {
   criarIdeia(texto: string): Promise<Ideia>;
   editarIdeia(id: string, texto: string): Promise<void>;
   salvarNotaIdeia(id: string, nota: string): Promise<void>;
+  /** Cor própria da ideia (null tira). Grava na hora. */
+  definirCorIdeia(id: string, cor: CorEtiqueta | null): Promise<void>;
   listarEtiquetas(): Promise<Etiqueta[]>;
   /** Se já existe uma com o mesmo nome, devolve a existente. */
   criarEtiqueta(nome: string, cor: CorEtiqueta): Promise<Etiqueta>;
@@ -980,6 +1040,16 @@ export interface Api {
   sincroniaCriarChave(senha: string): Promise<string>;
   /** Aparelho novo: abre o envelope com a senha de sincronização. */
   sincroniaEntrar(envelope: string, senha: string): Promise<void>;
+  /** Primeiro aparelho, modo conta ("só o Google"): cria a chave e devolve o arquivo aberto (base64). */
+  sincroniaCriarChaveConta(): Promise<string>;
+  /** Aparelho novo, modo conta: entra a partir do arquivo aberto, sem senha. */
+  sincroniaEntrarPorConta(arquivo: string): Promise<void>;
+  /** Liga a proteção extra: envelope com senha da chave que este aparelho já tem. */
+  sincroniaLigarProtecao(senha: string): Promise<string>;
+  /** Desliga a proteção extra: arquivo aberto da mesma chave. */
+  sincroniaDesligarProtecao(): Promise<string>;
+  /** O modo do arquivo da chave: "conta" (só o Google) ou "senha" (proteção extra). */
+  sincroniaModoDaChave(arquivo: string): Promise<ModoChaveSincronia>;
   sincroniaMeuPacote(): Promise<string>;
   sincroniaJuntar(pacote: string): Promise<ResumoSincronia>;
   /** Conteúdo de anexo pelo SHA-256, trancado; null se não existe aqui. */
@@ -1041,6 +1111,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   criarIdeia: (texto) => chamar("criar_ideia", { texto }),
   editarIdeia: (id, texto) => chamar("editar_ideia", { id, texto }),
   salvarNotaIdeia: (id, nota) => chamar("salvar_nota_ideia", { id, nota }),
+  definirCorIdeia: (id, cor) => chamar("definir_cor_ideia", { id, cor }),
   listarEtiquetas: () => chamar("listar_etiquetas"),
   criarEtiqueta: (nome, cor) => chamar("criar_etiqueta", { nome, cor }),
   editarEtiqueta: (id, nome, cor) => chamar("editar_etiqueta", { id, nome, cor }),
@@ -1232,6 +1303,11 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   sincroniaSituacao: () => chamar("sincronia_situacao"),
   sincroniaCriarChave: (senha) => chamar("sincronia_criar_chave", { senha }),
   sincroniaEntrar: (envelope, senha) => chamar("sincronia_entrar", { envelope, senha }),
+  sincroniaCriarChaveConta: () => chamar("sincronia_criar_chave_conta"),
+  sincroniaEntrarPorConta: (arquivo) => chamar("sincronia_entrar_por_conta", { arquivo }),
+  sincroniaLigarProtecao: (senha) => chamar("sincronia_ligar_protecao", { senha }),
+  sincroniaDesligarProtecao: () => chamar("sincronia_desligar_protecao"),
+  sincroniaModoDaChave: (arquivo) => chamar("sincronia_modo_da_chave", { arquivo }),
   sincroniaMeuPacote: () => chamar("sincronia_meu_pacote"),
   sincroniaJuntar: (pacote) => chamar("sincronia_juntar", { pacote }),
   sincroniaConteudo: (sha) => chamar("sincronia_conteudo", { sha }),
@@ -1298,7 +1374,7 @@ function guardarValor<T>(chave: string, ler: () => T, escrever: (v: T) => void) 
 }
 
 function simularItens() {
-  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null; nota?: string; etiquetas?: string[] };
+  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null; nota?: string; etiquetas?: string[]; cor?: CorEtiqueta | null };
   let etiquetas: Etiqueta[] = [];
   let ligacoes: [string, string][] = [];
   const itens: Item[] = [];
@@ -1379,17 +1455,18 @@ function simularItens() {
     listarIdeias: async () =>
       itens.filter((i) => i.tipo === "ideia" && i.estado === "guardada").sort((a, b) => b.criadoEm - a.criadoEm)
         .map((i) => ({
-          id: i.id, texto: i.texto, criadoEm: i.criadoEm, nota: i.nota ?? "",
+          id: i.id, texto: i.texto, criadoEm: i.criadoEm, nota: i.nota ?? "", cor: i.cor ?? null,
           etiquetas: vivas(i),
           ligadas: ligacoes.flatMap(([a, b]) => (a === i.id ? [b] : b === i.id ? [a] : []))
             .filter((o) => itens.some((x) => x.id === o && x.tipo === "ideia" && x.estado === "guardada")),
         })),
     criarIdeia: async (texto: string) => {
       const i = novo({ tipo: "ideia", texto: vazio(texto), estado: "guardada" });
-      return { id: i.id, texto: i.texto, criadoEm: i.criadoEm, nota: "", etiquetas: [], ligadas: [] };
+      return { id: i.id, texto: i.texto, criadoEm: i.criadoEm, nota: "", etiquetas: [], ligadas: [], cor: null };
     },
     editarIdeia: async (id: string, texto: string) => void (achar(id).texto = vazio(texto)),
     salvarNotaIdeia: async (id: string, nota: string) => void (achar(id).nota = nota.trim()),
+    definirCorIdeia: async (id: string, cor: CorEtiqueta | null) => void (achar(id).cor = cor),
     listarEtiquetas: async () => [...etiquetas].sort((a, b) => a.nome.localeCompare(b.nome)),
     criarEtiqueta: async (nome: string, cor: CorEtiqueta) => {
       const n = vazio(nome);
@@ -2134,23 +2211,49 @@ function simularOrganizacao() {
   guardarLista("organizacao.colunas", colunas);
   guardarLista("organizacao.cartoes", cartoes);
   const novaColuna = (quadroId: string, nome: string, ordem: number): Coluna => {
-    const c = { id: crypto.randomUUID(), quadroId, nome, ordem };
+    const c: Coluna = { id: crypto.randomUUID(), quadroId, nome, ordem, cor: "", recolhida: false, arquivada: false };
     colunas.push(c);
     return c;
   };
+  // O mesmo que o banco faz: completa os campos novos (dados antigos) e limpa o que vem da tela.
+  const vistaDe = (q: Quadro) => (q.vista === "quadro" || q.vista === "lista" ? q.vista : q.estilo === "lista" ? "lista" : "quadro");
+  const arrumarQuadro = (q: Quadro): Quadro => ({
+    ...q,
+    cor: q.cor ?? "",
+    vista: vistaDe(q),
+    etiquetas: (q.etiquetas ?? []).map((e) => ({ ...e, id: e.id || crypto.randomUUID(), nome: e.nome.trim().slice(0, 40) })),
+    fundo: q.fundo && ["tema", "cor", "gradiente", "imagem"].includes(q.fundo.tipo) ? { ...q.fundo } : { tipo: "tema", valor: "" },
+  });
+  const arrumarCartao = (c: CartaoOrg): CartaoOrg => {
+    const capa = c.capa && (c.capa.tipo === "cor" || c.capa.tipo === "imagem") && c.capa.valor ? { ...c.capa } : { tipo: "" as const, valor: "" };
+    return {
+      ...c,
+      hora: c.prazo ? (c.hora ?? "").trim() : "",
+      descricao: c.descricao ?? "",
+      checklists: (c.checklists ?? []).map((cl) => ({
+        id: cl.id || crypto.randomUUID(),
+        nome: cl.nome.trim(),
+        itens: cl.itens.filter((i) => i.texto.trim()).map((i) => ({ ...i, id: i.id || crypto.randomUUID(), texto: i.texto.trim() })),
+      })),
+      etiquetas: [...new Set((c.etiquetas ?? []).filter(Boolean))],
+      capa,
+      arquivado: !!c.arquivado,
+      anexos: 0,
+    };
+  };
   return {
-    listarQuadros: async () => quadros.map((q) => ({ ...q })).sort((a, b) => a.criadoEm - b.criadoEm),
+    listarQuadros: async () => quadros.map((q) => arrumarQuadro(q)).sort((a, b) => a.criadoEm - b.criadoEm),
     salvarQuadro: async (q: Quadro) => {
       const nome = q.nome.trim();
       if (!nome) throw new ErroOrbita("texto_vazio", "O quadro precisa de um nome.");
-      const estilo = q.estilo === "quadro" ? "quadro" : "lista";
       if (q.id) {
         const i = quadros.findIndex((x) => x.id === q.id);
         if (i < 0) throw new ErroOrbita("nao_encontrado", "Quadro não encontrado.");
-        quadros[i] = { ...quadros[i], nome, cor: q.cor ?? quadros[i].cor ?? "" };
+        quadros[i] = arrumarQuadro({ ...quadros[i], ...q, nome, estilo: quadros[i].estilo });
         return { ...quadros[i] };
       }
-      const novo: Quadro = { id: crypto.randomUUID(), nome, estilo, criadoEm: Date.now(), cor: q.cor ?? "" };
+      const estilo = q.estilo === "lista" ? "lista" : "quadro";
+      const novo = arrumarQuadro({ ...q, id: crypto.randomUUID(), nome, estilo, criadoEm: Date.now() });
       quadros.push(novo);
       if (estilo === "lista") novaColuna(novo.id, "", 1);
       else ["A fazer", "Fazendo", "Feito"].forEach((n, i) => novaColuna(novo.id, n, i + 1));
@@ -2163,17 +2266,20 @@ function simularOrganizacao() {
       const qi = quadros.findIndex((q) => q.id === id);
       if (qi >= 0) quadros.splice(qi, 1);
     },
-    listarColunas: async (quadroId: string) => colunas.filter((c) => c.quadroId === quadroId).map((c) => ({ ...c })).sort((a, b) => a.ordem - b.ordem),
+    listarColunas: async (quadroId: string) =>
+      colunas.filter((c) => c.quadroId === quadroId).map((c) => ({ cor: "", recolhida: false, arquivada: false, ...c })).sort((a, b) => a.ordem - b.ordem),
     salvarColuna: async (col: Coluna) => {
       if (!col.quadroId.trim()) throw new ErroOrbita("interno", "A coluna precisa de um quadro.");
       if (col.id) {
         const i = colunas.findIndex((x) => x.id === col.id);
         if (i < 0) throw new ErroOrbita("nao_encontrado", "Coluna não encontrada.");
-        colunas[i] = { ...col, nome: col.nome.trim() };
+        colunas[i] = { ...colunas[i], ...col, nome: col.nome.trim() };
         return { ...colunas[i] };
       }
       const ordem = col.ordem || Math.max(0, ...colunas.filter((c) => c.quadroId === col.quadroId).map((c) => c.ordem)) + 1;
-      return { ...novaColuna(col.quadroId, col.nome.trim(), ordem) };
+      const nova = novaColuna(col.quadroId, col.nome.trim(), ordem);
+      Object.assign(nova, { cor: col.cor ?? "", recolhida: !!col.recolhida, arquivada: !!col.arquivada });
+      return { ...nova };
     },
     excluirColuna: async (id: string) => {
       for (let i = cartoes.length - 1; i >= 0; i--) if (cartoes[i].colunaId === id) cartoes.splice(i, 1);
@@ -2182,7 +2288,7 @@ function simularOrganizacao() {
     },
     listarCartoesOrg: async (quadroId: string) => {
       const cols = new Set(colunas.filter((c) => c.quadroId === quadroId).map((c) => c.id));
-      return cartoes.filter((c) => cols.has(c.colunaId)).map((c) => ({ ...c })).sort((a, b) => a.ordem - b.ordem);
+      return cartoes.filter((c) => cols.has(c.colunaId)).map((c) => arrumarCartao(c)).sort((a, b) => a.ordem - b.ordem);
     },
     salvarCartaoOrg: async (c: CartaoOrg) => {
       if (!c.colunaId.trim()) throw new ErroOrbita("interno", "O cartão precisa de uma coluna.");
@@ -2191,11 +2297,11 @@ function simularOrganizacao() {
       if (c.id) {
         const i = cartoes.findIndex((x) => x.id === c.id);
         if (i < 0) throw new ErroOrbita("nao_encontrado", "Cartão não encontrado.");
-        cartoes[i] = { ...c, texto };
+        cartoes[i] = arrumarCartao({ ...c, texto });
         return { ...cartoes[i] };
       }
       const ordem = c.ordem || Math.max(0, ...cartoes.filter((x) => x.colunaId === c.colunaId).map((x) => x.ordem)) + 1;
-      const novo: CartaoOrg = { ...c, id: crypto.randomUUID(), texto, ordem, criadoEm: Date.now() };
+      const novo = arrumarCartao({ ...c, id: crypto.randomUUID(), texto, ordem, criadoEm: Date.now() });
       cartoes.push(novo);
       return { ...novo };
     },
@@ -2512,6 +2618,11 @@ function criarSimulacao(): Api {
     sincroniaSituacao: semSincronia,
     sincroniaCriarChave: semSincronia,
     sincroniaEntrar: semSincronia,
+    sincroniaCriarChaveConta: semSincronia,
+    sincroniaEntrarPorConta: semSincronia,
+    sincroniaLigarProtecao: semSincronia,
+    sincroniaDesligarProtecao: semSincronia,
+    sincroniaModoDaChave: semSincronia,
     sincroniaMeuPacote: semSincronia,
     sincroniaJuntar: semSincronia,
     sincroniaConteudo: semSincronia,

@@ -7,8 +7,9 @@
 
 Tudo o que se faz num aparelho aparece no outro, sozinho. Sem servidor do Órbita: pela pasta escondida
 do app no Google Drive da própria pessoa (`drive.appdata`). Sem internet, guarda e manda depois. Mesmo
-item editado em dois aparelhos: vale o mais recente. Os dados vão trancados com uma senha que só a pessoa
-sabe (nem o Google lê). Um aviso discreto mostra o estado ("Sincronizado há 1 min").
+item editado em dois aparelhos: vale o mais recente. Os dados vão trancados para o Drive; desde 03/11/2026
+a senha que só a pessoa sabe é **opcional** ("proteção extra", ver "Dois modos da tranca"). Um aviso discreto
+mostra o estado ("Sincronizado há 1 min").
 
 ## Desenho
 
@@ -34,10 +35,11 @@ chave de sincronização e o id do aparelho.
 por conteúdo, nomeado pelo seu resumo (SHA-256) — `anexo-<sha256>.orbita-sync`. O retrato só diz qual
 resumo cada anexo usa; quem não tem aquele conteúdo, baixa.
 
-**Tranca.** Uma **chave de sincronização** aleatória tranca tudo (XChaCha20-Poly1305). Ela fica no Drive
-dentro de um envelope aberto pela **senha de sincronização** da pessoa (Argon2id, o mesmo dos backups). No
-aparelho, a chave fica dentro do banco criptografado. Aparelho novo: entra no Google, digita a senha,
-abre o envelope e passa a sincronizar. **Recuperação** no modelo com Google (etapa 2d, conforme a
+**Tranca.** Uma **chave de sincronização** aleatória tranca tudo (XChaCha20-Poly1305). No Drive, ela fica
+de um de dois jeitos (ver "Dois modos da tranca", decisão de Dan de 03/11/2026): **aberta** (modo "conta",
+o padrão: entrar na conta Google basta) ou dentro de um envelope aberto pela **senha de sincronização** da
+pessoa (modo "senha", a "proteção extra"; Argon2id, o mesmo dos backups). No aparelho, a chave fica dentro
+do banco criptografado. Aparelho novo: entra no Google e, só no modo senha, digita a senha. **Recuperação** no modelo com Google (etapa 2d, conforme a
 especificação): senha simples + PIN igual em todos os aparelhos + 6 perguntas pessoais; as 6 palavras deixam
 de ser obrigatórias (continuam só para quem usa sem conta, e não viajam).
 
@@ -235,6 +237,64 @@ mantém os dados.
 **Limites anotados.** Mudar o PIN depois (Ajustes > Segurança) não atualiza o PIN dos outros aparelhos nem a
 recuperação: é preciso refazer as perguntas com o PIN novo (a tela de perguntas confere o PIN pelo resumo da pasta).
 No navegador, o acesso do Google fica só na memória (2c): reabrir a aba mostra "Precisa entrar de novo" até um toque.
+
+## Dois modos da tranca: a senha vira opcional (decisão de Dan, 03/11/2026, "opção 2")
+
+**O que mudou.** A senha de sincronização deixou de ser obrigatória. **Padrão: "só o Google"** (modo
+**conta**): entrar na conta Google basta para sincronizar. **Opcional: "Proteção extra: trancar também com uma
+senha minha"** (modo **senha**): o comportamento de antes (senha + recuperação por PIN + 6 perguntas).
+
+**A troca, sem rodeio.** Nos dois modos os dados vão trancados para o Drive e o Google, como empresa, não tem
+motivo para abrir. Mas no modo conta a chave fica **no mesmo Drive**: quem entrar na conta Google da pessoa (ou
+quem tiver acesso à pasta do app) consegue abrir os dados. No modo senha, nem quem entra na conta lê sem a
+senha; em troca, é uma senha a mais para lembrar. Dan escolheu o padrão sem senha, com a proteção à mão de quem
+quiser (a tela explica a troca nas duas linhas da caixinha).
+
+**Arquivo `chave.orbita-sync`, dois formatos:**
+- **Modo conta:** JSON versionado e explícito, `{"formato":"orbita-chave","versao":2,"modo":"conta","chave":"<base64>"}`
+  (em base64, como os outros arquivos da pasta).
+- **Modo senha:** o envelope de sempre (`{versao: 1, kdf, sal, nonce, cifra}`), gravado **no formato antigo**
+  para versões anteriores do Órbita continuarem lendo. Arquivo sem `formato` com `versao: 1` = modo senha.
+- `formato` diferente, `modo` desconhecido ou arquivo estragado: "danificado"; `versao` maior: "atualize o Órbita".
+  Um Órbita antigo (até a 0.47) que ache o arquivo do modo conta não entra (diz que está danificado): é preciso
+  atualizar. Aceitável, porque Dan publica as duas versões juntas.
+
+**Comandos novos** (molde `estado.com_sessao`, entram sozinhos na ponte do navegador):
+`sincronia_criar_chave_conta()` (primeiro aparelho, modo conta: cria a chave ou usa a que já existe aqui e devolve
+o arquivo aberto), `sincronia_entrar_por_conta(arquivo)` (recusa o modo senha), `sincronia_ligar_protecao(senha)`
+(envelope com senha **da chave que este aparelho já tem**), `sincronia_desligar_protecao()` (arquivo aberto da mesma
+chave) e `sincronia_modo_da_chave(arquivo)` → `"conta" | "senha"`. `sincronia_entrar(arquivo, senha)` aceita os
+dois modos (no modo conta a senha é ignorada).
+
+**Ligar e desligar não trocam a chave.** Só muda o jeito de guardá-la no Drive. Os aparelhos que já sincronizam
+continuam iguais e os retratos e anexos antigos continuam abrindo. **Limite anotado:** por isso mesmo, ligar a
+proteção depois de um tempo no modo conta não "apaga o passado": quem entrou na conta enquanto a chave estava
+aberta (ou ver versões antigas do arquivo que o Drive guarde) pode ter copiado a chave, e ela continua valendo.
+Trocar a chave de verdade (com todos os aparelhos entrando de novo) fica para depois, se Dan quiser; hoje não há
+botão para isso. A recuperação (`recuperacao.orbita-sync`) não é apagada ao desligar a proteção: continua sendo um
+envelope da mesma chave e volta a valer se a proteção for ligada de novo com as mesmas perguntas.
+
+**Telas.**
+- **Primeiro aparelho:** conta → "Como trancar seus dados" (caixinha **desligada** por padrão, com a troca em duas
+  linhas) → com a proteção: senha → PIN → 6 perguntas (como antes); sem ela: PIN e pronto (o botão do PIN vira
+  "Ligar a sincronização"). O "Passo X de N" se ajusta (sem proteção, 3 passos; com, 5; um a menos quando o PIN
+  já veio da primeira tela). O texto de "pronto" não fala de senha no modo conta.
+- **Aparelho novo** (e a primeira tela com Google): ao achar a chave, `entrarPelaConta` olha o modo. Modo conta:
+  entra direto e vai para o PIN e juntar (cancelar desfaz, como antes). Modo senha: "Digite a senha de
+  sincronização", com "Esqueci a senha".
+- **Proteção que impede trocar a chave dos outros:** continua. `ligarComoPrimeiro(arm, api, senha | null)` recusa
+  com `JaExisteChave` se a pasta já tem chave, de qualquer modo; a tela então entra na chave que já existe (modo conta:
+  direto, com o recado "este aparelho entra na mesma sincronização"; modo senha: pede a senha de lá).
+- **Ajustes > Sincronizar aparelhos:** linha "Proteção extra: Ligada/Desligada". Desligada: botão "Ligar a proteção
+  extra" (senha nova; em seguida oferece as 6 perguntas, com "Fazer depois"). Ligada: "Fazer/Refazer as perguntas",
+  "Criar senha nova" e "Desligar a proteção extra" (confirmação literal). As perguntas só aparecem com a proteção.
+
+**Testes.** Rust: ida e volta do modo conta, entrar por conta, ligar/desligar mantém a mesma chave (pacote antigo
+abre e o arquivo aberto volta idêntico), formato antigo lido como modo senha, arquivos estranhos recusados. Vitest
+(`fluxo.test.ts`): os dois modos, recusa de "ligar como primeiro" sem senha, ligar/desligar com "Esqueci a senha"
+no meio. Ponta a ponta (`scripts/teste-sync.cjs`, quatro navegadores): A liga sem senha; B entra sem senha e junta;
+A liga a proteção (senha + perguntas) e B segue sincronizando; C precisa da senha e entra por "Esqueci a senha";
+A desliga a proteção (a pasta volta ao arquivo aberto, igual ao do começo); D entra só com a conta.
 
 - **2a** motor da sincronização (Rust) e testes de convergência entre dois bancos.
 - **2b** maestro, adaptador de mentira, aviso "Sincronizado há…", e teste com dois navegadores. **Feita.**

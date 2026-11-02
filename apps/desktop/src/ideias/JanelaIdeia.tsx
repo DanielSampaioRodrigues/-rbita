@@ -1,20 +1,22 @@
 import { FolderPlus, Trash2, X } from "../icones";
 import { CampoRico } from "../componentes/CampoRico";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "react-aria-components";
-import { api, type Etiqueta, type Ideia, type ItemResumo } from "../api";
+import { api, type CorEtiqueta, type Etiqueta, type Ideia, type ItemResumo } from "../api";
 import { AnexosDoItem } from "../relacoes/Relacoes";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Escolha } from "../componentes/Escolha";
 import { Janela } from "../componentes/Janela";
 import { textos } from "../textos/pt-BR";
-import { EscolherEtiquetas } from "./etiquetas";
+import { avisarMudanca } from "../dados";
+import { EscolherCorIdeia, EscolherEtiquetas } from "./etiquetas";
 
 const t = textos.ideias;
 
 /**
- * Tudo de uma ideia num lugar: texto, nota, etiquetas e ligações.
- * Nada muda até apertar Salvar (exceto criar uma etiqueta nova, que fica disponível).
+ * Tudo de uma ideia num lugar: texto, nota, etiquetas, cor e ligações.
+ * Etiquetas e cor valem na hora (fechar a janela sem salvar não perde a marcação).
+ * Texto, nota e ligações esperam o Salvar.
  */
 export function JanelaIdeia({
   ideia,
@@ -38,6 +40,9 @@ export function JanelaIdeia({
   const [texto, setTexto] = useState("");
   const [nota, setNota] = useState("");
   const [marcadas, setMarcadas] = useState<string[]>([]);
+  const [cor, setCor] = useState<CorEtiqueta | null>(null);
+  // Uma gravação de cada vez, na ordem dos toques (marcar e desmarcar rápido não embaralha).
+  const fila = useRef<Promise<unknown>>(Promise.resolve());
   const [ligadas, setLigadas] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -49,6 +54,7 @@ export function JanelaIdeia({
     setTexto(ideia.texto);
     setNota(ideia.nota);
     setMarcadas(ideia.etiquetas);
+    setCor(ideia.cor ?? null);
     setLigadas(ideia.ligadas);
     setErro(null);
     api.itensLigados(ideia.id).then((l) => setOutrosLigados(l.filter((x) => x.tipo !== "ideia")), () => setOutrosLigados([]));
@@ -59,6 +65,19 @@ export function JanelaIdeia({
   const outras = todas.filter((i) => i.id !== ideia.id);
   const nomeDe = (id: string) => todas.find((i) => i.id === id)?.texto ?? "";
 
+  const gravarNaHora = (acao: () => Promise<void>) => {
+    setErro(null);
+    fila.current = fila.current.then(acao).then(avisarMudanca, (e) => setErro(e instanceof Error ? e.message : String(e)));
+  };
+  const mudarEtiquetas = (ids: string[]) => {
+    setMarcadas(ids);
+    gravarNaHora(() => api.definirEtiquetasItem(ideia.id, ids));
+  };
+  const mudarCor = (c: CorEtiqueta | null) => {
+    setCor(c);
+    gravarNaHora(() => api.definirCorIdeia(ideia.id, c));
+  };
+
   const salvar = async () => {
     if (!texto.trim()) return;
     setOcupado(true);
@@ -66,7 +85,7 @@ export function JanelaIdeia({
     try {
       if (texto.trim() !== ideia.texto) await api.editarIdeia(ideia.id, texto);
       if (nota.trim() !== ideia.nota) await api.salvarNotaIdeia(ideia.id, nota);
-      if (marcadas.join() !== ideia.etiquetas.join()) await api.definirEtiquetasItem(ideia.id, marcadas);
+      await fila.current; // etiquetas e cor já gravadas na hora
       for (const o of ligadas.filter((x) => !ideia.ligadas.includes(x))) await api.ligarItens(ideia.id, o, true);
       for (const o of ideia.ligadas.filter((x) => !ligadas.includes(x))) await api.ligarItens(ideia.id, o, false);
       aoSalvo();
@@ -82,7 +101,8 @@ export function JanelaIdeia({
       <div className="formulario">
         <Campo rotulo={t.texto} valor={texto} aoMudar={setTexto} autoFocus />
         <CampoRico rotulo={t.nota} valor={nota} aoMudar={setNota} descricao={t.notaAjuda} />
-        <EscolherEtiquetas todas={etiquetas} marcadas={marcadas} aoMudar={setMarcadas} aoCriar={aoCriarEtiqueta} />
+        <EscolherEtiquetas todas={etiquetas} marcadas={marcadas} aoMudar={mudarEtiquetas} aoCriar={aoCriarEtiqueta} ajuda={t.etiquetasNaHora} />
+        <EscolherCorIdeia valor={cor} aoMudar={mudarCor} />
 
         <fieldset className="grupo-campos">
           <legend className="campo-rotulo">{t.ligadas}</legend>

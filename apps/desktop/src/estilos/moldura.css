@@ -350,6 +350,13 @@
 .sinc-franqueza { display: grid; gap: var(--espaco-2); }
 .sinc-franqueza p { margin: 0; }
 
+/* Proteção extra (senha de sincronização opcional): a caixinha e a troca, lado a lado com o texto */
+.sinc-protecao { display: grid; gap: var(--espaco-3); padding: var(--espaco-4); border: 1px solid var(--cor-borda); border-radius: var(--canto); }
+.sinc-protecao .caixa { flex: none; }
+.sinc-protecao-rotulo { font-weight: 600; }
+.sinc-protecao-troca { list-style: none; margin: 0; padding: 0 0 0 calc(1.25rem + var(--espaco-3)); display: grid; gap: var(--espaco-2); color: var(--cor-texto-suave); }
+.sinc-protecao-troca li { margin: 0; }
+
 .sinc-perguntas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-3); }
 .sinc-par {
   display: grid;

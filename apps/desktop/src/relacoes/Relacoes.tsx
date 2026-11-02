@@ -1,5 +1,5 @@
 import { Download, ExternalLink, FileText, Link2, Paperclip, Tag, Trash2, X } from "../icones";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { api, escolherArquivoParaAnexar, escolherOndeSalvarAnexo, type Anexo, type Etiqueta, type ItemResumo } from "../api";
 import { useRecado } from "../app/Recado";
@@ -13,7 +13,7 @@ import { textos } from "../textos/pt-BR";
 const t = textos.relacoes;
 const mensagem = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-/** Etiquetas de um item: os nomes à vista e um botão para escolher. Grava ao salvar a janela. */
+/** Etiquetas de um item: os nomes à vista e um botão para escolher. Marcar, desmarcar e criar valem na hora. */
 export function EtiquetasDoItem({ id, marcadas }: { id: string; marcadas: string[] }) {
   const [todas, setTodas] = useState<Etiqueta[]>([]);
   const [editando, setEditando] = useState<string[] | null>(null);
@@ -24,15 +24,12 @@ export function EtiquetasDoItem({ id, marcadas }: { id: string; marcadas: string
     api.listarEtiquetas().then(setTodas, () => setTodas([]));
   }, [mudancas]);
 
-  const salvar = async () => {
-    if (!editando) return;
-    try {
-      await api.definirEtiquetasItem(id, editando);
-      setEditando(null);
-      avisarMudanca();
-    } catch (e) {
-      setErro(mensagem(e));
-    }
+  // Uma gravação de cada vez, na ordem dos toques.
+  const fila = useRef<Promise<unknown>>(Promise.resolve());
+  const mudar = (ids: string[]) => {
+    setEditando(ids);
+    setErro(null);
+    fila.current = fila.current.then(() => api.definirEtiquetasItem(id, ids)).then(avisarMudanca, (e) => setErro(mensagem(e)));
   };
 
   const visiveis = todas.filter((e) => marcadas.includes(e.id));
@@ -56,13 +53,13 @@ export function EtiquetasDoItem({ id, marcadas }: { id: string; marcadas: string
           <EscolherEtiquetas
             todas={todas}
             marcadas={editando ?? []}
-            aoMudar={setEditando}
+            aoMudar={mudar}
+            ajuda={textos.ideias.etiquetasNaHora}
             aoCriar={(e) => setTodas((ts) => (ts.some((x) => x.id === e.id) ? ts : [...ts, e]))}
           />
           <Aviso>{erro}</Aviso>
           <div className="janela-acoes">
-            <Button className="botao" onPress={() => setEditando(null)}>{textos.comum.cancelar}</Button>
-            <Button className="botao principal" onPress={salvar}>{textos.comum.salvar}</Button>
+            <Button className="botao principal" onPress={() => setEditando(null)}>{textos.comum.fechar}</Button>
           </div>
         </div>
       </Janela>
@@ -139,7 +136,7 @@ export function ImagemAnexo({ id, nome, className }: { id: string; nome: string;
 }
 
 /** Imagens, arquivos e links presos a um item. Tudo fica dentro do cofre criptografado. */
-export function AnexosDoItem({ id }: { id: string }) {
+export function AnexosDoItem({ id, aoMudar }: { id: string; /** Avisa a lista de anexos sempre que ela muda (ou carrega). */ aoMudar?: (anexos: Anexo[]) => void }) {
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -148,7 +145,16 @@ export function AnexosDoItem({ id }: { id: string }) {
   const [excluindo, setExcluindo] = useState<Anexo | null>(null);
   const recado = useRecado();
 
-  const carregar = useCallback(() => api.listarAnexos(id).then(setAnexos, (e) => setErro(mensagem(e))), [id]);
+  const avisar = useRef(aoMudar);
+  avisar.current = aoMudar;
+  const carregar = useCallback(
+    () =>
+      api.listarAnexos(id).then(
+        (lista) => (setAnexos(lista), avisar.current?.(lista)),
+        (e) => setErro(mensagem(e)),
+      ),
+    [id],
+  );
   useEffect(() => void carregar(), [carregar]);
 
   const fazer = async (acao: () => Promise<unknown>) => {

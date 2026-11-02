@@ -151,18 +151,44 @@ async function criarCofre(p) {
 
 // ── 2. Um dado em cada módulo ───────────────────────────────────────────────
 async function criarDados(p) {
-  passo("Ideias: ideia com nota, etiqueta e link");
+  passo("Ideias: etiqueta criada no painel, na ficha sem Salvar, cor da ideia, nota e link");
   await guardarIdeia(p, "Ideia de teste com acentuação ção");
   await espera(p, 800);
-  await p.getByRole("button", { name: /Abrir a ideia/ }).first().click();
-  let d = dialogo(p, "Ideia");
-  await d.locator("[contenteditable=true]").first().click();
-  await p.keyboard.type("Nota da ideia");
-  await d.locator("summary", { hasText: "Nova etiqueta" }).click();
+  // Painel "Etiquetas das ideias": criar a primeira etiqueta ali mesmo; a lista atualiza na hora.
+  await main(p).getByRole("button", { name: "Etiquetas", exact: true }).click();
+  let d = dialogo(p, "Etiquetas das ideias");
   await d.getByLabel("Nome da etiqueta").fill("urgente");
   await marcar(d, "Mar");
+  await d.getByRole("button", { name: "Criar etiqueta" }).click();
+  await espera(p);
+  if (!(await d.locator(".lista-ligadas").innerText().catch(() => "")).includes("urgente")) falhar("o painel não mostrou a etiqueta criada nele");
+  await d.getByRole("button", { name: "Fechar" }).click();
+  await espera(p);
+  // Ficha: criar (à vista), marcar e escolher a cor, e fechar SEM Salvar: tem que ficar gravado.
+  await p.getByRole("button", { name: /Abrir a ideia/ }).first().click();
+  d = dialogo(p, "Ideia");
+  await d.getByLabel("Nome da etiqueta").fill("casa");
+  await d.getByRole("radiogroup", { name: "Cor", exact: true }).locator(".cor-opcao", { hasText: "Terra" }).click();
   await d.getByRole("button", { name: "Criar e marcar" }).click();
   await espera(p);
+  await d.getByRole("button", { name: "urgente" }).click();
+  await espera(p, 300);
+  await d.getByRole("radiogroup", { name: "Cor da ideia" }).locator(".cor-opcao", { hasText: "Lavanda" }).click();
+  await espera(p);
+  await d.getByRole("button", { name: "Cancelar" }).click();
+  await espera(p, 800);
+  {
+    const linha = main(p).locator("li.ideia-item", { hasText: "Ideia de teste com acentuação ção" });
+    const txt = await linha.innerText().catch(() => "");
+    if (!txt.includes("urgente") || !txt.includes("casa")) falhar(`a ficha fechada sem Salvar perdeu as etiquetas (linha: ${txt.replace(/\n/g, " | ")})`);
+    if (!/borda-lavanda/.test((await linha.getAttribute("class").catch(() => "")) ?? "")) falhar("a cor da ideia não chegou na lista");
+  }
+  // Nota e link: esses ainda esperam o Salvar.
+  await p.getByRole("button", { name: /Abrir a ideia/ }).first().click();
+  d = dialogo(p, "Ideia");
+  if ((await d.getByRole("button", { name: "urgente" }).getAttribute("aria-pressed")) !== "true") falhar("ao reabrir, a etiqueta não está marcada");
+  await d.locator("[contenteditable=true]").first().click();
+  await p.keyboard.type("Nota da ideia");
   await d.getByRole("button", { name: "Anexar link" }).click();
   const dl = dialogo(p, "Anexar link");
   await dl.getByLabel("Endereço").fill("example.com");
@@ -189,7 +215,8 @@ async function criarDados(p) {
   await main(p).getByRole("button", { name: "Escolher etiquetas" }).click();
   await espera(p, 400);
   await dialogo(p).getByText("urgente").click();
-  await dialogo(p).getByRole("button", { name: "Salvar" }).click();
+  await espera(p, 400);
+  await dialogo(p).getByRole("button", { name: "Fechar" }).click();
   await espera(p);
   await main(p).locator("select").first().selectOption({ label: "Ideia: Ideia de teste com acentuação ção" });
   await espera(p);
@@ -409,28 +436,115 @@ async function criarDados(p) {
   await p.getByRole("button", { name: "Voltar para a estante" }).click();
   await espera(p, 800);
 
-  passo("Minha organização: quadro com cartão colorido e prazo");
+  passo("Minha organização: quadro com colunas, etiqueta e cartão completo");
   await ir(p, "Minha organização");
-  await p.getByRole("button", { name: "Novo quadro ou lista" }).click();
+  await p.getByRole("button", { name: "Novo quadro" }).click();
   d = dialogo(p);
   await d.getByLabel("Nome").fill("Casa");
-  await marcar(d, "Quadro (colunas)");
   await marcar(d, "Menta");
   await d.getByRole("button", { name: "Criar" }).click();
   await espera(p, 1000);
-  await p.getByRole("button", { name: "Abrir: Casa (Quadro)" }).click();
+  await p.getByRole("button", { name: "Abrir: Casa" }).click();
   await espera(p, 1000);
-  const novoCartao = p.locator('input[aria-label="Adicionar cartão"]').first();
-  await novoCartao.fill("Lavar louça");
-  await novoCartao.press("Enter");
-  await espera(p, 800);
-  await main(p).getByText("Lavar louça").click();
-  d = dialogo(p);
-  await marcar(d, "Rosa");
-  await d.getByLabel("Prazo (opcional)").fill("2026-12-15");
-  await d.getByRole("button", { name: "Salvar cartão" }).click();
+  // Colunas: renomear a primeira e criar uma nova.
+  await p.getByRole("button", { name: "Renomear coluna: A fazer", exact: true }).click();
+  await p.getByLabel("Nome da coluna").fill("Fazendo hoje – Geral");
+  await p.getByLabel("Nome da coluna").press("Enter");
+  await espera(p, 600);
+  await p.getByRole("button", { name: "Nova coluna" }).click();
   await espera(p, 700);
-  await p.getByRole("button", { name: "Voltar para a lista" }).click();
+  await p.getByRole("button", { name: "Renomear coluna: Coluna", exact: true }).click();
+  await p.getByLabel("Nome da coluna").fill("Outros");
+  await p.getByLabel("Nome da coluna").press("Enter");
+  await espera(p, 600);
+  // Etiqueta do quadro.
+  await p.getByRole("button", { name: "Etiquetas", exact: true }).click();
+  d = dialogo(p, "Etiquetas do quadro");
+  await d.getByRole("button", { name: "Nova etiqueta" }).click();
+  await espera(p, 300);
+  await d.getByLabel(/Nome da etiqueta/).last().fill("Urgente");
+  await d.getByRole("button", { name: "Pronto" }).click();
+  await espera(p, 700);
+  const novoCartao = p.getByRole("region", { name: "Fazendo hoje – Geral" }).getByLabel("Adicionar cartão");
+  for (const x of ["Lavar louça", "Ver filme"]) {
+    await novoCartao.fill(x);
+    await novoCartao.press("Enter");
+    await espera(p, 700);
+  }
+  // Cartão completo: descrição formatada, checklist, etiqueta, data, anexo e capa.
+  await p.getByRole("button", { name: "Abrir o cartão: Lavar louça" }).click();
+  await espera(p, 800);
+  d = dialogo(p, "Lavar louça");
+  await d.locator("[contenteditable=true]").first().click();
+  await p.keyboard.press("Control+b");
+  await p.keyboard.type("Detergente");
+  await p.keyboard.press("Control+b");
+  await p.keyboard.type(" acabou");
+  await d.getByRole("button", { name: "Checklist", exact: true }).click();
+  await espera(p, 500);
+  const itemNovo = d.getByLabel("Adicionar item em Checklist");
+  for (const x of ["Pratos", "Panelas"]) {
+    await itemNovo.fill(x);
+    await itemNovo.press("Enter");
+    await espera(p, 400);
+  }
+  await d.getByRole("checkbox", { name: "Pratos", exact: true }).check();
+  await d.getByRole("button", { name: "Etiquetas", exact: true }).click();
+  await dialogo(p, "Etiquetas").getByRole("button", { name: "Urgente" }).click();
+  await dialogo(p, "Etiquetas").getByRole("button", { name: "Pronto" }).click();
+  await espera(p, 400);
+  await d.getByRole("button", { name: "Data", exact: true }).click();
+  await d.getByLabel("Data", { exact: true }).fill("2026-12-15");
+  await d.getByLabel("Hora (opcional)").fill("09:30");
+  await espera(p, 800);
+  await escolherArquivo(p, d.getByRole("button", { name: "Anexar arquivo" }), IMAGEM);
+  await d.getByRole("button", { name: "Capa", exact: true }).click();
+  await espera(p, 500);
+  await dialogo(p, "Capa do cartão").getByRole("button", { name: /^Usar teste\.png como capa$/ }).click();
+  await dialogo(p, "Capa do cartão").getByRole("button", { name: "Pronto" }).click();
+  await espera(p, 800);
+  await d.getByRole("button", { name: "Fechar" }).first().click();
+  await espera(p, 800);
+  {
+    const cartao = p.locator(".org-cartao", { hasText: "Lavar louça" });
+    const txt = await cartao.innerText();
+    for (const x of ["Urgente", "15 dez, 09:30", "1/2"]) if (!txt.includes(x)) falhar(`Minha organização: o cartão fechado não mostra "${x}"`);
+    if (!(await cartao.locator(".org-capa-imagem img").count())) falhar("Minha organização: a capa de imagem não apareceu");
+  }
+  // Vista Lista e de volta.
+  await p.getByRole("radio", { name: "Lista" }).check({ force: true });
+  await espera(p, 800);
+  if (!(await p.locator(".org-lista").count())) falhar("Minha organização: a vista Lista não abriu");
+  if (!(await p.locator(".org-lista").innerText()).includes("Lavar louça")) falhar("Minha organização: a Lista não mostra os cartões");
+  await p.getByRole("radio", { name: "Quadro" }).check({ force: true });
+  await espera(p, 800);
+  // Filtro: só a etiqueta Urgente.
+  await p.getByRole("button", { name: "Filtro" }).click();
+  await dialogo(p, "Filtrar os cartões").getByText("Urgente").click();
+  await dialogo(p, "Filtrar os cartões").getByRole("button", { name: "Pronto" }).click();
+  await espera(p, 600);
+  {
+    const txt = await p.locator(".org-tela").innerText();
+    if (txt.includes("Ver filme") || !txt.includes("Lavar louça")) falhar("Minha organização: o filtro por etiqueta não funcionou");
+  }
+  await p.getByRole("button", { name: "Limpar o filtro" }).first().click();
+  await espera(p, 500);
+  // Arquivar e restaurar.
+  await p.getByRole("button", { name: "Abrir o cartão: Ver filme" }).click();
+  await espera(p, 600);
+  await dialogo(p, "Ver filme").getByRole("button", { name: "Arquivar" }).click();
+  await espera(p, 800);
+  if ((await p.locator(".org-quadro").innerText()).includes("Ver filme")) falhar("Minha organização: o cartão arquivado continua no quadro");
+  await p.getByRole("button", { name: "Arquivados" }).click();
+  await dialogo(p, "Arquivados").getByRole("button", { name: "Restaurar Ver filme" }).click();
+  await espera(p, 700);
+  await dialogo(p, "Arquivados").getByRole("button", { name: "Fechar" }).click();
+  await espera(p, 500);
+  if (!(await p.locator(".org-quadro").innerText()).includes("Ver filme")) falhar("Minha organização: o cartão restaurado não voltou");
+  // Fica na vista Lista (para conferir depois de recarregar que a escolha foi guardada).
+  await p.getByRole("radio", { name: "Lista" }).check({ force: true });
+  await espera(p, 800);
+  await p.getByRole("button", { name: "Voltar para os quadros" }).click();
   await espera(p);
 
   passo("Aparência: tema Floresta");
@@ -475,7 +589,8 @@ async function conferir(p, onde) {
   };
   const imagens = () => main(p).locator("img").evaluateAll((es) => es.filter((e) => e.naturalWidth > 0).length);
 
-  await ver("Ideias", ["Ideia de teste com acentuação ção", "urgente", "tem nota"]);
+  await ver("Ideias", ["Ideia de teste com acentuação ção", "urgente", "casa", "tem nota"]);
+  if (!(await main(p).locator("li.ideia-item.borda-lavanda").count())) falhar("Ideias: sumiu a cor própria da ideia (Lavanda)");
   await ver("Projetos", ["Projeto Teste"]);
   await main(p).getByText("Projeto Teste").first().click();
   await espera(p, 600);
@@ -515,11 +630,28 @@ async function conferir(p, onde) {
   if (!tracos) falhar("Caderno: o traço sumiu");
   await p.getByRole("button", { name: "Voltar para a estante" }).click();
   await espera(p, 500);
-  await ver("Minha organização", ["Casa"]);
-  await p.getByRole("button", { name: "Abrir: Casa (Quadro)" }).click();
-  await espera(p, 800);
-  if (!(await textoMain(p)).includes("Lavar louça")) falhar("Minha organização: sumiu o cartão");
-  await p.getByRole("button", { name: "Voltar para a lista" }).click();
+  await ver("Minha organização", ["Casa", "Lista"]);
+  await p.getByRole("button", { name: "Abrir: Casa" }).click();
+  await espera(p, 1000);
+  {
+    const org = await p.locator(".org-tela").innerText();
+    for (const x of ["Fazendo hoje – Geral", "Outros", "Lavar louça", "Ver filme", "Urgente", "15 dez, 09:30", "1/2"]) if (!org.includes(x)) falhar(`Minha organização: sumiu "${x}"`);
+    if (!(await p.locator(".org-lista").count())) falhar("Minha organização: a vista escolhida (Lista) não ficou guardada");
+  }
+  await p.getByRole("button", { name: "Abrir o cartão: Lavar louça" }).click();
+  await espera(p, 1000);
+  {
+    const cd = dialogo(p, "Lavar louça");
+    const txt = await cd.innerText();
+    for (const x of ["Detergente acabou", "teste.png", "Urgente"]) if (!txt.includes(x)) falhar(`Minha organização: no cartão aberto, sumiu "${x}"`);
+    // Os itens da checklist ficam em caixas de texto (editáveis): confere pelas caixinhas.
+    if (!(await cd.getByRole("checkbox", { name: "Pratos", exact: true }).isChecked().catch(() => false))) falhar("Minha organização: o item feito da checklist sumiu");
+    if (!(await cd.getByRole("checkbox", { name: "Panelas", exact: true }).count())) falhar("Minha organização: o item da checklist sumiu");
+    if (!(await cd.locator(".texto-rico strong, .rico-conteudo strong").filter({ hasText: "Detergente" }).count())) falhar("Minha organização: o negrito da descrição sumiu");
+    await cd.getByRole("button", { name: "Fechar" }).first().click();
+    await espera(p, 500);
+  }
+  await p.getByRole("button", { name: "Voltar para os quadros" }).click();
   await espera(p, 400);
   if (falhas.length === antes) console.log("  ✓ tudo lá");
 }

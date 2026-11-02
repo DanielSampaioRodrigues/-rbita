@@ -1,13 +1,13 @@
-// Ajustes > Sincronizar aparelhos (etapa 2d): estado, ligar, perguntas, senha nova e
-// "Desligar neste aparelho". Os passos de ligar ficam no assistente (TelasSincronia.tsx).
+// Ajustes > Sincronizar aparelhos (etapa 2d): estado, ligar, proteção extra (senha
+// opcional, decisão de Dan de 03/11/2026), perguntas, senha nova e "Desligar neste aparelho". Os passos de ligar ficam no assistente (TelasSincronia.tsx).
 import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";
-import { api } from "../api";
+import { api, type ModoChaveSincronia } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Confirmar } from "../componentes/Janela";
 import { Check, RefreshCw } from "../icones";
 import { textos } from "../textos/pt-BR";
-import { olharPasta } from "./fluxo";
+import { desligarProtecao, modoDaPasta, olharPasta } from "./fluxo";
 import { useSincronia } from "./ProvedorSincronia";
 import { quandoFoi } from "./rotulo";
 import { CartaoConta, LogoGoogle, mensagemDe } from "./TelasSincronia";
@@ -18,7 +18,10 @@ export function AjustesSincronia() {
   const s = useSincronia();
   const [temChave, setTemChave] = useState<boolean | null>(null);
   const [perguntas, setPerguntas] = useState<boolean | null | "erro">(null);
+  const [modo, setModo] = useState<ModoChaveSincronia | null | "erro">(null);
   const [desligando, setDesligando] = useState(false);
+  const [tirandoProtecao, setTirandoProtecao] = useState(false);
+  const [recarregar, setRecarregar] = useState(0);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -41,8 +44,28 @@ export function AjustesSincronia() {
       (o) => vivo && setPerguntas(o.temRecuperacao),
       () => vivo && setPerguntas("erro"),
     );
+    modoDaPasta(s.armazenamento, api).then(
+      (m) => vivo && setModo(m),
+      () => vivo && setModo("erro"),
+    );
     return () => void (vivo = false);
-  }, [temChave, s.armazenamento, s.versao]);
+  }, [temChave, s.armazenamento, s.versao, recarregar]);
+
+  const tirarProtecao = async () => {
+    setTirandoProtecao(false);
+    if (!s.armazenamento) return;
+    setOcupado(true);
+    setErro(null);
+    try {
+      await desligarProtecao(s.armazenamento, api);
+      setAviso(t.protecaoDesligadaAviso);
+      setRecarregar((n) => n + 1);
+    } catch (e) {
+      setErro(mensagemDe(e));
+    } finally {
+      setOcupado(false);
+    }
+  };
 
   const desligar = async () => {
     setDesligando(false);
@@ -61,6 +84,7 @@ export function AjustesSincronia() {
   };
 
   const ligada = temChave === true;
+  const comSenha = modo === "senha";
   const cabecalho = (
     <div className="sinc-cartao-topo">
       <span className="sinc-topo-icone" aria-hidden="true">
@@ -107,20 +131,38 @@ export function AjustesSincronia() {
               <dd>{s.estado.ultima ? quandoFoi(s.estado.ultima, Date.now()) : t.nuncaSincronizou}</dd>
             </div>
             <div>
-              <dt>{t.perguntasRotulo}</dt>
-              <dd>{perguntas === "erro" ? t.perguntasNaoSei : perguntas === null ? textos.comum.aguarde : perguntas ? t.perguntasFeitas : t.perguntasNaoFeitas}</dd>
+              <dt>{t.protecaoRotulo}</dt>
+              <dd>{modo === "erro" ? t.protecaoNaoSei : modo === null ? textos.comum.aguarde : modo === "senha" ? t.protecaoLigada : t.protecaoDesligada}</dd>
             </div>
+            {comSenha && (
+              <div>
+                <dt>{t.perguntasRotulo}</dt>
+                <dd>{perguntas === "erro" ? t.perguntasNaoSei : perguntas === null ? textos.comum.aguarde : perguntas ? t.perguntasFeitas : t.perguntasNaoFeitas}</dd>
+              </div>
+            )}
           </dl>
           <div className="botoes">
             <Button className="botao com-icone" isDisabled={ocupado} onPress={() => void s.sincronizarAgora()}>
               <RefreshCw aria-hidden="true" size="1em" /> {t.sincronizarAgora}
             </Button>
-            <Button className="botao" isDisabled={ocupado} onPress={() => (setAviso(null), s.abrirAssistente("perguntas"))}>
-              {perguntas === true ? t.refazerPerguntas : t.fazerPerguntas}
-            </Button>
-            <Button className="botao" isDisabled={ocupado} onPress={() => (setAviso(null), s.abrirAssistente("senhaNova"))}>
-              {t.criarSenhaNova}
-            </Button>
+            {modo === "conta" && (
+              <Button className="botao" isDisabled={ocupado} onPress={() => (setAviso(null), s.abrirAssistente("protecao"))}>
+                {t.ligarProtecao}
+              </Button>
+            )}
+            {comSenha && (
+              <>
+                <Button className="botao" isDisabled={ocupado} onPress={() => (setAviso(null), s.abrirAssistente("perguntas"))}>
+                  {perguntas === true ? t.refazerPerguntas : t.fazerPerguntas}
+                </Button>
+                <Button className="botao" isDisabled={ocupado} onPress={() => (setAviso(null), s.abrirAssistente("senhaNova"))}>
+                  {t.criarSenhaNova}
+                </Button>
+                <Button className="botao" isDisabled={ocupado} onPress={() => (setAviso(null), setTirandoProtecao(true))}>
+                  {t.desligarProtecao}
+                </Button>
+              </>
+            )}
           </div>
           <div className="sinc-cartao-rodape">
             <Button className="botao" isDisabled={ocupado} onPress={() => (setAviso(null), setDesligando(true))}>
@@ -141,6 +183,14 @@ export function AjustesSincronia() {
       )}
       <Aviso tipo="ok">{aviso}</Aviso>
       <Aviso>{erro}</Aviso>
+      <Confirmar
+        titulo={t.desligarProtecaoTitulo}
+        texto={t.desligarProtecaoTexto}
+        confirmar={t.desligarProtecao}
+        aberta={tirandoProtecao}
+        aoCancelar={() => setTirandoProtecao(false)}
+        aoConfirmar={() => void tirarProtecao()}
+      />
       <Confirmar titulo={t.desligarTitulo} texto={t.desligarTexto} confirmar={t.desligar} aberta={desligando} aoCancelar={() => setDesligando(false)} aoConfirmar={() => void desligar()} />
     </section>
   );

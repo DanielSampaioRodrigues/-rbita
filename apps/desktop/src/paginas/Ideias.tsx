@@ -6,7 +6,7 @@ import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
-import { EscolherCor, ChipEtiqueta } from "../ideias/etiquetas";
+import { EscolherCor, ChipEtiqueta, NovaEtiqueta } from "../ideias/etiquetas";
 import { JanelaIdeia } from "../ideias/JanelaIdeia";
 import { ListaIdeias, MapaIdeias, MuralIdeias, QuadroIdeias, VISOES_IDEIAS, type VisaoIdeias } from "../ideias/Visoes";
 import { useComLimite } from "../projetos/Limite";
@@ -196,7 +196,7 @@ export function Ideias() {
   );
 }
 
-/** Mudar nome e cor das etiquetas, ou excluir. */
+/** Criar etiquetas, mudar nome e cor, ou excluir. */
 function GerenciarEtiquetas({
   aberta,
   etiquetas,
@@ -246,6 +246,7 @@ function GerenciarEtiquetas({
           ))}
         </ul>
       )}
+      <NovaEtiqueta todas={etiquetas} rotuloBotao={t.criarSoEtiqueta} aoCriar={() => avisarMudanca()} />
       <div className="janela-acoes">
         <Button className="botao principal" onPress={aoFechar}>{textos.comum.fechar}</Button>
       </div>

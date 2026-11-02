@@ -99,8 +99,11 @@ export interface Sincronia {
   /** Muda sempre que algo da sincronização muda (para os cartões recarregarem). */
   versao: number;
   avisarQueMudou: () => void;
-  /** Para os testes: primeiro aparelho cria a chave; aparelho novo entra. */
-  ligarComoPrimeiro: (senha: string) => Promise<void>;
+  /**
+   * Para os testes: primeiro aparelho cria a chave; aparelho novo entra. Sem senha (`null`):
+   * modo "só o Google" (padrão). Com senha: proteção extra.
+   */
+  ligarComoPrimeiro: (senha: string | null) => Promise<void>;
   entrarComSenha: (senha: string) => Promise<boolean>;
 }
 

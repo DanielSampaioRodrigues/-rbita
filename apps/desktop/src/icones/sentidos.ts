@@ -109,4 +109,6 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   Wand2: "varinha diagonal com estrelas pequenas na ponta",
   Wind: "três linhas horizontais curvas, terminando em espirais",
   X: "dois traços diagonais cruzados formando um X",
+  Archive: "caixa de arquivo vista de frente: tampa retangular em cima e uma alça curta no meio da caixa",
+  Search: "lupa: círculo com um cabo curto saindo na diagonal para baixo e à direita",
 };
