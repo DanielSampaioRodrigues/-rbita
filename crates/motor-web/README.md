@@ -33,6 +33,15 @@ Ficam de fora, e precisam de versão própria no navegador (`apps/desktop/src/we
   de arquivo (lista `PROIBIDO` no `build.rs`);
 - usam tipos, constantes ou funções definidos só em `comandos.rs`.
 
+## Backup portátil
+
+O motor também inclui, por `#[path]`, `src-tauri/src/portatil.rs` (formato do `.orbita-backup` versão 2) e as peças
+do cofre que valem em qualquer aparelho (`cofre/cripto.rs`, `cofre/palavras.rs`, `cofre/portateis.rs`, em
+`src/cofre/mod.rs`). As funções `backup_montar`, `backup_abrir`, `backup_info`, `portatil_*` e
+`*_palavras_no_banco` (em `src/lib.rs`) são usadas por `apps/desktop/src/web/modoWeb.ts`. Assim o backup do
+navegador é montado e aberto pelo mesmo código do Windows. O motor não tem SQLCipher: o banco viaja em bytes
+simples, trancado com XChaCha20-Poly1305.
+
 ## Como testar
 
 - Compilar rápido, sem wasm-bindgen: `cargo build --target wasm32-unknown-unknown` aqui (o job

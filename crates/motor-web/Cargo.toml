@@ -21,6 +21,13 @@ wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1"
 sqlite-wasm-rs = { version = "0.6", features = ["wasm-bindgen"] }
 getrandom = { version = "0.3", features = ["wasm_js"] }
+# Backup portátil e envelopes (os mesmos do Windows: src-tauri/src/portatil.rs e cofre/).
+argon2 = { version = "0.5", features = ["zeroize"] }
+chacha20poly1305 = "0.10"
+sha2 = "0.10"
+rand = "0.8"
+# O rand 0.8 usa o getrandom 0.2, que no navegador precisa da opção "js".
+getrandom02 = { package = "getrandom", version = "0.2", features = ["js"] }
 
 [build-dependencies]
 regex = "1"
@@ -32,3 +39,9 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# O Argon2 fica lento demais com opt-level "z" (o tempo de abrir com a senha conta mais que alguns KB).
+[profile.release.package.argon2]
+opt-level = 3
+[profile.release.package.blake2]
+opt-level = 3

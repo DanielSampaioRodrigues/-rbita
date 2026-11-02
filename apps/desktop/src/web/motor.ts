@@ -11,6 +11,30 @@ export interface Motor {
   executar(comando: string, args: string): string;
   comandos_gerados(): string[];
   comandos_de_fora(): string[];
+  // Backup portátil (o mesmo arquivo do Windows; src-tauri/src/portatil.rs). Erros: JSON do erro do Windows.
+  /** JSON do envelope da senha que viaja no backup (Argon2id). */
+  portatil_envelope_senha(dek: Uint8Array, senha: string, id: string): string;
+  /** JSON do envelope das 6 palavras que viaja no backup. */
+  portatil_envelope_palavras(dek: Uint8Array, palavras: string, id: string): string;
+  /** A chave dos dados, aberta pelos envelopes portáteis (`{id, senha?, recuperacao}`). */
+  portatil_abrir(envelopes: string, senha?: string | null, palavras?: string | null): Uint8Array;
+  /** O arquivo .orbita-backup inteiro, com o banco aberto agora. */
+  backup_montar(dek: Uint8Array, envelopes: string, versaoApp: string): Uint8Array;
+  /** JSON `{criadoEm, versaoApp, temSenha, versao, origem}`. */
+  backup_info(bytes: Uint8Array): string;
+  backup_abrir(bytes: Uint8Array, senha?: string | null, palavras?: string | null): BackupAberto;
+  palavras_no_banco(): string | undefined;
+  guardar_palavras_no_banco(palavras: string): boolean;
+}
+
+export interface BackupAberto {
+  readonly dek: Uint8Array;
+  readonly banco: Uint8Array;
+  /** JSON dos envelopes portáteis do backup (`{id, senha?, recuperacao}`). */
+  readonly envelopes: string;
+  /** As 6 palavras guardadas dentro do banco, se houver. */
+  readonly palavras: string | undefined;
+  free(): void;
 }
 
 type Modulo = Motor & { default: () => Promise<unknown> };

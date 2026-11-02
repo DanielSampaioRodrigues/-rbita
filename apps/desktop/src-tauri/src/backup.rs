@@ -1,76 +1,84 @@
 //! Backup em arquivo único.
 //!
-//! O arquivo leva uma cópia do banco (já criptografado com a chave dos dados)
-//! e os envelopes que valem em qualquer computador: senha e chave de
-//! recuperação. PIN e Windows Hello não viajam, porque só valem neste aparelho.
+//! O arquivo leva o banco inteiro e os envelopes que valem em qualquer aparelho:
+//! senha e chave de recuperação. PIN e Windows Hello não viajam, porque só valem
+//! neste computador.
 //!
-//! Formato: `ORBITABK` + tamanho do cabeçalho (4 bytes) + cabeçalho JSON + banco.
+//! O formato está em `portatil.rs` e é o mesmo no navegador (versão 2): o banco em
+//! bytes simples, trancado com a chave dos dados. O Windows continua lendo a versão 1
+//! (o banco cifrado com SQLCipher dentro), dos backups feitos até a 0.45.
 
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use zeroize::Zeroizing;
 
 use crate::banco;
 use crate::cofre::cripto::Chave;
-use crate::cofre::{Cofre, EnvelopesPortateis, ModoAbrir};
+use crate::cofre::{palavras, Cofre, EnvelopesPortateis, ModoAbrir};
 use crate::erro::Erro;
+use crate::portatil::{self, Origem, VERSAO_SQLCIPHER};
 
-const MAGICA: &[u8; 8] = b"ORBITABK";
-const VERSAO: u32 = 1;
+pub use crate::portatil::{Cabecalho, Informacao, Segredo};
+
 pub const EXTENSAO: &str = "orbita-backup";
 /// Quantos backups automáticos ficam guardados na pasta.
 pub const MANTER_AUTOMATICOS: usize = 7;
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Cabecalho {
-    pub versao: u32,
-    pub criado_em: i64,
-    pub versao_app: String,
-    pub envelopes: EnvelopesPortateis,
-    pub tamanho: u64,
-    pub sha256: String,
-}
-
-/// O que a tela mostra antes de pedir a senha.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Informacao {
-    pub criado_em: i64,
-    pub versao_app: String,
-    /// Sem senha, o backup abre com as 6 palavras, e a pessoa escolhe como abrir no dia a dia.
-    pub tem_senha: bool,
-}
-
-pub enum Segredo {
-    Senha(String),
-    Palavras(String),
-}
 
 fn aspas_sql(caminho: &Path) -> String {
     caminho.to_string_lossy().replace('\'', "''")
 }
 
-/// Copia o banco aberto para um arquivo novo, com a mesma chave (cópia consistente).
-fn exportar_banco(conn: &Connection, chave: &Chave, destino: &Path) -> Result<(), Erro> {
+/// O banco aberto em bytes simples (sem SQLCipher), sem gravar nada aberto no disco:
+/// copia para um banco na memória sem chave e pega os bytes dele.
+pub(crate) fn banco_simples(conn: &Connection) -> Result<Zeroizing<Vec<u8>>, Erro> {
+    let versao: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    conn.execute_batch("ATTACH DATABASE ':memory:' AS simples KEY '';")?;
+    let resultado = (|| -> Result<Zeroizing<Vec<u8>>, Erro> {
+        conn.query_row("SELECT sqlcipher_export('simples')", [], |_| Ok(()))?;
+        conn.execute_batch(&format!("PRAGMA simples.user_version = {versao};"))?;
+        serializar(conn, c"simples")
+    })();
+    conn.execute_batch("DETACH DATABASE simples;")?;
+    resultado
+}
+
+/// Copia os bytes de um esquema (`sqlite3_serialize`). O `serialize` do rusqlite pede
+/// a conexão como `&mut`, e a sessão só empresta `&Connection`; por isso a chamada direta.
+fn serializar(conn: &Connection, esquema: &std::ffi::CStr) -> Result<Zeroizing<Vec<u8>>, Erro> {
+    use rusqlite::ffi;
+    let mut tamanho: ffi::sqlite3_int64 = 0;
+    // SAFETY: o ponteiro da conexão vale enquanto `conn` existe; o SQLite devolve uma cópia
+    // nova (flags 0), que lemos e liberamos com `sqlite3_free`.
+    unsafe {
+        let p = ffi::sqlite3_serialize(conn.handle(), esquema.as_ptr(), &mut tamanho, 0);
+        if p.is_null() || tamanho <= 0 {
+            return Err(Erro::Interno("não consegui copiar o banco para o backup".into()));
+        }
+        let copia = Zeroizing::new(std::slice::from_raw_parts(p, tamanho as usize).to_vec());
+        std::ptr::write_bytes(p, 0, tamanho as usize);
+        ffi::sqlite3_free(p.cast());
+        Ok(copia)
+    }
+}
+
+/// Grava os bytes simples de um banco como arquivo cifrado com SQLCipher (a chave dos dados).
+fn gravar_cifrado(simples: &[u8], chave: &Chave, destino: &Path) -> Result<(), Erro> {
     if destino.exists() {
         fs::remove_file(destino)?;
     }
-    let versao: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-    let comando = zeroize::Zeroizing::new(format!(
-        "ATTACH DATABASE '{}' AS copia KEY \"x'{}'\";",
-        aspas_sql(destino),
-        hex::encode(chave.as_ref())
-    ));
-    conn.execute_batch(&comando)?;
-    let resultado = conn
-        .query_row("SELECT sqlcipher_export('copia')", [], |_| Ok(()))
-        .and_then(|_| conn.execute_batch(&format!("PRAGMA copia.user_version = {versao};")));
-    conn.execute_batch("DETACH DATABASE copia;")?;
+    banco::preparar_sqlite();
+    let mut mem = Connection::open_in_memory()?;
+    mem.deserialize_read_exact(rusqlite::MAIN_DB, simples, simples.len(), true)?;
+    let versao: i64 = mem.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    let comando = Zeroizing::new(format!("ATTACH DATABASE '{}' AS cifrado KEY \"x'{}'\";", aspas_sql(destino), hex::encode(chave.as_ref())));
+    mem.execute_batch(&comando)?;
+    let resultado = mem
+        .query_row("SELECT sqlcipher_export('cifrado')", [], |_| Ok(()))
+        .and_then(|_| mem.execute_batch(&format!("PRAGMA cifrado.user_version = {versao};")));
+    mem.execute_batch("DETACH DATABASE cifrado;")?;
     resultado?;
     Ok(())
 }
@@ -89,55 +97,29 @@ fn gravar_seguro(destino: &Path, partes: &[&[u8]]) -> Result<(), Erro> {
     Ok(())
 }
 
+/// Os bytes do arquivo de backup (formato 2), com os envelopes dados.
+pub(crate) fn montar(conn: &Connection, chave: &Chave, envelopes: EnvelopesPortateis) -> Result<Vec<u8>, Erro> {
+    let simples = banco_simples(conn)?;
+    portatil::montar(&simples, chave, envelopes, Origem::Windows, env!("CARGO_PKG_VERSION"))
+}
+
 pub fn criar(cofre: &Cofre, conn: &Connection, chave: &Chave, destino: &Path) -> Result<(), Erro> {
-    let copia = cofre.pasta().join("backup-em-andamento.db");
-    exportar_banco(conn, chave, &copia)?;
-    let dados = fs::read(&copia);
-    let _ = fs::remove_file(&copia);
-    let dados = dados?;
-
-    let cabecalho = Cabecalho {
-        versao: VERSAO,
-        criado_em: banco::agora_ms(),
-        versao_app: env!("CARGO_PKG_VERSION").to_string(),
-        envelopes: cofre.envelopes_portateis()?,
-        tamanho: dados.len() as u64,
-        sha256: hex::encode(Sha256::digest(&dados)),
-    };
-    let json = serde_json::to_vec(&cabecalho).map_err(|e| Erro::Interno(e.to_string()))?;
-    let tamanho = (json.len() as u32).to_le_bytes();
-    gravar_seguro(destino, &[MAGICA, &tamanho, &json, &dados])
+    let bruto = montar(conn, chave, cofre.envelopes_portateis()?)?;
+    gravar_seguro(destino, &[&bruto])
 }
 
-fn invalido(motivo: &str) -> Erro {
-    Erro::BackupInvalido(motivo.to_string())
-}
-
-/// Lê e confere o arquivo inteiro, sem abrir nada.
+/// Lê e confere o arquivo inteiro, sem abrir nada. Devolve o cabeçalho e o conteúdo trancado.
 pub fn ler(origem: &Path) -> Result<(Cabecalho, Vec<u8>), Erro> {
     let bruto = fs::read(origem)?;
-    if bruto.len() < 12 || &bruto[..8] != MAGICA {
-        return Err(invalido("este arquivo não é um backup do Órbita"));
-    }
-    let tamanho = u32::from_le_bytes(bruto[8..12].try_into().unwrap()) as usize;
-    let fim = 12usize.checked_add(tamanho).filter(|f| *f <= bruto.len()).ok_or_else(|| invalido("o arquivo está incompleto"))?;
-    let cabecalho: Cabecalho = serde_json::from_slice(&bruto[12..fim]).map_err(|_| invalido("o arquivo está danificado"))?;
-    if cabecalho.versao > VERSAO {
-        return Err(invalido("o backup foi feito por uma versão mais nova do Órbita; atualize o Órbita antes"));
-    }
-    let dados = bruto[fim..].to_vec();
-    if dados.len() as u64 != cabecalho.tamanho || hex::encode(Sha256::digest(&dados)) != cabecalho.sha256 {
-        return Err(invalido("o arquivo está incompleto ou danificado"));
-    }
-    Ok((cabecalho, dados))
+    let (cabecalho, conteudo) = portatil::ler(&bruto)?;
+    Ok((cabecalho, conteudo.to_vec()))
 }
 
 pub fn informacao(origem: &Path) -> Result<Informacao, Erro> {
-    let (c, _) = ler(origem)?;
-    Ok(Informacao { criado_em: c.criado_em, versao_app: c.versao_app, tem_senha: c.envelopes.tem_senha() })
+    portatil::informacao(&fs::read(origem)?)
 }
 
-/// Restaura um backup. Quem chama precisa ter fechado o banco antes.
+/// Restaura um backup (versão 1 ou 2). Quem chama precisa ter fechado o banco antes.
 /// Os dados atuais vão para `anteriores/<data>/`, nunca são apagados.
 /// Devolve a chave dos dados restaurados e o jeito de abrir que ficou valendo.
 /// `escolha`: como abrir no dia a dia depois (obrigatória se o backup não tem senha).
@@ -152,16 +134,31 @@ pub fn restaurar(cofre: &Cofre, origem: &Path, segredo: &Segredo, escolha: Optio
     if escolha.is_none() && !cabecalho.envelopes.tem_senha() && !matches!(cofre.situacao()?.modo, Some(ModoAbrir::Hello | ModoAbrir::Direto)) {
         return Err(Erro::SemSenha);
     }
-    let chave = match segredo {
-        Segredo::Senha(s) => cabecalho.envelopes.abrir_com_senha(s)?,
-        Segredo::Palavras(p) => cabecalho.envelopes.abrir_com_palavras(p)?,
-    };
+    let chave = portatil::destrancar_chave(&cabecalho, segredo)?;
 
     // Confere que o banco abre (e atualiza, se for de versão antiga) antes de mexer em qualquer coisa.
     fs::create_dir_all(cofre.pasta())?;
     let novo = cofre.pasta().join("restaurando.db");
-    gravar_seguro(&novo, &[&dados])?;
-    if let Err(e) = banco::abrir(&novo, &chave) {
+    let preparado = (|| -> Result<(), Erro> {
+        if cabecalho.versao == VERSAO_SQLCIPHER {
+            gravar_seguro(&novo, &[&dados])?;
+        } else {
+            let simples = portatil::abrir_banco(&cabecalho, &dados, &chave)?;
+            gravar_cifrado(&simples, &chave, &novo)?;
+        }
+        let conn = banco::abrir(&novo, &chave)?;
+        // As 6 palavras ficam no banco para "Ver a chave". Se o backup não as trouxe
+        // e a pessoa acabou de digitá-las, guarda agora.
+        if let Segredo::Palavras(texto) = segredo {
+            if banco::ler_config(&conn, portatil::CONFIG_PALAVRAS)?.is_none() {
+                if let Ok(lidas) = palavras::ler(texto) {
+                    banco::gravar_config(&conn, portatil::CONFIG_PALAVRAS, &palavras::juntar(&lidas))?;
+                }
+            }
+        }
+        Ok(())
+    })();
+    if let Err(e) = preparado {
         let _ = fs::remove_file(&novo);
         return Err(e);
     }
@@ -462,5 +459,155 @@ mod testes {
         assert_eq!(modo, ModoAbrir::Pin);
         assert_eq!(textos_das_ideias(&novo.cofre, &chave), vec!["sem senha"]);
         assert!(novo.cofre.abrir_com_pin("1357").is_ok());
+    }
+
+    /// Monta um backup no formato antigo (versão 1, até a 0.45): o banco cifrado com SQLCipher dentro.
+    fn criar_v1(cofre: &Cofre, conn: &Connection, chave: &Chave, destino: &Path) {
+        use sha2::{Digest, Sha256};
+        let copia = cofre.pasta().join("v1.db");
+        let versao: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        conn.execute_batch(&format!("ATTACH DATABASE '{}' AS copia KEY \"x'{}'\";", aspas_sql(&copia), hex::encode(chave.as_ref()))).unwrap();
+        conn.query_row("SELECT sqlcipher_export('copia')", [], |_| Ok(())).unwrap();
+        conn.execute_batch(&format!("PRAGMA copia.user_version = {versao}; DETACH DATABASE copia;")).unwrap();
+        let dados = fs::read(&copia).unwrap();
+        fs::remove_file(&copia).unwrap();
+        let cab = serde_json::json!({
+            "versao": 1, "criadoEm": 1, "versaoApp": "0.45.2",
+            "envelopes": cofre.envelopes_portateis().unwrap(),
+            "tamanho": dados.len(), "sha256": hex::encode(Sha256::digest(&dados)),
+        });
+        let json = serde_json::to_vec(&cab).unwrap();
+        gravar_seguro(destino, &[portatil::MAGICA, &(json.len() as u32).to_le_bytes(), &json, &dados]).unwrap();
+    }
+
+    #[test]
+    fn ainda_restaura_backup_antigo_versao_1() {
+        let origem = ambiente();
+        let (chave, palavras) = origem.cofre.criar(Some(SENHA), ModoAbrir::Senha, None).unwrap();
+        let conn = banco::abrir(&origem.cofre.caminho_banco(), &chave).unwrap();
+        itens::criar_ideia(&conn, "do backup antigo").unwrap();
+        let arquivo = origem._pasta.path().join("antigo.orbita-backup");
+        criar_v1(&origem.cofre, &conn, &chave, &arquivo);
+        assert_eq!(informacao(&arquivo).unwrap().versao, 1);
+
+        let novo = ambiente();
+        let (chave, _) = restaurar(&novo.cofre, &arquivo, &Segredo::Senha(SENHA.into()), None).unwrap();
+        assert_eq!(textos_das_ideias(&novo.cofre, &chave), vec!["do backup antigo"]);
+        let outro = ambiente();
+        let (chave, _) = restaurar(&outro.cofre, &arquivo, &Segredo::Palavras(palavras.join(" ")), None).unwrap();
+        assert_eq!(textos_das_ideias(&outro.cofre, &chave).len(), 1);
+    }
+
+    #[test]
+    fn backup_novo_e_versao_2_e_o_banco_restaurado_fica_cifrado_no_disco() {
+        let origem = ambiente();
+        let arquivo = origem._pasta.path().join("v2.orbita-backup");
+        let palavras = preparar(&origem, &arquivo, ModoAbrir::Senha);
+        let info = informacao(&arquivo).unwrap();
+        assert_eq!((info.versao, info.origem), (2, Some(Origem::Windows)));
+        // O conteúdo é o banco em bytes simples, trancado: abre com a chave, sem SQLCipher.
+        let aberto = portatil::abrir(&fs::read(&arquivo).unwrap(), &Segredo::Palavras(palavras.join(" "))).unwrap();
+        let mut mem = Connection::open_in_memory().unwrap();
+        mem.deserialize_read_exact(rusqlite::MAIN_DB, aberto.banco.as_slice(), aberto.banco.len(), true).unwrap();
+        let n: i64 = mem.query_row("SELECT count(*) FROM item WHERE tipo = 'ideia'", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 2);
+
+        let novo = ambiente();
+        let (chave, _) = restaurar(&novo.cofre, &arquivo, &Segredo::Senha(SENHA.into()), None).unwrap();
+        assert_eq!(textos_das_ideias(&novo.cofre, &chave).len(), 2);
+        let disco = fs::read(novo.cofre.caminho_banco()).unwrap();
+        assert!(!disco.starts_with(b"SQLite format 3"), "o banco restaurado precisa ficar cifrado");
+        assert!(!disco.windows(8).any(|j| j == b"primeira"));
+        assert!(fs::read_dir(novo.cofre.pasta()).unwrap().all(|e| !e.unwrap().file_name().to_string_lossy().contains("restaurando")));
+    }
+
+    // ── Testes cruzados com o navegador (rodam à mão; ver scripts/teste-web.cjs) ──
+
+    /// Gera um backup do Windows (uma ideia e um compromisso) com o custo real do Argon2,
+    /// para o navegador abrir. `ORBITA_CRUZADO=/tmp/x cargo test --release gerar_backup_do_windows -- --ignored`
+    /// Grava `do-windows.orbita-backup` e `do-windows.json` (senha e palavras) na pasta.
+    #[test]
+    #[ignore]
+    fn gerar_backup_do_windows() {
+        use crate::banco::eventos;
+        use crate::cofre::cripto::ParametrosKdf;
+        let pasta = PathBuf::from(std::env::var("ORBITA_CRUZADO").expect("defina ORBITA_CRUZADO"));
+        fs::create_dir_all(&pasta).unwrap();
+        let a = ambiente();
+        let (chave, palavras) = a.cofre.criar(Some(SENHA), ModoAbrir::Senha, None).unwrap();
+        let conn = banco::abrir(&a.cofre.caminho_banco(), &chave).unwrap();
+        banco::gravar_config(&conn, portatil::CONFIG_PALAVRAS, &palavras.join(" ")).unwrap();
+        itens::criar_ideia(&conn, "Ideia vinda do Windows").unwrap();
+        // Hoje ao meio-dia, para aparecer na Agenda do navegador sem navegar.
+        let inicio = chrono::Local::now().date_naive().and_hms_opt(12, 0, 0).unwrap().and_local_timezone(chrono::Local).unwrap().timestamp_millis();
+        eventos::salvar(
+            &conn,
+            eventos::Evento {
+                id: String::new(),
+                titulo: "Compromisso vindo do Windows".into(),
+                inicio,
+                fim: Some(inicio + 3_600_000),
+                dia_inteiro: false,
+                repeticao: None,
+                modelo: false,
+                notas: String::new(),
+                excecoes: vec![],
+                cor: None,
+            },
+        )
+        .unwrap();
+        // Envelopes com o custo real do Windows (os testes usam um custo baixo).
+        let real = ParametrosKdf { memoria_kib: 64 * 1024, iteracoes: 3, paralelismo: 1 };
+        let id = a.cofre.envelopes_portateis().unwrap().id;
+        let envelopes = EnvelopesPortateis {
+            senha: Some(EnvelopesPortateis::envelope_da_senha(&chave, SENHA, &id, real).unwrap()),
+            recuperacao: EnvelopesPortateis::envelope_das_palavras(&chave, &palavras.join(" "), &id, real).unwrap(),
+            id,
+        };
+        let bruto = montar(&conn, &chave, envelopes).unwrap();
+        fs::write(pasta.join("do-windows.orbita-backup"), &bruto).unwrap();
+        fs::write(pasta.join("do-windows.json"), serde_json::json!({ "senha": SENHA, "palavras": palavras }).to_string()).unwrap();
+        println!("backup do Windows em {}", pasta.display());
+    }
+
+    /// Abre o backup feito no navegador pelo teste `scripts/teste-web.cjs --cruzado <pasta>`
+    /// (`do-navegador.orbita-backup` + `do-navegador.json`) e confere os dados.
+    /// `ORBITA_CRUZADO=/tmp/x cargo test --release abrir_backup_do_navegador -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn abrir_backup_do_navegador() {
+        use crate::banco::eventos;
+        let pasta = PathBuf::from(std::env::var("ORBITA_CRUZADO").expect("defina ORBITA_CRUZADO"));
+        let arquivo = pasta.join("do-navegador.orbita-backup");
+        let dados: serde_json::Value = serde_json::from_str(&fs::read_to_string(pasta.join("do-navegador.json")).unwrap()).unwrap();
+        let senha = dados["senha"].as_str().unwrap().to_string();
+        let palavras: Vec<String> = dados["palavras"].as_array().unwrap().iter().map(|p| p.as_str().unwrap().to_string()).collect();
+        let info = informacao(&arquivo).unwrap();
+        assert_eq!((info.versao, info.origem, info.tem_senha), (2, Some(Origem::Navegador), true));
+
+        let conferir = |cofre: &Cofre, chave: &Chave| {
+            let conn = banco::abrir(&cofre.caminho_banco(), chave).unwrap();
+            let ideias: Vec<String> = itens::listar_ideias(&conn).unwrap().into_iter().map(|n| n.texto).collect();
+            println!("ideias: {ideias:?}");
+            assert!(ideias.iter().any(|t| t == "Ideia logo antes do backup"));
+            assert!(ideias.iter().any(|t| t == "Ideia de teste com acentuação ção"));
+            let ev = eventos::listar(&conn, 0, i64::MAX).unwrap();
+            println!("compromissos: {:?}", ev.iter().map(|e| e.titulo.as_str()).collect::<Vec<_>>());
+            assert!(ev.iter().any(|e| e.titulo == "Consulta teste"));
+            // As 6 palavras vieram dentro do banco (para "Ver a chave").
+            assert_eq!(banco::ler_config(&conn, portatil::CONFIG_PALAVRAS).unwrap(), Some(palavras.join(" ")));
+        };
+        let com_senha = ambiente();
+        let inicio = std::time::Instant::now();
+        let (chave, modo) = restaurar(&com_senha.cofre, &arquivo, &Segredo::Senha(senha.clone()), None).unwrap();
+        println!("restaurado com a senha em {:?}", inicio.elapsed());
+        assert_eq!(modo, ModoAbrir::Senha);
+        conferir(&com_senha.cofre, &chave);
+        assert!(com_senha.cofre.abrir_com_senha(&senha).is_ok());
+
+        let com_palavras = ambiente();
+        let (chave, _) = restaurar(&com_palavras.cofre, &arquivo, &Segredo::Palavras(palavras.join(" ")), None).unwrap();
+        conferir(&com_palavras.cofre, &chave);
+        assert!(com_palavras.cofre.abrir_com_palavras(&palavras.join(" ")).is_ok());
     }
 }

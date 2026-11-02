@@ -17,7 +17,7 @@ use crate::ditado::{self, Ditado, EstadoDitado};
 use crate::ia::{self, cliente, organizar, quebrar, revisar, tema, EstadoIa, Provedor};
 use crate::nuvem::{self, ProvedorNuvem};
 
-const CONFIG_PALAVRAS: &str = "palavras_recuperacao";
+use crate::portatil::CONFIG_PALAVRAS;
 
 struct Sessao {
     conn: Connection,

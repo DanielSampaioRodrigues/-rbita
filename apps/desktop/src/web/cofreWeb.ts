@@ -29,12 +29,26 @@ export interface ArquivoCofreWeb {
   versao: 1;
   id: string;
   modo: "pin" | "senha" | "direto";
+  /** Envelope da senha para o dia a dia (PBKDF2). Falta quando o cofre veio de um backup aberto
+   *  com as 6 palavras: aí a senha abre pelo envelope portátil e este é criado na primeira vez. */
   senha?: Envelope;
-  recuperacao: Envelope;
+  /** Envelope das 6 palavras para o dia a dia (PBKDF2). Pode faltar pelo mesmo motivo. */
+  recuperacao?: Envelope;
   /** PIN ou abrir direto: a chave dos dados trancada pela chave do aparelho. */
   aparelho?: { trancado: Trancado; pin: boolean; sal?: Uint8Array; erradas: number };
-  /** As 6 palavras, trancadas com a chave dos dados (para mostrar em Ajustes). */
-  palavras: Trancado;
+  /** As 6 palavras, trancadas com a chave dos dados (para mostrar em Ajustes). Sem elas, valem as
+   *  guardadas dentro do banco (tabela config, como no Windows). */
+  palavras?: Trancado;
+  /** Envelopes que viajam no backup, iguais aos do Windows (Argon2id + XChaCha20-Poly1305, em JSON;
+   *  ver src-tauri/src/portatil.rs). Criados pelo motor, que tem o mesmo código Rust. */
+  portateis?: Portateis;
+}
+
+/** Um envelope portátil, no JSON do Windows (`{kdf, sal, nonce, cifra}` em hexadecimal). */
+export type EnvelopePortatil = Record<string, unknown>;
+export interface Portateis {
+  senha?: EnvelopePortatil;
+  recuperacao?: EnvelopePortatil;
 }
 
 const codificador = new TextEncoder();

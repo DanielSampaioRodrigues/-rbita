@@ -10,16 +10,18 @@
 pub mod aparelho;
 pub mod cripto;
 pub mod palavras;
+mod portateis;
 
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use unicode_normalization::UnicodeNormalization;
 
 use aparelho::GuardaDoAparelho;
-use cripto::{aleatorio, derivar, destrancar, nova_chave, trancar, Chave, Envelope, ParametrosKdf};
+use cripto::{destrancar, nova_chave, trancar, Chave, Envelope};
+pub use portateis::EnvelopesPortateis;
+use portateis::{abrir_envelope_por_segredo, bytes_da_senha, envelope_por_segredo, rotulo};
 
 use crate::erro::Erro;
 
@@ -54,32 +56,6 @@ struct ArquivoCofre {
     aparelho: Option<EnvelopeAparelho>,
 }
 
-/// Envelopes que viajam no backup.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct EnvelopesPortateis {
-    pub id: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub senha: Option<Envelope>,
-    pub recuperacao: Envelope,
-}
-
-impl EnvelopesPortateis {
-    pub fn abrir_com_senha(&self, senha: &str) -> Result<Chave, Erro> {
-        let env = self.senha.as_ref().ok_or(Erro::SemSenha)?;
-        abrir_envelope_por_segredo(env, &bytes_da_senha(senha), "senha", &self.id, None)?.ok_or(Erro::SenhaErrada)
-    }
-
-    pub fn tem_senha(&self) -> bool {
-        self.senha.is_some()
-    }
-
-    pub fn abrir_com_palavras(&self, texto: &str) -> Result<Chave, Erro> {
-        let lidas = palavras::ler(texto).map_err(|posicoes| Erro::PalavrasErradas { posicoes })?;
-        abrir_envelope_por_segredo(&self.recuperacao, palavras::juntar(&lidas).as_bytes(), "recuperacao", &self.id, None)?
-            .ok_or(Erro::ChaveDeRecuperacaoErrada)
-    }
-}
-
 /// O que a tela de entrada precisa saber antes de abrir.
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -96,15 +72,6 @@ pub struct Cofre {
     guarda: Arc<dyn GuardaDoAparelho>,
 }
 
-fn rotulo(tipo: &str, id: &str) -> String {
-    format!("orbita:{tipo}:v1:{id}")
-}
-
-/// Mesma senha, mesmos bytes, não importa como o teclado compôs os acentos.
-fn bytes_da_senha(senha: &str) -> zeroize::Zeroizing<Vec<u8>> {
-    zeroize::Zeroizing::new(senha.nfc().collect::<String>().into_bytes())
-}
-
 pub fn validar_senha(senha: &str) -> Result<(), Erro> {
     if senha.trim().chars().count() < MINIMO_SENHA {
         return Err(Erro::SenhaCurta);
@@ -118,19 +85,6 @@ pub fn validar_pin(pin: &str) -> Result<(), Erro> {
     } else {
         Err(Erro::PinInvalido)
     }
-}
-
-fn envelope_por_segredo(chave: &Chave, segredo: &[u8], tipo: &str, id: &str, pimenta: Option<&[u8]>) -> Result<Envelope, Erro> {
-    let sal = aleatorio::<16>().to_vec();
-    let kdf = ParametrosKdf::PADRAO;
-    let tranca = derivar(segredo, &sal, kdf, pimenta)?;
-    trancar(chave, &tranca, &rotulo(tipo, id), Some(kdf), sal)
-}
-
-fn abrir_envelope_por_segredo(env: &Envelope, segredo: &[u8], tipo: &str, id: &str, pimenta: Option<&[u8]>) -> Result<Option<Chave>, Erro> {
-    let kdf = env.kdf.ok_or_else(|| Erro::Interno("envelope sem parâmetros".into()))?;
-    let tranca = derivar(segredo, &env.sal, kdf, pimenta)?;
-    Ok(destrancar(env, &tranca, &rotulo(tipo, id)))
 }
 
 impl Cofre {

@@ -5,6 +5,13 @@
 //   pnpm motor && rm -rf dist-web && VITE_ORBITA_WEB=1 pnpm exec vite build
 //   node scripts/teste-web.cjs            (opções: --porta 8780, --mostrar para abrir a janela)
 //
+// Teste cruzado com o Windows (opção --cruzado <pasta>):
+//   1. no src-tauri: ORBITA_CRUZADO=<pasta> cargo test --release gerar_backup_do_windows -- --ignored
+//      (grava do-windows.orbita-backup e do-windows.json na pasta);
+//   2. node scripts/teste-web.cjs --cruzado <pasta>: abre o backup do Windows aqui (senha e 6 palavras)
+//      e grava o backup feito no navegador em do-navegador.orbita-backup e do-navegador.json;
+//   3. no src-tauri: ORBITA_CRUZADO=<pasta> cargo test --release abrir_backup_do_navegador -- --ignored
+//
 // Precisa do Playwright com o Chromium instalados (require("playwright")).
 // O roteiro: cria o cofre com PIN e passa pelas 6 palavras; cria um dado em cada módulo;
 // recarrega, abre numa aba nova, bloqueia e desbloqueia (PIN e 6 palavras), conferindo tudo;
@@ -35,6 +42,7 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "orbita-teste-web-"));
 const URL_APP = `http://localhost:${PORTA}/`;
 const PIN = "2580";
 const SENHA = "gato azul na lua";
+const CRUZADO = arg("--cruzado", null);
 
 if (!fs.existsSync(path.join(DIST, "index.html"))) {
   console.error(`Não achei ${DIST}/index.html. Monte antes: pnpm motor && VITE_ORBITA_WEB=1 pnpm exec vite build`);
@@ -500,7 +508,7 @@ async function conferir(p, onde) {
 }
 
 // ── Backup e restauração ────────────────────────────────────────────────────
-async function restaurarNoInicio(b, arquivo, comPalavras, palavras) {
+async function restaurarNoInicio(b, arquivo, comPalavras, palavras, senha = SENHA) {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
   const p = await ctx.newPage();
   ligar(p);
@@ -514,7 +522,7 @@ async function restaurarNoInicio(b, arquivo, comPalavras, palavras) {
     // Colar as 4 primeiras letras de cada palavra, todas no primeiro campo.
     await p.getByLabel("Palavra 1").fill(palavras.map((w) => w.slice(0, 4)).join(" "));
   } else {
-    await p.getByLabel("Senha").fill(SENHA);
+    await p.getByLabel("Senha").fill(senha);
   }
   await p.getByRole("button", { name: "Restaurar" }).click();
   await p.getByRole("button", { name: "Abrir o Órbita" }).click({ timeout: 20000 });
@@ -604,8 +612,17 @@ servidor.listen(PORTA, async () => {
     const arq = await baixado;
     const backup = path.join(TMP, "backup.orbita-backup");
     await arq.saveAs(backup);
-    const j = JSON.parse(fs.readFileSync(backup, "utf8"));
-    if (j.formato !== "orbita-backup-web" || j.versao !== 2 || !j.senha) falhar(`backup com formato inesperado: ${j.formato} v${j.versao}`);
+    // O mesmo formato do Windows: ORBITABK + tamanho + cabeçalho JSON + banco trancado.
+    const bruto = fs.readFileSync(backup);
+    const cab = bruto.subarray(0, 8).toString() === "ORBITABK" ? JSON.parse(bruto.subarray(12, 12 + bruto.readUInt32LE(8)).toString()) : {};
+    if (cab.versao !== 2 || cab.origem !== "navegador" || !cab.envelopes?.senha || !cab.envelopes?.recuperacao) falhar(`backup com formato inesperado: ${JSON.stringify(cab).slice(0, 120)}`);
+    if (bruto.includes("Ideia logo antes do backup")) falhar("o backup tem texto aberto");
+    if (CRUZADO) {
+      fs.mkdirSync(CRUZADO, { recursive: true });
+      fs.copyFileSync(backup, path.join(CRUZADO, "do-navegador.orbita-backup"));
+      fs.writeFileSync(path.join(CRUZADO, "do-navegador.json"), JSON.stringify({ senha: SENHA, palavras }));
+      console.log(`  backup do navegador em ${CRUZADO} (abra no Windows: cargo test abrir_backup_do_navegador)`);
+    }
 
     passo("restaurar com a senha num navegador limpo");
     const r1 = await restaurarNoInicio(b, backup, false, palavras);
@@ -659,6 +676,45 @@ servidor.listen(PORTA, async () => {
     await espera(r2.p, 2000);
     await conferir(r2.p, "depois de restaurar por cima e recarregar");
     await r2.ctx.close();
+
+    if (CRUZADO && fs.existsSync(path.join(CRUZADO, "do-windows.orbita-backup"))) {
+      const doWindows = path.join(CRUZADO, "do-windows.orbita-backup");
+      const w = JSON.parse(fs.readFileSync(path.join(CRUZADO, "do-windows.json"), "utf8"));
+      const conferirWindows = async (pg, onde) => {
+        if (!(await temIdeia(pg, "Ideia vinda do Windows"))) falhar(`${onde}: sem a ideia do Windows`);
+        await ir(pg, "Agenda");
+        if (!(await textoMain(pg)).includes("Compromisso vindo do Windows")) falhar(`${onde}: sem o compromisso do Windows`);
+      };
+      for (const comPalavras of [false, true]) {
+        passo(`abrir o backup feito no Windows num navegador limpo (${comPalavras ? "6 palavras" : "senha"})`);
+        const t0 = Date.now();
+        const rw = await restaurarNoInicio(b, doWindows, comPalavras, w.palavras, w.senha);
+        console.log(`  restaurado em ${((Date.now() - t0) / 1000).toFixed(1)} s (com as esperas do roteiro)`);
+        await conferirWindows(rw.p, "backup do Windows");
+        if (!comPalavras) {
+          passo("depois: recarregar, entrar com a senha do Windows e ver a chave de recuperação");
+          await rw.p.reload();
+          await espera(rw.p, 2500);
+          await rw.p.getByLabel("Senha").fill(w.senha);
+          await rw.p.getByRole("button", { name: "Entrar" }).click();
+          await espera(rw.p, 2500);
+          await conferirWindows(rw.p, "depois de recarregar");
+          await ir(rw.p, "Ajustes");
+          await main(rw.p).locator("button", { hasText: "Segurança" }).first().click();
+          await espera(rw.p);
+          await rw.p.getByRole("button", { name: "Ver a chave de recuperação" }).click();
+          await dialogo(rw.p).locator("input[type=password]").first().fill(w.senha);
+          await dialogo(rw.p).getByRole("button", { name: "Continuar" }).click();
+          await espera(rw.p, 1500);
+          const ch = await dialogo(rw.p).innerText();
+          if (!w.palavras.every((x) => ch.includes(x))) falhar("Ver a chave não mostrou as palavras do Windows");
+          await dialogo(rw.p).getByRole("button", { name: "Fechar" }).click();
+        }
+        await rw.ctx.close();
+      }
+    } else if (CRUZADO) {
+      console.log("· (sem do-windows.orbita-backup na pasta: pulei a abertura do backup do Windows)");
+    }
   } catch (e) {
     falhar(`o roteiro parou: ${String(e).split("\n")[0]}`);
     if (p && !p.isClosed()) await p.screenshot({ path: path.join(TMP, "erro.png") }).catch(() => {});

@@ -9,17 +9,11 @@
 #[path = "../../../apps/desktop/src-tauri/src/erro.rs"]
 pub mod erro;
 
-pub mod cofre {
-    pub mod cripto {
-        /// No navegador o banco não usa a chave do SQLCipher: o arquivo inteiro é
-        /// trancado por fora, com a chave do cofre web (AES-GCM).
-        pub type Chave = zeroize::Zeroizing<[u8; 32]>;
-        #[allow(dead_code)]
-        pub fn nova_chave() -> Chave {
-            zeroize::Zeroizing::new([0u8; 32])
-        }
-    }
-}
+pub mod cofre;
+
+/// O formato do backup, o mesmo arquivo do Windows.
+#[path = "../../../apps/desktop/src-tauri/src/portatil.rs"]
+pub mod portatil;
 
 #[path = "../../../apps/desktop/src-tauri/src/banco/mod.rs"]
 pub mod banco;
@@ -46,6 +40,9 @@ pub mod ponte {
 use std::cell::RefCell;
 
 use erro::Erro;
+use cofre::cripto::Chave;
+use cofre::EnvelopesPortateis;
+use portatil::{Origem, Segredo, CONFIG_PALAVRAS, KDF_NAVEGADOR};
 use ponte::Sessao;
 use wasm_bindgen::prelude::*;
 
@@ -126,4 +123,126 @@ pub fn comandos_gerados() -> Vec<String> {
 #[wasm_bindgen]
 pub fn comandos_de_fora() -> Vec<String> {
     ponte::COMANDOS_DE_FORA.iter().map(|s| s.to_string()).collect()
+}
+
+// ── Backup portátil e envelopes (ver src-tauri/src/portatil.rs) ─────────────────
+
+fn chave_de(bytes: &[u8]) -> Result<Chave, JsValue> {
+    let mut c = zeroize::Zeroizing::new([0u8; 32]);
+    if bytes.len() != 32 {
+        return Err(interno("chave dos dados com tamanho errado"));
+    }
+    c.copy_from_slice(bytes);
+    Ok(c)
+}
+
+fn envelopes_de(json: &str) -> Result<EnvelopesPortateis, JsValue> {
+    serde_json::from_str(json).map_err(|e| interno(format!("envelopes: {e}")))
+}
+
+fn segredo(senha: Option<String>, palavras: Option<String>) -> Result<Segredo, JsValue> {
+    match (senha, palavras) {
+        (_, Some(p)) => Ok(Segredo::Palavras(p)),
+        (Some(s), None) => Ok(Segredo::Senha(s)),
+        (None, None) => Err(js(Erro::SenhaErrada)),
+    }
+}
+
+/// Envelope da senha que viaja no backup (Argon2id com o custo do navegador). JSON do envelope.
+#[wasm_bindgen]
+pub fn portatil_envelope_senha(dek: &[u8], senha: &str, id: &str) -> Result<String, JsValue> {
+    let env = EnvelopesPortateis::envelope_da_senha(&chave_de(dek)?, senha, id, KDF_NAVEGADOR).map_err(js)?;
+    serde_json::to_string(&env).map_err(interno)
+}
+
+/// Envelope das 6 palavras que viaja no backup. JSON do envelope.
+#[wasm_bindgen]
+pub fn portatil_envelope_palavras(dek: &[u8], palavras: &str, id: &str) -> Result<String, JsValue> {
+    let env = EnvelopesPortateis::envelope_das_palavras(&chave_de(dek)?, palavras, id, KDF_NAVEGADOR).map_err(js)?;
+    serde_json::to_string(&env).map_err(interno)
+}
+
+/// Abre a chave dos dados pelos envelopes portáteis (`{id, senha?, recuperacao}`), com a senha ou as palavras.
+#[wasm_bindgen]
+pub fn portatil_abrir(envelopes: &str, senha: Option<String>, palavras: Option<String>) -> Result<Vec<u8>, JsValue> {
+    let e = envelopes_de(envelopes)?;
+    let chave = match segredo(senha, palavras)? {
+        Segredo::Senha(s) => e.abrir_com_senha(&s),
+        Segredo::Palavras(p) => e.abrir_com_palavras(&p),
+    }
+    .map_err(js)?;
+    Ok(chave.to_vec())
+}
+
+/// Monta o arquivo de backup com o banco aberto agora e os envelopes portáteis do cofre web.
+#[wasm_bindgen]
+pub fn backup_montar(dek: &[u8], envelopes: &str, versao_app: &str) -> Result<Vec<u8>, JsValue> {
+    let chave = chave_de(dek)?;
+    let e = envelopes_de(envelopes)?;
+    SESSAO.with(|s| {
+        let mut s = s.borrow_mut();
+        let s = s.as_mut().ok_or_else(|| js(Erro::Bloqueado))?;
+        let banco = zeroize::Zeroizing::new(s.conn.serialize(rusqlite::MAIN_DB).map_err(interno)?.to_vec());
+        portatil::montar(&banco, &chave, e, Origem::Navegador, versao_app).map_err(js)
+    })
+}
+
+/// O que a tela mostra antes de pedir a senha (JSON `{criadoEm, versaoApp, temSenha, versao, origem}`).
+#[wasm_bindgen]
+pub fn backup_info(bytes: &[u8]) -> Result<String, JsValue> {
+    serde_json::to_string(&portatil::informacao(bytes).map_err(js)?).map_err(interno)
+}
+
+/// Um backup aberto: a chave dos dados, o banco em bytes, os envelopes (JSON) e as 6 palavras
+/// guardadas dentro do banco (se houver).
+#[wasm_bindgen(getter_with_clone)]
+pub struct BackupAberto {
+    pub dek: Vec<u8>,
+    pub banco: Vec<u8>,
+    pub envelopes: String,
+    pub palavras: Option<String>,
+}
+
+/// Abre um backup (versão 2) com a senha ou as palavras e confere que o banco abre
+/// (com as migrações deste motor), sem mexer no banco aberto agora.
+#[wasm_bindgen]
+pub fn backup_abrir(bytes: &[u8], senha: Option<String>, palavras: Option<String>) -> Result<BackupAberto, JsValue> {
+    console_error_panic_hook::set_once();
+    let a = portatil::abrir(bytes, &segredo(senha, palavras)?).map_err(js)?;
+    let mut conn = rusqlite::Connection::open_in_memory().map_err(interno)?;
+    conn.deserialize_read_exact(rusqlite::MAIN_DB, a.banco.as_slice(), a.banco.len(), false)
+        .map_err(|_| js(Erro::BackupInvalido("os dados dentro dele estão danificados".into())))?;
+    banco::migrar(&conn).map_err(js)?;
+    let palavras = banco::ler_config(&conn, CONFIG_PALAVRAS).map_err(js)?;
+    Ok(BackupAberto {
+        dek: a.chave.to_vec(),
+        banco: a.banco.to_vec(),
+        envelopes: serde_json::to_string(&a.cabecalho.envelopes).map_err(interno)?,
+        palavras,
+    })
+}
+
+/// As 6 palavras guardadas dentro do banco aberto (como no Windows), se houver.
+#[wasm_bindgen]
+pub fn palavras_no_banco() -> Result<Option<String>, JsValue> {
+    SESSAO.with(|s| {
+        let s = s.borrow();
+        let s = s.as_ref().ok_or_else(|| js(Erro::Bloqueado))?;
+        banco::ler_config(&s.conn, CONFIG_PALAVRAS).map_err(js)
+    })
+}
+
+/// Guarda as 6 palavras dentro do banco aberto, para o backup levar (o Windows mostra
+/// em "Ver a chave"). Devolve se mudou algo (então é preciso guardar o banco).
+#[wasm_bindgen]
+pub fn guardar_palavras_no_banco(palavras: &str) -> Result<bool, JsValue> {
+    SESSAO.with(|s| {
+        let s = s.borrow();
+        let s = s.as_ref().ok_or_else(|| js(Erro::Bloqueado))?;
+        if banco::ler_config(&s.conn, CONFIG_PALAVRAS).map_err(js)?.as_deref() == Some(palavras) {
+            return Ok(false);
+        }
+        banco::gravar_config(&s.conn, CONFIG_PALAVRAS, palavras).map_err(js)?;
+        Ok(true)
+    })
 }

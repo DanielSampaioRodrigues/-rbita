@@ -5,7 +5,7 @@
 // própria aqui, ou um aviso claro de que ainda não existe no navegador.
 
 import type { Anexo, Api, Chamar, Confirmacao, ErroOrbita as TipoErro, InfoBackup, ModoAbrir, SituacaoBackup } from "../api";
-import { carregarMotor } from "./motor";
+import { carregarMotor, type Motor } from "./motor";
 import { QUANTIDADE, reconhecer, separar, textoDaChave, LISTA } from "../palavras";
 import {
   abrirAparelho,
@@ -26,6 +26,7 @@ import {
   trancarTexto,
   type ArquivoCofreWeb,
   type Envelope,
+  type Portateis,
   type Trancado,
 } from "./cofreWeb";
 
@@ -100,7 +101,10 @@ async function base64DoArquivo(f: File): Promise<string> {
   return paraBase64(new Uint8Array(await f.arrayBuffer()));
 }
 
-// ── Backup em arquivo (só entre versões de navegador, por enquanto) ────────────
+// ── Backup em arquivo ──────────────────────────────────────────────────────────
+// O backup novo é o mesmo arquivo do Windows (`.orbita-backup` versão 2, começa com
+// "ORBITABK"; formato em src-tauri/src/portatil.rs), montado e aberto pelo motor.
+// O JSON "orbita-backup-web" versão 2 (até a 0.45) continua abrindo aqui.
 
 interface EnvelopeTexto { sal: string; iv: string; cifra: string; iteracoes: number }
 interface TrancadoTexto { iv: string; cifra: string }
@@ -116,10 +120,12 @@ interface ArquivoBackupWeb {
   palavras: TrancadoTexto;
   dados: TrancadoTexto;
 }
-const envTexto = (e: Envelope): EnvelopeTexto => ({ sal: paraBase64(e.sal), iv: paraBase64(e.iv), cifra: paraBase64(e.cifra), iteracoes: e.iteracoes });
 const envBytes = (e: EnvelopeTexto): Envelope => ({ sal: deBase64(e.sal), iv: deBase64(e.iv), cifra: deBase64(e.cifra), iteracoes: e.iteracoes });
-const trTexto = (t: Trancado): TrancadoTexto => ({ iv: paraBase64(t.iv), cifra: paraBase64(t.cifra) });
 const trBytes = (t: TrancadoTexto): Trancado => ({ iv: deBase64(t.iv), cifra: deBase64(t.cifra) });
+
+const MAGICA = "ORBITABK";
+const ehPortatil = (b: Uint8Array) => b.length >= 8 && [...MAGICA].every((ch, i) => b[i] === ch.charCodeAt(0));
+type BackupLido = { tipo: "portatil"; bytes: Uint8Array } | { tipo: "web"; a: ArquivoBackupWeb };
 
 // ── O modo web em si ───────────────────────────────────────────────────────────
 
@@ -220,6 +226,16 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
   };
   const base = criarBase(chamar);
 
+  /** Chama uma função do motor fora da ponte de comandos, convertendo o erro dele. */
+  const doMotor = async <T>(f: (m: Motor) => T): Promise<T> => {
+    const m = await motor;
+    try {
+      return f(m);
+    } catch (e) {
+      throw comoErro(lerErro(e));
+    }
+  };
+
   // Anexos: o navegador não tem "buscar um anexo pelo id"; lembra os que as telas listam.
   const anexosVistos = new Map<string, Anexo>();
   const lembrar = (a: Anexo) => (anexosVistos.set(a.id, a), a);
@@ -258,14 +274,77 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     if (!dek) throw new E("senha_errada", "A senha não confere.");
     return dek;
   };
+  // ── Envelopes portáteis (os do backup, iguais aos do Windows; Argon2id no motor) ──
+  const envelopesJson = (c: ArquivoCofreWeb, p: Portateis = c.portateis ?? {}) => JSON.stringify({ id: c.id, ...p });
+  const portatilSenha = (dek: Uint8Array, senha: string, id: string) => doMotor((m) => JSON.parse(m.portatil_envelope_senha(dek, senha, id)) as Record<string, unknown>);
+  const portatilPalavras = (dek: Uint8Array, palavras: string, id: string) => doMotor((m) => JSON.parse(m.portatil_envelope_palavras(dek, palavras, id)) as Record<string, unknown>);
+  const temSenha = (c: ArquivoCofreWeb | null | undefined) => !!(c?.senha || c?.portateis?.senha);
+  const semSenha = () => new E("sem_senha", "Estes dados não têm senha. Use as 6 palavras da chave de recuperação.");
+
+  /** A chave dos dados pela senha: envelope do dia a dia (PBKDF2) ou, se ele ainda não existe, o portátil. */
+  const dekPorSenha = async (c: ArquivoCofreWeb, senha: string) => {
+    if (c.senha || !c.portateis?.senha || !c.portateis.recuperacao) return porSenha(senha, c.senha);
+    return doMotor((m) => m.portatil_abrir(envelopesJson(c), senha, null));
+  };
+  const dekPorPalavras = async (c: ArquivoCofreWeb, texto: string) => {
+    if (c.recuperacao || !c.portateis?.recuperacao) {
+      if (!c.recuperacao) throw new E("chave_errada", "A chave de recuperação não abre estes dados.");
+      return porPalavras(texto, c.recuperacao);
+    }
+    return doMotor((m) => m.portatil_abrir(envelopesJson(c), null, texto));
+  };
+
+  /** As 6 palavras abertas: do cofre ou, se não estiverem lá, de dentro do banco (como no Windows). */
+  const palavrasDoCofre = async (c: ArquivoCofreWeb, dek: Uint8Array): Promise<string | null> => {
+    if (c.palavras) return destrancarTexto(await chaveDosDados(dek), c.palavras, `palavras:${c.id}`);
+    if (!aberto) return null;
+    const noBanco = await doMotor((m) => m.palavras_no_banco());
+    try {
+      return noBanco ? lerPalavras(noBanco) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  /** Completa o que falta no cofre depois de abrir: os envelopes do dia a dia (se o cofre veio
+   *  de um backup), os portáteis (cofres de antes da 0.46) e as palavras dentro do banco. */
+  const completarCofre = async (dek: Uint8Array, digitado: { senha?: string; palavras?: string }) => {
+    const c = await exigirCofre();
+    const novo: ArquivoCofreWeb = { ...c, portateis: { ...(c.portateis ?? {}) } };
+    let mudou = false;
+    const k = await chaveDosDados(dek);
+    if (digitado.senha !== undefined && !novo.senha && novo.portateis?.senha) {
+      novo.senha = await envelopar(normal(digitado.senha), dek, "senha");
+      mudou = true;
+    }
+    if (digitado.palavras !== undefined && !novo.palavras) {
+      const lidas = lerPalavras(digitado.palavras);
+      novo.recuperacao = await envelopar(lidas, dek, "recuperacao");
+      novo.palavras = await trancarTexto(k, lidas, `palavras:${c.id}`);
+      mudou = true;
+    }
+    const palavras = await palavrasDoCofre(novo, dek);
+    if (!novo.portateis!.recuperacao && palavras) {
+      novo.portateis!.recuperacao = await portatilPalavras(dek, palavras, c.id);
+      mudou = true;
+    }
+    if (digitado.senha !== undefined && !novo.portateis!.senha) {
+      novo.portateis!.senha = await portatilSenha(dek, digitado.senha, c.id);
+      mudou = true;
+    }
+    if (mudou) await gravarCofre(novo);
+    if (palavras && aberto && (await doMotor((m) => m.guardar_palavras_no_banco(palavras)))) agendarSalvar();
+    return novo;
+  };
+
   const zerarTentativas = async (c: ArquivoCofreWeb) => {
     if (c.aparelho && c.aparelho.erradas) await gravarCofre({ ...c, aparelho: { ...c.aparelho, erradas: 0 } });
   };
 
   const confirmar = async (conf: Confirmacao) => {
     const c = await exigirCofre();
-    if (conf.tipo === "senha") await porSenha(conf.valor, c.senha);
-    else if (conf.tipo === "palavras") await porPalavras(conf.valor, c.recuperacao);
+    if (conf.tipo === "senha") await dekPorSenha(c, conf.valor);
+    else if (conf.tipo === "palavras") await dekPorPalavras(c, conf.valor);
     else if (conf.tipo === "pin") {
       if (!c.aparelho?.pin) throw semAparelho();
       const r = await abrirAparelho(c.aparelho, conf.valor);
@@ -275,8 +354,8 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
   };
   const palavrasAbertas = async () => {
     const c = await exigirCofre();
-    if (!chave) throw new E("bloqueado", "O Órbita está bloqueado.");
-    const s = await destrancarTexto(chave, c.palavras, `palavras:${c.id}`);
+    if (!chave || !bruta) throw new E("bloqueado", "O Órbita está bloqueado.");
+    const s = await palavrasDoCofre(c, bruta);
     if (!s) throw new E("interno", "Não consegui ler a chave de recuperação.");
     return s.split(" ");
   };
@@ -289,18 +368,21 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     }
   })();
 
-  const lerBackup = async (caminho: string): Promise<ArquivoBackupWeb> => {
+  const naoEBackup = () => new E("backup_invalido", "Não deu para usar este backup: este arquivo não é um backup do Órbita.");
+  const lerBackup = async (caminho: string): Promise<BackupLido> => {
     const f = escolhidos.get(caminho);
     if (!f) throw new E("backup_invalido", "Não deu para usar este backup: não encontrei o arquivo escolhido.");
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    if (ehPortatil(bytes)) return { tipo: "portatil", bytes };
     let a: ArquivoBackupWeb;
     try {
-      a = JSON.parse(await f.text()) as ArquivoBackupWeb;
+      a = JSON.parse(new TextDecoder().decode(bytes)) as ArquivoBackupWeb;
     } catch {
-      throw new E("backup_invalido", "Não deu para usar este backup: este arquivo não é um backup da versão de navegador do Órbita (os backups feitos no Windows ainda não abrem aqui).");
+      throw naoEBackup();
     }
-    if (a?.formato !== FORMATO_BACKUP) throw new E("backup_invalido", "Não deu para usar este backup: este arquivo não é um backup da versão de navegador do Órbita (os backups feitos no Windows ainda não abrem aqui).");
+    if (a?.formato !== FORMATO_BACKUP) throw naoEBackup();
     if (a.versao !== 2) throw new E("backup_invalido", "Não deu para usar este backup: ele é de uma versão de navegador anterior à 0.46, de antes da troca de motor, e não abre mais. Backups novos abrem normalmente.");
-    return a;
+    return { tipo: "web", a };
   };
 
   const iaIndisponivel = () => Promise.reject(new E("ia", "A IA ainda não funciona na versão de navegador (iPad). Por enquanto, use no Windows.", undefined, undefined, undefined, "sem_provedor"));
@@ -322,7 +404,7 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     // ── Cofre ──
     situacao: async () => {
       const c = await lerCofre();
-      return { existe: !!c, modo: c?.modo ?? null, tentativasRestantes: TENTATIVAS_DE_PIN - (c?.aparelho?.erradas ?? 0), aberto: !!chave, temSenha: !!c?.senha };
+      return { existe: !!c, modo: c?.modo ?? null, tentativasRestantes: TENTATIVAS_DE_PIN - (c?.aparelho?.erradas ?? 0), aberto: !!chave, temSenha: temSenha(c) };
     },
     criarCofre: async (senha, modo, pin) => {
       if (await lerCofre()) throw new E("cofre_existe", "Já existem dados protegidos neste aparelho.");
@@ -342,9 +424,14 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
         palavras: await trancarTexto(k, palavras.join(" "), `palavras:${id}`),
         ...(senha !== null ? { senha: await envelopar(normal(senha), dek, "senha") } : {}),
         ...(modo === "pin" || modo === "direto" ? { aparelho: await trancarAparelho(dek, modo === "pin" ? pin! : null) } : {}),
+        portateis: {
+          recuperacao: await portatilPalavras(dek, palavras.join(" "), id),
+          ...(senha !== null ? { senha: await portatilSenha(dek, senha, id) } : {}),
+        },
       };
       await gravarCofre(c);
       await abrirDados(null);
+      await doMotor((m) => m.guardar_palavras_no_banco(palavras.join(" ")));
       bruta = dek;
       chave = k;
       await salvarAgora();
@@ -353,15 +440,17 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     },
     abrirComSenha: async (senha) => {
       const c = await exigirCofre();
-      const dek = await porSenha(senha, c.senha);
+      const dek = await dekPorSenha(c, senha);
       await zerarTentativas(c);
       await entrar(dek, c);
+      await completarCofre(dek, { senha });
     },
     abrirComPalavras: async (texto) => {
       const c = await exigirCofre();
-      const dek = await porPalavras(texto, c.recuperacao);
+      const dek = await dekPorPalavras(c, texto);
       await zerarTentativas(c);
       await entrar(dek, c);
+      await completarCofre(dek, { palavras: texto });
     },
     abrirComPin: async (pin) => {
       const c = await exigirCofre();
@@ -378,6 +467,7 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
       }
       await zerarTentativas(c);
       await entrar(r, c);
+      await completarCofre(r, {});
     },
     abrirDireto: async () => {
       const c = await exigirCofre();
@@ -392,15 +482,21 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     },
     conferirPalavras: async (texto) => {
       const c = await exigirCofre();
-      await porPalavras(texto, c.recuperacao);
+      await dekPorPalavras(c, texto);
     },
     recuperar: async (texto, novaSenha) => {
       validarSenha(novaSenha);
       const c = await exigirCofre();
-      const dek = await porPalavras(texto, c.recuperacao);
-      const novo: ArquivoCofreWeb = { ...c, senha: await envelopar(normal(novaSenha), dek, "senha"), ...(c.aparelho ? { aparelho: { ...c.aparelho, erradas: 0 } } : {}) };
+      const dek = await dekPorPalavras(c, texto);
+      const novo: ArquivoCofreWeb = {
+        ...c,
+        senha: await envelopar(normal(novaSenha), dek, "senha"),
+        portateis: { ...(c.portateis ?? {}), senha: await portatilSenha(dek, novaSenha, c.id) },
+        ...(c.aparelho ? { aparelho: { ...c.aparelho, erradas: 0 } } : {}),
+      };
       await gravarCofre(novo);
       await entrar(dek, novo);
+      await completarCofre(dek, { palavras: texto });
     },
     lerArquivoRecuperacao: async (caminho) => {
       const f = escolhidos.get(caminho);
@@ -422,14 +518,18 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
       validarSenha(nova);
       if (!bruta) throw new E("bloqueado", "O Órbita está bloqueado.");
       const c = await exigirCofre();
-      await gravarCofre({ ...c, senha: await envelopar(normal(nova), bruta, "senha") });
+      await gravarCofre({
+        ...c,
+        senha: await envelopar(normal(nova), bruta, "senha"),
+        portateis: { ...(c.portateis ?? {}), senha: await portatilSenha(bruta, nova, c.id) },
+      });
     },
     mudarModo: async (conf, modo, pin) => {
       await confirmar(conf);
       if (!bruta) throw new E("bloqueado", "O Órbita está bloqueado.");
       if (modo === "hello") throw semHello();
       const c = await exigirCofre();
-      if (modo === "senha" && !c.senha) throw new E("sem_senha", "Estes dados não têm senha. Use as 6 palavras da chave de recuperação.");
+      if (modo === "senha" && !temSenha(c)) throw semSenha();
       if (modo === "pin") validarPin(pin);
       const { aparelho: _antigo, ...resto } = c;
       const aparelho = modo === "pin" || modo === "direto" ? await trancarAparelho(bruta, modo === "pin" ? pin! : null) : undefined;
@@ -444,23 +544,14 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
 
     // ── Backup e exportação (baixar arquivos) ──
     fazerBackup: async (caminho) => {
-      const c = await exigirCofre();
-      if (!chave) throw new E("bloqueado", "O Órbita está bloqueado.");
-      await salvarAgora();
-      const dados = await ler<Trancado>("banco");
-      if (!dados) throw new E("interno", "Ainda não há dados guardados para o backup.");
-      const arquivo: ArquivoBackupWeb = {
-        formato: FORMATO_BACKUP,
-        versao: 2,
-        criadoEm: Date.now(),
-        versaoApp: __VERSAO__,
-        id: c.id,
-        ...(c.senha ? { senha: envTexto(c.senha) } : {}),
-        recuperacao: envTexto(c.recuperacao),
-        palavras: trTexto(c.palavras),
-        dados: trTexto(dados),
-      };
-      baixar(nomeDe(caminho, `orbita-backup-${hoje()}.orbita-backup`), new Blob([JSON.stringify(arquivo)], { type: "application/octet-stream" }));
+      await exigirCofre();
+      if (!chave || !bruta) throw new E("bloqueado", "O Órbita está bloqueado.");
+      const dek = bruta;
+      const c = await completarCofre(dek, {});
+      if (!c.portateis?.recuperacao) throw new E("interno", "Não consegui preparar a chave de recuperação para o backup.");
+      // O mesmo arquivo do Windows: abre lá e aqui.
+      const arquivo = await doMotor((m) => m.backup_montar(dek, envelopesJson(c), __VERSAO__));
+      baixar(nomeDe(caminho, `orbita-backup-${hoje()}.orbita-backup`), new Blob([arquivo as unknown as BlobPart], { type: "application/octet-stream" }));
       ultimoBackup = Date.now();
       try {
         localStorage.setItem("orbita-ultimo-backup", String(ultimoBackup));
@@ -472,31 +563,81 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
       baixar(nomeDe(caminho, "orbita-exportacao.txt"), new Blob([conteudo], { type: `${mimeDe(caminho)};charset=utf-8` }));
     },
     infoBackup: async (caminho): Promise<InfoBackup> => {
-      const a = await lerBackup(caminho);
-      return { criadoEm: a.criadoEm, versaoApp: a.versaoApp, temSenha: !!a.senha };
+      const lido = await lerBackup(caminho);
+      if (lido.tipo === "portatil") {
+        const i = JSON.parse(await doMotor((m) => m.backup_info(lido.bytes))) as InfoBackup;
+        return { criadoEm: i.criadoEm, versaoApp: i.versaoApp, temSenha: i.temSenha };
+      }
+      return { criadoEm: lido.a.criadoEm, versaoApp: lido.a.versaoApp, temSenha: !!lido.a.senha };
     },
     restaurarBackup: async (caminho, { senha, palavras }, escolha): Promise<ModoAbrir> => {
-      const a = await lerBackup(caminho);
-      const rec = envBytes(a.recuperacao);
-      const envSenha = a.senha ? envBytes(a.senha) : undefined;
-      const dek = palavras ? await porPalavras(palavras, rec) : await porSenha(senha ?? "", envSenha);
-      if (!envSenha && (!escolha || escolha.modo === "senha")) throw new E("sem_senha", "Estes dados não têm senha. Use as 6 palavras da chave de recuperação.");
-      const modo = escolha?.modo ?? "senha";
-      if (modo === "hello") throw semHello();
-      if (modo === "pin") validarPin(escolha?.pin);
-      const k = await chaveDosDados(dek);
-      const dados = trBytes(a.dados);
-      const bytes = await destrancar(k, dados, rotuloDados(a.id));
-      if (bytes === null) throw new E("backup_invalido", "Não deu para usar este backup: os dados dentro dele não abriram.");
-      const c: ArquivoCofreWeb = {
-        versao: 1,
-        id: a.id,
-        modo,
-        ...(envSenha ? { senha: envSenha } : {}),
-        recuperacao: rec,
-        palavras: trBytes(a.palavras),
-        ...(modo === "pin" || modo === "direto" ? { aparelho: await trancarAparelho(dek, modo === "pin" ? escolha!.pin! : null) } : {}),
+      const lido = await lerBackup(caminho);
+      const conferirEscolha = (temSenhaNoBackup: boolean) => {
+        if (!temSenhaNoBackup && (!escolha || escolha.modo === "senha")) throw semSenha();
+        const modo = escolha?.modo ?? "senha";
+        if (modo === "hello") throw semHello();
+        if (modo === "pin") validarPin(escolha?.pin);
+        return modo;
       };
+      const aparelhoDe = async (modo: ModoAbrir, dek: Uint8Array) =>
+        modo === "pin" || modo === "direto" ? { aparelho: await trancarAparelho(dek, modo === "pin" ? escolha!.pin! : null) } : {};
+
+      let c: ArquivoCofreWeb;
+      let dek: Uint8Array;
+      let bytes: Uint8Array;
+      let dados: Trancado;
+      if (lido.tipo === "portatil") {
+        // Backup do Windows ou do navegador (versão 2): o motor confere e abre.
+        conferirEscolha(true); // a senha do backup só se sabe depois; o motor recusa "sem senha" abaixo
+        const ab = await doMotor((m) => m.backup_abrir(lido.bytes, palavras ? null : (senha ?? ""), palavras ?? null));
+        const envs = JSON.parse(ab.envelopes) as { id: string } & Portateis;
+        const noBanco = ab.palavras;
+        dek = ab.dek;
+        bytes = ab.banco;
+        ab.free();
+        const modo = conferirEscolha(!!envs.senha);
+        let lidas: string | null = null;
+        try {
+          lidas = palavras ? lerPalavras(palavras) : noBanco ? lerPalavras(noBanco) : null;
+        } catch {
+          lidas = null;
+        }
+        // A chave dos dados do backup passa a ser a deste aparelho: assim os envelopes do backup
+        // (senha e 6 palavras) continuam valendo, e o próximo backup abre com os mesmos segredos.
+        const k = await chaveDosDados(dek);
+        const id = envs.id;
+        c = {
+          versao: 1,
+          id,
+          modo,
+          ...(lidas ? { recuperacao: await envelopar(lidas, dek, "recuperacao"), palavras: await trancarTexto(k, lidas, `palavras:${id}`) } : {}),
+          ...(!palavras && senha && envs.senha ? { senha: await envelopar(normal(senha), dek, "senha") } : {}),
+          ...(await aparelhoDe(modo, dek)),
+          portateis: { ...(envs.senha ? { senha: envs.senha } : {}), ...(envs.recuperacao ? { recuperacao: envs.recuperacao } : {}) },
+        };
+        dados = await trancar(k, bytes, rotuloDados(id));
+      } else {
+        // Backup antigo do navegador (JSON "orbita-backup-web" versão 2).
+        const a = lido.a;
+        const rec = envBytes(a.recuperacao);
+        const envSenha = a.senha ? envBytes(a.senha) : undefined;
+        dek = palavras ? await porPalavras(palavras, rec) : await porSenha(senha ?? "", envSenha);
+        const modo = conferirEscolha(!!envSenha);
+        const k = await chaveDosDados(dek);
+        dados = trBytes(a.dados);
+        const abertos = await destrancar(k, dados, rotuloDados(a.id));
+        if (abertos === null) throw new E("backup_invalido", "Não deu para usar este backup: os dados dentro dele não abriram.");
+        bytes = abertos;
+        c = {
+          versao: 1,
+          id: a.id,
+          modo,
+          ...(envSenha ? { senha: envSenha } : {}),
+          recuperacao: rec,
+          palavras: trBytes(a.palavras),
+          ...(await aparelhoDe(modo, dek)),
+        };
+      }
       // Antes de trocar: para de guardar o banco aberto (um salvamento atrasado
       // gravaria os dados antigos por cima do backup, trancados com a chave antiga)
       // e guarda uma cópia do que havia, como a "pasta de segurança" do Windows.
@@ -513,9 +654,11 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
       await gravar("banco", dados);
       await abrirDados(bytes);
       bruta = dek;
-      chave = k;
+      chave = await chaveDosDados(dek);
       pedirArmazenamentoPersistente();
-      return modo;
+      // Envelopes portáteis que faltarem (backup antigo do navegador) e as palavras dentro do banco.
+      await completarCofre(dek, palavras ? { palavras } : { senha: senha ?? undefined });
+      return c.modo;
     },
     situacaoBackup: async (): Promise<SituacaoBackup> => ({ pasta: null, ultimo: ultimoBackup, erro: null }),
     definirBackupAutomatico: async (pasta) => {

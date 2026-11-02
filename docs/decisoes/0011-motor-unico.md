@@ -49,6 +49,16 @@ para testes e para a prévia de desenvolvimento.
 2. Navegador: banco em memória; ao gravar, `serialize` → trancado com a chave do cofre web (AES-GCM, como
    hoje) → IndexedDB. O cofre web (senha, PIN, 6 palavras) continua igual.
 3. Backup portátil: um formato só (o banco em bytes, trancado), que abre no Windows e no navegador.
+   **Feito (02/11/2026):** `.orbita-backup` versão 2 = `ORBITABK` + tamanho (4 bytes) + cabeçalho JSON
+   (`versao: 2`, `criadoEm`, `versaoApp`, `origem`, envelopes da senha e das 6 palavras em Argon2id +
+   XChaCha20-Poly1305, tamanho, SHA-256 e nonce) + o banco em bytes simples (`serialize`), trancado com
+   XChaCha20-Poly1305 pela chave dos dados. Código único em `src-tauri/src/portatil.rs` (com
+   `cofre/cripto.rs`, `cofre/palavras.rs` e `cofre/portateis.rs`), incluído no motor por `#[path]`.
+   O motor **continua sem SQLCipher** (os backups versão 1, com SQLCipher dentro, só existem no Windows e
+   continuam abrindo lá; religar custaria ~300 KB comprimidos para todo mundo). Argon2 no motor com
+   `opt-level 3`: 64 MB/3 passadas levam ~0,2 s no Chromium, então o navegador usa o mesmo custo do Windows.
+   Motor: 2,0 MB, ~745 KB comprimido (+~50 KB). Restaurar mantém a chave dos dados do backup; as 6
+   palavras viajam dentro do banco (tabela `config`).
 4. Anexos (imagens e arquivos) continuam na tabela `anexo_conteudo`, no mesmo banco.
 
 ## Consequências

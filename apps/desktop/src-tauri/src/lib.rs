@@ -1,4 +1,5 @@
 mod backup;
+mod portatil;
 mod bandeja;
 mod banco;
 mod cofre;
