@@ -697,7 +697,7 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     definirFuncaoIa: iaIndisponivel,
     bloquearSensivelIa: iaIndisponivel,
     testarProvedorIa: iaIndisponivel,
-    sugerirPassosIa: iaIndisponivel,
+    planejarComIa: iaIndisponivel,
     organizarTextoIa: iaIndisponivel,
     ajustarOrganizacaoIa: iaIndisponivel,
     desenharIconesIa: iaIndisponivel,

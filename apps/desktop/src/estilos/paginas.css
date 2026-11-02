@@ -513,6 +513,7 @@
 .lista-passos-ia { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
 .passo-ia { display: flex; align-items: center; gap: var(--espaco-2); }
 .passo-ia .caixa.estreita { flex: none; }
+.passo-ia.desmarcada .plano-etapa-texto { font-weight: 400; }
 .passo-ia-texto { flex: 1; min-width: 0; }
 .passo-ia-texto .entrada-texto { width: 100%; }
 .entrada-texto.desmarcado { color: var(--cor-texto-suave); text-decoration: line-through; }
@@ -644,6 +645,55 @@
 /* Conversa com a IA ao conferir a lista separada */
 .conversa-ia { display: grid; gap: var(--espaco-3); margin-top: var(--espaco-4); padding-top: var(--espaco-4); border-top: 1px solid var(--cor-borda); }
 .pedidos-feitos ol { margin: var(--espaco-1) 0 0; padding-left: 1.4em; display: grid; gap: var(--espaco-1); color: var(--cor-texto-suave); }
+
+/* Planejar com a IA: conversa ao lado da proposta (empilham em tela estreita) */
+.plano-ia { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: var(--espaco-5); align-items: start; }
+.plano-conversa, .plano-proposta { display: grid; gap: var(--espaco-3); min-width: 0; align-content: start; }
+.plano-conversa .janela-subtitulo, .plano-proposta .janela-subtitulo { margin: 0; }
+.plano-conversa > .texto-suave.pequeno + .texto-suave.pequeno { margin-top: calc(-1 * var(--espaco-2)); }
+.plano-falas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); max-height: 18rem; overflow-y: auto; }
+.plano-fala { display: grid; gap: 2px; padding: var(--espaco-2) var(--espaco-3); border-radius: var(--canto); border: 1px solid var(--cor-borda); }
+.plano-fala.pessoa { background: var(--cor-superficie-alternativa); }
+.plano-fala.ia { background: var(--cor-superficie); }
+.plano-fala-quem { font-size: 0.8rem; font-weight: 650; color: var(--cor-texto-suave); }
+.plano-proposta-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-3); flex-wrap: wrap; }
+.plano-vazia { padding: var(--espaco-5) var(--espaco-4); border: 1px dashed var(--cor-borda-controle); border-radius: var(--canto); text-align: center; }
+.plano-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-3); }
+.plano-etapa { display: grid; gap: var(--espaco-1); }
+.plano-etapa-texto { font-weight: 600; }
+/* Texto longo quebra a linha em vez de sumir; a caixa cresce com o texto. */
+.plano-texto { display: block; resize: none; field-sizing: content; min-height: 2.75rem; overflow-y: auto; line-height: 1.4; }
+.plano-subs { list-style: none; margin: 0; padding: 0 0 0 2.25rem; display: grid; gap: var(--espaco-1); border-left: 2px solid var(--cor-borda); margin-left: 0.6rem; }
+.plano-mais { display: inline-flex; align-items: center; gap: var(--espaco-1); font-size: 0.9rem; padding: var(--espaco-1) 0; }
+@media (max-width: 52rem) {
+  .plano-ia { grid-template-columns: minmax(0, 1fr); }
+  .plano-proposta { border-top: 1px solid var(--cor-borda); padding-top: var(--espaco-4); }
+}
+/* Celular: a janela usa quase toda a largura, para os itens da lista caberem. */
+@media (max-width: 40rem) {
+  .sobreposicao:has(.plano-ia) { padding: var(--espaco-2); }
+  .janela-dialogo:has(.plano-ia) { padding: var(--espaco-4); }
+  .plano-subs { padding-left: 1rem; margin-left: 0.5rem; }
+  .plano-lista .passo-ia { gap: var(--espaco-1); }
+  .plano-mapa { padding: var(--espaco-3); }
+  .plano-mapa .plano-filhos { margin-left: 0.5rem; --plano-recuo: 1.25rem; }
+}
+
+/* Mapa da proposta: árvore de cima para baixo (cabe em qualquer largura). O projeto
+   no começo, as etapas como ramos e as subtarefas como folhas ao lado de cada etapa. */
+.plano-mapa { --plano-recuo: 1.75rem; --plano-meio: 1.3rem; padding: var(--espaco-4); border: 1px solid var(--cor-borda); border-radius: var(--canto-grande); background: var(--cor-superficie-alternativa); }
+.plano-mapa ul { list-style: none; margin: 0; padding: 0; }
+.plano-ramo { position: relative; }
+.plano-mapa .plano-filhos { margin-left: 1rem; padding-left: var(--plano-recuo); }
+.plano-filhos > .plano-ramo { padding-top: var(--espaco-3); }
+.plano-filhos > .plano-ramo::before { content: ""; position: absolute; left: calc(-1 * var(--plano-recuo)); width: calc(var(--plano-recuo) - 0.25rem); top: calc(var(--espaco-3) + var(--plano-meio)); border-top: 2px solid var(--cor-borda-controle); }
+.plano-filhos > .plano-ramo::after { content: ""; position: absolute; left: calc(-1 * var(--plano-recuo)); top: 0; bottom: 0; border-left: 2px solid var(--cor-borda-controle); }
+.plano-filhos > .plano-ramo:last-child::after { bottom: auto; height: calc(var(--espaco-3) + var(--plano-meio)); }
+.plano-no { display: inline-block; max-width: 100%; padding: var(--espaco-2) var(--espaco-3); border: 1px solid var(--cor-borda-controle); border-radius: var(--canto); background: var(--cor-superficie); color: var(--cor-texto); }
+.plano-no.nivel-0 { font-weight: 650; font-size: 1.05rem; border-width: 2px; border-color: var(--cor-destaque); }
+.plano-no.nivel-1 { font-weight: 600; }
+.plano-mapa .plano-folhas { display: flex; flex-wrap: wrap; gap: var(--espaco-2); margin: var(--espaco-2) 0 0 1rem; padding-left: var(--espaco-3); border-left: 2px dashed var(--cor-borda-controle); }
+.plano-folha { display: inline-block; max-width: 100%; padding: 2px var(--espaco-2); border: 1px solid var(--cor-borda); border-radius: var(--canto-pequeno); background: var(--cor-superficie); font-size: 0.92rem; }
 
 /* Prévia dos ícones desenhados pela IA */
 .grade-icones-ia { list-style: none; margin: 0; padding: var(--espaco-3); display: grid; grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr)); gap: var(--espaco-2); border: 1px solid var(--cor-borda); border-radius: var(--canto); background: var(--cor-superficie); }

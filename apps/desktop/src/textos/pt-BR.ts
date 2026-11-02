@@ -2669,27 +2669,73 @@ export const textos = {
     modeloEscrito: "Nome do modelo",
     modeloAjuda: "Modelos maiores costumam responder melhor e custar mais. Dá para trocar depois.",
     precisaConferir: "Confira a conexão antes de salvar, para escolher o modelo.",
-    // Sugestão de passos
-    sugerirPassos: "Sugerir passos com IA",
-    sugerirEtapas: "Sugerir etapas com IA",
-    passosTitulo: (alvo: string, projeto: boolean) => (projeto ? `Etapas para: ${alvo}` : `Passos para: ${alvo}`),
-    oQueVai: (provedor: string, local: boolean, projeto: boolean) =>
-      local
-        ? `A sugestão é feita no seu computador, com ${provedor}. Nada sai daqui.`
-        : projeto
-          ? `Para sugerir, o Órbita envia a ${provedor} o nome do projeto, o próximo passo anotado no "onde parei" e as etapas que já existem. Nada mais.`
-          : `Para sugerir, o Órbita envia a ${provedor} o nome do projeto, o desta etapa e os passos que já existem dentro dela. Nada mais.`,
-    pedindo: (p: string) => `Pedindo sugestões a ${p}...`,
-    pedindoLocal: "Pode levar até um minuto na primeira vez, enquanto o modelo carrega.",
-    escolhaPassos: "Marque os passos que quer adicionar. Dá para mudar o texto de cada um.",
-    passo: (n: number) => `Passo ${n}`,
+    // Planejar com a IA (conversa que termina numa proposta de etapas e subtarefas)
+    sugerirPassos: "Planejar com a IA",
+    sugerirEtapas: "Planejar com a IA",
+    plano: {
+      titulo: (alvo: string) => `Planejar com a IA: ${alvo}`,
+      conversa: "Conversa",
+      vaiPara: (p: string, local: boolean, etapa: boolean) =>
+        local
+          ? `A IA (${p}) roda no seu computador. Nada sai daqui.`
+          : `Vai para ${p}: o nome, as anotações, o onde parei, ${etapa ? "esta etapa e as subtarefas dela" : "as etapas"} e o que você escrever aqui.`,
+      chave: "Cada mensagem usa a sua chave de IA.",
+      voce: "Você",
+      semMensagens: (etapa: boolean) =>
+        etapa
+          ? "Conte o que quiser sobre esta etapa: o que já sabe, o que falta, o que trava. Ou peça uma proposta sem escrever nada."
+          : "Conte o que quiser sobre o projeto: o objetivo, o prazo, o que já sabe, o que trava. Ou peça uma proposta sem escrever nada.",
+      campoPrimeiro: (etapa: boolean) => (etapa ? "O que você quer contar sobre a etapa?" : "O que você quer contar sobre o projeto?"),
+      campoMais: "Pedir uma mudança ou contar mais",
+      campoAjuda: "Exemplos: “junta 2 e 3”, “falta divulgação”. Ctrl + Enter envia.",
+      enviar: "Enviar",
+      pedirProposta: "Pedir uma proposta",
+      pensando: (p: string) => `${p} está montando a proposta...`,
+      respostaPadrao: (etapas: number, etapa: boolean) =>
+        etapa ? (etapas === 1 ? "Mandei 1 passo." : `Mandei ${etapas} passos.`) : etapas === 1 ? "Mandei 1 etapa." : `Mandei ${etapas} etapas.`,
+      chegou: (etapas: number, subtarefas: number, etapa: boolean) =>
+        etapa
+          ? `Proposta nova: ${etapas === 1 ? "1 passo" : `${etapas} passos`}.`
+          : `Proposta nova: ${etapas === 1 ? "1 etapa" : `${etapas} etapas`} e ${subtarefas === 1 ? "1 subtarefa" : `${subtarefas} subtarefas`}.`,
+      sensivel: (p: string) =>
+        `Parece que há dados de saúde ou terapia no projeto ou na conversa. Se continuar, eles vão para ${p}, fora do computador.`,
+      sensivelBloqueado: "Parece que há dados de saúde ou terapia no projeto ou na conversa. Você bloqueou o envio desses dados para fora do computador, então esta conversa não vai para a IA.",
+      enviarMesmoAssim: "Enviar mesmo assim",
+      proposta: "Proposta",
+      lista: "Lista",
+      mapa: "Mapa",
+      formaDaProposta: "Ver a proposta como",
+      vazia: "A proposta aparece aqui depois que você enviar.",
+      ajudaLista: "Desmarque o que não quer. Dá para mudar o texto, apagar e acrescentar.",
+      ajudaMapa: "O mapa mostra só o que está marcado. Para mudar, use a Lista.",
+      etapa: (n: number) => `Etapa ${n}`,
+      passo: (n: number) => `Passo ${n}`,
+      subtarefa: (n: number, etapa: number) => `Subtarefa ${n} da etapa ${etapa}`,
+      incluir: (t: string) => `Incluir: ${t}`,
+      apagar: (nome: string) => `Apagar ${nome}`,
+      maisEtapa: "Acrescentar etapa",
+      maisPasso: "Acrescentar passo",
+      maisSubtarefa: "Acrescentar subtarefa",
+      aprovar: (etapas: number, subtarefas: number, etapa: boolean) =>
+        etapa
+          ? etapas === 1 ? "Aprovar e criar 1 passo" : `Aprovar e criar ${etapas} passos`
+          : `Aprovar e criar ${etapas === 1 ? "1 etapa" : `${etapas} etapas`}${subtarefas ? ` e ${subtarefas === 1 ? "1 subtarefa" : `${subtarefas} subtarefas`}` : ""}`,
+      criando: "Criando...",
+      criado: (etapas: number, subtarefas: number, etapa: boolean) =>
+        etapa
+          ? `Pronto: ${etapas === 1 ? "1 subtarefa criada" : `${etapas} subtarefas criadas`} na etapa.`
+          : `Pronto: ${etapas === 1 ? "1 etapa criada" : `${etapas} etapas criadas`}${subtarefas ? `, com ${subtarefas === 1 ? "1 subtarefa" : `${subtarefas} subtarefas`}` : ""}.`,
+      criadoEmParte: "Parte foi criada antes do erro. Dá para desfazer o que foi criado.",
+      desfazer: "Desfazer",
+      desfeito: "Desfeito: o que tinha sido criado foi apagado.",
+      fechar: "Fechar",
+      descartar: "Fechar sem criar",
+    },
+    tentarDeNovo: "Tentar de novo",
+    descartar: "Descartar",
     incluir: (t: string) => `Incluir: ${t}`,
     tirar: (n: number) => `Tirar o passo ${n}`,
-    maisUm: "Escrever mais um passo",
-    adicionarPassos: (n: number) => (n === 1 ? "Adicionar 1 passo" : `Adicionar ${n} passos`),
-    descartar: "Descartar",
-    tentarDeNovo: "Pedir de novo",
-    adicionados: (n: number) => (n === 1 ? "1 passo adicionado." : `${n} passos adicionados.`),
+    pedindoLocal: "Pode levar até um minuto na primeira vez, enquanto o modelo carrega.",
     irAjustes: "Ir para Ajustes",
     // Separar um texto em itens (Capturar)
     separar: "Separar com IA",

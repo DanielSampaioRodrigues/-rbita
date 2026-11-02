@@ -146,7 +146,7 @@ pub fn run() {
             comandos::bloquear_sensivel_ia,
             comandos::testar_provedor_ia,
             comandos::memoria_do_computador,
-            comandos::sugerir_passos_ia,
+            comandos::planejar_com_ia,
             comandos::organizar_texto_ia,
             comandos::ajustar_organizacao_ia,
             comandos::revisar_texto_ia,

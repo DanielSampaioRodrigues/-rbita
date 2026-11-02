@@ -2,7 +2,7 @@ import { ArrowLeft, CheckCircle2, Eye, Pause, Pencil, Play, RefreshCw, RotateCcw
 import { useEffect, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { api, type Etiqueta, type EstadoProjeto, type ProvedorVisivel, type Projeto as TipoProjeto, type Tarefa } from "../api";
-import { JanelaPassos } from "../ia/JanelaPassos";
+import { JanelaPlanejar } from "../ia/JanelaPlanejar";
 import { useRecado } from "../app/Recado";
 import { Aviso } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
@@ -223,12 +223,7 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
       </Janela>
       <JanelaPrazo tarefa={prazoDe} aoFechar={() => setPrazoDe(null)} />
       {provedorIa && (
-        <JanelaPassos
-          alvo={passosDe}
-          provedor={provedorIa}
-          aoFechar={() => setPassosDe(null)}
-          aoAdicionar={(n) => (setPassosDe(null), avisarMudanca(), recado(textos.ia.adicionados(n)))}
-        />
+        <JanelaPlanejar alvo={passosDe} projeto={projeto} tarefas={tarefas} provedor={provedorIa} aoFechar={() => setPassosDe(null)} />
       )}
       <JanelaOndeParei
         projeto={janela === "pausar" || janela === "anotar" ? projeto : null}

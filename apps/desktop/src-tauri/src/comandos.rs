@@ -14,7 +14,7 @@ use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
 use crate::ditado::{self, Ditado, EstadoDitado};
-use crate::ia::{self, cliente, organizar, quebrar, revisar, tema, EstadoIa, Provedor};
+use crate::ia::{self, cliente, organizar, planejar, revisar, tema, EstadoIa, Provedor};
 use crate::nuvem::{self, ProvedorNuvem};
 
 use crate::portatil::CONFIG_PALAVRAS;
@@ -609,22 +609,29 @@ pub async fn memoria_do_computador() -> Result<Option<f64>, Erro> {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Sugestao {
-    passos: Vec<String>,
+pub struct Plano {
+    etapas: Vec<planejar::EtapaProposta>,
+    explicacao: Option<String>,
     provedor: String,
     local: bool,
 }
 
-/// Pede à IA passos para um projeto ou uma etapa. Não grava nada.
+/// "Planejar com a IA": manda o contexto do projeto (ou da etapa), a proposta
+/// atual com as mudanças feitas à mão e a conversa; devolve a proposta revisada.
+/// Não grava nada. `sensivel`: a interface achou sinais de saúde ou terapia.
 #[tauri::command]
-pub async fn sugerir_passos_ia(estado: State<'_, Estado>, alvo: String) -> Result<Sugestao, Erro> {
-    let (escolhido, pedido) = estado.com_sessao(|s| Ok((ia::provedor_da_funcao(&s.conn, "quebrar", false)?, quebrar::montar_pedido(&s.conn, &alvo)?)))?;
-    let resposta = cliente::completar(&escolhido, quebrar::SISTEMA, &pedido).await?;
-    let passos = quebrar::ler_passos(&resposta);
-    if passos.is_empty() {
-        return Err(Erro::Ia { motivo: "resposta", mensagem: "A IA não sugeriu nenhum passo. Tente de novo.".into() });
-    }
-    Ok(Sugestao { passos, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
+pub async fn planejar_com_ia(
+    estado: State<'_, Estado>,
+    alvo: String,
+    conversa: Vec<planejar::Fala>,
+    proposta_atual: Option<Vec<planejar::EtapaProposta>>,
+    sensivel: bool,
+) -> Result<Plano, Erro> {
+    let (escolhido, contexto) = estado.com_sessao(|s| Ok((ia::provedor_da_funcao(&s.conn, "quebrar", sensivel)?, planejar::contexto(&s.conn, &alvo)?)))?;
+    let pedido = planejar::montar_pedido(&contexto, &conversa, proposta_atual.as_deref());
+    let resposta = cliente::completar(&escolhido, &planejar::sistema(contexto.etapa), &pedido).await?;
+    let (etapas, explicacao) = planejar::ler_proposta(&resposta, contexto.etapa)?;
+    Ok(Plano { etapas, explicacao, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
 }
 
 #[derive(Serialize)]

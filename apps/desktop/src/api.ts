@@ -762,8 +762,22 @@ export interface EstadoDitado {
   gravando: boolean;
 }
 
-export interface Sugestao {
-  passos: string[];
+/** Uma fala da conversa de "Planejar com a IA". */
+export interface FalaPlano {
+  papel: "pessoa" | "ia";
+  texto: string;
+}
+
+/** Etapa proposta pela IA. Quando o alvo é uma etapa, cada item é um passo e `subtarefas` vem vazia. */
+export interface EtapaProposta {
+  titulo: string;
+  subtarefas: string[];
+}
+
+export interface Plano {
+  etapas: EtapaProposta[];
+  /** Frase curta da IA sobre o que propôs ou mudou. */
+  explicacao: string | null;
   provedor: string;
   local: boolean;
 }
@@ -1008,7 +1022,8 @@ export interface Api {
   testarProvedorIa(provedor: Provedor, chave: string | null): Promise<string[]>;
   memoriaDoComputador(): Promise<number | null>;
   /** Sugestões de passos para um projeto ou uma etapa. Não grava nada. */
-  sugerirPassosIa(alvo: string): Promise<Sugestao>;
+  /** "Planejar com a IA": manda o contexto, a proposta atual e a conversa; devolve a proposta revisada. Não grava nada. */
+  planejarComIa(alvo: string, conversa: FalaPlano[], propostaAtual: EtapaProposta[] | null, sensivel: boolean): Promise<Plano>;
   /** Separa um texto em ideias, tarefas e compromissos. Não grava nada. */
   organizarTextoIa(texto: string, sensivel: boolean): Promise<Organizacao>;
   /** Conversa: refaz a lista separada com a mudança pedida. Não grava nada. */
@@ -1294,7 +1309,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   bloquearSensivelIa: (bloquear) => chamar("bloquear_sensivel_ia", { bloquear }),
   testarProvedorIa: (provedor, chave) => chamar("testar_provedor_ia", { provedor, chave }),
   memoriaDoComputador: () => chamar("memoria_do_computador"),
-  sugerirPassosIa: (alvo) => chamar("sugerir_passos_ia", { alvo }),
+  planejarComIa: (alvo, conversa, propostaAtual, sensivel) => chamar("planejar_com_ia", { alvo, conversa, propostaAtual, sensivel }),
   organizarTextoIa: (texto, sensivel) => chamar("organizar_texto_ia", { texto, sensivel }),
   ajustarOrganizacaoIa: (texto, itens, mudanca, sensivel) => chamar("ajustar_organizacao_ia", { texto, itens, mudanca, sensivel }),
   revisarTextoIa: (texto, sensivel, modo, instrucao) => chamar("revisar_texto_ia", { texto, sensivel, modo: modo ?? null, instrucao: instrucao ?? null }),
@@ -2524,7 +2539,7 @@ function criarSimulacao(): Api {
   const comAnexos = simularAnexos();
   const params0 = paramsDeTeste();
   let bandeja = false;
-  const comIa = simularIa(params0.get("ia") !== null, params0.get("ia") === "erro");
+  const comIa = simularIa(params0.get("ia") !== null, params0.get("ia") === "erro", async (id) => !(await comItens.listarProjetos()).some((p) => p.id === id));
   const espera = () => new Promise((r) => setTimeout(r, 250));
   const falha = (codigo: CodigoErro, msg: string, extra?: number) => Promise.reject(new ErroOrbita(codigo, msg, extra));
   const conferir = async (texto: string) => {
@@ -2758,7 +2773,7 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "sugerirPassosIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
+function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, modelos: {}, bloquearSensivel: false };
   if (comClaude) {
@@ -2874,14 +2889,50 @@ ${JSON.stringify(tema)}`;
       if (/tir|remov|apag/i.test(mudanca)) itens = itens.slice(0, -1);
       return { itens, provedor: "Claude", local: false };
     },
-    sugerirPassosIa: async () => {
+    // Proposta de exemplo. Entende alguns pedidos para dar para ver a conversa:
+    // "junta 2 e 3", "falta divulgação" e "tira a última".
+    planejarComIa: async (alvo, conversa, propostaAtual, sensivel) => {
       await espera(1200);
       if (comErro) throw new ErroOrbita("ia", "O provedor recusou por limite de uso ou falta de créditos. Confira a sua conta ou tente mais tarde.", undefined, undefined, undefined, "limite");
-      return {
-        passos: ["Abrir o arquivo do artigo", "Ler só o resumo e a conclusão", "Anotar três ideias principais", "Escrever uma frase sobre cada ideia"],
-        provedor: "Claude",
-        local: false,
-      };
+      if (sensivel && estado.bloquearSensivel)
+        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do computador.", undefined, undefined, undefined, "sensivel_bloqueado");
+      const ultima = [...conversa].reverse().find((f) => f.papel === "pessoa")?.texto ?? "";
+      if (/malformad/i.test(ultima)) throw new ErroOrbita("ia", "A IA respondeu num formato que o Órbita não entendeu. Tente de novo.", undefined, undefined, undefined, "resposta");
+      const etapaSo = await ehEtapa(alvo);
+      const exemplo: EtapaProposta[] = [
+        { titulo: "Definir a pergunta de pesquisa", subtarefas: ["Escrever a pergunta em uma frase", "Mostrar a pergunta para a orientadora"] },
+        { titulo: "Escrever a metodologia", subtarefas: ["Listar os artigos que usam o mesmo método", "Escrever um rascunho de uma página"] },
+        { titulo: "Analisar os dados", subtarefas: ["Passar os dados para uma planilha", "Fazer um gráfico para cada pergunta"] },
+        { titulo: "Revisar e entregar", subtarefas: ["Ler o texto em voz alta", "Conferir as normas da ABNT", "Enviar para a orientadora"] },
+      ];
+      let etapas: EtapaProposta[] = propostaAtual?.length
+        ? structuredClone(propostaAtual)
+        : etapaSo
+          ? ["Abrir o arquivo das citações", "Separar as citações por autor", "Conferir o formato da ABNT", "Marcar meia hora sem interrupção"].map((titulo) => ({ titulo, subtarefas: [] }))
+          : exemplo;
+      let explicacao = "Propus quatro etapas, da pergunta até a entrega. Dá para editar à vontade.";
+      const juntar = ultima.match(/junt\w*\s+(\d+)\s+e\s+(\d+)/i);
+      if (juntar) {
+        const [a, b] = [Number(juntar[1]) - 1, Number(juntar[2]) - 1].sort((x, y) => x - y);
+        if (etapas[a] && etapas[b]) {
+          etapas[a] = { titulo: `${etapas[a].titulo} e ${etapas[b].titulo.charAt(0).toLowerCase()}${etapas[b].titulo.slice(1)}`, subtarefas: [...etapas[a].subtarefas, ...etapas[b].subtarefas].slice(0, 10) };
+          etapas.splice(b, 1);
+          explicacao = `Juntei as etapas ${a + 1} e ${b + 1} numa só.`;
+        }
+      } else if (/divulga/i.test(ultima)) {
+        etapas.push({ titulo: "Divulgar o trabalho", subtarefas: ["Escrever um resumo de um parágrafo", "Mandar o link para os colegas"] });
+        explicacao = "Acrescentei uma etapa de divulgação no fim.";
+      } else if (/tir|remov|apag/i.test(ultima)) {
+        etapas = etapas.slice(0, -1);
+        explicacao = "Tirei a última etapa.";
+      } else if (propostaAtual?.length) {
+        explicacao = "Mantive a proposta. Diga o que quer mudar.";
+      }
+      if (etapaSo) {
+        etapas = etapas.slice(0, 10).map((e) => ({ titulo: e.titulo, subtarefas: [] }));
+        if (!propostaAtual?.length) explicacao = "Propus quatro passos pequenos para esta etapa.";
+      }
+      return { etapas, explicacao, provedor: "Claude", local: false };
     },
   };
 }

@@ -7,7 +7,7 @@
 
 pub mod cliente;
 pub mod organizar;
-pub mod quebrar;
+pub mod planejar;
 pub mod revisar;
 pub mod tema;
 
