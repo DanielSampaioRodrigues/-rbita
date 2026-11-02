@@ -285,3 +285,177 @@
 .sinc-titulo { margin: 0; font-size: 1rem; }
 .sinc-estado { font-weight: 600; }
 .sinc-dialogo .botao { justify-self: start; margin-top: var(--espaco-1); }
+
+/* ── Sincronizar aparelhos (etapa 2d): assistente, cartão em Ajustes, primeira tela ── */
+.sinc-janela { width: min(38rem, 100%); }
+.sinc-assistente { display: flex; flex-direction: column; gap: var(--espaco-4); }
+.sinc-assistente > p, .sinc-assistente .formulario > p { margin: 0; }
+
+.sinc-topo { display: flex; align-items: center; gap: var(--espaco-4); }
+.sinc-topo-icone {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--cor-superficie-alternativa);
+  color: var(--cor-destaque);
+  border: 1px solid var(--cor-borda-suave, var(--cor-borda));
+}
+.sinc-topo-texto { display: grid; gap: var(--espaco-1); min-width: 0; }
+.sinc-topo-passo {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cor-texto-suave);
+}
+.sinc-topo-titulo { margin: 0; font-size: 1.35rem; line-height: 1.25; outline: none; }
+
+.sinc-pontos { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
+.sinc-pontos li { display: grid; grid-template-columns: auto 1fr; gap: var(--espaco-3); align-items: start; }
+.sinc-pontos svg { margin-top: 0.3em; color: var(--cor-destaque); }
+
+.sinc-rotulo-pequeno { margin: 0; font-size: 0.85rem; color: var(--cor-texto-suave); }
+.sinc-conta {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-3);
+  padding: var(--espaco-2) var(--espaco-3);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto);
+  background: var(--cor-fundo);
+  max-width: 100%;
+}
+.sinc-conta-foto {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.sinc-conta-foto.inicial {
+  display: grid;
+  place-items: center;
+  background: var(--cor-destaque);
+  color: var(--cor-texto-sobre-destaque);
+  font-weight: 700;
+}
+.sinc-conta-texto { display: grid; min-width: 0; }
+.sinc-conta-nome { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sinc-conta-email { font-size: 0.9rem; color: var(--cor-texto-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sinc-franqueza { display: grid; gap: var(--espaco-2); }
+.sinc-franqueza p { margin: 0; }
+
+.sinc-perguntas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-3); }
+.sinc-par {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--espaco-3);
+  padding: var(--espaco-3) var(--espaco-4);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--canto);
+  background: var(--cor-fundo);
+}
+.sinc-par-numero {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--cor-superficie-alternativa);
+  color: var(--cor-texto-suave);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.sinc-par-campos { display: grid; gap: var(--espaco-3); min-width: 0; }
+.sinc-par-campos > *, .sinc-par-campos .entrada { min-width: 0; }
+
+.sinc-confirmar {
+  display: grid;
+  gap: var(--espaco-2);
+  padding-top: var(--espaco-3);
+  border-top: 1px solid var(--cor-borda);
+}
+.sinc-confirmar .campo-rotulo { margin: 0; }
+
+.sinc-progresso { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-3); }
+.sinc-etapa { display: grid; grid-template-columns: auto 1fr auto; gap: var(--espaco-3); align-items: center; color: var(--cor-texto-suave); }
+.sinc-etapa-marca {
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  border: 2px solid var(--cor-borda-controle);
+}
+.sinc-etapa.fazendo { color: var(--cor-texto); font-weight: 600; }
+.sinc-etapa.fazendo .sinc-etapa-marca { border-color: var(--cor-destaque); background: radial-gradient(circle, var(--cor-destaque) 0 35%, transparent 40%); }
+.sinc-etapa.feito { color: var(--cor-texto); }
+.sinc-etapa.feito .sinc-etapa-marca { border-color: var(--cor-destaque); background: var(--cor-destaque); color: var(--cor-texto-sobre-destaque); }
+.sinc-etapa.falhou .sinc-etapa-marca { border-color: var(--cor-atencao); border-style: dashed; }
+.sinc-etapa-agora { font-size: 0.8rem; font-weight: 650; color: var(--cor-destaque); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Botão de entrar com Google: o "G" sempre sobre fundo branco (pede o próprio Google). */
+.logo-google { flex: none; }
+.botao-google { gap: var(--espaco-3); }
+.botao-google .logo-google,
+.botao.principal .logo-google {
+  box-sizing: content-box;
+  padding: 0.18em;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* Cartão em Ajustes */
+.sinc-cartao-topo { display: flex; align-items: center; gap: var(--espaco-4); }
+.sinc-cartao-titulo { display: flex; align-items: center; flex-wrap: wrap; gap: var(--espaco-2) var(--espaco-3); }
+.sinc-cartao-titulo h2 { margin: 0; }
+.sinc-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espaco-1);
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  border: 1px solid var(--cor-borda-controle);
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--cor-texto-suave);
+}
+.sinc-selo.ligada { border-color: var(--cor-destaque); color: var(--cor-texto); }
+.sinc-selo.ligada svg { color: var(--cor-destaque); }
+.sinc-dados { margin: 0; display: grid; gap: var(--espaco-3); }
+.sinc-dados > div { display: grid; grid-template-columns: 11rem 1fr; gap: var(--espaco-3); align-items: center; }
+.sinc-dados .sinc-conta { display: inline-flex; }
+.sinc-dados dt { color: var(--cor-texto-suave); }
+.sinc-dados dd { margin: 0; min-width: 0; }
+@media (max-width: 36rem) {
+  .sinc-dados > div { grid-template-columns: 1fr; gap: var(--espaco-1); }
+}
+.sinc-cartao-rodape { padding-top: var(--espaco-4); border-top: 1px solid var(--cor-borda); }
+
+/* Primeira tela com Google em destaque */
+.primeira-conta { display: grid; gap: var(--espaco-2); margin-bottom: var(--espaco-3); }
+.botao.botao-google-destaque { justify-content: center; width: 100%; gap: var(--espaco-3); }
+.primeira-sem-conta {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: var(--espaco-2);
+  padding-top: var(--espaco-4);
+  border-top: 1px solid var(--cor-borda);
+}
+.primeira-ou {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0 var(--espaco-3);
+  background: var(--cor-superficie);
+  font-size: 0.85rem;
+  color: var(--cor-texto-suave);
+}
+.primeira-sem-conta p { margin: 0; }

@@ -10,12 +10,15 @@ import { useHelloDisponivel } from "../useHello";
 import { MolduraAcesso } from "./Moldura";
 import { avaliarPin } from "./validacao";
 import { EscolherRecuperacao, RecuperarDaNuvem, useContasDisponiveis } from "../nuvem/Nuvem";
+import { contaNaPrimeiraTela, continuarSincroniaDepois, entrarAntesDoCofre } from "../sincronia/ProvedorSincronia";
+import { CartaoConta, LogoGoogle, mensagemDe } from "../sincronia/TelasSincronia";
+import type { PerfilGoogle } from "../sincronia/googleWeb";
 
 const t = textos.criar;
 const c = textos.comum;
 
 // Sem senha para inventar: as 6 palavras são a tranca forte (a senha é opcional, em Ajustes).
-type Passo = "boasVindas" | "restaurar" | "nuvem" | "modo" | "pin" | "recuperacao" | "chave";
+type Passo = "boasVindas" | "restaurar" | "nuvem" | "modo" | "pin" | "recuperacao" | "chave" | "googlePin";
 
 export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [passo, setPasso] = useState<Passo>("boasVindas");
@@ -28,6 +31,9 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [palavras, setPalavras] = useState<string[]>([]);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Entrar com Google em destaque (só quando o login do Google existe nesta versão).
+  const [comConta] = useState(contaNaPrimeiraTela);
+  const [conta, setConta] = useState<PerfilGoogle | null>(null);
 
   // Com conta Google ou Microsoft disponível, o último passo pergunta onde guardar a recuperação.
   const contas = useContasDisponiveis();
@@ -47,6 +53,84 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
       setOcupado(false);
     }
   };
+
+  // Entrar com Google: a janela do Google abre direto do toque (Safari do iPad).
+  const entrarGoogle = () => {
+    setErro(null);
+    setOcupado(true);
+    entrarAntesDoCofre()
+      .then((p) => {
+        setConta(p);
+        setPin("");
+        setPin2("");
+        setPasso("googlePin");
+      })
+      .catch((e) => setErro(mensagemDe(e)))
+      .finally(() => setOcupado(false));
+  };
+
+  const criarComConta = async () => {
+    setOcupado(true);
+    setErro(null);
+    try {
+      // As 6 palavras continuam existindo (Ajustes > Segurança), mas deixam de ser obrigatórias.
+      await api.criarCofre(null, "pin", pin);
+      continuarSincroniaDepois(pin);
+      aoConcluir();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+      setOcupado(false);
+    }
+  };
+
+  if (passo === "boasVindas" && comConta) {
+    return (
+      <MolduraAcesso>
+        <h1>{t.boasVindasTitulo}</h1>
+        <p>{t.boasVindasConta}</p>
+        <div className="primeira-conta">
+          <Button className="botao principal grande botao-google-destaque" autoFocus isDisabled={ocupado} onPress={entrarGoogle}>
+            <LogoGoogle tamanho="1.35em" /> {ocupado ? textos.sincronia.entrando : textos.sincronia.entrarComGoogle}
+          </Button>
+          <p className="texto-suave pequeno">{t.googleTexto}</p>
+        </div>
+        <Aviso>{erro}</Aviso>
+        <div className="primeira-sem-conta">
+          <span className="primeira-ou" aria-hidden="true">{t.ou}</span>
+          <Button className="botao" onPress={() => (setErro(null), setPasso("modo"))}>{t.usarSemConta}</Button>
+          <p className="texto-suave pequeno">{t.semContaTexto}</p>
+        </div>
+        <div className="links">
+          <Button className="link" onPress={() => setPasso("restaurar")}>{textos.backup.tenhoBackup}</Button>
+        </div>
+      </MolduraAcesso>
+    );
+  }
+
+  if (passo === "googlePin") {
+    return (
+      <MolduraAcesso>
+        <Form className="formulario" onSubmit={(e) => (e.preventDefault(), avPin.ok && !ocupado && criarComConta())}>
+          {conta && (
+            <>
+              <p className="sinc-rotulo-pequeno">{textos.sincronia.contaEntrou}</p>
+              <CartaoConta conta={conta} />
+            </>
+          )}
+          <h1>{t.googlePinTitulo}</h1>
+          <p>{t.googlePinTexto}</p>
+          <Campo rotulo={textos.pin.rotulo} valor={pin} aoMudar={setPin} secreto numerico autoFocus maximo={8} descricao={textos.pin.dica} />
+          <Campo rotulo={textos.pin.confirmar} valor={pin2} aoMudar={setPin2} secreto numerico maximo={8} />
+          <p className="texto-suave pequeno">{t.googleDepois}</p>
+          <Aviso>{avPin.erro ?? erro}</Aviso>
+          <div className="botoes">
+            <Button className="botao" onPress={() => setPasso("boasVindas")}>{c.voltar}</Button>
+            <Button className="botao principal" type="submit" isDisabled={!avPin.ok || ocupado}>{ocupado ? t.protegendo : c.continuar}</Button>
+          </div>
+        </Form>
+      </MolduraAcesso>
+    );
+  }
 
   if (passo === "boasVindas") {
     return (

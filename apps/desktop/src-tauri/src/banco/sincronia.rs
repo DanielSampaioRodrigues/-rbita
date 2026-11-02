@@ -695,6 +695,219 @@ pub fn guardar_conteudo_trancado(conn: &Connection, sha: &str, trancado_b64: &st
     guardar_conteudo(conn, sha, &bytes)
 }
 
+
+// ── Recuperação: PIN + 6 perguntas (etapa 2d) ───────────────────────────────────
+//
+// "Esqueci a senha de sincronização": um segundo envelope da mesma chave, aberto por
+// Argon2id(PIN + as 6 respostas normalizadas). As perguntas ficam em texto no mesmo
+// arquivo (precisam aparecer antes de abrir); as respostas nunca são guardadas.
+// As perguntas entram no rótulo (dados associados): trocar uma pergunta no arquivo
+// faz o envelope não abrir mais.
+
+/// Quantas perguntas a recuperação usa (especificação: 6).
+pub const QUANTAS_PERGUNTAS: usize = 6;
+/// Tamanho máximo de cada pergunta (texto livre que fica aberto no Drive).
+const MAXIMO_PERGUNTA: usize = 200;
+const ROTULO_RECUPERACAO: &str = "orbita:sync:recuperacao:v1";
+const ROTULO_PIN: &str = "orbita:sync:pin:v1";
+
+/// Custo da recuperação: mais alto que o da senha (128 MB, 4 passadas), porque PIN e
+/// respostas pessoais têm menos acaso que uma senha comprida.
+#[cfg(not(test))]
+pub const KDF_RECUPERACAO: ParametrosKdf = ParametrosKdf { memoria_kib: 128 * 1024, iteracoes: 4, paralelismo: 1 };
+#[cfg(test)]
+pub const KDF_RECUPERACAO: ParametrosKdf = ParametrosKdf::PADRAO;
+
+/// Resposta sem ligar para acento, maiúscula nem espaços a mais:
+/// minúsculas, sem acento, espaços colapsados.
+pub fn normalizar_resposta(texto: &str) -> String {
+    use unicode_normalization::char::is_combining_mark;
+    use unicode_normalization::UnicodeNormalization;
+    let sem_acento: String = texto.nfkd().filter(|c| !is_combining_mark(*c)).collect();
+    sem_acento.to_lowercase().split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn pin_valido(pin: &str) -> bool {
+    (4..=8).contains(&pin.len()) && pin.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// O arquivo `recuperacao.orbita-sync`: as perguntas (abertas) e o envelope da chave.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Recuperacao {
+    pub versao: u32,
+    pub perguntas: Vec<String>,
+    #[serde(flatten)]
+    pub envelope: Envelope,
+}
+
+fn rotulo_recuperacao(perguntas: &[String]) -> Result<String, Erro> {
+    let json = serde_json::to_vec(perguntas).map_err(|e| Erro::Interno(e.to_string()))?;
+    Ok(format!("{ROTULO_RECUPERACAO}:{}", sha_hex(&json)))
+}
+
+/// O segredo da recuperação: PIN e respostas normalizadas, separados por um caractere
+/// que ninguém digita.
+fn segredo_recuperacao(pin: &str, respostas: &[String]) -> Result<Zeroizing<String>, Erro> {
+    if !pin_valido(pin) {
+        return Err(Erro::PinInvalido);
+    }
+    if respostas.len() != QUANTAS_PERGUNTAS {
+        return Err(Erro::Interno(format!("a recuperação precisa de {QUANTAS_PERGUNTAS} respostas")));
+    }
+    let mut s = Zeroizing::new(String::from(pin));
+    for r in respostas {
+        let n = Zeroizing::new(normalizar_resposta(r));
+        if n.is_empty() {
+            return Err(Erro::Interno("falta responder alguma pergunta".into()));
+        }
+        s.push('\u{1f}');
+        s.push_str(&n);
+    }
+    Ok(s)
+}
+
+fn perguntas_limpas(perguntas: &[String]) -> Result<Vec<String>, Erro> {
+    if perguntas.len() != QUANTAS_PERGUNTAS {
+        return Err(Erro::Interno(format!("a recuperação precisa de {QUANTAS_PERGUNTAS} perguntas")));
+    }
+    perguntas
+        .iter()
+        .map(|p| {
+            let p = p.split_whitespace().collect::<Vec<_>>().join(" ");
+            if p.is_empty() || p.chars().count() > MAXIMO_PERGUNTA {
+                Err(Erro::Interno("cada pergunta precisa ter texto (até 200 caracteres)".into()))
+            } else {
+                Ok(p)
+            }
+        })
+        .collect()
+}
+
+pub fn envelope_de_recuperacao(chave: &Chave, pin: &str, perguntas: &[String], respostas: &[String]) -> Result<Vec<u8>, Erro> {
+    let perguntas = perguntas_limpas(perguntas)?;
+    let segredo = segredo_recuperacao(pin, respostas)?;
+    let kdf = KDF_RECUPERACAO;
+    let sal = aleatorio::<16>();
+    let tranca = cripto::derivar(segredo.as_bytes(), sal.as_ref(), kdf, None)?;
+    let envelope = cripto::trancar(chave, &tranca, &rotulo_recuperacao(&perguntas)?, Some(kdf), sal.to_vec())?;
+    serde_json::to_vec(&Recuperacao { versao: 1, perguntas, envelope }).map_err(|e| Erro::Interno(e.to_string()))
+}
+
+fn ler_recuperacao(bruto: &[u8]) -> Result<Recuperacao, Erro> {
+    let r: Recuperacao = serde_json::from_slice(bruto).map_err(|_| Erro::Interno("o arquivo de recuperação está danificado".into()))?;
+    if r.versao != 1 {
+        return Err(Erro::Interno("a recuperação foi feita por uma versão mais nova do Órbita; atualize o Órbita".into()));
+    }
+    if r.perguntas.len() != QUANTAS_PERGUNTAS {
+        return Err(Erro::Interno("o arquivo de recuperação está danificado".into()));
+    }
+    Ok(r)
+}
+
+/// Abre a recuperação com o PIN e as respostas. Errado: `Erro::RespostasErradas`.
+pub fn abrir_recuperacao(bruto: &[u8], pin: &str, respostas: &[String]) -> Result<Chave, Erro> {
+    let r = ler_recuperacao(bruto)?;
+    let kdf = r.envelope.kdf.ok_or_else(|| Erro::Interno("o arquivo de recuperação está danificado".into()))?;
+    let segredo = segredo_recuperacao(pin, respostas)?;
+    let tranca = cripto::derivar(segredo.as_bytes(), &r.envelope.sal, kdf, None)?;
+    cripto::destrancar(&r.envelope, &tranca, &rotulo_recuperacao(&r.perguntas)?).ok_or(Erro::RespostasErradas)
+}
+
+/// Cria (ou refaz) a recuperação deste aparelho, que já tem a chave. Devolve o arquivo
+/// (base64) para guardar no Drive como `recuperacao.orbita-sync`.
+pub fn criar_recuperacao(conn: &Connection, pin: &str, perguntas: &[String], respostas: &[String]) -> Result<String, Erro> {
+    let chave = exigir_chave(conn)?;
+    Ok(B64.encode(envelope_de_recuperacao(&chave, pin, perguntas, respostas)?))
+}
+
+/// Só as perguntas do arquivo de recuperação (para mostrar antes de abrir).
+pub fn perguntas_da_recuperacao(recuperacao_b64: &str) -> Result<Vec<String>, Erro> {
+    Ok(ler_recuperacao(&b64(recuperacao_b64)?)?.perguntas)
+}
+
+/// Aparelho novo, "esqueci a senha": abre com o PIN e as respostas e guarda a chave aqui.
+pub fn entrar_por_recuperacao(conn: &Connection, recuperacao_b64: &str, pin: &str, respostas: &[String]) -> Result<(), Erro> {
+    let chave = abrir_recuperacao(&b64(recuperacao_b64)?, pin, respostas)?;
+    guardar_chave(conn, &chave)
+}
+
+// ── PIN igual em todos os aparelhos ─────────────────────────────────────────────
+//
+// O arquivo `pin.orbita-sync` guarda um resumo Argon2id do PIN, trancado pela chave
+// de sincronização (só quem já tem a chave consegue ler). Serve para um aparelho novo
+// conferir que o PIN escolhido é o mesmo dos outros (senão a recuperação, feita com o
+// PIN de lá, não abriria com o PIN daqui).
+
+#[derive(Serialize, Deserialize)]
+struct ResumoPin {
+    #[serde(with = "hex::serde")]
+    sal: Vec<u8>,
+    #[serde(with = "hex::serde")]
+    resumo: Vec<u8>,
+}
+
+/// O resumo do PIN, trancado (base64), para guardar no Drive.
+pub fn marca_do_pin(conn: &Connection, pin: &str) -> Result<String, Erro> {
+    if !pin_valido(pin) {
+        return Err(Erro::PinInvalido);
+    }
+    let chave = exigir_chave(conn)?;
+    let sal = aleatorio::<16>();
+    let resumo = cripto::derivar(pin.as_bytes(), sal.as_ref(), ParametrosKdf::PADRAO, None)?;
+    let json = serde_json::to_vec(&ResumoPin { sal: sal.to_vec(), resumo: resumo.to_vec() }).map_err(|e| Erro::Interno(e.to_string()))?;
+    Ok(B64.encode(trancar(&json, &chave, ROTULO_PIN, false)?))
+}
+
+/// Confere se `pin` é o PIN guardado em `marca` (base64, de `marca_do_pin`).
+pub fn conferir_pin(conn: &Connection, marca_b64: &str, pin: &str) -> Result<bool, Erro> {
+    if !pin_valido(pin) {
+        return Ok(false);
+    }
+    let chave = exigir_chave(conn)?;
+    let json = destrancar(&b64(marca_b64)?, &chave, ROTULO_PIN)?;
+    let r: ResumoPin = serde_json::from_slice(&json).map_err(|_| Erro::Interno("o resumo do PIN está danificado".into()))?;
+    let resumo = cripto::derivar(pin.as_bytes(), &r.sal, ParametrosKdf::PADRAO, None)?;
+    // Comparação sem atalho (o tempo não diz quantos bytes acertou).
+    Ok(resumo.len() == r.resumo.len() && resumo.iter().zip(&r.resumo).fold(0u8, |a, (x, y)| a | (x ^ y)) == 0)
+}
+
+// ── Aparelho novo que já tem dados ──────────────────────────────────────────────
+
+/// Quantas linhas de dados (não excluídas) este aparelho tem: ideias, projetos,
+/// eventos, registros, anexos, etiquetas. Zero: não há o que perguntar ao juntar.
+pub fn dados_locais(conn: &Connection) -> Result<u32, Erro> {
+    let mut total = 0u32;
+    for t in ["item", "evento", "registro", "anexo", "etiqueta"] {
+        let n: i64 = conn.query_row(&format!("SELECT COUNT(*) FROM {t} WHERE excluido_em IS NULL"), [], |r| r.get(0))?;
+        total = total.saturating_add(n as u32);
+    }
+    Ok(total)
+}
+
+/// "Usar só os do Drive": apaga de verdade os dados que viajam deste aparelho (a tela faz
+/// antes uma cópia de segurança), para ele ficar igual ao Drive. Não mexe no que é do
+/// aparelho (conta da nuvem, backup automático, chave de recuperação, id do aparelho).
+/// Só funciona antes de este aparelho ter a chave: assim nada daqui é apagado nos outros.
+pub fn esvaziar_antes_de_entrar(conn: &Connection) -> Result<(), Erro> {
+    if chave_guardada(conn)?.is_some() {
+        return Err(Erro::Interno("este aparelho já sincroniza; esvaziar agora apagaria dados dos outros".into()));
+    }
+    let tx = conn.unchecked_transaction()?;
+    for t in ["ligacao", "etiquetagem", "anexo_conteudo", "anexo_resumo", "anexo", "registro", "evento", "item", "etiqueta", "config_excluida"] {
+        tx.execute(&format!("DELETE FROM {t}"), [])?;
+    }
+    let chaves: Vec<String> = {
+        let mut st = tx.prepare("SELECT chave FROM config")?;
+        let v = st.query_map([], |r| r.get::<_, String>(0))?.collect::<Result<Vec<_>, _>>()?;
+        v
+    };
+    for c in chaves.into_iter().filter(|c| config_viaja(c)) {
+        tx.execute("DELETE FROM config WHERE chave = ?1", params![c])?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod testes {
     use super::*;
@@ -1101,5 +1314,89 @@ mod testes {
             t2 - t1,
             resumo.entraram
         );
+    }
+
+    #[test]
+    fn recuperacao_abre_com_pin_e_respostas_sem_ligar_para_acento() {
+        let (_pa, a) = banco_de_teste();
+        let (_pb, b) = banco_de_teste();
+        let (_pc, c) = banco_de_teste();
+        let perguntas: Vec<String> = (1..=6).map(|i| format!("Pergunta número {i}?")).collect();
+        let respostas: Vec<String> = ["São Paulo", "Ração  de   Peixe", "Joaquim", "azul", "Ônibus 42", "café"].iter().map(|s| s.to_string()).collect();
+        // Sem chave não há recuperação.
+        assert!(criar_recuperacao(&a, "2580", &perguntas, &respostas).is_err());
+        criar_chave(&a, "gato azul na janela").unwrap();
+        assert!(matches!(criar_recuperacao(&a, "12", &perguntas, &respostas), Err(Erro::PinInvalido)));
+        assert!(criar_recuperacao(&a, "2580", &perguntas[..5], &respostas).is_err());
+        let rec = criar_recuperacao(&a, "2580", &perguntas, &respostas).unwrap();
+
+        // As perguntas aparecem antes de abrir; as respostas não estão no arquivo.
+        assert_eq!(perguntas_da_recuperacao(&rec).unwrap(), perguntas);
+        let aberto = String::from_utf8(B64.decode(&rec).unwrap()).unwrap();
+        assert!(aberto.contains("Pergunta número 3?"));
+        for r in ["paulo", "Paulo", "joaquim", "Joaquim", "onibus", "Ônibus", "cafe"] {
+            assert!(!aberto.contains(r), "a resposta \"{r}\" não pode ir no arquivo");
+        }
+
+        // Uma resposta errada (ou o PIN errado) não abre e não guarda nada.
+        let mut uma_errada = respostas.clone();
+        uma_errada[3] = "verde".into();
+        assert!(matches!(entrar_por_recuperacao(&b, &rec, "2580", &uma_errada), Err(Erro::RespostasErradas)));
+        assert!(matches!(entrar_por_recuperacao(&b, &rec, "2581", &respostas), Err(Erro::RespostasErradas)));
+        assert!(!situacao(&b).unwrap().tem_chave);
+
+        // Acento, maiúscula e espaços diferentes: abre.
+        let parecidas: Vec<String> = ["sao paulo", "  RACAO DE PEIXE ", "joaquim", "Azul", "onibus 42", "CAFÉ"].iter().map(|s| s.to_string()).collect();
+        entrar_por_recuperacao(&b, &rec, "2580", &parecidas).unwrap();
+        assert!(situacao(&b).unwrap().tem_chave);
+        // É a mesma chave: o B abre o retrato do A.
+        dados_a(&a);
+        juntar_pacote(&b, &meu_pacote(&a).unwrap()).unwrap();
+        assert_eq!(estado(&a), estado(&b));
+
+        // Trocar uma pergunta no arquivo faz o envelope não abrir mais.
+        let mut r: Recuperacao = serde_json::from_slice(&B64.decode(&rec).unwrap()).unwrap();
+        r.perguntas[0] = "Outra pergunta?".into();
+        let mexido = B64.encode(serde_json::to_vec(&r).unwrap());
+        assert!(matches!(entrar_por_recuperacao(&c, &mexido, "2580", &respostas), Err(Erro::RespostasErradas)));
+    }
+
+    #[test]
+    fn normalizar_resposta_tira_acento_maiuscula_e_espacos() {
+        assert_eq!(normalizar_resposta("  Ração   de PEIXE\t"), "racao de peixe");
+        assert_eq!(normalizar_resposta("ÁÉÍÓÚ àâãç Ü"), "aeiou aaac u");
+        assert_eq!(normalizar_resposta("   "), "");
+    }
+
+    #[test]
+    fn marca_do_pin_confere_so_o_mesmo_pin() {
+        let (_pa, a) = banco_de_teste();
+        let (_pb, b) = banco_de_teste();
+        assert!(marca_do_pin(&a, "2580").is_err(), "sem chave não há marca");
+        let env = criar_chave(&a, "gato azul na janela").unwrap();
+        assert!(matches!(marca_do_pin(&a, "abc1"), Err(Erro::PinInvalido)));
+        let m = marca_do_pin(&a, "2580").unwrap();
+        assert!(conferir_pin(&a, &m, "2580").unwrap());
+        assert!(!conferir_pin(&a, &m, "2581").unwrap());
+        assert!(!conferir_pin(&a, &m, "25").unwrap());
+        assert!(conferir_pin(&b, &m, "2580").is_err(), "sem a chave não dá para conferir");
+        entrar(&b, &env, "gato azul na janela").unwrap();
+        assert!(conferir_pin(&b, &m, "2580").unwrap());
+    }
+
+    #[test]
+    fn esvaziar_so_antes_de_ter_a_chave_e_so_o_que_viaja() {
+        let (_pa, a) = banco_de_teste();
+        assert_eq!(dados_locais(&a).unwrap(), 0);
+        dados_a(&a);
+        gravar_config(&a, "valor:rotinas", "[1]").unwrap();
+        gravar_config(&a, "nuvem", "conta").unwrap();
+        assert!(dados_locais(&a).unwrap() > 0);
+        esvaziar_antes_de_entrar(&a).unwrap();
+        assert_eq!(dados_locais(&a).unwrap(), 0);
+        assert_eq!(ler_config(&a, "valor:rotinas").unwrap(), None);
+        assert_eq!(ler_config(&a, "nuvem").unwrap().as_deref(), Some("conta"));
+        criar_chave(&a, "gato azul na janela").unwrap();
+        assert!(esvaziar_antes_de_entrar(&a).is_err());
     }
 }

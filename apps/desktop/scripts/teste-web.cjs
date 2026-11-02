@@ -438,7 +438,7 @@ async function criarDados(p) {
 
   passo("Ajustes: abrir cada assunto");
   await ir(p, "Ajustes");
-  for (const a of ["Segurança", "Avisos", "Projetos", "Backup e nuvem", "Exportar", "Janela e atualizações", "Inteligência artificial", "Ditado"]) {
+  for (const a of ["Segurança", "Avisos", "Projetos", "Backup e nuvem", "Sincronizar aparelhos", "Exportar", "Janela e atualizações", "Inteligência artificial", "Ditado"]) {
     await main(p).locator("button", { hasText: a }).first().click();
     await espera(p, 700);
   }

@@ -1704,3 +1704,45 @@ pub async fn sincronia_marca(estado: State<'_, Estado>) -> Result<sincronia::Mar
 pub async fn sincronia_sair(estado: State<'_, Estado>) -> Result<(), Erro> {
     estado.com_sessao(|s| sincronia::sair(&s.conn))
 }
+
+/// Recuperação (PIN + 6 perguntas): cria o arquivo (base64) para guardar no Drive.
+#[tauri::command]
+pub async fn sincronia_criar_recuperacao(estado: State<'_, Estado>, pin: String, perguntas: Vec<String>, respostas: Vec<String>) -> Result<String, Erro> {
+    estado.com_sessao(|s| sincronia::criar_recuperacao(&s.conn, &pin, &perguntas, &respostas))
+}
+
+/// Só as perguntas do arquivo de recuperação (aparecem antes de abrir).
+#[tauri::command]
+pub async fn sincronia_perguntas(estado: State<'_, Estado>, recuperacao: String) -> Result<Vec<String>, Erro> {
+    estado.com_sessao(|_s| sincronia::perguntas_da_recuperacao(&recuperacao))
+}
+
+/// "Esqueci a senha": entra com o PIN e as 6 respostas.
+#[tauri::command]
+pub async fn sincronia_entrar_por_recuperacao(estado: State<'_, Estado>, recuperacao: String, pin: String, respostas: Vec<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| sincronia::entrar_por_recuperacao(&s.conn, &recuperacao, &pin, &respostas))
+}
+
+/// Resumo do PIN, trancado (base64), para os aparelhos novos conferirem que o PIN é o mesmo.
+#[tauri::command]
+pub async fn sincronia_marca_do_pin(estado: State<'_, Estado>, pin: String) -> Result<String, Erro> {
+    estado.com_sessao(|s| sincronia::marca_do_pin(&s.conn, &pin))
+}
+
+/// Confere o PIN contra o resumo guardado no Drive.
+#[tauri::command]
+pub async fn sincronia_conferir_pin(estado: State<'_, Estado>, marca: String, pin: String) -> Result<bool, Erro> {
+    estado.com_sessao(|s| sincronia::conferir_pin(&s.conn, &marca, &pin))
+}
+
+/// Quantas linhas de dados este aparelho tem (para perguntar se junta com o Drive).
+#[tauri::command]
+pub async fn sincronia_dados_locais(estado: State<'_, Estado>) -> Result<u32, Erro> {
+    estado.com_sessao(|s| sincronia::dados_locais(&s.conn))
+}
+
+/// "Usar só os do Drive": apaga daqui os dados que viajam, antes de entrar (a tela faz a cópia de segurança antes).
+#[tauri::command]
+pub async fn sincronia_esvaziar(estado: State<'_, Estado>) -> Result<(), Erro> {
+    estado.com_sessao(|s| sincronia::esvaziar_antes_de_entrar(&s.conn))
+}

@@ -598,6 +598,7 @@ export type CodigoErro =
   | "palavras_erradas"
   | "chave_errada"
   | "senha_curta"
+  | "respostas_erradas"
   | "sem_senha"
   | "pin_invalido"
   | "cofre_existe"
@@ -988,6 +989,19 @@ export interface Api {
   sincroniaSair(): Promise<void>;
   /** Marca do estado daqui e anexos que tem e que faltam (barato: não tranca nada). */
   sincroniaMarca(): Promise<MarcaSincronia>;
+  /** Recuperação "esqueci a senha" (PIN + 6 perguntas): o arquivo, em base64, para o Drive. */
+  sincroniaCriarRecuperacao(pin: string, perguntas: string[], respostas: string[]): Promise<string>;
+  /** Só as perguntas do arquivo de recuperação (aparecem antes de abrir). */
+  sincroniaPerguntas(recuperacao: string): Promise<string[]>;
+  /** Aparelho novo que esqueceu a senha: entra com o PIN e as respostas. */
+  sincroniaEntrarPorRecuperacao(recuperacao: string, pin: string, respostas: string[]): Promise<void>;
+  /** Resumo do PIN, trancado (base64), para os outros aparelhos conferirem que é o mesmo. */
+  sincroniaMarcaDoPin(pin: string): Promise<string>;
+  sincroniaConferirPin(marca: string, pin: string): Promise<boolean>;
+  /** Quantas linhas de dados este aparelho tem (ideias, projetos, registros…). */
+  sincroniaDadosLocais(): Promise<number>;
+  /** "Usar só os do Drive": apaga daqui o que viaja, antes de entrar. */
+  sincroniaEsvaziar(): Promise<void>;
 }
 
 /** Como o app conversa com o motor: no Windows pelo Tauri; no navegador, com o motor em WebAssembly. */
@@ -1224,6 +1238,13 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   sincroniaGuardarConteudo: (sha, conteudo) => chamar("sincronia_guardar_conteudo", { sha, conteudo }),
   sincroniaSair: () => chamar("sincronia_sair"),
   sincroniaMarca: () => chamar("sincronia_marca"),
+  sincroniaCriarRecuperacao: (pin, perguntas, respostas) => chamar("sincronia_criar_recuperacao", { pin, perguntas, respostas }),
+  sincroniaPerguntas: (recuperacao) => chamar("sincronia_perguntas", { recuperacao }),
+  sincroniaEntrarPorRecuperacao: (recuperacao, pin, respostas) => chamar("sincronia_entrar_por_recuperacao", { recuperacao, pin, respostas }),
+  sincroniaMarcaDoPin: (pin) => chamar("sincronia_marca_do_pin", { pin }),
+  sincroniaConferirPin: (marca, pin) => chamar("sincronia_conferir_pin", { marca, pin }),
+  sincroniaDadosLocais: () => chamar("sincronia_dados_locais"),
+  sincroniaEsvaziar: () => chamar("sincronia_esvaziar"),
   ouvirProgressoDitado: (aoMudar) => listen<{ baixado: number; total: number }>("ditado-progresso", (e) => aoMudar(e.payload.baixado, e.payload.total)),
   };
 }
@@ -2497,6 +2518,13 @@ function criarSimulacao(): Api {
     sincroniaGuardarConteudo: semSincronia,
     sincroniaSair: semSincronia,
     sincroniaMarca: semSincronia,
+    sincroniaCriarRecuperacao: semSincronia,
+    sincroniaPerguntas: semSincronia,
+    sincroniaEntrarPorRecuperacao: semSincronia,
+    sincroniaMarcaDoPin: semSincronia,
+    sincroniaConferirPin: semSincronia,
+    sincroniaDadosLocais: semSincronia,
+    sincroniaEsvaziar: semSincronia,
     // A IA de mentira não conhece os projetos: liga a tarefa ao primeiro ativo.
     organizarTextoIa: async (texto, sensivel) => {
       const o = await comIa.organizarTextoIa(texto, sensivel);

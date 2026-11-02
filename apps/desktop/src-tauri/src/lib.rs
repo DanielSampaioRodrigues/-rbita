@@ -281,6 +281,13 @@ pub fn run() {
             comandos::sincronia_guardar_conteudo,
             comandos::sincronia_sair,
             comandos::sincronia_marca,
+            comandos::sincronia_criar_recuperacao,
+            comandos::sincronia_perguntas,
+            comandos::sincronia_entrar_por_recuperacao,
+            comandos::sincronia_marca_do_pin,
+            comandos::sincronia_conferir_pin,
+            comandos::sincronia_dados_locais,
+            comandos::sincronia_esvaziar,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Órbita");

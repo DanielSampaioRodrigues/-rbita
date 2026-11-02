@@ -20,3 +20,6 @@ Teste da 0.45.1 no iPad, 29/10/2026. Caderno "ficou bom"; pressão da caneta fun
 
 ## Caderno — pastas
 9. **Ícone de pasta mais 3D** (hoje ficou chapado), **menor** (não precisa do quadradão grande) e com **cor por pasta** escolhida pela pessoa. — **Feito na 0.45.2** (falta testar no iPad).
+
+## Textos
+10. "neste computador" em textos que também aparecem no iPad/celular (ex.: cabeçalho de Ajustes: "ficam salvas neste computador") → "neste aparelho" onde valer para todas as versões.

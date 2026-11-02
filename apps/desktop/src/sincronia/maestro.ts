@@ -89,6 +89,7 @@ export class Maestro {
   private emCurso: Promise<RelatorioCiclo | null> | null = null;
   private deNovo = false;
   private parado = false;
+  private pausado = false;
 
   constructor(o: OpcoesMaestro) {
     this.arm = o.armazenamento;
@@ -110,6 +111,15 @@ export class Maestro {
     return () => void this.ouvintes.delete(f);
   }
 
+  /**
+   * Pausa enquanto a pessoa liga a sincronização (etapa 2d): a chave já pode estar aqui,
+   * mas nada sincroniza até ela escolher como juntar os dados. Pausado, `sincronizar`
+   * não faz nada.
+   */
+  pausar(sim: boolean): void {
+    this.pausado = sim;
+  }
+
   /** Para de vez (bloqueou ou saiu): ciclos em curso terminam sem mexer no estado. */
   parar(): void {
     this.parado = true;
@@ -128,7 +138,7 @@ export class Maestro {
    * Nunca lança: o resultado fica no estado.
    */
   sincronizar({ repetir = true }: { repetir?: boolean } = {}): Promise<RelatorioCiclo | null> {
-    if (this.parado) return Promise.resolve(null);
+    if (this.parado || this.pausado) return this.emCurso ?? Promise.resolve(null);
     if (this.emCurso) {
       if (repetir) this.deNovo = true;
       return this.emCurso;
@@ -236,16 +246,28 @@ export class Maestro {
   }
 }
 
-// ── Ligar a sincronização (para a tela da etapa 2d e para os testes) ──────────────
+// ── Ligar a sincronização (para as telas da etapa 2d e para os testes) ──────────
 
-/** Primeiro aparelho: cria a chave com a senha e guarda o envelope na pasta. */
-export async function ligarComoPrimeiro(arm: Armazenamento, api: ApiSincronia, senha: string): Promise<void> {
+/** Já existe uma chave na pasta: este aparelho precisa entrar com a senha, nunca criar outra. */
+export class JaExisteChave extends Error {
+  constructor() {
+    super("Já existe uma sincronização nesta conta. Entre com a senha de sincronização.");
+  }
+}
+
+/**
+ * Primeiro aparelho: cria a chave com a senha e guarda o envelope na pasta.
+ * Proteção: se a pasta já tem `chave.orbita-sync`, lança `JaExisteChave` e não mexe em
+ * nada (trocar a chave deixaria os outros aparelhos de fora).
+ */
+export async function ligarComoPrimeiro(arm: Armazenamento, api: Pick<ApiSincronia, "sincroniaCriarChave">, senha: string): Promise<void> {
+  if ((await arm.baixar(ARQUIVO_CHAVE)) !== null) throw new JaExisteChave();
   const envelope = await api.sincroniaCriarChave(senha);
   await arm.enviar(ARQUIVO_CHAVE, envelope);
 }
 
 /** Aparelho novo: baixa o envelope da pasta e abre com a senha. Devolve false se não há envelope. */
-export async function entrarComSenha(arm: Armazenamento, api: ApiSincronia, senha: string): Promise<boolean> {
+export async function entrarComSenha(arm: Armazenamento, api: Pick<ApiSincronia, "sincroniaEntrar">, senha: string): Promise<boolean> {
   const envelope = await arm.baixar(ARQUIVO_CHAVE);
   if (envelope === null) return false;
   await api.sincroniaEntrar(envelope, senha);

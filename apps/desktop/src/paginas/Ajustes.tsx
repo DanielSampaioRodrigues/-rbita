@@ -9,6 +9,7 @@ import { Backup } from "./Backup";
 import { Exportar } from "./Exportar";
 import { AjustesAtualizacao } from "../atualizacao/TelasAtualizacao";
 import { AjustesNuvem } from "../nuvem/Nuvem";
+import { AjustesSincronia } from "../sincronia/AjustesSincronia";
 import { LimiteProjetos } from "./LimiteProjetos";
 import { ANTECEDENCIAS } from "../preferencias";
 import { Seguranca } from "./Seguranca";
@@ -25,6 +26,7 @@ import {
   Laptop,
   Lock,
   Mic,
+  RefreshCw,
   Sparkles,
   type LucideIcon,
 } from "../icones";
@@ -38,6 +40,7 @@ const ICONES: Record<IdSecao, LucideIcon> = {
   avisos: BellRing,
   projetos: FolderKanban,
   backup: CloudUpload,
+  sincronizar: RefreshCw,
   exportar: Download,
   janela: Laptop,
   ia: Sparkles,
@@ -45,7 +48,7 @@ const ICONES: Record<IdSecao, LucideIcon> = {
 };
 
 /** Ordem do menu: o que mais se mexe primeiro, o opcional por último. */
-const ORDEM: IdSecao[] = ["seguranca", "avisos", "projetos", "backup", "exportar", "janela", "ia", "ditado"];
+const ORDEM: IdSecao[] = ["seguranca", "avisos", "projetos", "backup", "sincronizar", "exportar", "janela", "ia", "ditado"];
 
 /** Guarda a seção aberta só nesta sessão: reabrir Ajustes volta ao mesmo lugar. */
 const CHAVE_SESSAO = "orbita.ajustes.secao";
@@ -149,6 +152,7 @@ export function Ajustes({ modo, temSenha, aoMudarSeguranca, aoRestaurar }: Props
         <AjustesNuvem />
       </>
     ),
+    sincronizar: <AjustesSincronia />,
     exportar: <Exportar />,
     janela: (
       <>

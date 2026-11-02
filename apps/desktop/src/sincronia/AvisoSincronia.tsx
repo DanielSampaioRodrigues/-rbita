@@ -8,6 +8,7 @@ import { textos } from "../textos/pt-BR";
 import type { Fase } from "./maestro";
 import { useSincronia } from "./ProvedorSincronia";
 import { quandoFoi, rotuloDoAviso } from "./rotulo";
+import { LogoGoogle } from "./TelasSincronia";
 
 const t = textos.sincronia;
 /** "Sincronizando…" só aparece se o ciclo passa disso (os de todo minuto são rápidos). */
@@ -21,7 +22,9 @@ const EXPLICA: Partial<Record<Fase, string>> = {
 };
 
 export function AvisoSincronia() {
-  const { ligada, estado, sincronizarAgora } = useSincronia();
+  const { ligada, estado, sincronizarAgora, entrar, disponibilidade } = useSincronia();
+  const [entrando, setEntrando] = useState(false);
+  const [erroEntrar, setErroEntrar] = useState<string | null>(null);
   const [agora, setAgora] = useState(Date.now);
   const [demorando, setDemorando] = useState(false);
   const [pedido, setPedido] = useState(false);
@@ -65,6 +68,16 @@ export function AvisoSincronia() {
   const atencao = !mostrarCiclo && (f === "erro" || f === "entrar-de-novo" || f === "sem-internet");
   const explica = EXPLICA[f === "sincronizando" ? (estado.ultima ? "ok" : "parado") : f];
 
+  // "Precisa entrar de novo": entra direto do toque (o Safari do iPad exige) e sincroniza.
+  const entrarDeNovo = () => {
+    setErroEntrar(null);
+    setEntrando(true);
+    entrar()
+      .then(() => sincronizarAgora())
+      .catch((e) => setErroEntrar(e instanceof Error ? e.message : String(e)))
+      .finally(() => setEntrando(false));
+  };
+
   const agoraSim = async () => {
     setPedido(true);
     try {
@@ -92,11 +105,20 @@ export function AvisoSincronia() {
             <p className="sinc-estado">{rotulo}</p>
             <p className="texto-suave pequeno">{estado.ultima ? t.ultimaVez(quandoFoi(estado.ultima, agora)) : t.nuncaAinda}</p>
             {explica && <p className="texto-suave pequeno">{explica}</p>}
-            {/* Não desabilita durante o ciclo: o foco ficaria perdido fora do painel. */}
-            <Button className="botao" onPress={() => void (pedido || agoraSim())}>
-              <RefreshCw aria-hidden="true" size="1em" />
-              {pedido ? t.sincronizando : t.sincronizarAgora}
-            </Button>
+            {f === "entrar-de-novo" && disponibilidade === "sim" ? (
+              <>
+                <Button className="botao botao-google" onPress={() => void (entrando || entrarDeNovo())}>
+                  <LogoGoogle /> {entrando ? t.entrandoDeNovo : t.entrarDeNovoBotao}
+                </Button>
+                {erroEntrar && <p className="texto-suave pequeno" role="status">{erroEntrar}</p>}
+              </>
+            ) : (
+              /* Não desabilita durante o ciclo: o foco ficaria perdido fora do painel. */
+              <Button className="botao" onPress={() => void (pedido || agoraSim())}>
+                <RefreshCw aria-hidden="true" size="1em" />
+                {pedido ? t.sincronizando : t.sincronizarAgora}
+              </Button>
+            )}
           </Dialog>
         </Popover>
       </DialogTrigger>

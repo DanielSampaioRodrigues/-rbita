@@ -15,6 +15,8 @@ pub enum Erro {
     ChaveDeRecuperacaoErrada,
     #[error("A senha precisa ter pelo menos 12 caracteres.")]
     SenhaCurta,
+    #[error("O PIN ou alguma das respostas não confere.")]
+    RespostasErradas,
     #[error("Estes dados não têm senha. Use as 6 palavras da chave de recuperação.")]
     SemSenha,
     #[error("O PIN precisa ter de 4 a 8 números.")]
@@ -63,6 +65,7 @@ impl Erro {
             Erro::PalavrasErradas { .. } => "palavras_erradas",
             Erro::ChaveDeRecuperacaoErrada => "chave_errada",
             Erro::SenhaCurta => "senha_curta",
+            Erro::RespostasErradas => "respostas_erradas",
             Erro::SemSenha => "sem_senha",
             Erro::PinInvalido => "pin_invalido",
             Erro::CofreJaExiste => "cofre_existe",

@@ -300,7 +300,7 @@ Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela qui
   - **Apple:** "Entrar com Apple" com iCloud chega com as versões de Mac e iPhone (Onda 3), porque exige a conta de desenvolvedor da Apple. No Windows, quem usa Apple pode escolher a conta Microsoft ou guardar o backup na pasta do iCloud Drive para Windows.
   - Na Onda 3, a mesma base vira a sincronização entre computador e celular.
 
-### Entrar com Google e sincronizar (decisão de Dan, 29/10/2026; ainda não feito)
+### Entrar com Google e sincronizar (decisão de Dan, 29/10/2026; telas feitas na etapa 2d, esperando a credencial do Google para o navegador)
 
 Dan vai testar no Windows e no iPad ao mesmo tempo e quer que tudo apareça nos dois. O modelo combinado:
 
@@ -309,6 +309,7 @@ Dan vai testar no Windows e no iPad ao mesmo tempo e quer que tudo apareça nos 
 - **Sincronização automática** pela pasta escondida do app no Google Drive da própria pessoa, sem servidor do Órbita. Sem internet, as mudanças ficam guardadas e sobem quando ela volta. Cada aparelho guarda **uma cópia completa**. Mesmo item editado em dois aparelhos sem internet: vale o mais recente (depois, avaliar guardar os dois).
 - **Senha simples, escolhida pela pessoa**, pedida junto com o Google **num aparelho novo**. Os dados vão para o Drive trancados com ela: nem o Google lê. Ao criar, a tela explica para que serve.
 - **Esqueceu a senha:** **PIN + 6 perguntas pessoais** que a própria pessoa escreve (respostas conferidas sem ligar para acento e maiúscula). Por isso o **PIN passa a ser o mesmo em todos os aparelhos**. A tela avisa o limite: alguém muito próximo pode saber as respostas. As 6 palavras deixam de ser obrigatórias.
+- **Como ficou (etapa 2d, 02/11/2026; detalhes em `docs/decisoes/0012-sincronizacao.md`):** Ajustes ganhou o assunto "Sincronizar aparelhos" (ligar, perguntas, senha nova, "Desligar neste aparelho", que deixa os dados aqui e no Drive). Num aparelho novo, o PIN escolhido é conferido com o dos outros e passa a abrir aquele aparelho; **no primeiro aparelho, quem já abre com Windows Hello continua com o Hello** (o PIN vale para os aparelhos novos e para a recuperação). Aparelho novo que já tem dados escolhe "Juntar tudo" (padrão) ou "Usar só os do Drive" (os daqui vão antes para um arquivo de backup). As perguntas ficam abertas no Drive (precisam aparecer antes de abrir); as respostas não ficam em lugar nenhum. Pode pular as perguntas e fazer depois. A primeira tela só mostra o Google em destaque quando o login do Google existir no navegador; **no Windows, a conta liga depois, em Ajustes** (o login lá guarda a renovação dentro do banco criptografado, que só existe depois de criar o cofre).
 - **Perdeu o Google:** nos aparelhos que já usa, tudo continua lá e abre pelo PIN; dali faz backup e liga outra conta. Só perde tudo quem perder o Google **e** todos os aparelhos sem ter backup: por isso o backup automático é oferecido no cadastro.
 - **Endereço da versão de navegador:** `orbita.arcano3.com.br` (subdomínio do domínio de Dan, só um apontamento no registro.br), configurado **depois** da confirmação do nome, porque o login do Google fica preso ao endereço.
 - **Ordem:** (1) login com Google no navegador; (2) sincronizar navegador e Drive; (3) login e sincronização no Windows (aproveitando o cliente Google da 0.22.0).
