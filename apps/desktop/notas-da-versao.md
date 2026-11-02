@@ -1,3 +1,15 @@
+- **Sincronizar aparelhos (novo)**: o que você faz no PC aparece no iPad e no celular, e o contrário também, sozinho. Tudo passa pela **pasta escondida do Órbita no seu Google Drive**, sem servidor nosso, e vai **trancado com uma senha que só você sabe** (nem o Google lê). Sem internet, fica guardado e sobe quando ela volta. Um aviso discreto no alto mostra "Sincronizado há 1 min".
+
+- **Como começar**: comece pelo aparelho que tem seus dados (o PC). Em **Ajustes → Sincronizar aparelhos → Ligar a sincronização**: entre com o Google, crie a **senha de sincronização**, confirme o **PIN** e, se quiser, escreva **6 perguntas** para recuperar a senha se esquecer. Depois, no iPad ou no celular: **Ajustes → Sincronizar aparelhos** (ou "Entrar com Google" na primeira tela), digite a mesma senha e escolha **"Juntar tudo"**.
+
+- **Esqueceu a senha?** Use "Esqueci a senha": o **PIN + as respostas das 6 perguntas** (sem ligar para acento ou maiúscula). Atenção: alguém muito próximo pode saber as respostas.
+
+- **Bom saber**: se o **mesmo item** for editado em dois aparelhos sem internet, vale a edição mais recente. No iPad e no celular, ao reabrir o app, um toque em "Continuar sincronizando" basta (o Órbita lembra sua conta, mas não guarda o acesso do Google). Sincronizar não substitui o backup: continue fazendo de vez em quando.
+
+---
+
+<!-- Abaixo: o que veio na 0.46.0. -->
+
 - **Um motor só para o PC e o navegador**: a versão de navegador (iPad, celular) agora roda **o mesmo motor do Windows**, em vez de uma cópia à parte. Os dois guardam tudo do mesmo jeito. É a base para a sincronização com o Google, que vem nas próximas versões.
 
 - **Backup que abre nos dois lados**: um backup feito no PC abre no iPad, e um feito no iPad abre no PC (Ajustes → Backup, ou "Já tenho um backup do Órbita" na primeira tela). Abre com a senha ou com as 6 palavras. Backups feitos no Windows **antes desta versão** continuam abrindo no Windows; para levar ao navegador, faça um backup novo depois de atualizar.

@@ -124,7 +124,11 @@ async function digitarPalavras(p, palavras) {
 // ── 1. Primeira abertura ────────────────────────────────────────────────────
 async function criarCofre(p) {
   passo("criar o cofre com PIN");
-  await p.getByRole("button", { name: "Começar" }).click();
+  // Com o Google ligado (desde a 0.47.0), a primeira tela mostra "Entrar com Google"
+  // em destaque e "Usar sem conta" menor; sem ele, o botão é "Começar".
+  const semConta = p.getByRole("button", { name: "Usar sem conta" });
+  if (await semConta.isVisible().catch(() => false)) await semConta.click();
+  else await p.getByRole("button", { name: "Começar" }).click();
   await espera(p, 300);
   await p.getByRole("button", { name: "Continuar" }).click(); // PIN é o recomendado no navegador
   await espera(p, 300);

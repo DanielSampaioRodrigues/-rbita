@@ -21,7 +21,7 @@ import { AcessoNegado, SemInternet } from "./armazenamento";
  * e o Google só aceita pedidos vindos dos endereços cadastrados). Quando Dan mandar
  * o ID, ele entra aqui. `VITE_GOOGLE_CLIENT_ID_WEB` no build, se existir, vale mais.
  */
-const CLIENTE_WEB_GOOGLE = "";
+const CLIENTE_WEB_GOOGLE = "677553553782-drrbl89e5m5r9smsqedh1479rv9u5id3.apps.googleusercontent.com";
 
 export const ESCOPOS = "https://www.googleapis.com/auth/drive.appdata openid email profile";
 const ESCOPO_DRIVE = "https://www.googleapis.com/auth/drive.appdata";
