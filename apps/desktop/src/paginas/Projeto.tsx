@@ -149,7 +149,7 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
           <Trash2 aria-hidden="true" size="1.1em" /> {t.excluir}
         </Button>
       </div>
-      <p className="campo-ajuda largura-leitura">{t.ajudaEmUso}</p>
+      <p className="campo-ajuda largura-leitura">{projeto.estado === "em_uso" ? t.ajudaEmUso : t.ajudaMoverEmUso}</p>
       <Aviso>{erro}</Aviso>
 
       {projeto.estado === "em_uso" && <RevisaoProjeto projeto={projeto} executar={executar} />}
