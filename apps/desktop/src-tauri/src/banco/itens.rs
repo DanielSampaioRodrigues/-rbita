@@ -1,8 +1,10 @@
 //! Ideias, projetos e tarefas, todos guardados na tabela `item`.
 //!
 //! - **Ideia** (`guardada`): fica guardada sem virar compromisso até a pessoa decidir.
-//! - **Projeto** (`ativo`, `pausado`, `concluido`): tem limite de ativos e um
-//!   cartão "onde parei" sempre à mão.
+//! - **Projeto** (`ativo`, `em_uso`, `pausado`, `concluido`): tem limite de ativos e um
+//!   cartão "onde parei" sempre à mão. `em_uso` é o projeto pronto e funcionando,
+//!   que pede um cuidado de vez em quando: não conta no limite de ativos e pode ter
+//!   um lembrete opcional de "rever a cada N meses".
 //! - **Tarefa** (`a_fazer`, `fazendo`, `feita`): filha de um projeto (etapa) ou
 //!   de outra tarefa (subtarefa).
 
@@ -57,6 +59,12 @@ struct DadosProjeto {
     inicio: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     prazo: Option<String>,
+    /// Lembrete opcional de "rever a cada N meses" (projetos em uso). Ausente: desligado.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    revisar_meses: Option<u32>,
+    /// Quando a pessoa olhou o projeto pela última vez (começo da contagem do lembrete).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    revisado_em: Option<i64>,
     /// Campos que outras partes do app guardam (por exemplo, o peso das tarefas).
     #[serde(flatten)]
     outros: serde_json::Map<String, serde_json::Value>,
@@ -72,6 +80,10 @@ pub struct Projeto {
     pub pausado_em: Option<i64>,
     pub inicio: Option<String>,
     pub prazo: Option<String>,
+    /// "Rever a cada N meses", se a pessoa ligou o lembrete.
+    pub revisar_meses: Option<u32>,
+    /// Última vez que a pessoa disse "Olhei".
+    pub revisado_em: Option<i64>,
     pub criado_em: i64,
     pub tarefas_feitas: u32,
     pub tarefas_total: u32,
@@ -125,7 +137,7 @@ pub fn resumo_ligados(conn: &Connection, id: &str) -> Result<Vec<ItemResumo>, Er
     Ok(lista)
 }
 
-const ESTADOS_PROJETO: &[&str] = &["ativo", "pausado", "concluido"];
+const ESTADOS_PROJETO: &[&str] = &["ativo", "em_uso", "pausado", "concluido"];
 const ESTADOS_TAREFA: &[&str] = &["a_fazer", "fazendo", "feita"];
 
 fn texto_limpo(texto: &str) -> Result<String, Erro> {
@@ -245,6 +257,7 @@ pub fn definir_limite(conn: &Connection, limite: u32) -> Result<(), Erro> {
     gravar_config(conn, CONFIG_LIMITE, &limite.to_string())
 }
 
+/// Só `ativo` conta: projetos `em_uso`, pausados e concluídos ficam fora do limite.
 fn contar_ativos(conn: &Connection) -> Result<u32, Erro> {
     Ok(conn.query_row(
         "SELECT count(*) FROM item WHERE tipo = 'projeto' AND estado = 'ativo' AND excluido_em IS NULL",
@@ -294,6 +307,8 @@ fn projeto_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Projeto> {
         pausado_em: dados.pausado_em,
         inicio: dados.inicio,
         prazo: dados.prazo,
+        revisar_meses: dados.revisar_meses,
+        revisado_em: dados.revisado_em,
         alterado_em: r.get(4)?,
         criado_em: r.get(5)?,
         tarefas_feitas: r.get(6)?,
@@ -343,6 +358,7 @@ pub fn renomear(conn: &Connection, id: &str, titulo: &str) -> Result<(), Erro> {
 }
 
 /// Ativar respeita o limite. Pausar pode guardar o cartão "onde parei" no mesmo passo.
+/// Passar para "em uso" não esbarra no limite e recomeça a contagem do lembrete de revisão.
 pub fn mudar_estado_projeto(conn: &Connection, id: &str, estado: &str, onde_parei: Option<OndeParei>) -> Result<Projeto, Erro> {
     if !ESTADOS_PROJETO.contains(&estado) {
         return Err(Erro::Interno(format!("estado de projeto desconhecido: {estado}")));
@@ -357,9 +373,35 @@ pub fn mudar_estado_projeto(conn: &Connection, id: &str, estado: &str, onde_pare
         dados.onde_parei = Some(o);
     }
     dados.pausado_em = (estado == "pausado").then(agora_ms);
+    if estado == "em_uso" && atual.estado != "em_uso" {
+        dados.revisado_em = Some(agora_ms());
+    }
     gravar_dados(conn, id, &dados)?;
     conn.execute("UPDATE item SET estado = ?2 WHERE id = ?1", params![id, estado])?;
     obter_projeto(conn, id)
+}
+
+/// Liga (1 a 24 meses) ou desliga (`None`) o lembrete "rever a cada N meses".
+/// Ao ligar sem data anterior, a contagem começa agora.
+pub fn definir_revisao_projeto(conn: &Connection, id: &str, meses: Option<u32>) -> Result<(), Erro> {
+    if let Some(m) = meses {
+        if !(1..=24).contains(&m) {
+            return Err(Erro::Interno("o lembrete precisa ficar entre 1 e 24 meses".into()));
+        }
+    }
+    let mut dados = ler_dados(conn, id)?;
+    dados.revisar_meses = meses;
+    if meses.is_some() && dados.revisado_em.is_none() {
+        dados.revisado_em = Some(agora_ms());
+    }
+    gravar_dados(conn, id, &dados)
+}
+
+/// "Olhei": reinicia a contagem do lembrete de revisão.
+pub fn marcar_projeto_revisado(conn: &Connection, id: &str) -> Result<(), Erro> {
+    let mut dados = ler_dados(conn, id)?;
+    dados.revisado_em = Some(agora_ms());
+    gravar_dados(conn, id, &dados)
 }
 
 pub fn salvar_onde_parei(conn: &Connection, id: &str, mut onde_parei: OndeParei) -> Result<(), Erro> {
@@ -647,6 +689,47 @@ mod testes {
         assert!(c.pausado_em.is_none());
         // Reativar o que já está ativo não conta duas vezes.
         assert!(mudar_estado_projeto(&conn, &c.id, "ativo", None).is_ok());
+    }
+
+    #[test]
+    fn em_uso_nao_conta_no_limite_de_ativos() {
+        let (_d, conn) = banco();
+        definir_limite(&conn, 1).unwrap();
+        let a = criar_projeto(&conn, "Livro", true).unwrap();
+        // Com o limite cheio, mover para "em uso" funciona e libera a vaga.
+        let maps = mudar_estado_projeto(&conn, &a.id, "em_uso", None).unwrap();
+        assert_eq!(maps.estado, "em_uso");
+        assert!(maps.revisado_em.is_some());
+        assert!(maps.pausado_em.is_none());
+        assert_eq!(contar_ativos(&conn).unwrap(), 0);
+        let b = criar_projeto(&conn, "Site", true).unwrap();
+        // Mais um em uso com o limite cheio: também funciona.
+        let c = criar_projeto(&conn, "Planilha", false).unwrap();
+        assert!(mudar_estado_projeto(&conn, &c.id, "em_uso", None).is_ok());
+        assert_eq!(contar_ativos(&conn).unwrap(), 1);
+        // Voltar para ativo respeita o limite normalmente.
+        assert!(matches!(mudar_estado_projeto(&conn, &a.id, "ativo", None), Err(Erro::LimiteDeProjetos { limite: 1 })));
+        mudar_estado_projeto(&conn, &b.id, "pausado", None).unwrap();
+        assert_eq!(mudar_estado_projeto(&conn, &a.id, "ativo", None).unwrap().estado, "ativo");
+        assert!(mudar_estado_projeto(&conn, &a.id, "inventado", None).is_err());
+    }
+
+    #[test]
+    fn lembrete_de_revisao_liga_desliga_e_olhei_reinicia() {
+        let (_d, conn) = banco();
+        let p = criar_projeto(&conn, "MAPS", true).unwrap();
+        assert_eq!(p.revisar_meses, None);
+        definir_revisao_projeto(&conn, &p.id, Some(3)).unwrap();
+        let p2 = obter_projeto(&conn, &p.id).unwrap();
+        assert_eq!(p2.revisar_meses, Some(3));
+        assert!(p2.revisado_em.is_some());
+        assert!(definir_revisao_projeto(&conn, &p.id, Some(0)).is_err());
+        assert!(definir_revisao_projeto(&conn, &p.id, Some(25)).is_err());
+        conn.execute("UPDATE item SET dados = json_set(dados, '$.revisadoEm', 5) WHERE id = ?1", [&p.id]).unwrap();
+        marcar_projeto_revisado(&conn, &p.id).unwrap();
+        assert!(obter_projeto(&conn, &p.id).unwrap().revisado_em.unwrap() > 5);
+        definir_revisao_projeto(&conn, &p.id, None).unwrap();
+        assert_eq!(obter_projeto(&conn, &p.id).unwrap().revisar_meses, None);
     }
 
     #[test]

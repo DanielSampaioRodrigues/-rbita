@@ -1,4 +1,4 @@
-import { ChevronRight, Plus } from "../icones";
+import { ChevronRight, Eye, Plus } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { LinhaDoTempo } from "../projetos/LinhaDoTempo";
@@ -8,11 +8,11 @@ import { Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useComLimite } from "../projetos/Limite";
 import { SeletorLimite } from "../projetos/SeletorLimite";
-import { linhaPausa } from "../projetos/tempo";
+import { contarNoLimite, haQuanto, horaDeOlhar, linhaPausa } from "../projetos/tempo";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.projetos;
-const GRUPOS: EstadoProjeto[] = ["ativo", "pausado", "concluido"];
+const GRUPOS: EstadoProjeto[] = ["ativo", "em_uso", "pausado", "concluido"];
 
 export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLimite?: () => void }) {
   const [projetos, setProjetos] = useState<Projeto[]>([]);
@@ -35,7 +35,8 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
     );
   }, [mudancas]);
 
-  const ativos = projetos.filter((p) => p.estado === "ativo").length;
+  const ativos = contarNoLimite(projetos);
+  const emUso = projetos.filter((p) => p.estado === "em_uso").length;
 
   return (
     <div className="pagina">
@@ -45,7 +46,7 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
         <Button className="botao principal" onPress={() => setCriando(true)}>
           <Plus aria-hidden="true" size="1.1em" /> {t.novo}
         </Button>
-        <span className="texto-suave">{t.ativosDe(ativos, limite)}</span>
+        <span className="texto-suave">{t.resumo(ativos, limite, emUso)}</span>
       </div>
       <details className="limite-inline">
         <summary>{t.mudarLimite}</summary>
@@ -89,10 +90,11 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
 
       {visao === "lista" && GRUPOS.map((g) => {
         const lista = projetos.filter((p) => p.estado === g);
-        if (g === "concluido" && lista.length === 0) return null;
+        if ((g === "concluido" || g === "em_uso") && lista.length === 0) return null;
         return (
           <section key={g} className="grupo largura-leitura" aria-labelledby={`grupo-${g}`}>
             <h2 id={`grupo-${g}`}>{t.grupos[g]}</h2>
+            {g === "em_uso" && <p className="texto-suave grupo-ajuda">{t.ajudaEmUso}</p>}
             {lista.length === 0 ? (
               <p className="texto-suave">{t.vazioGrupo[g]}</p>
             ) : (
@@ -120,12 +122,25 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
 export function CartaoProjeto({ projeto: p, aoAbrir }: { projeto: Projeto; aoAbrir: () => void }) {
   const proximo = p.ondeParei?.proximoPasso;
   const pausa = linhaPausa(p);
+  const olhar = horaDeOlhar(p);
+  const emUso = p.estado === "em_uso" ? t.emUsoDesde(haQuanto(p.revisadoEm ?? p.alteradoEm)) : null;
   return (
-    <Button className={`cartao compacto cartao-projeto projeto-${p.estado}`} onPress={aoAbrir} aria-label={`${t.abrir}: ${p.titulo}`}>
+    <Button
+      className={`cartao compacto cartao-projeto projeto-${p.estado}${olhar ? " hora-de-olhar" : ""}`}
+      onPress={aoAbrir}
+      aria-label={`${t.abrir}: ${p.titulo}${olhar ? `. ${t.horaDeOlhar}` : ""}`}
+    >
       <span className="cartao-projeto-texto">
         <span className="cartao-projeto-titulo quebra">{p.titulo}</span>
+        {olhar && (
+          <span className="aviso-olhar">
+            <Eye aria-hidden="true" size="1em" /> {t.horaDeOlhar}
+          </span>
+        )}
         {pausa ? (
           <span className="projeto-contexto quebra">{pausa}</span>
+        ) : emUso ? (
+          <span className="projeto-contexto quebra">{emUso}</span>
         ) : (
           <span className={proximo ? "projeto-contexto quebra" : "texto-suave"}>{proximo ? t.proximo(proximo) : t.semProximo}</span>
         )}

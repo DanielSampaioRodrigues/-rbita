@@ -487,6 +487,7 @@
 }
 
 .estado-ativo, .estado-fazendo { border-color: var(--cor-destaque); color: var(--cor-destaque); }
+.estado-em_uso { border-color: color-mix(in srgb, var(--cor-destaque) 45%, var(--cor-borda-controle)); color: var(--cor-texto); background: color-mix(in srgb, var(--cor-destaque) 10%, var(--cor-superficie)); }
 
 /* Menus */
 .menu-popover {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { haQuanto, linhaPausa, resumir, ultimaCoisa } from "./tempo";
+import { contarNoLimite, haQuanto, horaDeOlhar, linhaPausa, proximaRevisao, resumir, ultimaCoisa } from "./tempo";
 
 const agora = new Date(2026, 9, 29, 15, 0).getTime();
 const diasAtras = (n: number, hora = 10) => new Date(2026, 9, 29 - n, hora, 0).getTime();
@@ -35,5 +35,28 @@ describe("tempo dos projetos", () => {
     expect(linhaPausa({ ...base, ondeParei: null }, agora)).toBe("Pausado há 3 dias");
     expect(linhaPausa({ ...base, pausadoEm: null, ondeParei: null }, agora)).toBe("Pausado");
     expect(linhaPausa({ ...base, estado: "ativo" }, agora)).toBeNull();
+  });
+});
+
+describe("projetos em uso", () => {
+  const base = { criadoEm: new Date(2026, 0, 31).getTime(), revisadoEm: new Date(2026, 0, 31, 14).getTime() };
+
+  it("em uso não conta no limite de ativos", () => {
+    const lista = [{ estado: "ativo" as const }, { estado: "em_uso" as const }, { estado: "em_uso" as const }, { estado: "pausado" as const }, { estado: "concluido" as const }];
+    expect(contarNoLimite(lista)).toBe(1);
+  });
+
+  it("lembrete desligado nunca avisa", () => {
+    expect(proximaRevisao({ ...base, revisarMeses: null })).toBeNull();
+    expect(horaDeOlhar({ ...base, estado: "em_uso", revisarMeses: null }, new Date(2030, 0, 1).getTime())).toBe(false);
+  });
+
+  it("avisa a partir do dia certo, sem pular mês curto", () => {
+    expect(proximaRevisao({ ...base, revisarMeses: 1 })).toBe(new Date(2026, 1, 28).getTime());
+    const p = { ...base, estado: "em_uso" as const, revisarMeses: 3 };
+    expect(horaDeOlhar(p, new Date(2026, 3, 29, 23).getTime())).toBe(false);
+    expect(horaDeOlhar(p, new Date(2026, 3, 30, 8).getTime())).toBe(true);
+    // Só projetos em uso mostram o aviso.
+    expect(horaDeOlhar({ ...p, estado: "ativo" }, new Date(2027, 0, 1).getTime())).toBe(false);
   });
 });

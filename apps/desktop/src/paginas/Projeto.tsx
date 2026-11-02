@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Pause, Pencil, RotateCcw, Sparkles, Trash2 } from "../icones";
+import { ArrowLeft, CheckCircle2, Eye, Pause, Pencil, Play, RefreshCw, RotateCcw, Sparkles, Trash2 } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { api, type Etiqueta, type EstadoProjeto, type ProvedorVisivel, type Projeto as TipoProjeto, type Tarefa } from "../api";
@@ -17,6 +17,8 @@ import { JanelaPrazo } from "../projetos/prazos";
 import { ContextoTarefas } from "../projetos/acoesTarefa";
 import { Relacoes } from "../relacoes/Relacoes";
 import { CampoData } from "../componentes/CampoData";
+import { Escolha } from "../componentes/Escolha";
+import { horaDeOlhar, proximaRevisao } from "../projetos/tempo";
 import { textos } from "../textos/pt-BR";
 import { EditarTexto } from "./Ideias";
 
@@ -33,6 +35,9 @@ function visaoSalva(): Visao {
     return "lista";
   }
 }
+
+const MESES_REVISAO = [1, 2, 3, 6, 12];
+const fmtData = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" });
 
 export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) {
   const [projeto, setProjeto] = useState<TipoProjeto | null>(null);
@@ -128,6 +133,15 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
             <RotateCcw aria-hidden="true" size="1.1em" /> {t.reabrir}
           </Button>
         )}
+        {projeto.estado === "em_uso" ? (
+          <Button className="botao" onPress={() => mudarEstado("ativo")}>
+            <Play aria-hidden="true" size="1.1em" /> {t.moverAtivo}
+          </Button>
+        ) : (
+          <Button className="botao" onPress={() => mudarEstado("em_uso")}>
+            <RefreshCw aria-hidden="true" size="1.1em" /> {t.moverEmUso}
+          </Button>
+        )}
         <Button className="botao" onPress={() => setJanela("renomear")}>
           <Pencil aria-hidden="true" size="1.1em" /> {t.renomear}
         </Button>
@@ -135,7 +149,10 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
           <Trash2 aria-hidden="true" size="1.1em" /> {t.excluir}
         </Button>
       </div>
+      <p className="campo-ajuda largura-leitura">{t.ajudaEmUso}</p>
       <Aviso>{erro}</Aviso>
+
+      {projeto.estado === "em_uso" && <RevisaoProjeto projeto={projeto} executar={executar} />}
 
       <div className="linha-campos largura-leitura" role="group" aria-label={t.datas}>
         <CampoData
@@ -233,5 +250,44 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
         aoConfirmar={() => executar(async () => (await api.excluirItem(id), setJanela(null), aoVoltar()))}
       />
     </div>
+  );
+}
+
+/** Lembrete opcional "rever a cada N meses" de um projeto em uso, com o botão "Olhei". */
+function RevisaoProjeto({ projeto, executar }: { projeto: TipoProjeto; executar: (acao: () => Promise<unknown>) => Promise<void> }) {
+  const recado = useRecado();
+  const olhar = horaDeOlhar(projeto);
+  const proxima = proximaRevisao(projeto);
+  const opcoes = [
+    { valor: "0", nome: t.revisaoDesligado },
+    ...MESES_REVISAO.map((n) => ({ valor: String(n), nome: t.revisaoMeses(n) })),
+  ];
+  return (
+    <section className={`cartao revisao-projeto largura-leitura${olhar ? " hora-de-olhar" : ""}`} aria-label={t.revisao}>
+      <Escolha
+        rotulo={t.revisao}
+        descricao={t.revisaoAjuda}
+        valor={String(projeto.revisarMeses ?? 0)}
+        opcoes={opcoes}
+        aoMudar={(v) => executar(() => api.definirRevisaoProjeto(projeto.id, v === "0" ? null : Number(v)))}
+      />
+      {proxima !== null && (
+        <div className="revisao-linha">
+          {olhar ? (
+            <span className="aviso-olhar">
+              <Eye aria-hidden="true" size="1em" /> {t.horaDeOlhar}
+            </span>
+          ) : (
+            <span className="texto-suave">{t.proximaOlhada(fmtData.format(proxima))}</span>
+          )}
+          <Button
+            className="botao"
+            onPress={() => executar(async () => (await api.marcarProjetoRevisado(projeto.id), recado(t.olheiFeito)))}
+          >
+            <Eye aria-hidden="true" size="1.1em" /> {t.olhei}
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }

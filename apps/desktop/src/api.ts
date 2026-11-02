@@ -68,7 +68,8 @@ export interface OndeParei {
   atualizadoEm: number;
 }
 
-export type EstadoProjeto = "ativo" | "pausado" | "concluido";
+/** "em_uso": pronto e funcionando, sob cuidado; não conta no limite de ativos. */
+export type EstadoProjeto = "ativo" | "em_uso" | "pausado" | "concluido";
 export type EstadoTarefa = "a_fazer" | "fazendo" | "feita";
 
 export interface Projeto {
@@ -80,6 +81,10 @@ export interface Projeto {
   /** Datas opcionais, "AAAA-MM-DD". */
   inicio: string | null;
   prazo: string | null;
+  /** Lembrete opcional "rever a cada N meses". Null: desligado. */
+  revisarMeses: number | null;
+  /** Última vez que a pessoa disse "Olhei" (ms). */
+  revisadoEm: number | null;
   criadoEm: number;
   tarefasFeitas: number;
   tarefasTotal: number;
@@ -845,6 +850,10 @@ export interface Api {
   renomear(id: string, titulo: string): Promise<void>;
   mudarEstadoProjeto(id: string, novo: EstadoProjeto, ondeParei?: Omit<OndeParei, "atualizadoEm">): Promise<Projeto>;
   salvarOndeParei(id: string, ondeParei: Omit<OndeParei, "atualizadoEm">): Promise<void>;
+  /** Liga (1 a 24 meses) ou desliga (null) o lembrete "rever a cada N meses". */
+  definirRevisaoProjeto(id: string, meses: number | null): Promise<void>;
+  /** "Olhei": reinicia a contagem do lembrete. */
+  marcarProjetoRevisado(id: string): Promise<void>;
   limiteProjetos(): Promise<number>;
   definirLimiteProjetos(limite: number): Promise<void>;
   listarTarefas(projetoId: string): Promise<Tarefa[]>;
@@ -1136,6 +1145,8 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   mudarEstadoProjeto: (id, novo, ondeParei) =>
     chamar("mudar_estado_projeto", { id, novo, ondeParei: ondeParei ? { ...ondeParei, atualizadoEm: 0 } : null }),
   salvarOndeParei: (id, ondeParei) => chamar("salvar_onde_parei", { id, ondeParei: { ...ondeParei, atualizadoEm: 0 } }),
+  definirRevisaoProjeto: (id, meses) => chamar("definir_revisao_projeto", { id, meses }),
+  marcarProjetoRevisado: (id) => chamar("marcar_projeto_revisado", { id }),
   limiteProjetos: () => chamar("limite_projetos"),
   definirLimiteProjetos: (limite) => chamar("definir_limite_projetos", { limite }),
   listarTarefas: (projetoId) => chamar("listar_tarefas", { projetoId }),
@@ -1374,7 +1385,7 @@ function guardarValor<T>(chave: string, ler: () => T, escrever: (v: T) => void) 
 }
 
 function simularItens() {
-  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null; nota?: string; etiquetas?: string[]; cor?: CorEtiqueta | null };
+  type Item = { id: string; tipo: "ideia" | "projeto" | "tarefa"; texto: string; estado: string; paiId: string | null; ordem: number; criadoEm: number; alteradoEm: number; ondeParei: OndeParei | null; pausadoEm: number | null; revisarMeses?: number | null; revisadoEm?: number | null; peso?: Peso | null; inicio?: string | null; prazo?: string | null; nota?: string; etiquetas?: string[]; cor?: CorEtiqueta | null };
   let etiquetas: Etiqueta[] = [];
   let ligacoes: [string, string][] = [];
   const itens: Item[] = [];
@@ -1400,7 +1411,7 @@ function simularItens() {
   const comoProjeto = (p: Item): Projeto => {
     const t = tarefasDe(p.id);
     return { id: p.id, titulo: p.texto, estado: p.estado as EstadoProjeto, ondeParei: p.ondeParei, pausadoEm: p.pausadoEm,
-      inicio: p.inicio ?? null, prazo: p.prazo ?? null, criadoEm: p.criadoEm,
+      inicio: p.inicio ?? null, prazo: p.prazo ?? null, revisarMeses: p.revisarMeses ?? null, revisadoEm: p.revisadoEm ?? null, criadoEm: p.criadoEm,
       tarefasFeitas: t.filter((x) => x.estado === "feita").length, tarefasTotal: t.length, alteradoEm: p.alteradoEm, etiquetas: vivas(p) };
   };
   const vivas = (i: Item) => (i.etiquetas ?? []).filter((e) => etiquetas.some((x) => x.id === e));
@@ -1511,9 +1522,17 @@ function simularItens() {
       const p = achar(id);
       if (estado === "ativo" && p.estado !== "ativo") conferirLimite();
       if (ondeParei) p.ondeParei = { ...ondeParei, atualizadoEm: agora() };
+      if (estado === "em_uso" && p.estado !== "em_uso") p.revisadoEm = agora();
       Object.assign(p, { estado, pausadoEm: estado === "pausado" ? agora() : null, alteradoEm: agora() });
       return comoProjeto(p);
     },
+    definirRevisaoProjeto: async (id: string, meses: number | null) => {
+      if (meses != null && (meses < 1 || meses > 24)) throw new ErroOrbita("interno", "O lembrete precisa ficar entre 1 e 24 meses.");
+      const p = achar(id);
+      p.revisarMeses = meses;
+      if (meses != null && p.revisadoEm == null) p.revisadoEm = agora();
+    },
+    marcarProjetoRevisado: async (id: string) => void (achar(id).revisadoEm = agora()),
     salvarOndeParei: async (id: string, o: Omit<OndeParei, "atualizadoEm">) =>
       void (achar(id).ondeParei = { ...o, links: o.links.filter((l) => l.trim()), atualizadoEm: agora() }),
     limiteProjetos: async () => limite,

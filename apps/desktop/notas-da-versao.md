@@ -1,3 +1,25 @@
+- **Sincronizar ficou mais simples: basta entrar com o Google.** Não precisa mais criar senha de sincronização. Seus dados continuam trancados na pasta escondida do Órbita no seu Drive. Quem quiser pode marcar **"Proteção extra: trancar também com uma senha minha"** (aí entram a senha, o PIN e as 6 perguntas para recuperar).
+
+- **Como ligar**: comece pelo PC (o aparelho que tem seus dados). **Ajustes → Sincronizar aparelhos → Ligar a sincronização**, entre com o Google e pronto. Depois, no iPad ou no celular, faça o mesmo e escolha **"Juntar tudo"**.
+
+- **Minha organização ficou como o Trello**
+  - Ao criar um quadro, não precisa mais escolher "quadro ou lista". Todo quadro pode ser visto em **Quadro** (colunas lado a lado) ou em **Lista** (tudo um embaixo do outro, por coluna). Troque quando quiser no alto do quadro; a escolha fica guardada. Suas listas antigas continuam iguais e abrem em Lista.
+  - Toque num cartão para abrir. Agora ele tem descrição com formatação, checklists, etiquetas coloridas, data com hora, anexos e capa (cor ou imagem). Dá para mover para outra coluna ou outro quadro, copiar e arquivar. Tudo é guardado sozinho.
+  - O cartão fechado mostra as etiquetas, a data, o andamento da checklist (por exemplo 3/5) e se tem anexo ou descrição. A data perto de vencer ganha um tom suave, sem vermelho.
+  - Cada quadro pode ter um fundo: cor, gradiente ou uma imagem sua. As etiquetas são de cada quadro, separadas das de Ideias e Projetos.
+  - Novo: busca e filtro (por etiqueta, "vence nos próximos 7 dias" e "esconder os feitos"), coluna recolhida e Arquivados, para ver e restaurar o que saiu do quadro.
+  - "Limpar os feitos" virou "Arquivar os feitos": nada é apagado sem querer.
+
+- **Projetos: novo estado "Em uso"**, para o que já está pronto e funcionando mas pede um cuidado de vez em quando (como um site ou um sistema que você mantém). Esses projetos **não contam no limite de ativos**, ficam num grupo próprio e o alto da página mostra, por exemplo, "Tocando: 3 de 6 · Em uso: 2". Se quiser, ligue o lembrete "rever a cada tantos meses": quando chegar a hora, aparece um aviso calmo "Hora de dar uma olhada"; toque em "Olhei" para recomeçar a contagem.
+
+- **Ideias**: criar etiqueta agora fica sempre à vista, também no painel de Etiquetas; marcar ou desmarcar uma etiqueta vale na hora, sem precisar de Salvar; e cada ideia pode ter a sua própria cor.
+
+- **Importante: atualize todos os seus aparelhos para esta versão** (o PC pelo aviso de atualização; o iPad e o celular só reabrindo o app). Um aparelho com a versão anterior, ao editar um cartão da Minha organização, apaga a descrição, as checklists e as etiquetas dele.
+
+---
+
+<!-- Abaixo: o que veio na 0.47.0. -->
+
 - **Sincronizar aparelhos (novo)**: o que você faz no PC aparece no iPad e no celular, e o contrário também, sozinho. Tudo passa pela **pasta escondida do Órbita no seu Google Drive**, sem servidor nosso, e vai **trancado com uma senha que só você sabe** (nem o Google lê). Sem internet, fica guardado e sobe quando ela volta. Um aviso discreto no alto mostra "Sincronizado há 1 min".
 
 - **Como começar**: comece pelo aparelho que tem seus dados (o PC). Em **Ajustes → Sincronizar aparelhos → Ligar a sincronização**: entre com o Google, crie a **senha de sincronização**, confirme o **PIN** e, se quiser, escreva **6 perguntas** para recuperar a senha se esquecer. Depois, no iPad ou no celular: **Ajustes → Sincronizar aparelhos** (ou "Entrar com Google" na primeira tela), digite a mesma senha e escolha **"Juntar tudo"**.

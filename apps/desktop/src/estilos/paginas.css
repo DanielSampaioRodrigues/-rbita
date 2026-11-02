@@ -499,6 +499,8 @@
 .linha-tempo-barra.aberta { background: repeating-linear-gradient(90deg, var(--cor-destaque) 0 10px, transparent 10px 16px); border: 1px solid var(--cor-destaque); }
 .estado-pausado .linha-tempo-barra { background: var(--cor-borda-controle); }
 .estado-pausado .linha-tempo-barra.aberta { background: repeating-linear-gradient(90deg, var(--cor-borda-controle) 0 10px, transparent 10px 16px); border-color: var(--cor-borda-controle); }
+.estado-em_uso .linha-tempo-barra { background: color-mix(in srgb, var(--cor-destaque) 40%, var(--cor-superficie)); }
+.estado-em_uso .linha-tempo-barra.aberta { background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--cor-destaque) 40%, var(--cor-superficie)) 0 10px, transparent 10px 16px); border-color: color-mix(in srgb, var(--cor-destaque) 40%, var(--cor-borda-controle)); }
 .linha-tempo-marco { position: absolute; top: 0.85rem; width: 0.8rem; height: 0.8rem; margin-left: -0.4rem; transform: rotate(45deg); background: var(--cor-atencao); border: 2px solid var(--cor-superficie); }
 
 /* IA: provedores em Ajustes */
@@ -1376,6 +1378,26 @@
 .cartao-projeto.projeto-pausado { border-style: dashed; }
 .projeto-contexto { color: var(--cor-texto); }
 .projeto-pausado .projeto-contexto { color: var(--cor-texto-suave); }
+.cartao-projeto.projeto-em_uso { border-left: 4px solid color-mix(in srgb, var(--cor-destaque) 40%, var(--cor-borda-controle)); }
+.projeto-em_uso .projeto-contexto { color: var(--cor-texto-suave); }
+.grupo-ajuda { margin-top: calc(-1 * var(--espaco-2)); }
+/* "Hora de dar uma olhada": tom suave, sem vermelho e sem animação. */
+.aviso-olhar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  align-self: flex-start;
+  width: fit-content;
+  padding: 0.1em 0.6em;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cor-texto);
+  background: color-mix(in srgb, var(--cor-atencao) 16%, var(--cor-superficie));
+  border: 1px solid color-mix(in srgb, var(--cor-atencao) 40%, var(--cor-borda-controle));
+}
+.revisao-projeto { display: grid; gap: var(--espaco-3); margin-bottom: var(--espaco-4); }
+.revisao-linha { display: flex; align-items: center; justify-content: space-between; gap: var(--espaco-3); flex-wrap: wrap; }
 .projeto-progresso { display: flex; align-items: center; gap: var(--espaco-3); flex-wrap: wrap; }
 .projeto-progresso-trilho {
   flex: none;

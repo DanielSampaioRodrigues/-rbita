@@ -46,3 +46,30 @@ export function linhaPausa(p: Pick<Projeto, "estado" | "pausadoEm" | "ondeParei"
   const ultima = ultimaCoisa(p);
   return ultima ? `${quando} — ${t.ultimaCoisa(ultima)}` : quando;
 }
+
+/**
+ * Quando vence o lembrete "rever a cada N meses": N meses do calendário depois da última
+ * vez que a pessoa disse "Olhei". Null se o lembrete está desligado.
+ */
+export function proximaRevisao(p: Pick<Projeto, "revisarMeses" | "revisadoEm" | "criadoEm">): number | null {
+  if (!p.revisarMeses) return null;
+  const d = new Date(p.revisadoEm ?? p.criadoEm);
+  const dia = d.getDate();
+  d.setMonth(d.getMonth() + p.revisarMeses, 1);
+  // 31 de janeiro + 1 mês = último dia de fevereiro, sem pular para março.
+  const ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(dia, ultimo));
+  return inicioDoDia(d.getTime());
+}
+
+/** Já passou a data do lembrete? Só vale para projetos em uso. */
+export function horaDeOlhar(p: Pick<Projeto, "estado" | "revisarMeses" | "revisadoEm" | "criadoEm">, agora = Date.now()): boolean {
+  if (p.estado !== "em_uso") return false;
+  const quando = proximaRevisao(p);
+  return quando !== null && agora >= quando;
+}
+
+/** Conta só os ativos: em uso, pausados e concluídos ficam fora do limite. */
+export function contarNoLimite(projetos: Pick<Projeto, "estado">[]): number {
+  return projetos.filter((p) => p.estado === "ativo").length;
+}

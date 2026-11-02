@@ -388,6 +388,16 @@ pub async fn mudar_estado_projeto(
 }
 
 #[tauri::command]
+pub async fn definir_revisao_projeto(estado: State<'_, Estado>, id: String, meses: Option<u32>) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::definir_revisao_projeto(&s.conn, &id, meses))
+}
+
+#[tauri::command]
+pub async fn marcar_projeto_revisado(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| itens::marcar_projeto_revisado(&s.conn, &id))
+}
+
+#[tauri::command]
 pub async fn salvar_onde_parei(estado: State<'_, Estado>, id: String, onde_parei: itens::OndeParei) -> Result<(), Erro> {
     estado.com_sessao(|s| itens::salvar_onde_parei(&s.conn, &id, onde_parei))
 }
