@@ -52,7 +52,7 @@ function CampoQuando({ quando, setQuando, dia, setDia }: { quando: Quando; setQu
       {quando === "outro" && (
         <div className="campo">
           <label className="campo-rotulo" htmlFor={idDia}>{t.gasto.dia}</label>
-          <input id={idDia} type="date" className="entrada-texto sozinha" max={chaveDia(Date.now())} value={dia} onChange={(e) => setDia(e.target.value)} />
+          <input id={idDia} type="date" className="entrada-texto sozinha" min="1900-01-01" max={chaveDia(Date.now())} value={dia} onChange={(e) => setDia(e.target.value)} />
         </div>
       )}
     </div>

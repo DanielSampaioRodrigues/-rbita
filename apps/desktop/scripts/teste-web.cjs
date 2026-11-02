@@ -203,6 +203,15 @@ async function criarDados(p) {
   await dialogo(p).getByLabel("Nome do projeto").fill("Projeto Teste");
   await dialogo(p).getByRole("button", { name: "Criar" }).click();
   await espera(p, 800);
+  // Data digitada à mão (relato de Dan: digitando, o campo pulava e o ano virava 275760).
+  await main(p).getByLabel("Começo (opcional)").click();
+  await p.keyboard.press("Home");
+  await p.keyboard.type("11022026", { delay: 120 });
+  await espera(p, 800);
+  {
+    const v = await main(p).getByLabel("Começo (opcional)").inputValue();
+    if (v !== "2026-11-02") falhar(`data digitada à mão ficou "${v}", esperado 2026-11-02`);
+  }
   await main(p).getByLabel("Nova tarefa").fill("Tarefa um");
   await main(p).getByRole("button", { name: "Adicionar" }).click();
   await espera(p, 600);
