@@ -2,17 +2,18 @@
 <script type="module">
 import init, * as m from "./orbita_motor_web.js";
 const r = document.getElementById("r");
+const ex = (c, a) => JSON.parse(m.executar(c, JSON.stringify(a ?? {})));
 try {
   await init();
-  const t0 = performance.now();
-  const versao = m.abrir_em_memoria();
-  m.criar_ideia("Comprar tinta para o caderno");
-  m.criar_ideia("Ideia com acento: ação, coração, órbita");
-  for (let i = 0; i < 500; i++) m.criar_ideia("ideia " + i);
-  const lista = JSON.parse(m.listar_ideias());
-  const ms = Math.round(performance.now() - t0);
-  const cipher = m.versao_cipher();
-  const reabrir = JSON.parse(m.exportar_e_reabrir());
-  r.textContent = JSON.stringify({ ok: true, versaoDoBanco: versao, total: lista.length, ms, cipher, reabrir });
+  m.abrir_vazio();
+  const gerados = m.comandos_gerados(), fora = m.comandos_de_fora();
+  const ideia = ex("criar_ideia", { texto: "Pela ponte: ação" });
+  const ev = ex("salvar_evento", { evento: { id: "", titulo: "Consulta", inicio: 1793600000000, fim: null, diaInteiro: true, repeticao: null, modelo: false, notas: "", excecoes: [], cor: "mar" } });
+  const leitura = ex("listar_ideias");
+  let erro = null; try { ex("editar_ideia", { id: "nao-existe", texto: "x" }); } catch (e) { erro = JSON.parse(e); }
+  const bytes = m.exportar(); m.fechar(); m.abrir_de_bytes(bytes);
+  const depois = ex("listar_ideias").r;
+  const eventos = ex("listar_eventos", { de: 0, ate: 1893600000000 }).r;
+  r.textContent = JSON.stringify({ ok: true, gerados: gerados.length, fora: fora.length, foraLista: fora, criouMudou: ideia.mudou, listarMudou: leitura.mudou, erro, depoisDeReabrir: depois.map(i => i.texto), evento: eventos[0] && { titulo: eventos[0].titulo, cor: eventos[0].cor } });
 } catch (e) { r.textContent = JSON.stringify({ ok: false, erro: String(e) }); }
 </script>

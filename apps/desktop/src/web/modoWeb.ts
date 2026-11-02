@@ -1,9 +1,11 @@
-// Versão de navegador (iPad) de verdade: usa a mesma lógica da simulação para
-// as telas, mas guarda tudo, criptografado, no próprio aparelho (cofreWeb).
-// Também troca o que na simulação é "de mentira" (IA, ditado, backup, arquivos)
-// por versões reais ou por um aviso claro de que ainda não existe no navegador.
+// Versão de navegador (iPad) de verdade: roda o MESMO motor do Windows (o banco
+// em Rust, compilado para WebAssembly; ver docs/decisoes/0011-motor-unico.md) e
+// guarda o banco inteiro, criptografado, no próprio aparelho (cofreWeb).
+// O que depende do sistema (cofre, backup, IA, ditado, arquivos) tem versão
+// própria aqui, ou um aviso claro de que ainda não existe no navegador.
 
-import type { Anexo, Api, Confirmacao, ErroOrbita as TipoErro, Guardavel, InfoBackup, ModoAbrir, SituacaoBackup } from "../api";
+import type { Anexo, Api, Chamar, Confirmacao, ErroOrbita as TipoErro, InfoBackup, ModoAbrir, SituacaoBackup } from "../api";
+import { carregarMotor } from "./motor";
 import { QUANTIDADE, reconhecer, separar, textoDaChave, LISTA } from "../palavras";
 import {
   abrirAparelho,
@@ -11,6 +13,7 @@ import {
   aleatorio,
   chaveDosDados,
   deBase64,
+  destrancar,
   destrancarTexto,
   envelopar,
   gravar,
@@ -18,6 +21,7 @@ import {
   paraBase64,
   pedirArmazenamentoPersistente,
   rotuloDados,
+  trancar,
   trancarAparelho,
   trancarTexto,
   type ArquivoCofreWeb,
@@ -29,7 +33,8 @@ type ClasseErro = new (codigo: TipoErro["codigo"], mensagem: string, tentativasR
 
 export interface DependenciasWeb {
   ErroOrbita: ClasseErro;
-  guardaveis: Map<string, Guardavel>;
+  /** Converte o erro que o motor devolve (o mesmo objeto do Windows) em ErroOrbita. */
+  comoErro: (e: unknown) => TipoErro;
 }
 
 const TENTATIVAS_DE_PIN = 5;
@@ -99,7 +104,8 @@ interface EnvelopeTexto { sal: string; iv: string; cifra: string; iteracoes: num
 interface TrancadoTexto { iv: string; cifra: string }
 interface ArquivoBackupWeb {
   formato: typeof FORMATO_BACKUP;
-  versao: 1;
+  /** 1 = retrato da simulação (até a 0.45, não abre mais); 2 = o banco do motor, em bytes. */
+  versao: 1 | 2;
   criadoEm: number;
   versaoApp: string;
   id: string;
@@ -115,17 +121,8 @@ const trBytes = (t: TrancadoTexto): Trancado => ({ iv: deBase64(t.iv), cifra: de
 
 // ── O modo web em si ───────────────────────────────────────────────────────────
 
-export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWeb): Api {
-  // Arquivos e áudios anexados (as imagens já ficam no estado da simulação).
-  const arquivos = new Map<string, string>();
-  guardaveis.set("web.arquivos", {
-    ler: () => [...arquivos],
-    escrever: (v) => {
-      arquivos.clear();
-      for (const [k, x] of (v as [string, string][]) ?? []) arquivos.set(k, x);
-    },
-    zerar: () => arquivos.clear(),
-  });
+export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, comoErro }: DependenciasWeb): Api {
+  const motor = carregarMotor();
 
   let cofre: ArquivoCofreWeb | null | undefined;
   let bruta: Uint8Array | null = null;
@@ -145,19 +142,23 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
     await gravar("cofre", c);
   };
 
-  // Guardar os dados: um retrato de todas as listas, trancado com a chave dos dados.
+  // Guardar: o banco inteiro em bytes, trancado com a chave dos dados. (A chave
+  // antiga "dados", da simulação, até a 0.45, é ignorada: eram dados de teste.)
+  let aberto = false;
   let pendente: ReturnType<typeof setTimeout> | null = null;
   let fila: Promise<void> = Promise.resolve();
-  const retrato = () => JSON.stringify({ versao: 1, estado: Object.fromEntries([...guardaveis].map(([k, g]) => [k, g.ler()])) });
   const salvarAgora = (): Promise<void> => {
     if (pendente) clearTimeout(pendente);
     pendente = null;
     const k = chave;
     const id = cofre?.id;
-    if (!k || !id) return fila;
-    const json = retrato();
+    if (!k || !id || !aberto) return fila;
     fila = fila
-      .then(async () => gravar("dados", await trancarTexto(k, json, rotuloDados(id))))
+      .then(async () => {
+        const m = await motor;
+        if (!aberto) return;
+        await gravar("banco", await trancar(k, m.exportar(), rotuloDados(id)));
+      })
       .catch((e) => console.error("Órbita: não consegui guardar os dados", e));
     return fila;
   };
@@ -169,34 +170,57 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && void salvarAgora());
   window.addEventListener("pagehide", () => void salvarAgora());
 
-  const restaurar = (json: string | null) => {
-    let estado: Record<string, unknown> = {};
-    if (json) {
-      try {
-        estado = (JSON.parse(json) as { estado?: Record<string, unknown> }).estado ?? {};
-      } catch {
-        estado = {};
-      }
-    }
-    for (const [k, g] of guardaveis) (k in estado ? g.escrever(estado[k]) : g.zerar());
+  const abrirDados = async (bytes: Uint8Array | null) => {
+    const m = await motor;
+    if (bytes) m.abrir_de_bytes(bytes);
+    else m.abrir_vazio();
+    aberto = true;
   };
-  const zerarTudo = () => {
-    for (const g of guardaveis.values()) g.zerar();
+  const fecharDados = async () => {
+    aberto = false;
+    (await motor).fechar();
   };
 
   const entrar = async (dek: Uint8Array, c: ArquivoCofreWeb) => {
     const k = await chaveDosDados(dek);
-    const t = await ler<Trancado>("dados");
-    let json: string | null = null;
+    const t = await ler<Trancado>("banco");
+    let bytes: Uint8Array | null = null;
     if (t) {
-      json = await destrancarTexto(k, t, rotuloDados(c.id));
-      if (json === null) throw new E("interno", "Os dados guardados neste aparelho não abriram com esta chave.");
+      bytes = await destrancar(k, t, rotuloDados(c.id));
+      if (bytes === null) throw new E("interno", "Os dados guardados neste aparelho não abriram com esta chave.");
     }
-    restaurar(json);
+    await abrirDados(bytes);
     bruta = dek;
     chave = k;
     pedirArmazenamentoPersistente();
   };
+
+  // Os comandos vão para o motor, com o mesmo nome e argumentos do Windows.
+  const lerErro = (e: unknown) => {
+    if (typeof e !== "string") return e;
+    try {
+      return JSON.parse(e) as unknown;
+    } catch {
+      return e;
+    }
+  };
+  const chamar: Chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
+    const m = await motor;
+    let saida: string;
+    try {
+      saida = m.executar(comando, JSON.stringify(args ?? {}));
+    } catch (e) {
+      throw comoErro(lerErro(e));
+    }
+    const { r, mudou } = JSON.parse(saida) as { r: T; mudou: boolean };
+    if (mudou) agendarSalvar();
+    return r;
+  };
+  const base = criarBase(chamar);
+
+  // Anexos: o navegador não tem "buscar um anexo pelo id"; lembra os que as telas listam.
+  const anexosVistos = new Map<string, Anexo>();
+  const lembrar = (a: Anexo) => (anexosVistos.set(a.id, a), a);
 
   // Regras iguais às do cofre nativo.
   const validarSenha = (s: string) => {
@@ -273,31 +297,23 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
       throw new E("backup_invalido", "Não deu para usar este backup: este arquivo não é um backup da versão de navegador do Órbita (os backups feitos no Windows ainda não abrem aqui).");
     }
     if (a?.formato !== FORMATO_BACKUP) throw new E("backup_invalido", "Não deu para usar este backup: este arquivo não é um backup da versão de navegador do Órbita (os backups feitos no Windows ainda não abrem aqui).");
+    if (a.versao !== 2) throw new E("backup_invalido", "Não deu para usar este backup: ele é de uma versão de navegador anterior à 0.46, de antes da troca de motor, e não abre mais. Backups novos abrem normalmente.");
     return a;
   };
 
   const iaIndisponivel = () => Promise.reject(new E("ia", "A IA ainda não funciona na versão de navegador (iPad). Por enquanto, use no Windows.", undefined, undefined, undefined, "sem_provedor"));
+  const nuvemIndisponivel = () => Promise.reject(new E("nuvem", "Guardar na conta ainda não existe na versão de navegador. Vem junto com o login do Google.", undefined, undefined, undefined, "indisponivel"));
   const ditadoIndisponivel = () => Promise.reject(new E("ditado", "O ditado do computador não existe na versão de navegador. No iPad, use o microfone do teclado."));
 
-  const anexarBytes: Api["anexarBytes"] = async (item, nome, b64) => {
-    const a = await base.anexarBytes(item, nome, b64);
-    if (a.tipo !== "imagem") arquivos.set(a.id, b64);
-    return a;
-  };
-  const bytesAnexo: Api["bytesAnexo"] = async (id) => {
-    const b = arquivos.get(id);
-    if (b) return b;
-    const url = await base.imagemAnexo(id).catch(() => null);
-    return url ? url.slice(url.indexOf(",") + 1) : "";
-  };
   const blobDoAnexo = async (id: string, nome: string) => {
-    const b64 = await bytesAnexo(id);
+    const b64 = await base.bytesAnexo(id);
     if (!b64) throw new E("arquivo", "Não foi possível ler ou gravar um arquivo: este anexo não tem conteúdo guardado.");
     return new Blob([deBase64(b64) as unknown as BlobPart], { type: mimeDe(nome) });
   };
-  const nomeDoAnexo = async (id: string) => {
-    const lista = (guardaveis.get("anexos.anexos")?.ler() as (Anexo & { item: string })[] | undefined) ?? [];
-    return lista.find((x) => x.id === id) ?? null;
+  const anexoVisto = (id: string) => {
+    const a = anexosVistos.get(id);
+    if (!a) throw new E("arquivo", "Não foi possível abrir este anexo agora. Feche e abra a tela de novo.");
+    return a;
   };
 
   const sobre: Partial<Api> = {
@@ -326,7 +342,7 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
         ...(modo === "pin" || modo === "direto" ? { aparelho: await trancarAparelho(dek, modo === "pin" ? pin! : null) } : {}),
       };
       await gravarCofre(c);
-      zerarTudo();
+      await abrirDados(null);
       bruta = dek;
       chave = k;
       await salvarAgora();
@@ -419,7 +435,7 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
     },
     bloquear: async () => {
       await salvarAgora();
-      zerarTudo();
+      await fecharDados();
       chave = null;
       bruta = null;
     },
@@ -429,11 +445,11 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
       const c = await exigirCofre();
       if (!chave) throw new E("bloqueado", "O Órbita está bloqueado.");
       await salvarAgora();
-      const dados = await ler<Trancado>("dados");
+      const dados = await ler<Trancado>("banco");
       if (!dados) throw new E("interno", "Ainda não há dados guardados para o backup.");
       const arquivo: ArquivoBackupWeb = {
         formato: FORMATO_BACKUP,
-        versao: 1,
+        versao: 2,
         criadoEm: Date.now(),
         versaoApp: __VERSAO__,
         id: c.id,
@@ -468,8 +484,8 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
       if (modo === "pin") validarPin(escolha?.pin);
       const k = await chaveDosDados(dek);
       const dados = trBytes(a.dados);
-      const json = await destrancarTexto(k, dados, rotuloDados(a.id));
-      if (json === null) throw new E("backup_invalido", "Não deu para usar este backup: os dados dentro dele não abriram.");
+      const bytes = await destrancar(k, dados, rotuloDados(a.id));
+      if (bytes === null) throw new E("backup_invalido", "Não deu para usar este backup: os dados dentro dele não abriram.");
       const c: ArquivoCofreWeb = {
         versao: 1,
         id: a.id,
@@ -480,8 +496,8 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
         ...(modo === "pin" || modo === "direto" ? { aparelho: await trancarAparelho(dek, modo === "pin" ? escolha!.pin! : null) } : {}),
       };
       await gravarCofre(c);
-      await gravar("dados", dados);
-      restaurar(json);
+      await gravar("banco", dados);
+      await abrirDados(bytes);
       bruta = dek;
       chave = k;
       pedirArmazenamentoPersistente();
@@ -493,27 +509,27 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
       return { pasta: null, ultimo: ultimoBackup, erro: null };
     },
 
-    // ── Anexos: guarda o conteúdo de verdade ──
+    // ── Anexos: o conteúdo fica no banco do motor; aqui só entra e sai o arquivo ──
+    listarAnexos: async (item) => (await base.listarAnexos(item)).map(lembrar),
+    anexarLink: async (item, nome, endereco) => lembrar(await base.anexarLink(item, nome, endereco)),
+    anexarBytes: async (item, nome, b64) => lembrar(await base.anexarBytes(item, nome, b64)),
     anexarArquivo: async (item, caminho) => {
       const f = escolhidos.get(caminho);
       if (!f) throw new E("arquivo", "Não foi possível ler ou gravar um arquivo: não encontrei o arquivo escolhido.");
       if (f.size > MAXIMO_ARQUIVO) throw new E("arquivo", "Não foi possível ler ou gravar um arquivo: na versão de navegador, cada arquivo pode ter até 25 MB.");
-      return anexarBytes(item, f.name, await base64DoArquivo(f));
-    },
-    anexarBytes,
-    bytesAnexo,
-    excluirAnexo: async (id) => {
-      arquivos.delete(id);
-      await base.excluirAnexo(id);
+      return lembrar(await base.anexarBytes(item, f.name, await base64DoArquivo(f)));
     },
     salvarAnexo: async (id, caminho) => {
-      const a = await nomeDoAnexo(id);
-      const nome = nomeDe(caminho, a?.nome ?? "arquivo");
+      const a = anexoVisto(id);
+      const nome = nomeDe(caminho, a.nome || "arquivo");
       baixar(nome, await blobDoAnexo(id, nome));
     },
     abrirAnexo: async (id) => {
-      const a = await nomeDoAnexo(id);
-      if (!a || a.tipo === "link") return base.abrirAnexo(id);
+      const a = anexoVisto(id);
+      if (a.tipo === "link") {
+        window.open(a.endereco, "_blank", "noopener");
+        return;
+      }
       window.open(URL.createObjectURL(await blobDoAnexo(id, a.nome)), "_blank", "noopener");
     },
 
@@ -535,25 +551,31 @@ export function modoWeb(base: Api, { ErroOrbita: E, guardaveis }: DependenciasWe
     ditadoEstado: async () => ({ instalado: null, baixando: false, gravando: false }),
     ditadoBaixar: ditadoIndisponivel,
     ditadoComecar: ditadoIndisponivel,
+    ouvirProgressoDitado: async () => () => undefined,
+    ditadoCancelarDownload: async () => undefined,
+    ditadoRemover: async () => ({ instalado: null, baixando: false, gravando: false }),
+    ditadoParar: ditadoIndisponivel,
+    ditadoDescartar: async () => undefined,
+    memoriaDoComputador: async () => (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? null,
+    // Bandeja do Windows: não existe no navegador.
+    bandejaLigada: async () => false,
+    definirBandeja: async () => undefined,
+    // Arquivo escolhido pela pessoa (o navegador não tem "caminho").
+    bytesArquivo: async (caminho) => {
+      const f = escolhidos.get(caminho);
+      if (!f) throw new E("arquivo", "Não foi possível ler ou gravar um arquivo: não encontrei o arquivo escolhido.");
+      if (f.size > MAXIMO_ARQUIVO) throw new E("arquivo", "Não foi possível ler ou gravar um arquivo: na versão de navegador, cada arquivo pode ter até 25 MB.");
+      return base64DoArquivo(f);
+    },
+    // Conta Google no navegador: chega com o login (etapa 2 da sincronização).
+    nuvemDisponivel: async () => ({ google: false, microsoft: false }),
+    nuvemSituacao: async () => null,
+    nuvemEnviar: async () => null,
+    nuvemConectar: nuvemIndisponivel,
+    nuvemDesconectar: async () => undefined,
+    nuvemBuscarParaRecuperar: nuvemIndisponivel,
+    nuvemConcluirRecuperacao: nuvemIndisponivel,
   };
 
-  const junto = { ...base, ...sobre } as Api;
-
-  // Depois de cada ação que muda alguma coisa, guarda (com uma pequena espera,
-  // para juntar várias mudanças seguidas numa gravação só).
-  const SO_LEITURA = /^(listar|carregar|situacao|estado|ler|bytes|imagem|info|conferir|hello|bandejaLigada|memoria|ver|ouvir|testar|modelos|buscar|resumo|sugerir|organizarTexto|ajustarOrganizacao|gerar|revisar|desenhar|abrir|salvarAnexo|fazerBackup|exportar|bloquear|criarCofre|recuperar|restaurarBackup)/;
-  const final = {} as Record<string, unknown>;
-  for (const [nome, v] of Object.entries(junto)) {
-    if (typeof v !== "function" || SO_LEITURA.test(nome)) {
-      final[nome] = v;
-      continue;
-    }
-    final[nome] = (...args: unknown[]) => {
-      const r = (v as (...a: unknown[]) => unknown)(...args);
-      if (r instanceof Promise) r.then(agendarSalvar, () => {});
-      else agendarSalvar();
-      return r;
-    };
-  }
-  return final as unknown as Api;
+  return { ...base, ...sobre } as Api;
 }

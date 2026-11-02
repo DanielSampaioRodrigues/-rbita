@@ -630,7 +630,7 @@ export class ErroOrbita extends Error {
   }
 }
 
-function comoErro(e: unknown): ErroOrbita {
+export function comoErro(e: unknown): ErroOrbita {
   if (e instanceof ErroOrbita) return e;
   if (typeof e === "object" && e && "codigo" in e) {
     const x = e as { codigo: CodigoErro; mensagem: string; tentativasRestantes?: number; posicoes?: number[]; limite?: number; motivo?: string };
@@ -948,7 +948,10 @@ export interface Api {
   definirBandeja(ligar: boolean): Promise<void>;
 }
 
-const chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
+/** Como o app conversa com o motor: no Windows pelo Tauri; no navegador, com o motor em WebAssembly. */
+export type Chamar = <T>(comando: string, args?: Record<string, unknown>) => Promise<T>;
+
+const chamarTauri: Chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
   try {
     return await invoke<T>(comando, args);
   } catch (e) {
@@ -956,7 +959,12 @@ const chamar = async <T>(comando: string, args?: Record<string, unknown>): Promi
   }
 };
 
-const nativa: Api = {
+/**
+ * A API de comandos: a mesma no Windows e no navegador; só muda `chamar`
+ * (ver docs/decisoes/0011-motor-unico.md).
+ */
+export function criarApiDeComandos(chamar: Chamar): Api {
+  return {
   situacao: () => chamar("situacao"),
   criarCofre: (senha, modo, pin) => chamar("criar_cofre", { senha, modo, pin: pin ?? null }),
   abrirComPalavras: (texto) => chamar("abrir_com_palavras", { texto }),
@@ -1166,7 +1174,10 @@ const nativa: Api = {
   bandejaLigada: () => chamar("bandeja_ligada"),
   definirBandeja: (ligar) => chamar("definir_bandeja", { ligar }),
   ouvirProgressoDitado: (aoMudar) => listen<{ baixado: number; total: number }>("ditado-progresso", (e) => aoMudar(e.payload.baixado, e.payload.total)),
-};
+  };
+}
+
+const nativa: Api = criarApiDeComandos(chamarTauri);
 
 /** Parte da simulação que cuida de ideias, projetos e tarefas (mesmas regras da parte nativa). */
 // ── Estado guardável da simulação ───────────────────────────────────────────
@@ -2652,7 +2663,7 @@ export const MODO_WEB = !noApp && import.meta.env.VITE_ORBITA_WEB === "1";
 function paramsDeTeste() {
   return new URLSearchParams(MODO_WEB ? "" : (globalThis.location?.search ?? ""));
 }
-export const api: Api = noApp ? nativa : MODO_WEB ? modoWeb(criarSimulacao(), { ErroOrbita, guardaveis }) : criarSimulacao();
+export const api: Api = noApp ? nativa : MODO_WEB ? modoWeb(criarApiDeComandos, { ErroOrbita, comoErro }) : criarSimulacao();
 
 /** Pergunta onde salvar o arquivo de recuperação e grava. Devolve false se a pessoa cancelar. */
 export async function salvarArquivoRecuperacao(): Promise<boolean> {
@@ -2754,6 +2765,6 @@ export async function exportarTema(nome: string, conteudo: string): Promise<bool
   }
   const caminho = await save({ defaultPath: arquivo, filters: [{ name: "Tema do Órbita", extensions: ["orbita-tema"] }] });
   if (!caminho) return false;
-  await chamar("gravar_arquivo_tema", { caminho, conteudo });
+  await chamarTauri("gravar_arquivo_tema", { caminho, conteudo });
   return true;
 }

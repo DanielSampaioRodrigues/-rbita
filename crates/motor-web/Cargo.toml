@@ -19,5 +19,16 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 base64 = "0.22"
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1"
-sqlite-wasm-rs = { version = "0.6", features = ["wasm-bindgen", "sqlcipher"] }
+sqlite-wasm-rs = { version = "0.6", features = ["wasm-bindgen"] }
 getrandom = { version = "0.3", features = ["wasm_js"] }
+
+[build-dependencies]
+regex = "1"
+
+# Menor download para o navegador.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
