@@ -45,7 +45,7 @@ const FORMATO_BACKUP = "orbita-backup-web";
 
 const escolhidos = new Map<string, File>();
 
-/** Abre o seletor de arquivos e devolve uma referência ("web-arquivo:…") ou null. */
+/** Abre o seletor de arquivos e devolve uma referência ("web-arquivo:<id>/<nome>") ou null. */
 export function escolherArquivoWeb(aceitar = ""): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
@@ -61,7 +61,9 @@ export function escolherArquivoWeb(aceitar = ""): Promise<string | null> {
     input.addEventListener("change", () => {
       const f = input.files?.[0];
       if (!f) return fim(null);
-      const ref = `web-arquivo:${crypto.randomUUID()}`;
+      // O nome do arquivo vai no fim da referência: as telas mostram só o que
+      // vem depois da última barra (como num caminho do Windows).
+      const ref = `web-arquivo:${crypto.randomUUID()}/${f.name}`;
       escolhidos.set(ref, f);
       fim(ref);
     });
@@ -495,6 +497,18 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
         palavras: trBytes(a.palavras),
         ...(modo === "pin" || modo === "direto" ? { aparelho: await trancarAparelho(dek, modo === "pin" ? escolha!.pin! : null) } : {}),
       };
+      // Antes de trocar: para de guardar o banco aberto (um salvamento atrasado
+      // gravaria os dados antigos por cima do backup, trancados com a chave antiga)
+      // e guarda uma cópia do que havia, como a "pasta de segurança" do Windows.
+      if (pendente) clearTimeout(pendente);
+      pendente = null;
+      await fila;
+      aberto = false;
+      chave = null;
+      bruta = null;
+      const cofreAntes = await lerCofre();
+      const bancoAntes = await ler<Trancado>("banco");
+      if (cofreAntes && bancoAntes) await gravar(`antes-da-restauracao-${Date.now()}`, { cofre: cofreAntes, banco: bancoAntes });
       await gravarCofre(c);
       await gravar("banco", dados);
       await abrirDados(bytes);
