@@ -40,11 +40,16 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev
 
+      # O alvo wasm32 serve só para o passo do motor de navegador, logo abaixo.
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: apps/desktop/src-tauri
+          workspaces: |
+            apps/desktop/src-tauri
+            crates/motor-web
 
       # O build da parte nativa precisa da pasta da interface, mesmo vazia.
       - name: Preparar pasta da interface
@@ -53,6 +58,13 @@ jobs:
       - name: Rodar testes
         working-directory: apps/desktop/src-tauri
         run: cargo test
+
+      # Barato: só compila o motor do navegador (sem wasm-bindgen). A ponte é
+      # gerada de comandos.rs; se um comando novo do Windows quebrar a ponte,
+      # o erro aparece aqui, e não só na hora de publicar o navegador.
+      - name: Compilar o motor do navegador (wasm)
+        working-directory: crates/motor-web
+        run: cargo build --target wasm32-unknown-unknown
 
   # O instalador roda num runner Windows, que gasta minuto em dobro. Para
   # poupar os minutos do Actions, ele só é montado na branch principal ou
@@ -171,6 +183,25 @@ jobs:
 
       - name: Rodar testes
         run: pnpm test
+
+      # Motor do navegador: o mesmo banco do Windows, em WebAssembly. O
+      # wasm-bindgen-cli precisa ser da MESMA versão da crate wasm-bindgen em
+      # crates/motor-web/Cargo.lock (hoje 0.2.130); ao atualizar uma, atualize a outra.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/motor-web
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@0.2.130
+
+      - name: Montar o motor do navegador
+        working-directory: apps/desktop
+        run: pnpm motor
 
       - name: Montar a versão de navegador
         working-directory: apps/desktop
