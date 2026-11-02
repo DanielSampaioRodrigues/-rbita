@@ -2560,9 +2560,9 @@ export const textos = {
     pausarTitulo: "Pausar o projeto",
     pausarTexto: "Pausar é válido. Anote onde parou, se quiser: tudo aqui é opcional.",
     salvarAnotacao: "Salvar",
-    anotacoes: "Anotações",
-    anotacoesAjuda: "Escreva o que quiser sobre o projeto. Fica guardado sozinho.",
-    anotacoesDica: "Ideias soltas, referências, decisões…",
+    anotacoes: "Sobre o projeto",
+    anotacoesAjuda: "Do que se trata, por que importa, ideias, decisões. Tudo o que quiser contar. Fica guardado sozinho.",
+    anotacoesDica: "Escreva sobre o projeto…",
     veioDaIdeia: (d: string) => `Veio da ideia guardada em ${d}.`,
     guardando: "Guardando…",
     guardado: "Tudo guardado.",
@@ -2678,7 +2678,7 @@ export const textos = {
       vaiPara: (p: string, local: boolean, etapa: boolean) =>
         local
           ? `A IA (${p}) roda no seu computador. Nada sai daqui.`
-          : `Vai para ${p}: o nome, as anotações, o onde parei, ${etapa ? "esta etapa e as subtarefas dela" : "as etapas"} e o que você escrever aqui.`,
+          : `Vai para ${p}: o nome, o "sobre o projeto", o onde parei, ${etapa ? "esta etapa e as subtarefas dela" : "as etapas"} e o que você escrever aqui.`,
       chave: "Cada mensagem usa a sua chave de IA.",
       voce: "Você",
       semMensagens: (etapa: boolean) =>

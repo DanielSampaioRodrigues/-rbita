@@ -108,6 +108,9 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
       </div>
       <p className="texto-suave projeto-resumo">{textos.projetos.progresso(projeto.tarefasFeitas, projeto.tarefasTotal)}</p>
 
+      {/* "Sobre o projeto" primeiro (o que ele é), depois "Onde parei" (o momento atual). */}
+      <AnotacoesProjeto key={projeto.id} projeto={projeto} />
+
       {/* "Onde parei" em destaque, logo no alto: retomar importa tanto quanto começar. */}
       <div className="largura-leitura esticado">
         <CartaoOndeParei
@@ -170,7 +173,6 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
         />
       </div>
 
-      <AnotacoesProjeto key={projeto.id} projeto={projeto} />
 
       <section className="secao-relacoes" aria-labelledby="titulo-relacoes">
         <h2 id="titulo-relacoes">{textos.relacoes.titulo}</h2>
