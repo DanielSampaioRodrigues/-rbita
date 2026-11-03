@@ -14,6 +14,7 @@ pub mod energia;
 pub mod hobbies;
 pub mod leitura;
 pub mod organizacao;
+pub mod pastas_projeto;
 pub mod quadro;
 pub mod etiquetas;
 pub mod eventos;

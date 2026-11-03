@@ -11,7 +11,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
-use super::{agora_ms, etiquetas, gravar_config, ler_config, novo_id};
+use super::{agora_ms, etiquetas, gravar_config, ler_config, novo_id, pastas_projeto};
 use crate::erro::Erro;
 
 pub(crate) const CONFIG_LIMITE: &str = "limite_projetos_ativos";
@@ -99,6 +99,8 @@ pub struct Projeto {
     pub anotacoes: String,
     /// Quando a ideia de origem foi criada, se o projeto veio de uma ideia.
     pub ideia_criada_em: Option<i64>,
+    /// Ids das pastas de projetos em que ele está (atalhos; ver `pastas_projeto`).
+    pub pastas: Vec<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -364,11 +366,13 @@ fn projeto_da_linha(r: &rusqlite::Row) -> rusqlite::Result<Projeto> {
         etiquetas: vec![],
         anotacoes,
         ideia_criada_em: r.get(8)?,
+        pastas: vec![],
     })
 }
 
 fn com_etiquetas(conn: &Connection, mut p: Projeto) -> Result<Projeto, Erro> {
     p.etiquetas = etiquetas::do_item(conn, &p.id)?;
+    p.pastas = pastas_projeto::do_projeto(conn, &p.id)?;
     Ok(p)
 }
 

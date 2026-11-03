@@ -1695,3 +1695,48 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-pasta .caderno-item-pe { flex-wrap: wrap; row-gap: 0; }
 .caderno-pasta .caderno-item-pe strong { flex: 1 1 100%; word-break: normal; overflow-wrap: anywhere; }
 .caderno-pasta .caderno-item-pe .linha-ajuste { flex-direction: row; flex-wrap: nowrap; }
+
+/* ---------- Pastas de projetos (atalhos; desenho igual ao das pastas do Caderno) ---------- */
+.pastas-projeto { margin-block: var(--espaco-2) var(--espaco-1); }
+.pastas-projeto-grade { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr)); gap: var(--espaco-2); max-width: 52rem; }
+.pasta-projeto {
+  width: 100%; min-height: max(44px, 2.75rem); display: flex; flex-direction: column; align-items: center; gap: var(--espaco-1);
+  padding: var(--espaco-2) var(--espaco-2) var(--espaco-2); border: 1px solid transparent; border-radius: var(--canto-grande, var(--canto));
+  background: none; color: var(--cor-texto); font: inherit; cursor: pointer; text-align: center;
+  transition: background var(--transicao), border-color var(--transicao);
+}
+.pasta-projeto .pasta3d { width: 100%; max-width: 4.75rem; }
+.pasta-projeto[data-hovered] { background: var(--cor-superficie-alternativa); }
+.pasta-projeto[data-hovered] .pasta3d { filter: brightness(1.04); }
+.pasta-projeto[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.pasta-projeto[data-ativa] { border-color: var(--cor-destaque); background: color-mix(in srgb, var(--cor-destaque) 9%, var(--cor-superficie)); }
+.pasta-projeto[data-ativa] .pasta-projeto-nome { font-weight: 700; }
+.pasta-projeto-nome { font-size: 0.9rem; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.pasta-projeto-nova { border: 1.5px dashed var(--cor-borda-controle); color: var(--cor-texto-suave); justify-content: center; }
+.pasta-projeto-nova-icone { display: grid; place-items: center; width: 100%; max-width: 4.75rem; aspect-ratio: 120 / 100; }
+.pasta-aberta { display: grid; gap: var(--espaco-2); margin-top: var(--espaco-2); }
+.pasta-aberta-titulo { display: flex; align-items: center; gap: var(--espaco-2); margin: 0; }
+.pasta-aberta-acoes .botao-icone { width: max(44px, 2.75rem); height: max(44px, 2.75rem); border: 1px solid var(--cor-borda-controle); }
+.pasta-aberta-acoes .botao-icone[data-disabled] { opacity: 0.45; cursor: default; }
+.projeto-linha { display: flex; align-items: center; gap: var(--espaco-2); }
+.projeto-linha > .cartao-projeto { flex: 1; min-width: 0; }
+.cartao-projeto-pasta { flex: none; width: max(44px, 2.75rem); height: max(44px, 2.75rem); }
+.menu-secao + .menu-secao { border-top: 1px solid var(--cor-borda-suave); margin-top: var(--espaco-1); padding-top: var(--espaco-1); }
+.menu-item-pasta { display: flex; align-items: center; gap: var(--espaco-2); min-height: max(44px, 2.75rem); }
+.menu-item-pasta .caixa-quadrado { margin-top: 0; }
+.menu-item-pasta[data-selected] .caixa-quadrado { background: var(--cor-destaque); border-color: var(--cor-destaque); color: var(--cor-texto-sobre-destaque); }
+.pastas-do-projeto { display: flex; align-items: center; flex-wrap: wrap; gap: var(--espaco-2); }
+.pastas-do-projeto .botao { min-height: max(44px, 2.75rem); }
+.pastas-caixinhas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-1); }
+.pasta-caixinha { align-items: center; min-height: max(44px, 2.75rem); padding: var(--espaco-1) var(--espaco-2); border-radius: var(--canto); }
+.pasta-caixinha[data-hovered] { background: var(--cor-superficie-alternativa); }
+.pasta-caixinha .caixa-quadrado { margin-top: 0; }
+.pasta-caixinha-fig { display: inline-block; width: 2.25rem; flex: none; }
+.pastas-nova-linha { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--espaco-2); }
+.pastas-nova-linha .campo { flex: 1 1 12rem; }
+.pastas-nova-linha .botao { min-height: max(44px, 2.75rem); }
+@media (max-width: 30rem) {
+  .pastas-projeto-grade { grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr)); gap: var(--espaco-1); }
+  .pasta-projeto { padding: var(--espaco-1); }
+  .pasta-projeto-nome { font-size: 0.82rem; }
+}

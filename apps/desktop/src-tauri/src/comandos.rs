@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
-use crate::banco::{self, academico, anexos, anotacoes, caderno, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, organizacao, quadro, rotinas, saude, sincronia};
+use crate::banco::{self, academico, anexos, anotacoes, caderno, cuidado, dinheiro, energia, etiquetas, eventos, hobbies, itens, leitura, organizacao, pastas_projeto, quadro, rotinas, saude, sincronia};
 use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
@@ -1616,6 +1616,33 @@ pub async fn reordenar_cartoes_org(estado: State<'_, Estado>, ids: Vec<String>) 
 #[tauri::command]
 pub async fn excluir_cartao_org(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
     estado.com_sessao(|s| organizacao::excluir_cartao(&s.conn, &id))
+}
+
+// ----- Pastas de projetos -----
+
+#[tauri::command]
+pub async fn listar_pastas_projeto(estado: State<'_, Estado>) -> Result<Vec<pastas_projeto::PastaProjeto>, Erro> {
+    estado.com_sessao(|s| pastas_projeto::listar(&s.conn))
+}
+
+#[tauri::command]
+pub async fn salvar_pasta_projeto(estado: State<'_, Estado>, pasta: pastas_projeto::PastaProjeto) -> Result<pastas_projeto::PastaProjeto, Erro> {
+    estado.com_sessao(|s| pastas_projeto::salvar(&s.conn, pasta))
+}
+
+#[tauri::command]
+pub async fn excluir_pasta_projeto(estado: State<'_, Estado>, id: String) -> Result<(), Erro> {
+    estado.com_sessao(|s| pastas_projeto::excluir(&s.conn, &id))
+}
+
+#[tauri::command]
+pub async fn reordenar_pastas_projeto(estado: State<'_, Estado>, ids: Vec<String>) -> Result<(), Erro> {
+    estado.com_sessao(|s| pastas_projeto::reordenar(&s.conn, &ids))
+}
+
+#[tauri::command]
+pub async fn definir_pasta_do_projeto(estado: State<'_, Estado>, projeto: String, pasta: String, dentro: bool) -> Result<(), Erro> {
+    estado.com_sessao(|s| pastas_projeto::definir(&s.conn, &projeto, &pasta, dentro))
 }
 
 // ----- Caderno -----

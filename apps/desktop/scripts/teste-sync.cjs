@@ -366,6 +366,30 @@ const versaoNaPasta = (nome) => pasta.arquivos.get(nome)?.versao ?? null;
     const noA = await sinc(A, (s, api, o) => api.listarCartoesOrg(o.quadro).then((l) => l.find((x) => x.id === o.cartao)), org);
     ok(noA?.checklists?.[0]?.itens.every((i) => i.feito), "o item marcado no B aparece marcado no A");
 
+    passo("Projetos: pasta e pertença vão do A para o B; tirar no B e apagar a pasta no A viajam");
+    const pp = await sinc(A, async (s, api) => {
+      const p = await api.criarProjeto("Projeto em pastas", false);
+      const editora = await api.salvarPastaProjeto({ id: "", nome: "Produtos da editora", cor: "lavanda", ordem: 0, criadoEm: 0 });
+      const casa = await api.salvarPastaProjeto({ id: "", nome: "Casa", cor: "menta", ordem: 0, criadoEm: 0 });
+      await api.definirPastaDoProjeto(p.id, editora.id, true);
+      await api.definirPastaDoProjeto(p.id, casa.id, true);
+      return { projeto: p.id, editora: editora.id, casa: casa.id };
+    });
+    await sincronizarAgora(A);
+    await sincronizarAgora(B);
+    const ppB = await sinc(B, async (s, api, o) => ({ pastas: await api.listarPastasProjeto(), projeto: await api.obterProjeto(o.projeto) }), pp);
+    ok(ppB.pastas.map((x) => `${x.nome}:${x.cor}`).join() === "Produtos da editora:lavanda,Casa:menta", "as pastas chegam no B, com cor e ordem");
+    ok(ppB.projeto.pastas.join() === [pp.editora, pp.casa].join(), "o projeto chega nas duas pastas");
+    await sinc(B, (s, api, o) => api.definirPastaDoProjeto(o.projeto, o.casa, false), pp);
+    await sincronizarAgora(B);
+    await sincronizarAgora(A);
+    ok((await sinc(A, (s, api, o) => api.obterProjeto(o.projeto), pp)).pastas.join() === pp.editora, "tirar da pasta Casa no B vale no A");
+    await sinc(A, (s, api, o) => api.excluirPastaProjeto(o.editora), pp);
+    await sincronizarAgora(A);
+    await sincronizarAgora(B);
+    const ppB2 = await sinc(B, async (s, api, o) => ({ pastas: await api.listarPastasProjeto(), projeto: await api.obterProjeto(o.projeto) }), pp);
+    ok(ppB2.pastas.map((x) => x.nome).join() === "Casa" && ppB2.projeto.pastas.length === 0, "a pasta apagada no A some no B, e o projeto continua");
+
     passo("bloqueado não sincroniza; ao abrir, busca");
     await B.locator("button.lateral-item", { hasText: "Bloquear" }).click();
     await espera(B, 1500);

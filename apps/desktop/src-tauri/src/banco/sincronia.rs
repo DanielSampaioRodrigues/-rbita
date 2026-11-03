@@ -1176,6 +1176,55 @@ mod testes {
     }
 
     #[test]
+    fn pastas_de_projetos_e_pertencas_viajam_e_apagar_pasta_viaja() {
+        use crate::banco::pastas_projeto::{self, PastaProjeto};
+        let (_pa, a) = banco_de_teste();
+        let (_pb, b) = banco_de_teste();
+        let livro = itens::criar_projeto(&a, "Livro", true).unwrap();
+        let curso = itens::criar_projeto(&a, "Curso", true).unwrap();
+        let pasta = |conn: &Connection, nome: &str| {
+            pastas_projeto::salvar(conn, PastaProjeto { id: String::new(), nome: nome.into(), cor: "lavanda".into(), ordem: 0.0, criado_em: 0 }).unwrap()
+        };
+        let editora = pasta(&a, "Produtos da editora");
+        let estudo = pasta(&a, "Estudo");
+        pastas_projeto::definir(&a, &livro.id, &editora.id, true).unwrap();
+        pastas_projeto::definir(&a, &livro.id, &estudo.id, true).unwrap();
+        pastas_projeto::definir(&a, &curso.id, &estudo.id, true).unwrap();
+        trocar(&a, &b);
+        assert_eq!(pastas_projeto::listar(&b).unwrap().iter().map(|p| p.nome.as_str()).collect::<Vec<_>>(), vec!["Produtos da editora", "Estudo"]);
+        assert_eq!(itens::obter_projeto(&b, &livro.id).unwrap().pastas, vec![editora.id.clone(), estudo.id.clone()]);
+        assert_eq!(estado(&a), estado(&b));
+
+        // Os dois põem o mesmo projeto na mesma pasta: continua uma linha só.
+        pastas_projeto::definir(&a, &curso.id, &editora.id, true).unwrap();
+        pastas_projeto::definir(&b, &curso.id, &editora.id, true).unwrap();
+        trocar(&a, &b);
+        let linhas: i64 = a.query_row("SELECT count(*) FROM ligacao WHERE tipo = 'na_pasta' AND origem_id = ?1", [&curso.id], |r| r.get(0)).unwrap();
+        assert_eq!(linhas, 2);
+        assert_eq!(estado(&a), estado(&b));
+
+        // B tira o livro do Estudo e renomeia a pasta da editora; depois A muda a ordem.
+        // (A pasta é uma linha só: renomear e reordenar ao mesmo tempo em dois aparelhos
+        // fica com a mudança mais recente, como qualquer item.)
+        pastas_projeto::definir(&b, &livro.id, &estudo.id, false).unwrap();
+        pastas_projeto::salvar(&b, PastaProjeto { nome: "Editora".into(), ..editora.clone() }).unwrap();
+        trocar(&a, &b);
+        pastas_projeto::reordenar(&a, &[estudo.id.clone(), editora.id.clone()]).unwrap();
+        trocar(&a, &b);
+        assert_eq!(itens::obter_projeto(&a, &livro.id).unwrap().pastas, vec![editora.id.clone()]);
+        assert_eq!(pastas_projeto::listar(&a).unwrap().iter().map(|p| p.nome.as_str()).collect::<Vec<_>>(), vec!["Estudo", "Editora"]);
+        assert_eq!(estado(&a), estado(&b));
+
+        // A apaga o Estudo: some no B, com as pertenças; os projetos ficam.
+        pastas_projeto::excluir(&a, &estudo.id).unwrap();
+        trocar(&a, &b);
+        assert_eq!(pastas_projeto::listar(&b).unwrap().len(), 1);
+        assert_eq!(itens::obter_projeto(&b, &curso.id).unwrap().pastas, vec![editora.id.clone()]);
+        assert_eq!(itens::listar_projetos(&b).unwrap().len(), 2);
+        assert_eq!(estado(&a), estado(&b));
+    }
+
+    #[test]
     fn so_viajam_as_configuracoes_da_pessoa_e_apagar_viaja() {
         let (_pa, a) = banco_de_teste();
         let (_pb, b) = banco_de_teste();

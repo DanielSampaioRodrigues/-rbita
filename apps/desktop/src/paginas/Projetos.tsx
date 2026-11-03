@@ -2,16 +2,20 @@ import { ChevronRight, Eye, Plus } from "../icones";
 import { useEffect, useState } from "react";
 import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { LinhaDoTempo } from "../projetos/LinhaDoTempo";
-import { api, type EstadoProjeto, type Projeto } from "../api";
+import { api, type EstadoProjeto, type PastaProjeto, type Projeto } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
-import { Janela } from "../componentes/Janela";
+import { Confirmar, Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useComLimite } from "../projetos/Limite";
 import { SeletorLimite } from "../projetos/SeletorLimite";
+import { CabecalhoPasta, corSugerida, FileiraPastas, FormPastaProjeto, lembrarPasta, MenuPorEmPasta, pastaLembrada } from "../projetos/Pastas";
 import { contarNoLimite, haQuanto, horaDeOlhar, linhaPausa } from "../projetos/tempo";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.projetos;
+const tp = textos.pastasProjeto;
+const pastaVazia = (pastas: PastaProjeto[]): PastaProjeto => ({ id: "", nome: "", cor: corSugerida(pastas), ordem: 0, criadoEm: 0 });
+
 const GRUPOS: EstadoProjeto[] = ["ativo", "em_uso", "pausado", "concluido"];
 
 export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLimite?: () => void }) {
@@ -26,17 +30,56 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
     }
   });
   const [erro, setErro] = useState<string | null>(null);
+  // Pastas: null enquanto carrega (para não esquecer a pasta lembrada antes da hora).
+  const [pastas, setPastas] = useState<PastaProjeto[] | null>(null);
+  const [pastaId, setPastaId] = useState<string | null>(pastaLembrada);
+  const [editandoPasta, setEditandoPasta] = useState<PastaProjeto | null>(null);
+  const [apagandoPasta, setApagandoPasta] = useState<PastaProjeto | null>(null);
+  // Projeto que entra na pasta criada pelo menu "Pôr em pasta" do cartão.
+  const [porNaNova, setPorNaNova] = useState<string | null>(null);
   const mudancas = useMudancas();
 
   useEffect(() => {
-    Promise.all([api.listarProjetos(), api.limiteProjetos()]).then(
-      ([p, l]) => (setProjetos(p), setLimite(l)),
+    Promise.all([api.listarProjetos(), api.limiteProjetos(), api.listarPastasProjeto()]).then(
+      ([p, l, ps]) => (setProjetos(p), setLimite(l), setPastas(ps)),
       (e) => setErro(String(e?.message ?? e)),
     );
   }, [mudancas]);
 
+  const escolherPasta = (id: string | null) => {
+    setPastaId(id);
+    lembrarPasta(id);
+  };
+  // Pasta apagada (aqui ou em outro aparelho): volta para Todos.
+  const pasta = pastaId && pastas ? pastas.find((p) => p.id === pastaId) ?? null : null;
+  useEffect(() => {
+    if (pastas && pastaId && !pastas.some((p) => p.id === pastaId)) escolherPasta(null);
+  }, [pastas, pastaId]);
+
+  const executar = async (acao: () => Promise<unknown>) => {
+    setErro(null);
+    try {
+      await acao();
+      avisarMudanca();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const moverPasta = (passo: -1 | 1) => {
+    if (!pastas || !pasta) return;
+    const ids = pastas.map((p) => p.id);
+    const i = ids.indexOf(pasta.id);
+    const j = i + passo;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    setPastas(ids.map((id) => pastas.find((p) => p.id === id)!));
+    void executar(() => api.reordenarPastasProjeto(ids));
+  };
+
+  // O resumo é sempre de todos os projetos; a pasta só filtra a lista.
   const ativos = contarNoLimite(projetos);
   const emUso = projetos.filter((p) => p.estado === "em_uso").length;
+  const visiveis = pasta ? projetos.filter((p) => p.pastas.includes(pasta.id)) : projetos;
 
   return (
     <div className="pagina">
@@ -66,6 +109,29 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
       </details>
       <Aviso>{erro}</Aviso>
 
+      {pastas && (
+        <FileiraPastas
+          pastas={pastas}
+          projetos={projetos}
+          selecionada={pasta?.id ?? null}
+          aoSelecionar={escolherPasta}
+          aoNova={() => (setPorNaNova(null), setEditandoPasta(pastaVazia(pastas ?? [])))}
+        />
+      )}
+      {pastas && pastas.length > 0 && !pasta && <p className="campo-ajuda">{tp.ajudaAtalho}</p>}
+      {pasta && pastas && (
+        <CabecalhoPasta
+          pasta={pasta}
+          posicao={pastas.indexOf(pasta)}
+          total={pastas.length}
+          aoVoltar={() => escolherPasta(null)}
+          aoEditar={() => setEditandoPasta(pasta)}
+          aoMover={moverPasta}
+          aoApagar={() => setApagandoPasta(pasta)}
+        />
+      )}
+      {pasta && visiveis.length === 0 && <p className="texto-suave largura-leitura">{tp.vazia}</p>}
+
       <ToggleButtonGroup
         aria-label={t.visualizacao}
         selectionMode="single"
@@ -86,10 +152,10 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
         <ToggleButton id="linha" className="segmentado-opcao">{t.linhaDoTempo}</ToggleButton>
       </ToggleButtonGroup>
 
-      {visao === "linha" && <LinhaDoTempo projetos={projetos} aoAbrir={aoAbrir} />}
+      {visao === "linha" && (!pasta || visiveis.length > 0) && <LinhaDoTempo projetos={visiveis} aoAbrir={aoAbrir} />}
 
-      {visao === "lista" && GRUPOS.map((g) => {
-        const lista = projetos.filter((p) => p.estado === g);
+      {visao === "lista" && (!pasta || visiveis.length > 0) && GRUPOS.map((g) => {
+        const lista = visiveis.filter((p) => p.estado === g);
         if ((g === "concluido" || g === "em_uso") && lista.length === 0) return null;
         return (
           <section key={g} className="grupo largura-leitura" aria-labelledby={`grupo-${g}`}>
@@ -100,8 +166,9 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
             ) : (
               <ul className="lista-cartoes">
                 {lista.map((p) => (
-                  <li key={p.id}>
+                  <li key={p.id} className="projeto-linha">
                     <CartaoProjeto projeto={p} aoAbrir={() => aoAbrir(p.id)} />
+                    <MenuPorEmPasta projeto={p} pastas={pastas ?? []} aoNova={() => (setPorNaNova(p.id), setEditandoPasta(pastaVazia(pastas ?? [])))} />
                   </li>
                 ))}
               </ul>
@@ -110,6 +177,31 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
         );
       })}
 
+      <Janela titulo={editandoPasta?.id ? tp.editarTitulo : tp.novaTitulo} aberta={editandoPasta !== null} aoFechar={() => setEditandoPasta(null)}>
+        {editandoPasta && (
+          <FormPastaProjeto
+            key={editandoPasta.id || "nova"}
+            inicial={editandoPasta}
+            aoFechar={() => setEditandoPasta(null)}
+            aoSalva={async (p) => {
+              if (porNaNova) await api.definirPastaDoProjeto(porNaNova, p.id, true);
+              setPorNaNova(null);
+            }}
+          />
+        )}
+      </Janela>
+      <Confirmar
+        titulo={tp.apagarTitulo}
+        texto={apagandoPasta ? tp.apagarTexto(apagandoPasta.nome) : ""}
+        confirmar={tp.apagar}
+        aberta={apagandoPasta !== null}
+        aoCancelar={() => setApagandoPasta(null)}
+        aoConfirmar={() => {
+          const id = apagandoPasta?.id;
+          setApagandoPasta(null);
+          if (id) void executar(async () => (await api.excluirPastaProjeto(id), escolherPasta(null)));
+        }}
+      />
       <NovoProjeto aberta={criando} aoFechar={() => setCriando(false)} aoCriado={(id) => (setCriando(false), aoAbrir(id))} />
     </div>
   );

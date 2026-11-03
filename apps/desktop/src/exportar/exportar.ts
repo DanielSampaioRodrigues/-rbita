@@ -3,7 +3,7 @@
 
 import type {
   Atividade, Aula, Conta, Desejo, Evento, Gasto, Grupo, Hobby, Ideia, Livro,
-  Materia, Meta, PlanoSaude, Profissional, Projeto, Quadro, RegistroSaude, Remedio,
+  Materia, Meta, PastaProjeto, PlanoSaude, Profissional, Projeto, Quadro, RegistroSaude, Remedio,
 } from "../api";
 import { formatarMoeda } from "../dinheiro/moeda";
 
@@ -139,6 +139,8 @@ export function eventosParaICS(eventos: Evento[], agora = Date.now()): string {
 export interface DadosResumo {
   ideias?: Ideia[];
   projetos?: Projeto[];
+  /** Pastas de projetos (atalhos): os projetos dizem em quais estão. */
+  pastasDeProjetos?: PastaProjeto[];
   agenda?: Evento[];
   remedios?: Remedio[];
   registrosDeSaude?: RegistroSaude[];
@@ -181,11 +183,13 @@ function secao<T>(titulo: string, itens: T[] | undefined, linha: (x: T) => strin
 export function paraMarkdown(dados: DadosResumo, agora = Date.now()): string {
   const grupo = new Map((dados.gruposDeGasto ?? []).map((g) => [g.id, g.nome]));
   const materia = new Map((dados.materias ?? []).map((m) => [m.id, m.nome]));
+  const pasta = new Map((dados.pastasDeProjetos ?? []).map((p) => [p.id, p.nome]));
+  const pastasDe = (p: Projeto) => (p.pastas ?? []).map((id) => pasta.get(id)).filter(Boolean).join(", ");
   const partes: string[] = [
     `# Meus dados do Órbita`,
     `Gerado em ${dataHoraLocal(agora)}.`,
     secao("Ideias", dados.ideias, (i) => `**${i.texto}**${i.nota ? ` — ${i.nota}` : ""}`),
-    secao("Projetos", dados.projetos, (p) => `**${p.titulo}** (${p.estado})${p.prazo ? ` · entrega ${dataBR(p.prazo)}` : ""} · ${p.tarefasFeitas}/${p.tarefasTotal} tarefas${p.anotacoes ? ` — ${p.anotacoes}` : ""}`),
+    secao("Projetos", dados.projetos, (p) => `**${p.titulo}** (${p.estado})${p.prazo ? ` · entrega ${dataBR(p.prazo)}` : ""} · ${p.tarefasFeitas}/${p.tarefasTotal} tarefas${pastasDe(p) ? ` · pastas: ${pastasDe(p)}` : ""}${p.anotacoes ? ` — ${p.anotacoes}` : ""}`),
     secao("Agenda", dados.agenda, (e) => `**${e.titulo}** — ${e.diaInteiro ? dataHoraLocal(e.inicio).slice(0, 10) : dataHoraLocal(e.inicio)}${e.repeticao ? " (repete)" : ""}`),
     secao("Remédios", dados.remedios, (r) => `**${r.nome}**${r.dose ? ` — ${r.dose}` : ""}${r.horarios.length ? ` · ${r.horarios.join(", ")}` : ""}${r.estado === "pausado" ? " · pausado" : ""}`),
     secao("Registros de saúde", dados.registrosDeSaude, (r) => `${dataHoraLocal(r.momento)} · ${ROTULO_TIPO_SAUDE[r.tipo] ?? r.tipo}${r.intensidade != null ? ` (${r.intensidade}/5)` : ""}${r.nota ? ` — ${r.nota}` : ""}`),

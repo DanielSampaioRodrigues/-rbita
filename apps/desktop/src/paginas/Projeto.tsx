@@ -10,6 +10,7 @@ import { avisarMudanca, useMudancas } from "../dados";
 import { useComLimite } from "../projetos/Limite";
 import { CartaoOndeParei, JanelaOndeParei } from "../projetos/OndeParei";
 import { AnotacoesProjeto } from "../projetos/Anotacoes";
+import { PastasDoProjeto } from "../projetos/Pastas";
 import { ListaTarefas } from "../projetos/ListaTarefas";
 import { QuadroTarefas } from "../projetos/QuadroTarefas";
 import { MapaMental } from "../projetos/MapaMental";
@@ -107,6 +108,7 @@ export function Projeto({ id, aoVoltar }: { id: string; aoVoltar: () => void }) 
         <span className={`etiqueta-estado estado-${projeto.estado}`}>{t.estados[projeto.estado]}</span>
       </div>
       <p className="texto-suave projeto-resumo">{textos.projetos.progresso(projeto.tarefasFeitas, projeto.tarefasTotal)}</p>
+      <PastasDoProjeto projeto={projeto} />
 
       {/* "Sobre o projeto" primeiro (o que ele é), depois "Onde parei" (o momento atual). */}
       <AnotacoesProjeto key={projeto.id} projeto={projeto} />

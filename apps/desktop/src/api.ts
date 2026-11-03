@@ -95,6 +95,19 @@ export interface Projeto {
   anotacoes: string;
   /** Quando a ideia de origem foi criada (ms), se o projeto veio de uma ideia. */
   ideiaCriadaEm: number | null;
+  /** Ids das pastas de projetos em que ele está (atalhos; pode estar em várias). */
+  pastas: string[];
+}
+
+/** Pasta de projetos: atalho criado pela pessoa. Apagar a pasta não apaga projetos. */
+export interface PastaProjeto {
+  id: string;
+  nome: string;
+  /** Chave da paleta das pastas (a mesma do Caderno). */
+  cor: string;
+  /** Posição na fileira. */
+  ordem: number;
+  criadoEm: number;
 }
 
 export interface Repeticao {
@@ -975,6 +988,14 @@ export interface Api {
   moverCartaoOrg(id: string, colunaId: string, ordem: number): Promise<void>;
   reordenarCartoesOrg(ids: string[]): Promise<void>;
   excluirCartaoOrg(id: string): Promise<void>;
+  listarPastasProjeto(): Promise<PastaProjeto[]>;
+  /** Cria (id vazio) ou muda nome e cor. */
+  salvarPastaProjeto(pasta: PastaProjeto): Promise<PastaProjeto>;
+  /** Apaga a pasta; os projetos continuam em "Todos" e nas outras pastas. */
+  excluirPastaProjeto(id: string): Promise<void>;
+  reordenarPastasProjeto(ids: string[]): Promise<void>;
+  /** Põe (dentro = true) ou tira o projeto da pasta. */
+  definirPastaDoProjeto(projeto: string, pasta: string, dentro: boolean): Promise<void>;
   listarPastasCaderno(): Promise<PastaCaderno[]>;
   salvarPastaCaderno(pasta: PastaCaderno): Promise<PastaCaderno>;
   excluirPastaCaderno(id: string): Promise<void>;
@@ -1259,6 +1280,11 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   moverCartaoOrg: (id, colunaId, ordem) => chamar("mover_cartao_org", { id, colunaId, ordem }),
   reordenarCartoesOrg: (ids) => chamar("reordenar_cartoes_org", { ids }),
   excluirCartaoOrg: (id) => chamar("excluir_cartao_org", { id }),
+  listarPastasProjeto: () => chamar("listar_pastas_projeto"),
+  salvarPastaProjeto: (pasta) => chamar("salvar_pasta_projeto", { pasta }),
+  excluirPastaProjeto: (id) => chamar("excluir_pasta_projeto", { id }),
+  reordenarPastasProjeto: (ids) => chamar("reordenar_pastas_projeto", { ids }),
+  definirPastaDoProjeto: (projeto, pasta, dentro) => chamar("definir_pasta_do_projeto", { projeto, pasta, dentro }),
   listarPastasCaderno: () => chamar("listar_pastas_caderno"),
   salvarPastaCaderno: (pasta) => chamar("salvar_pasta_caderno", { pasta }),
   excluirPastaCaderno: (id) => chamar("excluir_pasta_caderno", { id }),
@@ -1411,6 +1437,10 @@ function simularItens() {
   let etiquetas: Etiqueta[] = [];
   let ligacoes: [string, string][] = [];
   const itens: Item[] = [];
+  let pastasProjeto: PastaProjeto[] = [];
+  let naPasta: [string, string][] = []; // [projeto, pasta]
+  guardarValor("itens.pastasProjeto", () => pastasProjeto, (v) => (pastasProjeto = v));
+  guardarValor("itens.naPasta", () => naPasta, (v) => (naPasta = v));
   let limite = 6;
   guardarValor("itens.etiquetas", () => etiquetas, (v) => (etiquetas = v));
   guardarValor("itens.ligacoes", () => ligacoes, (v) => (ligacoes = v));
@@ -1435,8 +1465,10 @@ function simularItens() {
     return { id: p.id, titulo: p.texto, estado: p.estado as EstadoProjeto, ondeParei: p.ondeParei, pausadoEm: p.pausadoEm,
       inicio: p.inicio ?? null, prazo: p.prazo ?? null, revisarMeses: p.revisarMeses ?? null, revisadoEm: p.revisadoEm ?? null, criadoEm: p.criadoEm,
       tarefasFeitas: t.filter((x) => x.estado === "feita").length, tarefasTotal: t.length, alteradoEm: p.alteradoEm, etiquetas: vivas(p),
-      anotacoes: p.anotacoes ?? "", ideiaCriadaEm: p.ideiaCriadaEm ?? null };
+      anotacoes: p.anotacoes ?? "", ideiaCriadaEm: p.ideiaCriadaEm ?? null, pastas: pastasDo(p.id) };
   };
+  const pastasDo = (id: string) => [...pastasProjeto].sort((a, b) => a.ordem - b.ordem).filter((x) => naPasta.some(([pr, pa]) => pr === id && pa === x.id)).map((x) => x.id);
+  const CORES_PASTA = ["areia", "pessego", "rosa", "lavanda", "ceu", "mar", "menta", "musgo", "terra", "cinza"];
   const vivas = (i: Item) => (i.etiquetas ?? []).filter((e) => etiquetas.some((x) => x.id === e));
   const achar = (id: string) => {
     const i = itens.find((x) => x.id === id);
@@ -1482,8 +1514,18 @@ function simularItens() {
     novo({ tipo: "projeto", texto: "Reformar a estante", estado: "ativo", inicio: dia(-5), prazo: dia(20) });
     ligacoes.push([tcc.id, pod.id]);
     tcc.etiquetas = ["e3"];
-    novo({ tipo: "projeto", texto: "Curso de ilustração", estado: "pausado", pausadoEm: agora() - 86_400_000 * 9,
+    const curso = novo({ tipo: "projeto", texto: "Curso de ilustração", estado: "pausado", pausadoEm: agora() - 86_400_000 * 9,
       ondeParei: { texto: "Terminei o módulo 3", proximoPasso: "Assistir a aula sobre luz e sombra", links: [], atualizadoEm: agora() - 86_400_000 * 9 } });
+    if (paramsDeTeste().get("pastas")) {
+      const estante = itens.find((i) => i.texto === "Reformar a estante")!;
+      const zine = novo({ tipo: "projeto", texto: "Zine de receitas", estado: "em_uso", revisadoEm: agora() - 86_400_000 * 20 });
+      pastasProjeto = [
+        { id: "pp1", nome: "Produtos da editora", cor: "lavanda", ordem: 0, criadoEm: agora() },
+        { id: "pp2", nome: "Faculdade", cor: "ceu", ordem: 1, criadoEm: agora() },
+        { id: "pp3", nome: "Casa", cor: "menta", ordem: 2, criadoEm: agora() },
+      ];
+      naPasta = [[curso.id, "pp1"], [zine.id, "pp1"], [tcc.id, "pp2"], [curso.id, "pp2"], [estante.id, "pp3"]];
+    }
   }
   return {
     listarIdeias: async () =>
@@ -1540,6 +1582,34 @@ function simularItens() {
     },
     listarProjetos: async () => itens.filter((i) => i.tipo === "projeto").sort((a, b) => b.alteradoEm - a.alteradoEm).map(comoProjeto),
     obterProjeto: async (id: string) => comoProjeto(achar(id)),
+    listarPastasProjeto: async () => [...pastasProjeto].sort((a, b) => a.ordem - b.ordem).map((p) => ({ ...p })),
+    salvarPastaProjeto: async (p: PastaProjeto) => {
+      const nome = vazio(p.nome).slice(0, 60).trim();
+      const cor = CORES_PASTA.includes(p.cor) ? p.cor : "areia";
+      if (p.id) {
+        const atual = pastasProjeto.find((x) => x.id === p.id);
+        if (!atual) throw new ErroOrbita("nao_encontrado", "Não encontrei essa pasta.");
+        Object.assign(atual, { nome, cor });
+        return { ...atual };
+      }
+      const nova: PastaProjeto = { id: crypto.randomUUID(), nome, cor, ordem: Math.max(-1, ...pastasProjeto.map((x) => x.ordem)) + 1, criadoEm: agora() };
+      pastasProjeto.push(nova);
+      return { ...nova };
+    },
+    excluirPastaProjeto: async (id: string) => {
+      pastasProjeto = pastasProjeto.filter((p) => p.id !== id);
+      naPasta = naPasta.filter(([, pa]) => pa !== id);
+    },
+    reordenarPastasProjeto: async (ids: string[]) => {
+      ids.forEach((id, i) => { const p = pastasProjeto.find((x) => x.id === id); if (p) p.ordem = i; });
+    },
+    definirPastaDoProjeto: async (projeto: string, pasta: string, dentro: boolean) => {
+      naPasta = naPasta.filter(([pr, pa]) => !(pr === projeto && pa === pasta));
+      if (dentro) {
+        if (!pastasProjeto.some((p) => p.id === pasta) || achar(projeto).tipo !== "projeto") throw new ErroOrbita("nao_encontrado", "Não encontrei essa pasta.");
+        naPasta.push([projeto, pasta]);
+      }
+    },
     criarProjeto,
     renomear: async (id: string, titulo: string) => void (achar(id).texto = vazio(titulo)),
     mudarEstadoProjeto: async (id: string, estado: EstadoProjeto, ondeParei?: Omit<OndeParei, "atualizadoEm">) => {

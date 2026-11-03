@@ -65,11 +65,12 @@ export function Exportar() {
       api.listarHobbies().catch(vazio), api.listarQuadros().catch(vazio), api.listarLivros().catch(vazio),
       api.listarGruposLivro().catch(vazio), api.listarRegistrosSaude(INICIO, FIM).catch(vazio),
     ]);
+    const pastasDeProjetos = await api.listarPastasProjeto().catch(vazio);
     // Cofre de valores: personalização das rotinas, focos salvos, energia, estante, estudos.
     const valores = await lerValoresParaExportar().catch(() => ({}));
     return {
       valores,
-      ideias, projetos, rotinas, agenda, remedios, planosDeSaude, profissionais, materias, atividades, aulas,
+      ideias, projetos, pastasDeProjetos, rotinas, agenda, remedios, planosDeSaude, profissionais, materias, atividades, aulas,
       gruposDeGasto, gastos, contas, desejos, metas, hobbies, quadros, livros, gruposDeLivro, registrosDeSaude,
     };
   };

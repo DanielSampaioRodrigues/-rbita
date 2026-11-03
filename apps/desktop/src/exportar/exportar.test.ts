@@ -90,11 +90,25 @@ describe("exportar (puro)", () => {
   it("Markdown: projeto leva as anotações", () => {
     const projeto = {
       id: "p1", titulo: "MCP", estado: "ativo" as const, ondeParei: null, pausadoEm: null, inicio: null, prazo: null, revisarMeses: null, revisadoEm: null,
-      criadoEm: 0, tarefasFeitas: 1, tarefasTotal: 3, alteradoEm: 0, etiquetas: [], anotacoes: "para programas Adobe", ideiaCriadaEm: 0,
+      criadoEm: 0, tarefasFeitas: 1, tarefasTotal: 3, alteradoEm: 0, etiquetas: [], anotacoes: "para programas Adobe", ideiaCriadaEm: 0, pastas: [] as string[],
     };
     const md = paraMarkdown({ projetos: [projeto, { ...projeto, id: "p2", titulo: "Horta", anotacoes: "" }] });
     expect(md).toContain("- **MCP** (ativo) · 1/3 tarefas — para programas Adobe");
     expect(md).toContain("- **Horta** (ativo) · 1/3 tarefas\n");
+  });
+
+  it("Markdown: projeto diz em quais pastas está", () => {
+    const projeto = {
+      id: "p1", titulo: "Livro", estado: "ativo" as const, ondeParei: null, pausadoEm: null, inicio: null, prazo: null, revisarMeses: null, revisadoEm: null,
+      criadoEm: 0, tarefasFeitas: 0, tarefasTotal: 0, alteradoEm: 0, etiquetas: [], anotacoes: "", ideiaCriadaEm: null, pastas: ["a", "b", "sumiu"],
+    };
+    const pastasDeProjetos = [
+      { id: "a", nome: "Produtos da editora", cor: "lavanda", ordem: 0, criadoEm: 0 },
+      { id: "b", nome: "Casa", cor: "menta", ordem: 1, criadoEm: 0 },
+    ];
+    const md = paraMarkdown({ projetos: [projeto, { ...projeto, id: "p2", titulo: "Horta", pastas: [] }], pastasDeProjetos });
+    expect(md).toContain("- **Livro** (ativo) · 0/0 tarefas · pastas: Produtos da editora, Casa\n");
+    expect(md).toContain("- **Horta** (ativo) · 0/0 tarefas\n");
   });
 
   it("JSON empacota com versão e data", () => {
