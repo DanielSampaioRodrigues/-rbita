@@ -1,3 +1,19 @@
+- **Pastas em Projetos**: crie pastas no estilo 3D do Caderno, com a cor que quiser (como "Produtos da editora"), e ponha cada projeto em uma ou mais delas, pelo botãozinho de pasta ao lado do cartão ou pelo botão "Pastas" dentro do projeto. Todos os projetos continuam aparecendo em "Todos", e apagar uma pasta não apaga nenhum projeto. As pastas também sincronizam entre os aparelhos.
+
+- **"Planejar com a IA"** (no lugar de "Sugerir etapas com IA"): converse com a IA sobre o projeto, por texto ou voz. Ela propõe etapas com subtarefas, que você vê em **Lista** ou em **Mapa**. Peça mudanças ("junta 2 e 3", "falta divulgação"), edite à mão e só crie quando aprovar; dá para desfazer logo depois. A IA lê o nome, o "Sobre o projeto", o "Onde parei" e as etapas que já existem. Por enquanto só no Windows: no navegador a IA ainda não funciona.
+
+- **"Sobre o projeto"**: um espaço para escrever sobre o projeto em si (do que se trata, por que importa, ideias, decisões), logo abaixo do título e antes do "Onde parei". Tem formatação e se guarda sozinho.
+
+- **Ideia que vira projeto não perde mais nada**: a anotação, as etiquetas e os anexos da ideia vão junto. A anotação aparece no "Sobre o projeto". Projetos que já tinham vindo de ideias mostram a anotação antiga.
+
+- **Datas digitadas à mão**: em todos os campos de data, digitar não faz mais o campo pular, e o ano não aceita mais 6 dígitos. O calendário continua como antes.
+
+- **"Em uso" mais claro**: o texto de ajuda agora muda conforme o estado. Num projeto ativo, explica o que é "Em uso"; num projeto em uso, explica como voltar para Ativo.
+
+---
+
+<!-- Abaixo: o que veio na 0.48.0. -->
+
 - **Sincronizar ficou mais simples: basta entrar com o Google.** Não precisa mais criar senha de sincronização. Seus dados continuam trancados na pasta escondida do Órbita no seu Drive. Quem quiser pode marcar **"Proteção extra: trancar também com uma senha minha"** (aí entram a senha, o PIN e as 6 perguntas para recuperar).
 
 - **Como ligar**: comece pelo PC (o aparelho que tem seus dados). **Ajustes → Sincronizar aparelhos → Ligar a sincronização**, entre com o Google e pronto. Depois, no iPad ou no celular, faça o mesmo e escolha **"Juntar tudo"**.
