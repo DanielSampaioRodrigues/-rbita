@@ -1570,7 +1570,11 @@ export const textos = {
     },
     pincel: {
       modelo: "Modelo do pincel",
-      modelos: { redondo: "Pincel redondo", giz: "Giz", spray: "Spray", seco: "Pincel seco", aquarela: "Aquarela", caligrafica: "Caneta caligráfica" },
+      modelos: {
+        redondo: "Pincel redondo", giz: "Giz", spray: "Spray", seco: "Pincel seco", aquarela: "Aquarela", caligrafica: "Caneta caligráfica",
+        marcador: "Marcador", nanquim: "Nanquim", carvao: "Carvão", cera: "Giz de cera", guache: "Guache", neon: "Neon",
+        lapiscor: "Lápis de cor", pontilhado: "Pontilhado", tracejado: "Tracejado",
+      },
     },
     dicaBarra: {
       texto: "Arraste pela alça para mudar a barra de lado. Cada ferramenta tem a sua barra de opções; tocar de novo nela abre os ajustes.",

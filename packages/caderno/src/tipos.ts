@@ -57,8 +57,14 @@ export interface Ponto {
 export type Ferramenta = "caneta" | "lapis" | "pincel" | "marcatexto" | "borracha";
 
 /** Modelos do pincel. "redondo" é o pincel de sempre (traços antigos). */
-export type ModeloPincel = "redondo" | "giz" | "spray" | "seco" | "aquarela" | "caligrafica";
-export const MODELOS_PINCEL: ModeloPincel[] = ["redondo", "giz", "spray", "seco", "aquarela", "caligrafica"];
+export type ModeloPincel =
+  | "redondo" | "giz" | "spray" | "seco" | "aquarela" | "caligrafica"
+  | "marcador" | "nanquim" | "carvao" | "cera" | "guache" | "neon" | "lapiscor" | "pontilhado" | "tracejado";
+/** Os modelos na ordem da lista (do mais comum ao mais diferente). */
+export const MODELOS_PINCEL: ModeloPincel[] = [
+  "redondo", "marcador", "nanquim", "caligrafica", "aquarela", "guache", "seco",
+  "giz", "cera", "carvao", "lapiscor", "spray", "neon", "pontilhado", "tracejado",
+];
 
 /** Um traço à mão livre. As formas, texto, setas, notas e imagens entram nas
  *  etapas seguintes; por isso `Elemento` já é uma união aberta. */

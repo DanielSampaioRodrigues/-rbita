@@ -249,13 +249,132 @@ function caligrafica(traco: Traco, tam: number): CamadaTraco[] {
   return camadas;
 }
 
-/** Lápis: contínuo, com o miolo um pouco mais escuro que as bordas (cara de
- *  grafite), sem as falhas de antes. */
+/** Granulado: pontinhos escuros dentro do traço (grafite, lápis de cor, giz de
+ *  cera). Ficam numa camada por cima do corpo, nunca furam o traço, então os
+ *  cruzamentos do traço não abrem buracos. */
+function granulado(traco: Traco, tam: number, semente: number, densidade: number, raioMax: number): string {
+  const rnd = sorteio(semente ^ 0x27d4eb2f);
+  const base = reamostrar(traco.pontos, Math.max(0.8, tam * 0.45));
+  const partes: string[] = [];
+  const max = 900;
+  for (const p of base) {
+    const n = Math.max(1, Math.round(densidade * (0.5 + pressaoDe(traco, p.p))));
+    for (let k = 0; k < n && partes.length < max; k++) {
+      const ang = rnd() * Math.PI * 2;
+      const r = Math.sqrt(rnd()) * tam * 0.38;
+      partes.push(quadradinho(p.x + Math.cos(ang) * r, p.y + Math.sin(ang) * r, Math.max(0.25, tam * raioMax * (0.4 + rnd() * 0.6)), rnd() * Math.PI));
+    }
+  }
+  return partes.join(" ");
+}
+
+/** Lápis: uma camada só, contínua, com granulado de grafite por dentro. Antes eram
+ *  duas camadas (borda e miolo) e a emenda aparecia como um contorno de dois tons. */
 function lapis(traco: Traco): CamadaTraco[] {
+  const tam = traco.espessura || FERRAMENTAS.lapis.tamanho;
+  const semente = (traco.semente ?? sementeDeTexto(traco.id)) >>> 0;
+  const camadas: CamadaTraco[] = [{ d: caminhoDeTraco(traco), modo: "preencher", opacidade: 0.72 }];
+  const grao = granulado(traco, tam, semente, 1.4, 0.12);
+  if (grao) camadas.push({ d: grao, modo: "preencher", opacidade: 0.6 });
+  return camadas;
+}
+
+/** Contorno com pontas retas (marcador): espessura quase fixa. */
+function contornoReto(traco: Traco, tam: number, afinar: number): string {
+  return caminhoSVG(getStroke(traco.pontos.map((p) => [p.x, p.y, pressaoDe(traco, p.p)]), {
+    size: tam, thinning: afinar, smoothing: 0.5, streamline: traco.alisar ?? 0.5, simulatePressure: false, last: true,
+    start: { cap: false }, end: { cap: false },
+  }) as number[][]);
+}
+
+/** Marcador (canetinha): espessura igual, ponta reta e tinta um pouco translúcida. */
+function marcador(traco: Traco, tam: number): CamadaTraco[] {
+  return [{ d: contornoReto(traco, tam * 1.1, 0.05), modo: "preencher", opacidade: 0.88 }];
+}
+
+/** Nanquim (pincel de tinta): muito sensível à pressão, com pontas finas. */
+function nanquim(traco: Traco, tam: number): CamadaTraco[] {
+  return [{ d: caminhoSVG(contornoPF(traco, tam * 1.3, 0.92, traco.alisar ?? 0.45, tam * 3)), modo: "preencher", opacidade: 1 }];
+}
+
+/** Carvão: largo, borda bem irregular e muito granulado. */
+function carvao(traco: Traco, tam: number, semente: number): CamadaTraco[] {
+  const corpo = caminhoSVG(bordaIrregular(contornoPF(traco, tam * 1.4, 0.35, traco.alisar ?? 0.4), tam * 0.2, semente));
   return [
-    { d: caminhoDeTraco(traco), modo: "preencher", opacidade: 0.72 },
-    { d: caminhoDeTraco(traco, 0.55), modo: "preencher", opacidade: 0.7 },
+    { d: corpo, modo: "preencher", opacidade: 0.62 },
+    { d: granulado(traco, tam * 1.3, semente, 3, 0.1), modo: "preencher", opacidade: 0.55 },
   ];
+}
+
+/** Giz de cera: borda levemente irregular e textura cerosa. */
+function cera(traco: Traco, tam: number, semente: number): CamadaTraco[] {
+  const corpo = caminhoSVG(bordaIrregular(contornoPF(traco, tam * 1.15, 0.2, traco.alisar ?? 0.45), tam * 0.08, semente));
+  return [
+    { d: corpo, modo: "preencher", opacidade: 0.8 },
+    { d: granulado(traco, tam, semente, 2.4, 0.07), modo: "preencher", opacidade: 0.5 },
+  ];
+}
+
+/** Guache: tinta encorpada, com as marcas das cerdas (riscas mais escuras). */
+function guache(traco: Traco, tam: number, semente: number): CamadaTraco[] {
+  const corpo = caminhoSVG(contornoPF(traco, tam * 1.2, 0.3, traco.alisar ?? 0.5, tam * 0.8));
+  const base = reamostrar(suavizar(traco.pontos, traco.alisar ?? 0.4), Math.max(1, tam * 0.3));
+  const ns = normais(base);
+  const k = Math.max(3, Math.min(8, Math.round(tam / 2)));
+  const riscas: string[] = [];
+  for (let j = 0; j < k; j++) {
+    const rnd = sorteio(semente + j * 104729);
+    const off = (j / (k - 1) - 0.5) * 0.8 + (rnd() - 0.5) * 0.06;
+    const pts = base.map((p, i) => `${f2(p.x + ns[i][0] * off * tam)} ${f2(p.y + ns[i][1] * off * tam)}`);
+    if (pts.length > 1) riscas.push(`M ${pts.join(" L ")}`);
+  }
+  return [
+    { d: corpo, modo: "preencher", opacidade: 0.82 },
+    { d: riscas.join(" "), modo: "contornar", largura: Math.max(0.5, tam * 0.08), opacidade: 0.35 },
+  ];
+}
+
+/** Neon: um halo largo e claro em volta de um traço firme (brilho). */
+function neon(traco: Traco, tam: number): CamadaTraco[] {
+  const pf = (f: number) => caminhoSVG(contornoPF(traco, tam * f, 0.15, traco.alisar ?? 0.5));
+  return [
+    { d: pf(3), modo: "preencher", opacidade: 0.12 },
+    { d: pf(1.9), modo: "preencher", opacidade: 0.22 },
+    { d: pf(0.8), modo: "preencher", opacidade: 1 },
+  ];
+}
+
+/** Lápis de cor: traço mais fino que o pincel, com bastante granulado. */
+function lapiscor(traco: Traco, tam: number, semente: number): CamadaTraco[] {
+  const corpo = caminhoSVG(contornoPF(traco, tam * 0.8, 0.45, traco.alisar ?? 0.5));
+  return [
+    { d: corpo, modo: "preencher", opacidade: 0.6 },
+    { d: granulado(traco, tam * 0.8, semente, 2, 0.09), modo: "preencher", opacidade: 0.5 },
+  ];
+}
+
+/** Pontilhado: bolinhas em fila, maiores com mais pressão. */
+function pontilhado(traco: Traco, tam: number): CamadaTraco[] {
+  const base = reamostrar(suavizar(traco.pontos, traco.alisar ?? 0.5), Math.max(2, tam * 1.7));
+  const d = base.map((p) => pontinho(p.x, p.y, Math.max(0.6, tam * 0.42 * (0.6 + 0.4 * pressaoDe(traco, p.p))))).join(" ");
+  return [{ d, modo: "preencher", opacidade: 1 }];
+}
+
+/** Tracejado: traços curtos com espaço entre eles. */
+function tracejado(traco: Traco, tam: number): CamadaTraco[] {
+  const base = reamostrar(suavizar(traco.pontos, traco.alisar ?? 0.5), Math.max(0.8, tam * 0.25));
+  const traco1 = Math.max(4, tam * 2.6), espaco = Math.max(3, tam * 1.8);
+  const partes: string[] = [];
+  let andado = 0, seg: string[] = [];
+  base.forEach((p, i) => {
+    if (i > 0) andado += Math.hypot(p.x - base[i - 1].x, p.y - base[i - 1].y);
+    const ligado = andado % (traco1 + espaco) < traco1;
+    if (ligado) seg.push(`${f2(p.x)} ${f2(p.y)}`);
+    else if (seg.length) { if (seg.length > 1) partes.push(`M ${seg.join(" L ")}`); seg = []; }
+  });
+  if (seg.length > 1) partes.push(`M ${seg.join(" L ")}`);
+  if (!partes.length && traco.pontos.length) return [{ d: pontinho(traco.pontos[0].x, traco.pontos[0].y, tam * 0.4), modo: "preencher", opacidade: 1 }];
+  return [{ d: partes.join(" "), modo: "contornar", largura: Math.max(0.8, tam * 0.7), opacidade: 1 }];
 }
 
 function calcular(traco: Traco): CamadaTraco[] {
@@ -270,6 +389,15 @@ function calcular(traco: Traco): CamadaTraco[] {
     case "seco": return seco(traco, tam, semente);
     case "aquarela": return aquarela(traco, tam, semente);
     case "caligrafica": return caligrafica(traco, tam);
+    case "marcador": return marcador(traco, tam);
+    case "nanquim": return nanquim(traco, tam);
+    case "carvao": return carvao(traco, tam, semente);
+    case "cera": return cera(traco, tam, semente);
+    case "guache": return guache(traco, tam, semente);
+    case "neon": return neon(traco, tam);
+    case "lapiscor": return lapiscor(traco, tam, semente);
+    case "pontilhado": return pontilhado(traco, tam);
+    case "tracejado": return tracejado(traco, tam);
     default: return [{ d: caminhoDeTraco(traco), modo: "preencher", opacidade: 1 }];
   }
 }

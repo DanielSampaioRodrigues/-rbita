@@ -1904,3 +1904,5 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-doc-cor { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgb(0 0 0 / 0.15); cursor: pointer; display: grid; place-items: center; font-weight: 700; color: #1f2937; outline: none; }
 .caderno-doc-cor[data-focused] { outline: 3px solid var(--cor-foco); outline-offset: 1px; }
 .caderno-doc-cor.padrao { background: #fff; }
+/* Lista de modelos do pincel (15): rola por dentro quando não cabe. */
+.caderno-popover-miolo .caderno-pinceis { max-height: min(60vh, 26rem); overflow-y: auto; padding: 2px; }

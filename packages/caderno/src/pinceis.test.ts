@@ -22,7 +22,7 @@ describe("caderno: modelos de pincel", () => {
   });
 
   it("é determinístico: o mesmo traço sai igual (semente guardada)", () => {
-    for (const m of ["giz", "spray", "seco", "aquarela"] as ModeloPincel[]) {
+    for (const m of ["giz", "spray", "seco", "aquarela", "carvao", "cera", "guache", "lapiscor"] as ModeloPincel[]) {
       const d1 = desenhoDeTraco(rabisco({ pincel: m, semente: 99 })).map((c) => c.d).join("|");
       const d2 = desenhoDeTraco(rabisco({ pincel: m, semente: 99 })).map((c) => c.d).join("|");
       const d3 = desenhoDeTraco(rabisco({ pincel: m, semente: 100 })).map((c) => c.d).join("|");
@@ -62,14 +62,15 @@ describe("caderno: lápis com a Apple Pencil", () => {
   it("e a pressão ainda engrossa o traço", () => {
     expect(largura(caminhoDeTraco(lapis(0.95)))).toBeGreaterThan(largura(caminhoDeTraco(lapis(0.05))));
   });
-  it("desenha em duas camadas (borda e miolo), contínuas", () => {
+  it("uma camada contínua (sem contorno de dois tons) e o granulado por cima", () => {
     const c = desenhoDeTraco(lapis(0.3));
-    expect(c).toHaveLength(2);
-    expect(c.every((x) => x.modo === "preencher" && (x.d.match(/M /g) ?? []).length === 1)).toBe(true);
+    expect(c[0]).toMatchObject({ modo: "preencher" });
+    expect(c[0].parImpar).toBeFalsy(); // cruzar o próprio traço não abre buraco
+    expect(c.length).toBeLessThanOrEqual(2);
+    // O granulado fica dentro do traço e é sempre o mesmo para o mesmo traço.
+    expect(desenhoDeTraco(lapis(0.3))[1]?.d).toBe(c[1]?.d);
   });
-});
 
-describe("caderno: pincel ao vivo", () => {
   it("o começo do traço não muda enquanto ele cresce (sem tremer na tela)", () => {
     for (const m of ["spray", "seco", "giz"] as ModeloPincel[]) {
       const pts = Array.from({ length: 40 }, (_x, i) => ({ x: i * 5, y: Math.cos(i / 6) * 15, p: 0.6 }));
