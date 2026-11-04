@@ -2,7 +2,7 @@
 import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 import { extensoesBase } from "./extensoes";
-import { aplicarMeuEstilo, cssDosEstilos, ESTILO_VAZIO, estiloDoParagrafo, lerEstilos, regrasDoEstilo, type EstiloProprio } from "./meusEstilos";
+import { aplicarEstiloLetra, aplicarMeuEstilo, cssDosEstilos, ESTILO_VAZIO, estiloDoParagrafo, lerEstilos, regrasDoEstilo, tirarEstiloLetra, type EstiloProprio } from "./meusEstilos";
 
 const estilo = (p: Partial<EstiloProprio>): EstiloProprio => ({ ...ESTILO_VAZIO, id: "e-1", nome: "Citação longa", ...p });
 
@@ -59,6 +59,27 @@ describe("estilos da pessoa", () => {
     expect(html).toContain("<strong>Resumo</strong>");
     // O outro parágrafo não muda.
     expect(html).toContain("<p>outro</p>");
+    ed.destroy();
+  });
+});
+
+describe("estilos de letra (caractere)", () => {
+  it("geram CSS só do que vale para um trecho, no seletor próprio", () => {
+    const css = cssDosEstilos([{ ...ESTILO_VAZIO, id: "l-1", nome: "Termo", letra: true, negrito: true, fundo: "#fef08a", alinhamento: "center", capitular: 3 }]);
+    expect(css).toContain('[data-meu-estilo-letra="l-1"]');
+    expect(css).toContain("font-weight: 700");
+    expect(css).toContain("background-color: #fef08a");
+    expect(css).not.toContain("text-align");
+    expect(css).not.toContain("initial-letter");
+  });
+  it("aplica e tira o estilo de letra num trecho", () => {
+    const ed = new Editor({ extensions: extensoesBase(), content: "<p>um termo técnico aqui</p>" });
+    ed.commands.setTextSelection({ from: 4, to: 9 });
+    aplicarEstiloLetra(ed, { ...ESTILO_VAZIO, id: "l-1", nome: "Termo", letra: true });
+    expect(ed.getHTML()).toContain('<span data-meu-estilo-letra="l-1">termo</span>');
+    ed.commands.setTextSelection({ from: 4, to: 9 });
+    tirarEstiloLetra(ed);
+    expect(ed.getHTML()).not.toContain("data-meu-estilo-letra");
     ed.destroy();
   });
 });

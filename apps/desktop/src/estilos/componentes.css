@@ -2133,3 +2133,5 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-correcao-menu { position: absolute; pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 320px; padding: 8px 10px; border: 1px solid var(--cor-borda); border-radius: 10px; background: var(--cor-superficie); color: var(--cor-texto); box-shadow: 0 6px 20px rgb(0 0 0 / 0.16); z-index: 7; }
 .caderno-correcao-lido { width: 100%; font-size: 0.85rem; color: var(--cor-texto-suave); }
 :root[data-baixo-estimulo="true"] .caderno-correcao-menu { box-shadow: none; }
+.fita-letra-icone { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; font-family: Georgia, serif; font-style: italic; }
+.fita-letra-amostra { font-size: 1rem; color: inherit; }

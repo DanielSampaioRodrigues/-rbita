@@ -55,6 +55,7 @@ export async function gerarDocx(json: JSONContent, config: ConfigDocumento, esti
         else if (m.type === "versalete") o.smallCaps = true;
         else if (m.type === "highlight") { const c = SEM_HASH(m.attrs?.color) ?? "FEF08A"; o.shading = { type: ShadingType.CLEAR, color: "auto", fill: c }; }
         else if (m.type === "link" && m.attrs?.href) link = String(m.attrs.href);
+        else if (m.type === "estiloLetra" && m.attrs?.id && estilos.some((e) => e.letra && e.id === m.attrs?.id)) o.style = String(m.attrs.id);
         else if (m.type === "textStyle") {
           const f = fonteWord(m.attrs?.fontFamily as string | undefined);
           if (f) o.font = f;
@@ -199,7 +200,16 @@ export async function gerarDocx(json: JSONContent, config: ConfigDocumento, esti
         document: { run: { font: fonteDoc, size: tamanhoDoc, color: "1F2937" }, paragraph: { spacing: { line: Math.round(240 * conj.entrelinha), after: Math.round(conj.espacoDepois * conj.tamanho * 20) }, indent: { firstLine: recuo }, alignment: alinhar(conj.alinhamento) } },
         title: { run: { font: fonteWord(conj.fonteTitulos ?? conj.fonte) ?? fonteDoc, size: Math.round(conj.tamanho * 2.2 * 2), bold: true, color: "1F2937" }, paragraph: { alignment: AlignmentType.CENTER } },
       },
-      paragraphStyles: [...titulos, ...estilos.map(estiloWord)],
+      paragraphStyles: [...titulos, ...estilos.filter((e) => !e.letra).map(estiloWord)],
+      // Estilos de letra da pessoa viram estilos de caractere do Word.
+      characterStyles: estilos.filter((e) => e.letra).map((e) => ({
+        id: e.id, name: e.nome, basedOn: "DefaultParagraphFont", quickFormat: true,
+        run: {
+          font: fonteWord(e.fonte), size: e.tamanho ? e.tamanho * 2 : undefined, color: SEM_HASH(e.cor), bold: e.negrito || undefined, italics: e.italico || undefined,
+          underline: e.sublinhado ? {} : undefined, allCaps: e.caixa === "maiusculas" || undefined, smallCaps: e.caixa === "versalete" || undefined,
+          shading: e.fundo ? { type: ShadingType.CLEAR, color: "auto", fill: SEM_HASH(e.fundo) } : undefined,
+        },
+      })),
     },
     numbering: {
       config: [

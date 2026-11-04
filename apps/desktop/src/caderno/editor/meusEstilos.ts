@@ -4,7 +4,7 @@
 // documentos, páginas de texto e caixas, e mudar um estilo muda todos os parágrafos
 // que o usam. O texto guarda só o id do estilo (`data-meu-estilo`); o visual vem de
 // um CSS gerado a partir da lista (`cssDosEstilos`, puro e testado).
-import type { Editor } from "@tiptap/core";
+import { Mark, type Editor } from "@tiptap/core";
 import type { Node as NoPM } from "@tiptap/pm/model";
 import { useSyncExternalStore } from "react";
 import { api } from "../../api";
@@ -39,11 +39,15 @@ export interface EstiloProprio {
   espacoDepois: number;
   /** Capitular: quantas linhas a primeira letra ocupa (0 = sem). */
   capitular: number;
+  /** Estilo de letra (caractere): vale para um trecho, não para o parágrafo inteiro. */
+  letra?: boolean;
+  /** Estilo de letra: cor do marca-texto ("" = sem). */
+  fundo?: string;
 }
 
 export const ESTILO_VAZIO: Omit<EstiloProprio, "id" | "nome"> = {
   base: "p", fonte: "", tamanho: 0, cor: "", negrito: false, italico: false, sublinhado: false, caixa: "",
-  alinhamento: "", entrelinha: 0, recuoPrimeira: -1, recuoEsquerda: 0, espacoAntes: -1, espacoDepois: -1, capitular: 0,
+  alinhamento: "", entrelinha: 0, recuoPrimeira: -1, recuoEsquerda: 0, espacoAntes: -1, espacoDepois: -1, capitular: 0, letra: false, fundo: "",
 };
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -77,6 +81,8 @@ export function lerEstilos(bruto: unknown): EstiloProprio[] {
       espacoAntes: entre(b.espacoAntes, -1, 200, -1),
       espacoDepois: entre(b.espacoDepois, -1, 200, -1),
       capitular: [0, 2, 3, 4, 5].includes(b.capitular as number) ? (b.capitular as number) : 0,
+      letra: b.letra === true,
+      fundo: typeof b.fundo === "string" && HEX.test(b.fundo) ? b.fundo.toLowerCase() : "",
     });
   }
   return lista;
@@ -85,6 +91,19 @@ export function lerEstilos(bruto: unknown): EstiloProprio[] {
 /** As regras do CSS de um estilo (sem o seletor). O tamanho acompanha o zoom da caixa do caderno. */
 export function regrasDoEstilo(e: EstiloProprio): string {
   const r: string[] = [];
+  if (e.letra) {
+    // Estilo de letra: só o que vale para um trecho.
+    if (e.fonte) r.push(`font-family: ${e.fonte}`);
+    if (e.tamanho) r.push(`font-size: calc(${e.tamanho}pt * var(--caderno-escala, 1))`);
+    if (e.cor) r.push(`color: ${e.cor}`);
+    if (e.negrito) r.push("font-weight: 700");
+    if (e.italico) r.push("font-style: italic");
+    if (e.sublinhado) r.push("text-decoration: underline");
+    if (e.caixa === "maiusculas") r.push("text-transform: uppercase");
+    if (e.caixa === "versalete") r.push("font-variant: small-caps");
+    if (e.fundo) r.push(`background-color: ${e.fundo}`, "border-radius: 2px", "padding: 0 1px");
+    return r.join("; ");
+  }
   if (e.fonte) r.push(`font-family: ${e.fonte}`);
   if (e.tamanho) r.push(`font-size: calc(${e.tamanho}pt * var(--caderno-escala, 1))`);
   if (e.cor) r.push(`color: ${e.cor}`);
@@ -107,9 +126,9 @@ export function regrasDoEstilo(e: EstiloProprio): string {
 export function cssDosEstilos(lista: EstiloProprio[]): string {
   return lista
     .map((e) => {
-      const sel = `[data-meu-estilo="${e.id}"]`;
+      const sel = e.letra ? `[data-meu-estilo-letra="${e.id}"]` : `[data-meu-estilo="${e.id}"]`;
       let css = `:is(.doc-conteudo, .caderno-caixa-area, .caderno-doc-conteudo) ${sel} { ${regrasDoEstilo(e)} }`;
-      if (e.capitular) css += `\n:is(.doc-conteudo, .caderno-caixa-area, .caderno-doc-conteudo) ${sel}:not([data-capitular])::first-letter { -webkit-initial-letter: ${e.capitular}; initial-letter: ${e.capitular}; margin-right: 0.08em; }`;
+      if (e.capitular && !e.letra) css += `\n:is(.doc-conteudo, .caderno-caixa-area, .caderno-doc-conteudo) ${sel}:not([data-capitular])::first-letter { -webkit-initial-letter: ${e.capitular}; initial-letter: ${e.capitular}; margin-right: 0.08em; }`;
       return css;
     })
     .join("\n");
@@ -117,6 +136,32 @@ export function cssDosEstilos(lista: EstiloProprio[]): string {
 
 /** Um id novo, curto. */
 export const novoIdEstilo = () => `e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+/** A formatação de letra de um trecho (as marcas do texto). */
+export function estiloDasMarcas(marcas: readonly { type: { name: string }; attrs: Record<string, unknown> }[]): Partial<EstiloProprio> {
+  const e: Partial<EstiloProprio> = {};
+  for (const m of marcas) {
+    if (m.type.name === "bold") e.negrito = true;
+    else if (m.type.name === "italic") e.italico = true;
+    else if (m.type.name === "underline") e.sublinhado = true;
+    else if (m.type.name === "versalete") e.caixa = "versalete";
+    else if (m.type.name === "highlight" && HEX.test(String(m.attrs.color ?? ""))) e.fundo = String(m.attrs.color).toLowerCase();
+    else if (m.type.name === "textStyle") {
+      if (m.attrs.fontFamily) e.fonte = fonteSegura(m.attrs.fontFamily);
+      if (m.attrs.fontSize) e.tamanho = lerPt(String(m.attrs.fontSize));
+      if (m.attrs.color && HEX.test(String(m.attrs.color))) e.cor = String(m.attrs.color).toLowerCase();
+    }
+  }
+  return e;
+}
+
+/** Lê a formatação do trecho escolhido (onde está o cursor) como um estilo de letra. */
+export function estiloDaSelecao(editor: Editor): Omit<EstiloProprio, "id" | "nome"> {
+  const { $from } = editor.state.selection;
+  const marcas = editor.state.storedMarks ?? $from.marks();
+  const lidas = estiloDasMarcas(marcas);
+  return { ...ESTILO_VAZIO, letra: true, fundo: lidas.fundo ?? "", ...lidas };
+}
 
 /** Lê a formatação de um parágrafo (o que foi mudado nele à mão) como um estilo. */
 export function estiloDoParagrafo(no: NoPM, alinhamento?: string | null): Omit<EstiloProprio, "id" | "nome"> {
@@ -128,18 +173,7 @@ export function estiloDoParagrafo(no: NoPM, alinhamento?: string | null): Omit<E
   // A formatação de letra vem do primeiro trecho com texto.
   let primeiro: NoPM | null = null;
   no.descendants((f) => { if (!primeiro && f.isText) primeiro = f; return !primeiro; });
-  const marcas = (primeiro as NoPM | null)?.marks ?? [];
-  for (const m of marcas) {
-    if (m.type.name === "bold") e.negrito = true;
-    else if (m.type.name === "italic") e.italico = true;
-    else if (m.type.name === "underline") e.sublinhado = true;
-    else if (m.type.name === "versalete") e.caixa = "versalete";
-    else if (m.type.name === "textStyle") {
-      if (m.attrs.fontFamily) e.fonte = fonteSegura(m.attrs.fontFamily);
-      if (m.attrs.fontSize) e.tamanho = lerPt(String(m.attrs.fontSize));
-      if (m.attrs.color && HEX.test(String(m.attrs.color))) e.cor = String(m.attrs.color).toLowerCase();
-    }
-  }
+  Object.assign(e, estiloDasMarcas((primeiro as NoPM | null)?.marks ?? []));
   const al = alinhamento ?? (no.attrs.textAlign as string | null);
   if (al && ["left", "center", "right", "justify"].includes(al) && al !== "left") e.alinhamento = al as Alinhamento;
   const ent = Number(no.attrs.entrelinha);
@@ -152,8 +186,8 @@ export function estiloDoParagrafo(no: NoPM, alinhamento?: string | null): Omit<E
 }
 
 /** Descrição curta, para a lista ("Times New Roman, 14 pt, negrito, centralizado"). */
-export function resumoDoEstilo(e: EstiloProprio, nomes: { titulo: (n: number) => string; texto: string; negrito: string; italico: string; sublinhado: string; maiusculas: string; versalete: string; alinhamentos: Record<Alinhamento, string>; capitular: (n: number) => string }): string {
-  const partes: string[] = [e.base === "p" ? nomes.texto : nomes.titulo(Number(e.base.slice(1)))];
+export function resumoDoEstilo(e: EstiloProprio, nomes: { titulo: (n: number) => string; texto: string; letra: string; negrito: string; italico: string; sublinhado: string; maiusculas: string; versalete: string; alinhamentos: Record<Alinhamento, string>; capitular: (n: number) => string }): string {
+  const partes: string[] = [e.letra ? nomes.letra : e.base === "p" ? nomes.texto : nomes.titulo(Number(e.base.slice(1)))];
   if (e.fonte) partes.push(e.fonte.split(",")[0].replace(/["']/g, "").trim());
   if (e.tamanho) partes.push(`${e.tamanho} pt`);
   if (e.negrito) partes.push(nomes.negrito);
@@ -234,6 +268,33 @@ export function aplicarMeuEstilo(editor: Editor, e: EstiloProprio) {
   });
   ch.run();
 }
+
+/** Aplica um estilo de letra ao trecho escolhido (tira a fonte, o tamanho, a cor e o
+ *  marca-texto postos à mão no trecho, para o estilo aparecer). */
+export function aplicarEstiloLetra(editor: Editor, e: EstiloProprio) {
+  editor.chain().focus().unsetMark("textStyle").unsetMark("highlight").setMark("estiloLetra", { id: e.id }).run();
+}
+
+/** Tira o estilo de letra do trecho escolhido. */
+export function tirarEstiloLetra(editor: Editor) {
+  editor.chain().focus().unsetMark("estiloLetra").run();
+}
+
+/** A marca do estilo de letra no texto: só o id (`data-meu-estilo-letra`); o visual vem do CSS. */
+export const EstiloLetra = Mark.create({
+  name: "estiloLetra",
+  addAttributes() {
+    return {
+      id: {
+        default: null,
+        parseHTML: (el: HTMLElement) => { const v = el.getAttribute("data-meu-estilo-letra"); return v && ID.test(v) ? v : null; },
+        renderHTML: (a: { id?: string | null }) => (a.id ? { "data-meu-estilo-letra": a.id } : {}),
+      },
+    };
+  },
+  parseHTML() { return [{ tag: "span[data-meu-estilo-letra]" }]; },
+  renderHTML({ HTMLAttributes }) { return ["span", HTMLAttributes, 0]; },
+});
 
 /** Tira o estilo próprio dos parágrafos da seleção (voltam ao texto normal). */
 export function tirarMeuEstilo(editor: Editor) {

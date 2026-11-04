@@ -15,7 +15,7 @@ import { CONJUNTOS, lerPt, MARGENS, ocorrencias, type ConfigDocumento, type Conj
 import { aplicarCaixa, type Caixa } from "./maiusculas";
 import { JanelaEstilo, JanelaMeusEstilos } from "./JanelaEstilos";
 import { JanelaReferencia } from "./JanelaReferencia";
-import { aplicarMeuEstilo, ESTILO_VAZIO, estiloDoParagrafo, salvarEstilo, useMeusEstilos, type EstiloProprio } from "./meusEstilos";
+import { aplicarEstiloLetra, aplicarMeuEstilo, ESTILO_VAZIO, estiloDaSelecao, estiloDoParagrafo, salvarEstilo, tirarEstiloLetra, useMeusEstilos, type EstiloProprio } from "./meusEstilos";
 import { SeletorFonte } from "./SeletorFonte";
 
 const t = textos.caderno.editor;
@@ -93,6 +93,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
         marca: (ed.getAttributes("highlight").color as string | undefined) ?? "",
         entrelinha: (bloco.entrelinha as string | null) ?? "", recuo: (bloco.recuo as number) ?? 0,
         meuEstilo: (bloco.meuEstilo as string | null) ?? "", capitular: (bloco.capitular as number | null) ?? 0,
+        letra: (ed.getAttributes("estiloLetra").id as string | null) ?? "",
         tabela: ed.isActive("table"), linkAtivo: ed.isActive("link"),
         desfazer: ed.can().undo(), refazer: ed.can().redo(),
         palavras, caracteres: texto.replace(/\s+/g, " ").trim().length,
@@ -115,7 +116,9 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
     ch.run();
   };
   // Estilos da pessoa: aplicar, criar a partir do parágrafo, atualizar e ver a lista.
-  const meus = useMeusEstilos();
+  const todos = useMeusEstilos();
+  const meus = todos.filter((m) => !m.letra);
+  const letras = todos.filter((m) => m.letra);
   const meuAtual = meus.find((m) => m.id === e.meuEstilo);
   const [novoEstilo, setNovoEstilo] = useState<(Omit<EstiloProprio, "id"> & { id?: string }) | null>(null);
   const [verEstilos, setVerEstilos] = useState(false);
@@ -269,6 +272,29 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
                   </Menu>
                 </Popover>
               </MenuTrigger>
+              <MenuTrigger>
+                <Button className={e.letra ? "fita-botao ativo" : "fita-botao"} aria-label={t.meus.letrasMenu}>
+                  <span className="fita-botao-texto fita-letra-icone" aria-hidden="true">A</span>
+                </Button>
+                <Popover className="menu-popover" placement="bottom">
+                  <Menu className="menu-lista" aria-label={t.meus.letrasMenu} onAction={(k) => {
+                    const id = String(k);
+                    if (id === "acao:criar") setNovoEstilo({ ...estiloDaSelecao(editor), nome: t.meus.nomePadraoLetra(letras.length + 1) });
+                    else if (id === "acao:gerenciar") setVerEstilos(true);
+                    else if (id === "acao:tirar") tirarEstiloLetra(editor);
+                    else { const m = letras.find((x) => x.id === id); if (m) aplicarEstiloLetra(editor, m); }
+                  }}>
+                    {letras.map((m) => (
+                      <MenuItem key={m.id} id={m.id} className="menu-item" textValue={m.nome}>
+                        <span className="doc-conteudo fita-letra-amostra"><span data-meu-estilo-letra={m.id}>{m.nome}</span></span>{e.letra === m.id ? " ✓" : ""}
+                      </MenuItem>
+                    ))}
+                    {e.letra ? <MenuItem id="acao:tirar" className="menu-item">{t.meus.semLetra}</MenuItem> : null}
+                    <MenuItem id="acao:criar" className="menu-item">{t.meus.criarLetra}</MenuItem>
+                    <MenuItem id="acao:gerenciar" className="menu-item">{t.meus.gerenciar}</MenuItem>
+                  </Menu>
+                </Popover>
+              </MenuTrigger>
               <MenuCores rotulo={t.cor} icone={Baseline} cores={CORES_TEXTO} atual={e.cor} semNome={t.corPadrao} aoEscolher={(k) => c().setColor(k).run()} aoTirar={() => c().unsetColor().run()} />
               <MenuCores rotulo={t.marcaTexto} icone={Highlighter} cores={CORES_MARCA} atual={e.marca} semNome={t.semMarca} aoEscolher={(k) => c().setHighlight({ color: k }).run()} aoTirar={() => c().unsetHighlight().run()} />
               <B rotulo={t.limpar} texto="T×" acao={() => c().unsetAllMarks().updateAttributes("paragraph", { estilo: null, entrelinha: null }).run()} />
@@ -414,7 +440,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
           <B rotulo={textos.comum.fechar} icone={X} acao={() => setLink(null)} />
         </div>
       )}
-      <JanelaEstilo inicial={novoEstilo} aberta={!!novoEstilo} aoFechar={() => setNovoEstilo(null)} aoSalvar={(m) => aplicarMeuEstilo(editor, m)} />
+      <JanelaEstilo inicial={novoEstilo} aberta={!!novoEstilo} aoFechar={() => setNovoEstilo(null)} aoSalvar={(m) => (m.letra ? aplicarEstiloLetra(editor, m) : aplicarMeuEstilo(editor, m))} />
       <JanelaMeusEstilos aberta={verEstilos} aoFechar={() => setVerEstilos(false)} />
       <JanelaReferencia editor={editor} aberta={referencia} aoFechar={() => setReferencia(false)} normaInicial={config?.conjunto === "apa" ? "apa" : "abnt"} />
     </div>
