@@ -1,3 +1,34 @@
+- **Caderno renovado** (inspirado no Goodnotes)
+  - **A página cabe inteira na tela**, sem aparecer um pedaço da próxima, em pé ou deitado e com a barra em qualquer lado. Arrastar com o dedo vira a página. Se preferir a letra maior, em Configurações do caderno escolha "Largura toda".
+  - **A caneta não falha mais**: o traço não é mais cortado no meio, e o traço leve (encostando de leve) continua aparecendo.
+  - **Zoom com dois dedos** voltou a funcionar. Soltando perto de 100%, volta para a página inteira.
+  - **Gestos**: dois dedos, dois toques: desfazer. Três dedos, dois toques: refazer. Um dedo, dois toques: aproximar. Quatro dedos, um toque: esconder as barras. Dá para desligar nas configurações do caderno.
+  - **Barra nova**: uma barra enxuta com as ferramentas e, para cada ferramenta, uma barra de opções com três espessuras salvas, as suas cores e opções próprias. Novidades: pontas da caneta (tinteiro, esferográfica, pincel), marca-texto sempre reto, borracha que apaga só o marca-texto, borracha que volta para a ferramenta de antes e apontador laser (o traço some sozinho). A barra continua indo para qualquer lado.
+  - **Forma ao segurar**: desenhe um círculo, um retângulo, um triângulo ou uma linha e segure a caneta parada no fim: vira a forma perfeita.
+  - **15 modelos de pincel**: além dos de antes, marcador, nanquim, guache, giz de cera, carvão, lápis de cor, neon, pontilhado e tracejado.
+  - **Lápis corrigido**: sem a borda mais escura que o corpo; agora é contínuo, com cara de grafite.
+  - **Cor e linhas da folha** agora mudam a página que está na tela (antes iam para outra página). As cores aparecem de verdade, também no baixo estímulo, e há "Outra cor" e o código da cor.
+  - **A capa é a primeira página**: escreva, desenhe e cole o que quiser nela, com as mesmas ferramentas. Seus cadernos antigos ganham a capa como página 1 na primeira vez que você abre cada um.
+  - **Ver as páginas**: miniaturas de todas as páginas, com nome, marcador, duplicar, mudar de lugar e apagar. O nome da página saiu do alto da folha.
+  - **Adicionar página** antes desta, depois desta ou no fim, escolhendo o modelo da folha e o tamanho.
+  - **Página de texto** (como no Pages ou no Word): títulos, fontes, tamanhos, cores, marca-texto, alinhamento, listas, lista de tarefas, citação e tabela. Com uma caneta, você escreve por cima do texto. Dá para misturar páginas à mão e de texto no mesmo caderno.
+  - **Documento de texto**: um tipo novo na estante, para quem quer só digitar.
+  - **Caixa de texto**: arraste para escolher a largura. O contorno estranho em volta do texto digitado sumiu.
+
+- **IA no iPad e no celular**: todas as funções de IA agora funcionam no navegador também, com a chave que você já cadastrou (ela vem pela sincronização). Funcionam Claude, ChatGPT, Gemini e Grok. O Sabiá não aceita ser chamado pelo navegador; nesse caso, o Órbita avisa.
+
+- **Projetos**: arraste as pastas para mudar a ordem e arraste um projeto até uma pasta para pôr ele lá.
+
+- **Dinheiro**: uma conta fixa paga não conta mais duas vezes no "Saiu". Em "Este mês", cada conta mostra "Paga" ou o botão "Registrar pagamento", que já abre o gasto preenchido.
+
+- **Energia**: o esforço de "parecer normal" (camuflagem) agora entra no saldo do dia: um pouco conta como gasto 1, muito como gasto 2.
+
+- **Textos**: onde valia para todos os aparelhos, "neste computador" virou "neste aparelho".
+
+---
+
+<!-- Abaixo: o que veio na 0.49.0. -->
+
 - **Pastas em Projetos**: crie pastas no estilo 3D do Caderno, com a cor que quiser (como "Produtos da editora"), e ponha cada projeto em uma ou mais delas, pelo botãozinho de pasta ao lado do cartão ou pelo botão "Pastas" dentro do projeto. Todos os projetos continuam aparecendo em "Todos", e apagar uma pasta não apaga nenhum projeto. As pastas também sincronizam entre os aparelhos.
 
 - **"Planejar com a IA"** (no lugar de "Sugerir etapas com IA"): converse com a IA sobre o projeto, por texto ou voz. Ela propõe etapas com subtarefas, que você vê em **Lista** ou em **Mapa**. Peça mudanças ("junta 2 e 3", "falta divulgação"), edite à mão e só crie quando aprovar; dá para desfazer logo depois. A IA lê o nome, o "Sobre o projeto", o "Onde parei" e as etapas que já existem. Por enquanto só no Windows: no navegador a IA ainda não funciona.
