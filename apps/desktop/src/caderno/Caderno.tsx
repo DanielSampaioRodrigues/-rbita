@@ -24,6 +24,8 @@ import { useMeusEstilos } from "./editor/meusEstilos";
 import { PainelLateral, type AbaPainel } from "./PainelLateral";
 import { PainelIa, type Alcance, type ContextoIa } from "./PainelIa";
 import { elementosDoMapa, lerMapa } from "./mapaMental";
+import { PainelBiblioteca } from "./PainelBiblioteca";
+import { cenaParaGuardar, copiarElementos, guardarNaBiblioteca, normalizarObjetos, type DadosBiblioteca, type ItemBiblioteca } from "./biblioteca";
 import { MenuEnviar, type ArquivoPronto } from "../exportar/MenuEnviar";
 import { nomeDeArquivo } from "../exportar/entregar";
 import { medir, type PaginaMedida } from "../exportar/medir";
@@ -1929,6 +1931,46 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       setErro(mensagem(e));
     }
   };
+  // Biblioteca: guardar a seleção ou a página; pôr de volta.
+  const tb = t.biblioteca;
+  const dataCurta = () => new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  const guardarSelecaoNaBiblioteca = async () => {
+    const els = (cenas[selPid]?.elementos ?? []).filter((e) => selIds.includes(e.id));
+    const lim = limitesDe(els, MEDIDA.altura, MEDIDA.largura);
+    if (!els.length || !lim) return;
+    const pad = 8;
+    const caixa = { x: lim.x - pad, y: lim.y - pad, largura: lim.largura + pad * 2, altura: lim.altura + pad * 2 };
+    await guardarNaBiblioteca(tb.nomeSelecao(dataCurta()), "objetos", { cena: cenaParaGuardar(normalizarObjetos(els, caixa)), largura: Math.round(caixa.largura), altura: Math.round(caixa.altura) });
+  };
+  const guardarPaginaNaBiblioteca = async () => {
+    if (!sel) return;
+    const c = cenas[sel.id] ?? cenaVazia();
+    await guardarNaBiblioteca(tb.nomePagina(sel.titulo || t.posicao(indiceSel + 1, paginas.length)), "pagina", { cena: cenaParaGuardar(c), tamanho: sel.tamanho, papel: sel.papel });
+  };
+  const usarDaBiblioteca = async (item: ItemBiblioteca, d: DadosBiblioteca) => {
+    if (item.tipo === "trecho") { if (d.html) porNaPagina(d.html); return; }
+    const c = d.cena ? lerCena(d.cena) : null;
+    if (!c) return;
+    if (item.tipo === "objetos") {
+      if (!sel) return;
+      const med = medidaDe(sel.tamanho);
+      const dx = Math.max(20, Math.round((med.largura - (d.largura ?? 0)) / 2));
+      const novos = copiarElementos(c.elementos, dx, 60);
+      mudarCena(sel.id, { elementos: ajustarConectores([...(cenas[sel.id]?.elementos ?? []), ...novos], MEDIDA) });
+      // Já fica selecionado, para mover para o lugar certo.
+      setFerramenta("selecao"); setSelPid(sel.id); setSelIds(novos.map((e) => e.id));
+      return;
+    }
+    const base = sel ?? paginas[paginas.length - 1];
+    try {
+      const nova = await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem: ordemPara("depois", base), tamanho: d.tamanho || "a4", papel: d.papel ?? papelPadrao(), titulo: "", marcado: false, criadoEm: 0 });
+      await api.salvarCenaCaderno(nova.id, serializarCena({ ...c, elementos: copiarElementos(c.elementos, 0, 0) }));
+      setSelId(nova.id); rolarPara.current = nova.id;
+      await carregar();
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
   const porNaPagina = (html: string) => {
     if (!sel) return;
     const med = medidaDe(sel.tamanho);
@@ -2025,7 +2067,12 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             aoAdicionar={() => setAdicionando(true)} aoVerGrade={() => setVisaoPaginas(true)}
             ia={<PainelIa obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
               aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)} />}
-            biblioteca={<p className="texto-suave caderno-painel-texto">{t.painel.bibliotecaEmBreve}</p>} />
+            biblioteca={<PainelBiblioteca podeGuardarSelecao={!!selPid && selIds.length > 0} aoGuardarSelecao={guardarSelecaoNaBiblioteca} aoGuardarPagina={guardarPaginaNaBiblioteca}
+              aoUsar={(i, d) => void usarDaBiblioteca(i, d)}
+              previa={(i, d, c) => {
+                const pg: PaginaCaderno = { id: i.id, cadernoId: caderno.id, ordem: 0, tamanho: i.tipo === "pagina" ? d.tamanho || "a4" : `custom:${Math.max(CUSTOM_MIN, d.largura ?? 300)}x${Math.max(CUSTOM_MIN, d.altura ?? 300)}`, papel: i.tipo === "pagina" ? d.papel : papelPadrao(), titulo: "", marcado: false, criadoEm: 0 };
+                return <MiniaturaPagina pagina={pg} cena={c} imagemUrl={imagemUrl} largura={i.tipo === "pagina" ? 120 : 200} />;
+              }} />} />
         )}
         {visaoPaginas && !infinito && (
           <VisaoPaginas paginas={paginas} cenas={cenas} imagemUrl={imagemUrl} atualId={selId}

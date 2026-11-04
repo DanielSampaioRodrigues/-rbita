@@ -17,6 +17,7 @@ import { marcarAvisado, precisaAvisar } from "../ia/avisoSensivel";
 import { pareceSensivel } from "../ia/sensivel";
 import { Copy, ImagePlus, Sparkles, X } from "../icones";
 import { textos } from "../textos/pt-BR";
+import { guardarNaBiblioteca } from "./biblioteca";
 
 const t = textos.caderno.ia;
 
@@ -154,6 +155,7 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
               const tmp = document.createElement("div"); tmp.innerHTML = resposta.html;
               void navigator.clipboard?.writeText(tmp.innerText).then(() => recado(t.copiado), () => undefined);
             }}><Copy aria-hidden="true" size="1em" /> {t.copiar}</Button>
+            <Button className="botao pequeno" onPress={() => void guardarNaBiblioteca(resposta.rotulo.slice(0, 60), "trecho", { html: resposta.html }).then(() => recado(textos.caderno.biblioteca.guardado), (e) => recado(textos.caderno.biblioteca.erro(e instanceof Error ? e.message : String(e))))}>{textos.caderno.biblioteca.guardarIa}</Button>
             <Button className="botao pequeno" isDisabled={ocupado} onPress={() => void enviar(resposta.pedido, resposta.rotulo)}>{t.deNovo}</Button>
             <Button className="botao pequeno" onPress={() => setResposta(null)}>{t.descartar}</Button>
           </div>

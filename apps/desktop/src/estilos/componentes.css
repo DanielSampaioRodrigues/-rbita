@@ -2109,3 +2109,12 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .painel-ia-previa table { border-collapse: collapse; }
 .painel-ia-previa :is(th, td) { border: 1px solid #d1d5db; padding: 4px 6px; }
 .caderno-painel:has(.painel-ia) { width: 320px; }
+
+/* ---------- Biblioteca do caderno ---------- */
+.painel-bib { display: grid; gap: 10px; padding: 10px 12px 16px; align-content: start; }
+.painel-bib-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.painel-bib-item { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--cor-borda); border-radius: 10px; }
+.painel-bib-previa { display: flex; justify-content: center; min-height: 40px; }
+.painel-bib-trecho { display: block; width: 100%; padding: 8px; border-radius: 6px; background: #fff; color: #1f2937; font-size: 0.85rem; line-height: 1.4; }
+.painel-bib-nome { margin: 0; overflow-wrap: anywhere; }
+.caderno-painel:has(.painel-bib) { width: 300px; }
