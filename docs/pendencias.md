@@ -23,3 +23,13 @@ Teste da 0.45.1 no iPad, 29/10/2026. Caderno "ficou bom"; pressão da caneta fun
 
 ## Textos
 10. "neste computador" em textos que também aparecem no iPad/celular (ex.: cabeçalho de Ajustes: "ficam salvas neste computador") → "neste aparelho" onde valer para todas as versões.
+
+## Retomar daqui (fim da sessão de 03/11/2026, versão 0.49.0 publicada no Windows e no navegador)
+- Tudo commitado na branch `claude/awesome-allen-kkfoij`. Nada pendente de publicação.
+- Combinado com Dan: **juntar os pedidos e só publicar quando ele mandar** (economiza minutos do Actions). Cada publicação sobe a versão (a próxima é 0.50.0).
+- Ideias para depois (Dan ainda não pediu para fazer):
+  - **IA no navegador** (iPad/celular): hoje nenhuma função de IA funciona lá, nem o "Planejar com a IA".
+  - **Compartilhar um quadro** da Minha organização (ex.: TCC com a Ariana).
+  - Pastas de projetos: **arrastar** para reordenar e arrastar o cartão para dentro da pasta (hoje é por setas e pelo botão "Pastas").
+  - Sincronização: decidir se a chave muda quando a pessoa liga a "proteção extra".
+  - Domínio orbita.arcano3.com.br: parado, esperando o INPI.
