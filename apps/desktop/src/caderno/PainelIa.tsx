@@ -32,7 +32,7 @@ export type Alcance = "pagina" | "caderno";
 export interface ContextoIa { texto: string; imagens: string[] }
 type Acao = keyof typeof t.acoes;
 
-export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPaginaNova, aoCriarImagem, aoMapaMental }: {
+export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPaginaNova, aoCriarImagem, aoMapaMental, aoConferirEscrita, marcasAtivas = 0, aoTirarMarcas }: {
   /** Junta o texto (e, se pedir, a imagem da página) do alcance escolhido. */
   obterContexto: (alcance: Alcance, comImagem: boolean) => Promise<ContextoIa>;
   /** A página atual tem escrita à mão, desenho ou imagem? */
@@ -42,6 +42,11 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
   aoCriarImagem: () => void;
   /** Desenha uma lista aninhada como mapa mental numa página nova. */
   aoMapaMental?: (html: string) => void;
+  /** Corretor da escrita à mão (sublinha as palavras erradas na página). */
+  aoConferirEscrita?: (sensivel: boolean) => Promise<void>;
+  /** Quantas palavras estão sublinhadas agora na página. */
+  marcasAtivas?: number;
+  aoTirarMarcas?: () => void;
 }) {
   const recado = useRecado();
   const [estado, setEstado] = useState<EstadoIa | null>(null);
@@ -51,7 +56,7 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
   const [pedido, setPedido] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<{ pedido: string; rotulo: string } | null>(null);
+  const [aviso, setAviso] = useState<{ continuar: () => void } | null>(null);
   const [resposta, setResposta] = useState<(RespostaIaCaderno & { pedido: string; rotulo: string }) | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
   useEffect(() => { api.estadoIa().then(setEstado, () => setEstado(null)); }, []);
@@ -67,7 +72,7 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
       const imagens = [...ctx.imagens, ...fotos.map((f) => f.url)];
       const sensivel = pareceSensivel(`${texto}\n${ctx.texto}`);
       if (!confirmou && (await precisaAvisar(sensivel, provedor, estado?.bloquearSensivel ?? false))) {
-        setAviso({ pedido: texto, rotulo });
+        setAviso({ continuar: () => void enviar(texto, rotulo, true) });
         return;
       }
       if (confirmou) void marcarAvisado(provedor.id);
@@ -79,8 +84,28 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
       setOcupado(false);
     }
   };
+  const conferir = async (confirmou = false) => {
+    if (!provedor || ocupado || !aoConferirEscrita) return;
+    setErro(null);
+    setOcupado(true);
+    try {
+      const ctx = await obterContexto("pagina", false);
+      const sensivel = pareceSensivel(ctx.texto);
+      if (!confirmou && (await precisaAvisar(sensivel, provedor, estado?.bloquearSensivel ?? false))) {
+        setAviso({ continuar: () => void conferir(true) });
+        return;
+      }
+      if (confirmou) void marcarAvisado(provedor.id);
+      await aoConferirEscrita(sensivel);
+    } catch (e) {
+      setErro(e instanceof ErroOrbita ? e.message : e instanceof Error ? e.message : String(e));
+    } finally {
+      setOcupado(false);
+    }
+  };
   const acao = (a: Acao) => {
     if (a === "imagem") { aoCriarImagem(); return; }
+    if (a === "conferir") { void conferir(); return; }
     void enviar(t.pedidos[a], t.acoes[a]);
   };
   const juntarFotos = async (lista: FileList | null) => {
@@ -104,7 +129,7 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
       {provedor && <p className="texto-suave pequeno">{provedor.local ? t.local : t.vaiPara(provedor.nome, vaiImagem)}</p>}
 
       <div className="painel-ia-acoes" role="group" aria-label={t.acoesTitulo}>
-        {(Object.keys(t.acoes) as Acao[]).map((a) => (
+        {(Object.keys(t.acoes) as Acao[]).filter((a) => a !== "conferir" || (aoConferirEscrita && temDesenho)).map((a) => (
           <Button key={a} className="botao pequeno painel-ia-acao" isDisabled={ocupado} onPress={() => acao(a)}>{t.acoes[a]}</Button>
         ))}
       </div>
@@ -137,11 +162,17 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
           <Aviso tipo="info">{textos.ia.sensivelAvisoCaderno(provedor.nome)}</Aviso>
           <div className="painel-ia-linha">
             <Button className="botao pequeno" onPress={() => setAviso(null)}>{textos.comum.cancelar}</Button>
-            <Button className="botao pequeno principal" onPress={() => { const a = aviso; setAviso(null); void enviar(a.pedido, a.rotulo, true); }}>{t.continuar}</Button>
+            <Button className="botao pequeno principal" onPress={() => { const a = aviso; setAviso(null); a.continuar(); }}>{t.continuar}</Button>
           </div>
         </div>
       )}
       {erro && <Aviso>{erro}</Aviso>}
+      {marcasAtivas > 0 && aoTirarMarcas && (
+        <div className="painel-ia-linha">
+          <span className="texto-suave pequeno">{textos.caderno.correcao.marcas(marcasAtivas)}</span>
+          <Button className="botao pequeno" onPress={aoTirarMarcas}>{textos.caderno.correcao.tirarMarcas}</Button>
+        </div>
+      )}
 
       {resposta && (
         <section className="painel-ia-resposta" aria-label={t.proposta}>

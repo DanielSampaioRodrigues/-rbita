@@ -743,6 +743,9 @@ export interface ProvedorVisivel extends Provedor {
 /** Resposta da IA do caderno: HTML simples (a tela limpa de novo antes de mostrar). */
 export interface RespostaIaCaderno { html: string; provedor: string; local: boolean }
 
+/** Palavra escrita à mão que a IA achou errada (n = número da caixa na imagem). */
+export interface PalavraConferida { n: number; lido: string; sugestoes: string[] }
+
 export interface EstadoIa {
   provedores: ProvedorVisivel[];
   funcoes: Partial<Record<FuncaoIa, string>>;
@@ -1062,6 +1065,8 @@ export interface Api {
   /** `itens`: a lista atual em JSON, no formato que a IA usa (com o nome do projeto). */
   ajustarOrganizacaoIa(texto: string, itens: string, mudanca: string, sensivel: boolean): Promise<Organizacao>;
   /** Revisa ortografia e pontuação. Não grava nada. */
+  /** Corretor da escrita à mão: imagem da página com as palavras numeradas. */
+  conferirEscritaIa(imagem: string, quantas: number, sensivel: boolean): Promise<PalavraConferida[]>;
   /** IA do caderno: pedido livre sobre a página (texto e imagens em data: URL). */
   iaCaderno(pedido: string, contexto: string, imagens: string[], sensivel: boolean): Promise<RespostaIaCaderno>;
   revisarTextoIa(texto: string, sensivel: boolean, modo?: ModoReescrita, instrucao?: string): Promise<string>;
@@ -1355,6 +1360,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   ajustarOrganizacaoIa: (texto, itens, mudanca, sensivel) => chamar("ajustar_organizacao_ia", { texto, itens, mudanca, sensivel }),
   revisarTextoIa: (texto, sensivel, modo, instrucao) => chamar("revisar_texto_ia", { texto, sensivel, modo: modo ?? null, instrucao: instrucao ?? null }),
   iaCaderno: (pedido, contexto, imagens, sensivel) => chamar("ia_caderno", { pedido, contexto, imagens, sensivel }),
+  conferirEscritaIa: (imagem, quantas, sensivel) => chamar("conferir_escrita_ia", { imagem, quantas, sensivel }),
   ditadoEstado: () => chamar("ditado_estado"),
   ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
   ditadoCancelarDownload: () => chamar("ditado_cancelar_download"),
@@ -2861,7 +2867,7 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "iaCaderno" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
+function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "iaCaderno" | "conferirEscritaIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, modelos: {}, bloquearSensivel: false };
   if (comClaude) {
@@ -2930,6 +2936,11 @@ ${JSON.stringify(tema)}`;
       await espera(1500);
       const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2b3a"/><stop offset="1" stop-color="#2f4a3a"/></linearGradient></defs><rect width="1536" height="1024" fill="url(#g)"/><path d="M0 800 L200 520 L400 800 Z M300 820 L560 460 L820 820 Z M700 830 L980 500 L1260 830 Z M1100 820 L1320 560 L1536 820 Z" fill="#183025"/><circle cx="1200" cy="200" r="60" fill="#d8e2c8" opacity="0.8"/></svg>';
       return `data:image/svg+xml;base64,${btoa(svg)}`;
+    },
+    // Simulação do corretor: a primeira palavra sempre "errada".
+    conferirEscritaIa: async (_imagem, quantas) => {
+      await espera(600);
+      return quantas ? [{ n: 1, lido: "neuronio", sugestoes: ["neurônio", "neurônios"] }] : [];
     },
     // Simulação da IA do caderno: devolve uma proposta de exemplo com o que veio.
     iaCaderno: async (pedido, contexto, imagens, sensivel) => {

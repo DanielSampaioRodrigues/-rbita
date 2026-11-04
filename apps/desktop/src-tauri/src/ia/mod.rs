@@ -14,6 +14,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod caderno;
 pub mod cliente;
+pub mod escrita;
 pub mod fluxo;
 pub mod organizar;
 pub mod planejar;

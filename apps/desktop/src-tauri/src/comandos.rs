@@ -674,6 +674,13 @@ pub async fn ia_caderno(estado: State<'_, Estado>, pedido: String, contexto: Str
     rodar_ia(&estado, "ia_caderno", json!({ "pedido": pedido, "contexto": contexto, "imagens": imagens, "sensivel": sensivel })).await
 }
 
+/// Corretor da escrita à mão: a imagem da página com as palavras numeradas; devolve
+/// as erradas com sugestões. Não grava nada.
+#[tauri::command]
+pub async fn conferir_escrita_ia(estado: State<'_, Estado>, imagem: String, quantas: usize, sensivel: bool) -> Result<Value, Erro> {
+    rodar_ia(&estado, "conferir_escrita_ia", json!({ "imagem": imagem, "quantas": quantas, "sensivel": sensivel })).await
+}
+
 // ---------- Ditado (voz para texto, no computador) ----------
 
 #[tauri::command]

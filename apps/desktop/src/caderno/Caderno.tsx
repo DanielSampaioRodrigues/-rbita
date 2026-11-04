@@ -25,6 +25,8 @@ import { PainelLateral, type AbaPainel } from "./PainelLateral";
 import { PainelIa, type Alcance, type ContextoIa } from "./PainelIa";
 import { elementosDoMapa, lerMapa } from "./mapaMental";
 import { PainelBiblioteca } from "./PainelBiblioteca";
+import { CamadaCorrecao, type MarcaEscrita } from "./CorrecaoEscrita";
+import { imagemComCaixas, palavrasDaPagina } from "./escrita";
 import { cenaParaGuardar, copiarElementos, guardarNaBiblioteca, normalizarObjetos, type DadosBiblioteca, type ItemBiblioteca } from "./biblioteca";
 import { MenuEnviar, type ArquivoPronto } from "../exportar/MenuEnviar";
 import { nomeDeArquivo } from "../exportar/entregar";
@@ -649,7 +651,8 @@ const extensoesCaixa = extensoesBase();
 
 /** Fontes oferecidas na caixa ("" = padrão do app). */
 // Padrão do tema primeiro; depois todas as fontes do app (as mesmas da Aparência).
-const fonteCss = (f?: string) => (f && f in FONTES ? FONTES[f as keyof typeof FONTES].css : "var(--fonte-texto)");
+/** Fonte da caixa de texto. "cursiva": a da palavra corrigida pelo corretor da escrita à mão. */
+const fonteCss = (f?: string) => (f === "cursiva" ? '"Caveat Variable", Caveat, cursive' : f && f in FONTES ? FONTES[f as keyof typeof FONTES].css : "var(--fonte-texto)");
 const ALINHAR_CSS: Record<AlinharTexto, "left" | "center" | "right"> = { esquerda: "left", centro: "center", direita: "right" };
 
 /** Lista vazia estável (evita re-render das páginas sem seleção). */
@@ -1971,6 +1974,35 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       setErro(mensagem(e));
     }
   };
+  // Corretor da escrita à mão: as palavras erradas ficam sublinhadas na página.
+  const [correcao, setCorrecao] = useState<{ pid: string; marcas: MarcaEscrita[] } | null>(null);
+  const conferirEscrita = async (sensivel: boolean) => {
+    if (!sel) return;
+    const palavras = palavrasDaPagina(cenas[sel.id]?.elementos ?? []);
+    if (!palavras.length) { recado(t.correcao.semEscrita); return; }
+    if (palavras.length > 400) { recado(t.correcao.demais); return; }
+    const [medida] = await medirParaExportar([sel.id]);
+    const { gerarPng } = await import("../exportar/imagem");
+    const esc = 1.5;
+    const imagem = await imagemComCaixas(await gerarPng(medida, esc), palavras, esc);
+    const r = await api.conferirEscritaIa(imagem, palavras.length, sensivel);
+    const marcas = r.flatMap((c) => { const p = palavras[c.n - 1]; return p ? [{ ...p, lido: c.lido, sugestoes: c.sugestoes }] : []; });
+    setCorrecao({ pid: sel.id, marcas });
+    recado(marcas.length ? t.correcao.achou(marcas.length) : t.correcao.nada);
+  };
+  const corrigirPalavra = (m: MarcaEscrita, palavra: string) => {
+    if (!correcao) return;
+    const pid = correcao.pid;
+    // A letra cursiva (Caveat) tem o "miolo" baixo: um tamanho um pouco maior que a altura da palavra escrita.
+    const tamanho = Math.max(14, Math.round(m.h * 1.35));
+    const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const novo: Texto = { tipo: "texto", id: crypto.randomUUID(), x: Math.round(m.x), y: Math.round(m.y - tamanho * 0.25), largura: Math.round(Math.max(m.w + 24, palavra.length * tamanho * 0.45)), texto: `<p>${esc(palavra)}</p>`, cor: m.cor, tamanho, fonte: "cursiva" };
+    mudarCena(pid, { elementos: [...(cenas[pid]?.elementos ?? []).filter((e) => !m.ids.includes(e.id)), novo] });
+    setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n) } : c));
+  };
+  // As marcas só valem enquanto os traços da palavra continuam na página.
+  const marcasVivas = correcao ? correcao.marcas.filter((m) => { const ids = new Set((cenas[correcao.pid]?.elementos ?? []).map((e) => e.id)); return m.ids.every((id) => ids.has(id)); }) : [];
+
   const porNaPagina = (html: string) => {
     if (!sel) return;
     const med = medidaDe(sel.tamanho);
@@ -2066,7 +2098,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             aoIr={(id) => { setVisaoPaginas(false); requestAnimationFrame(() => irPara(id)); }}
             aoAdicionar={() => setAdicionando(true)} aoVerGrade={() => setVisaoPaginas(true)}
             ia={<PainelIa obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
-              aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)} />}
+              aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)}
+              aoConferirEscrita={conferirEscrita} marcasAtivas={marcasVivas.length} aoTirarMarcas={() => setCorrecao(null)} />}
             biblioteca={<PainelBiblioteca podeGuardarSelecao={!!selPid && selIds.length > 0} aoGuardarSelecao={guardarSelecaoNaBiblioteca} aoGuardarPagina={guardarPaginaNaBiblioteca}
               aoUsar={(i, d) => void usarDaBiblioteca(i, d)}
               previa={(i, d, c) => {
@@ -2088,6 +2121,10 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             <>
               {paginas.map((p, i) => (
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId}
+                  sobre={correcao?.pid === p.id && marcasVivas.length ? (esc) => (
+                    <CamadaCorrecao marcas={marcasVivas} escala={esc} largura={medidaDe(p.tamanho).largura} altura={medidaDe(p.tamanho).altura}
+                      aoEscolher={corrigirPalavra} aoIgnorar={(m) => setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n) } : c))} />
+                  ) : undefined}
                   cena={cenas[p.id] ?? CENA_VAZIA} ferramenta={ferramenta} cor={cor} ajuste={ajustes[fTraco]} modeloPincel={modeloPincel}
                   forma={ajusteForma} editandoTexto={editandoTexto} selecionados={p.id === selPid ? selIds : vazio} imagemUrl={imagemUrl}
                   soCaneta={soCanetaEfetivo} multiToque={multiToque} aoCaneta={marcarCaneta} opcoes={opcoes}
@@ -2470,7 +2507,7 @@ function AdicionarPagina({ atual, total, aoAdicionar, aoCancelar }: {
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarTexto, cena, ferramenta, cor, ajuste, modeloPincel, forma, editandoTexto, selecionados, imagemUrl, soCaneta, multiToque, aoCaneta, opcoes, larguraTela, bloco, acrescentar, negritoTexto, slotTexto, aoTamTexto, regua, unidadeRegua, aoMudarRegua, aoUnidadeRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoNivelSelecao, aoAgrupar, aoDesagrupar, aoFimSelecao, aoApagarSelecao, aoEditarTexto }: {
+function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarTexto, cena, ferramenta, cor, ajuste, modeloPincel, forma, editandoTexto, selecionados, imagemUrl, soCaneta, multiToque, aoCaneta, opcoes, larguraTela, bloco, acrescentar, negritoTexto, slotTexto, aoTamTexto, regua, unidadeRegua, aoMudarRegua, aoUnidadeRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoNivelSelecao, aoAgrupar, aoDesagrupar, aoFimSelecao, aoApagarSelecao, aoEditarTexto, sobre }: {
   id: string; pagina: PaginaCaderno; numero?: number; selecionada?: boolean;
   /** Página de texto: o texto digitado mudou; e "continuar numa página nova". */
   aoDocumento: (html: string) => void; aoContinuarTexto: () => void;
@@ -2493,6 +2530,8 @@ function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarT
   aoRotacionarSelecao: (ids: string[], ax: number, ay: number, graus: number) => void; aoOrdenarSelecao: (frente: boolean) => void;
   aoNivelSelecao: (frente: boolean) => void; aoAgrupar: () => void; aoDesagrupar: () => void;
   aoFimSelecao: () => void; aoApagarSelecao: () => void; aoEditarTexto: (id: string) => void;
+  /** Camada por cima da página (o corretor da escrita à mão), com a escala da tela. */
+  sobre?: (escala: number) => React.ReactNode;
 }) {
   const med = medidaDe(pagina.tamanho);
   const areaRef = useRef<HTMLDivElement>(null);
@@ -2530,6 +2569,7 @@ function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarT
           aoSelecionar={aoSelecionarLaco} aoMover={aoMoverSelecao} aoEscalar={aoEscalarSelecao} aoRotacionar={aoRotacionarSelecao} aoOrdenar={aoOrdenarSelecao} aoNivel={aoNivelSelecao}
           aoAgrupar={aoAgrupar} aoDesagrupar={aoDesagrupar} aoFim={aoFimSelecao} aoApagar={aoApagarSelecao} aoEditarTexto={aoEditarTexto} />
         {regua && <CamadaRegua regua={regua} unidade={unidadeRegua} escala={escala} largura={med.largura} altura={med.altura} aoMudar={aoMudarRegua} aoUnidade={aoUnidadeRegua} />}
+        {sobre && escala > 0 && sobre(escala)}
       </div>
     </section>
   );

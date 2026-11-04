@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::protocolo::{self, FormatoImagem, Imagem, Pedido};
-use super::{caderno, organizar, planejar, revisar, tema, Escolhido, Provedor, TipoProvedor};
+use super::{caderno, escrita, organizar, planejar, revisar, tema, Escolhido, Provedor, TipoProvedor};
 use crate::erro::Erro;
 
 /// As ordens que passam por aqui (as mesmas, com os mesmos argumentos, no Windows e no navegador).
@@ -26,6 +26,7 @@ pub const COMANDOS: &[&str] = &[
     "ajustar_organizacao_ia",
     "revisar_texto_ia",
     "ia_caderno",
+    "conferir_escrita_ia",
     "gerar_tema_ia",
     "desenhar_icones_ia",
     "modelos_imagem_ia",
@@ -249,6 +250,39 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
                 return Err(protocolo::erro("resposta", "A IA não respondeu nada. Tente de novo ou pedir de outro jeito."));
             }
             pronto(RespostaCaderno { html, provedor: e.provedor.nome.clone(), local: e.provedor.local() })
+        }
+
+        // Corretor da escrita à mão: a imagem da página com as palavras numeradas.
+        // Devolve só as palavras erradas, com sugestões.
+        "conferir_escrita_ia" => {
+            #[derive(Deserialize)]
+            struct A {
+                imagem: String,
+                quantas: usize,
+                sensivel: bool,
+            }
+            let a: A = ler_args(comando, args)?;
+            if a.quantas == 0 {
+                return Err(Erro::TextoVazio);
+            }
+            if a.quantas > escrita::MAXIMO_DE_PALAVRAS {
+                return Err(protocolo::erro("grande", "A página tem palavras demais para conferir de uma vez. Confira uma parte (selecione com o laço)."));
+            }
+            if !caderno::imagem_valida(&a.imagem) {
+                return Err(protocolo::erro("grande", "A imagem da página ficou grande demais para enviar."));
+            }
+            let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
+            let resposta = match r {
+                None => {
+                    let imagens = [a.imagem.clone()];
+                    return pedir(protocolo::pedido_completar_com_imagens(&e, escrita::SISTEMA, &escrita::montar(a.quantas), &imagens), 0);
+                }
+                Some(r) => protocolo::ler_completar(e.provedor.tipo, &protocolo::ler_resposta(r.situacao, &r.corpo)?)?,
+            };
+            match escrita::ler(&resposta, a.quantas) {
+                Some(palavras) => pronto(palavras),
+                None => Err(protocolo::erro("resposta", "A IA não conseguiu conferir a escrita desta vez. Tente de novo.")),
+            }
         }
 
         // A IA escreve um tema (JSON). A tela confere e mostra no editor.
