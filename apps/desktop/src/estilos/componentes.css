@@ -1774,9 +1774,7 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .seletor-cor-nativo::-moz-color-swatch { border-radius: 50%; }
 .seletor-cor-codigo { width: 7.5rem; font-family: var(--fonte-mono, monospace); }
 
-/* O contorno nas letras (Aparência) não vale dentro das páginas do caderno: lá o
-   texto é da pessoa, e o contorno parecia uma marcação de caneta em volta. */
-:root[data-contorno="true"] :is(.caderno-folha-area, .caderno-folha-area *, .caderno-mini, .caderno-mini *) { text-shadow: none; }
+/* O contorno nas letras (Aparência) não vale no papel: ver "O papel..." em base.css. */
 /* Caixa de texto sendo desenhada (arrastar para escolher a largura). */
 .caderno-texto-rascunho { position: absolute; border: 1.5px dashed var(--cor-destaque); border-radius: 3px; pointer-events: none; background: color-mix(in srgb, var(--cor-destaque) 6%, transparent); }
 

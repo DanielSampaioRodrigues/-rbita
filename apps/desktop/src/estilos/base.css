@@ -174,12 +174,18 @@ svg.icone { filter: var(--filtro-icone, none); }
 }
 
 /* Textos soltos (fora das caixas): uma faixa translúcida da cor do fundo atrás, como marca-texto. */
-:root[data-contorno="true"] .conteudo :is(h1, h2, h3, p, .link):not(.cartao *, .cartao, .janela *, .botao *, .previa-tema *) {
+:root[data-contorno="true"] .conteudo :is(h1, h2, h3, p, .link):not(.cartao *, .cartao, .janela *, .botao *, .previa-tema *, .caderno-folha-area *, .caderno-mini *, .documento-folhas *, .doc-conteudo *, .tiptap *, .leitor-pagina *, .painel-ia-previa *, .painel-bib-trecho *, .fonte-ver-trecho *) {
   width: fit-content;
   background: rgb(var(--cor-fundo-rgb) / 0.72);
   box-shadow: 0 0 0 0.3em rgb(var(--cor-fundo-rgb) / 0.72);
   border-radius: var(--canto-pequeno);
 }
+
+/* O papel (caderno, quadro, documento de texto, miniaturas, prévias de texto e o leitor)
+   nunca leva o contorno: já tem o fundo próprio, e o texto é da pessoa. Sem isto, cada
+   parágrafo ganhava uma faixa escura com sombra em volta das letras (relato de Dan). */
+:root[data-contorno="true"] :is(.caderno-folha-area, .caderno-mini, .documento-folhas, .doc-conteudo, .tiptap, .leitor-pagina, .painel-ia-previa, .painel-bib-trecho, .fonte-ver-trecho),
+:root[data-contorno="true"] :is(.caderno-folha-area, .caderno-mini, .documento-folhas, .doc-conteudo, .tiptap, .leitor-pagina, .painel-ia-previa, .painel-bib-trecho, .fonte-ver-trecho) * { text-shadow: none; }
 
 /* A prévia do editor mostra o tema como ele é, sem o contorno do app. */
 :root[data-contorno="true"] :is(.previa-tema, .previa-tema *) { text-shadow: none; }
