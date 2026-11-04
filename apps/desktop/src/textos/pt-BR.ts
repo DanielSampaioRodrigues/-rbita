@@ -3004,9 +3004,9 @@ export const textos = {
           ? `Proposta nova: ${etapas === 1 ? "1 passo" : `${etapas} passos`}.`
           : `Proposta nova: ${etapas === 1 ? "1 etapa" : `${etapas} etapas`} e ${subtarefas === 1 ? "1 subtarefa" : `${subtarefas} subtarefas`}.`,
       sensivel: (p: string) =>
-        `Parece que há dados de saúde ou terapia no projeto ou na conversa. Se continuar, eles vão para ${p}, fora do aparelho.`,
+        `Parece haver dados de saúde ou terapia aqui. Com a IA, eles vão para ${p}, fora do aparelho. Só aviso desta vez.`,
       sensivelBloqueado: "Parece que há dados de saúde ou terapia no projeto ou na conversa. Você bloqueou o envio desses dados para fora do aparelho, então esta conversa não vai para a IA.",
-      enviarMesmoAssim: "Enviar mesmo assim",
+      enviarMesmoAssim: "Entendi, continuar",
       proposta: "Proposta",
       lista: "Lista",
       mapa: "Mapa",
@@ -3050,10 +3050,10 @@ export const textos = {
         ? `Separar com IA: a separação é feita no seu computador, com ${p}.`
         : `Separar com IA: o texto vai para ${p}, junto com a data de hoje e os nomes dos seus projetos ativos. Você confere tudo antes de guardar.`,
     sensivelAviso: (p: string) =>
-      `O texto parece falar de saúde ou terapia. Se separar com IA, ele vai para ${p}, fora do seu aparelho.`,
+      `O texto parece ter dados de saúde ou terapia. Para separar com IA, ele vai para ${p}, fora do aparelho. Só aviso desta vez.`,
     sensivelBloqueado:
       "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do aparelho. Dá para guardar como ideia, ou escolher uma IA local para a conversa em Ajustes.",
-    enviarMesmoAssim: "Enviar mesmo assim",
+    enviarMesmoAssim: "Entendi, continuar",
     guardarComoIdeia: "Guardar como ideia, sem IA",
     separando: (p: string) => `Separando com ${p}...`,
     conferirTitulo: "Confira antes de guardar",
@@ -3063,7 +3063,7 @@ export const textos = {
     ajustando: (p: string) => `Pedindo a mudança a ${p}...`,
     pedidosFeitos: "O que você já pediu",
     listaRefeita: "A IA refez a lista. Confira de novo antes de guardar.",
-    mudancaSensivel: (p: string) => `O pedido parece falar de saúde ou terapia. Ele vai para ${p}, fora do seu aparelho.`,
+    mudancaSensivel: (p: string) => `O pedido parece ter dados de saúde ou terapia. Ele vai para ${p}, fora do aparelho. Só aviso desta vez.`,
     conferirAjuda: "Marque o que quer guardar. Dá para mudar o texto, o tipo, o projeto e o dia.",
     tipos: { ideia: "Ideia", tarefa: "Tarefa", compromisso: "Compromisso" },
     tipoDe: (n: number) => `Tipo do item ${n}`,
@@ -3116,9 +3116,9 @@ export const textos = {
     usarRevisao: "Usar o revisado",
     manter: "Manter como está",
     semMudanca: "A IA não encontrou nada para corrigir.",
-    sensivelAviso: (p: string) => `O texto parece falar de saúde ou terapia. Para revisar ou reescrever, ele vai para ${p}, fora do seu aparelho.`,
+    sensivelAviso: (p: string) => `O texto parece ter dados de saúde ou terapia. Para revisar ou reescrever, ele vai para ${p}, fora do aparelho. Só aviso desta vez.`,
     sensivelBloqueado: "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do aparelho.",
-    revisarMesmoAssim: "Enviar mesmo assim",
+    revisarMesmoAssim: "Entendi, continuar",
   },
   rico: {
     barra: (campo: string) => `Formatação de ${campo}`,

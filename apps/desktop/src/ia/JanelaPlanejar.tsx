@@ -7,6 +7,7 @@ import { Janela } from "../componentes/Janela";
 import { avisarMudanca } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { acrescentar, apagarLinha, comoLinhas, contar, MAXIMO_DE_ETAPAS, MAXIMO_DE_SUBTAREFAS, MAXIMO_DO_TEXTO, mudarLinha, proposta, type LinhaPlano } from "./planoEstado";
+import { marcarAvisado, precisaAvisar } from "./avisoSensivel";
 import { pareceSensivel } from "./sensivel";
 
 const t = textos.ia.plano;
@@ -139,17 +140,18 @@ export function JanelaPlanejar({
     }
   };
 
-  const enviar = (confirmou = false) => {
+  const enviar = async (confirmou = false) => {
     if (pedindo) return;
     const nova = texto.trim();
     if (!nova && linhas.length > 0) return;
     const conversa: FalaPlano[] = nova ? [...falas, { papel: "pessoa", texto: nova.slice(0, 2000) }] : falas;
     const sensivel = temSensivel(conversa);
-    if (sensivel && !provedor.local && !confirmouSensivel && !confirmou) {
+    if (!confirmouSensivel && !confirmou && (await precisaAvisar(sensivel, provedor, bloqueiaSensivel))) {
       setAviso(bloqueiaSensivel ? "bloqueado" : "sensivel");
       return;
     }
-    if (confirmou) setConfirmouSensivel(true);
+    if (confirmou) { setConfirmouSensivel(true); void marcarAvisado(provedor.id); }
+    setAviso(null);
     setFalas(conversa);
     setTexto("");
     focarCampo();

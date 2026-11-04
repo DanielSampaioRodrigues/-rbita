@@ -6,6 +6,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
 import { avisarMudanca } from "../dados";
 import { ConferirItens, comoLinhas, faltando, guardarLinhas, type Linha } from "../ia/ConferirItens";
+import { marcarAvisado, precisaAvisar } from "../ia/avisoSensivel";
 import { pareceSensivel } from "../ia/sensivel";
 import { textos } from "../textos/pt-BR";
 import { useRecado } from "./Recado";
@@ -76,7 +77,8 @@ export function Captura({ aberta, aoFechar }: { aberta: boolean; aoFechar: () =>
   const separar = async (confirmouSensivel = false) => {
     if (!texto.trim() || !provedor) return;
     const sensivel = pareceSensivel(texto);
-    if (sensivel && !provedor.local && !confirmouSensivel) return setFase(bloqueiaSensivel ? "bloqueado" : "sensivel");
+    if (confirmouSensivel) void marcarAvisado(provedor.id);
+    else if (await precisaAvisar(sensivel, provedor, bloqueiaSensivel)) return setFase(bloqueiaSensivel ? "bloqueado" : "sensivel");
     const este = ++pedidoAtual.current;
     setErro(null);
     setFase("separando");
@@ -98,7 +100,8 @@ export function Captura({ aberta, aoFechar }: { aberta: boolean; aoFechar: () =>
     if (!mudanca.trim() || !provedor) return;
     const sensivel = pareceSensivel(`${texto}\n${mudanca}`);
     // O texto já foi conferido ao separar; aqui só avisa se o pedido trouxer algo sensível novo.
-    if (pareceSensivel(mudanca) && !pareceSensivel(texto) && !provedor.local && !confirmouSensivel)
+    if (confirmouSensivel) void marcarAvisado(provedor.id);
+    else if (pareceSensivel(mudanca) && !pareceSensivel(texto) && (await precisaAvisar(true, provedor, bloqueiaSensivel)))
       return setAvisoMudanca(bloqueiaSensivel ? "bloqueado" : "sensivel");
     setAvisoMudanca(null);
     const este = ++pedidoAtual.current;

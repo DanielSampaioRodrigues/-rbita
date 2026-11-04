@@ -3,6 +3,7 @@ import { Button } from "react-aria-components";
 import { api, ErroOrbita, type ModoReescrita, type ProvedorVisivel } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
+import { marcarAvisado, precisaAvisar } from "../ia/avisoSensivel";
 import { pareceSensivel } from "../ia/sensivel";
 import { textos } from "../textos/pt-BR";
 
@@ -52,8 +53,12 @@ export function JanelaRevisao({
     pedidoAtual.current++;
     if (!pedido) return;
     const sensivel = pareceSensivel(pedido.texto) && !revisor.local;
-    if (sensivel) setFase({ tipo: bloquearSensivel ? "bloqueado" : "aviso" });
-    else void revisar(false);
+    const este = pedidoAtual.current;
+    void precisaAvisar(sensivel, revisor, bloquearSensivel).then((avisar) => {
+      if (este !== pedidoAtual.current) return;
+      if (avisar) setFase({ tipo: bloquearSensivel ? "bloqueado" : "aviso" });
+      else void revisar(sensivel);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedido]);
 
@@ -70,7 +75,7 @@ export function JanelaRevisao({
           <Aviso tipo="info">{fase.tipo === "aviso" ? t.sensivelAviso(revisor.nome) : t.sensivelBloqueado}</Aviso>
           <div className="janela-acoes">
             <Button className="botao" onPress={aoFechar} autoFocus>{textos.comum.cancelar}</Button>
-            {fase.tipo === "aviso" && <Button className="botao" onPress={() => revisar(true)}>{t.revisarMesmoAssim}</Button>}
+            {fase.tipo === "aviso" && <Button className="botao" onPress={() => { void marcarAvisado(revisor.id); void revisar(true); }}>{t.revisarMesmoAssim}</Button>}
           </div>
         </>
       )}
