@@ -1,11 +1,11 @@
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
-import { Button, Form, Label, Menu, MenuItem, MenuTrigger, Popover, Radio, RadioGroup } from "react-aria-components";
+import { Button, Dialog, DialogTrigger, Form, Label, Menu, MenuItem, MenuTrigger, Popover, Radio, RadioGroup } from "react-aria-components";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { caminhoDeForma, cenaVazia, desenhoDeTraco, MODELOS_PINCEL, novaSemente, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type ModeloPincel, type Papel, type Ponto, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
+import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PINCEL, novaSemente, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type ModeloPincel, type Papel, type Ponto, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
-import { ICONES_FORMA, IconeAgrupar, IconeAlca, IconeCadeado, IconeCadeadoAberto, IconeCursor, IconeDesagrupar, IconeEngrenagem, IconeNivelFrente, IconeNivelTras, IconeSeta, IconeTudoFrente, IconeTudoTras } from "./iconesCaderno";
+import { ICONES_FORMA, IconeAgrupar, IconeAlca, IconeLaser, IconeCadeado, IconeCadeadoAberto, IconeCursor, IconeDesagrupar, IconeEngrenagem, IconeNivelFrente, IconeNivelTras, IconeSeta, IconeTudoFrente, IconeTudoTras } from "./iconesCaderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
 import { reduzirImagem } from "../fundo";
 import { useReescrever } from "../ia/Reescrever";
@@ -15,7 +15,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, Eye, FilePlus, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, Italic, Lasso, LayoutGrid, List, ListOrdered, Palette, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Sticker, StickyNote, Trash2, Type, Underline, Undo2, Wand2, X } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, Italic, LayoutGrid, List, ListOrdered, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Underline, Undo2, Wand2, X } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { CapaEditor, RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
@@ -479,7 +479,38 @@ function lerCorBarra(): string {
 
 /** Ferramentas da barra: as de traço (do motor) mais texto, nota adesiva,
  *  formas, seta, o laço e a seleção (cursor). */
-type FerramentaUI = Ferramenta | "texto" | "nota" | "forma" | "seta" | "laco" | "selecao";
+type FerramentaUI = Ferramenta | "texto" | "nota" | "forma" | "seta" | "laco" | "selecao" | "laser";
+
+/** Opções das ferramentas (barra de contexto), guardadas no aparelho. */
+interface OpcoesCaderno {
+  /** Desenhar e segurar parado no fim: o traço vira forma perfeita. */
+  segurarForma: boolean;
+  /** Marca-texto sai sempre reto (do começo ao fim do traço). */
+  marcaReto: boolean;
+  /** A borracha só apaga o marca-texto. */
+  borrachaSoMarca: boolean;
+  /** Depois de apagar, volta para a ferramenta de antes. */
+  borrachaVolta: boolean;
+  corLaser: string;
+}
+const CORES_LASER = ["#ef4444", "#2563eb", "#16a34a", "#f59e0b"];
+const OPCOES_PADRAO: OpcoesCaderno = { segurarForma: true, marcaReto: false, borrachaSoMarca: false, borrachaVolta: false, corLaser: CORES_LASER[0] };
+function lerOpcoes(): OpcoesCaderno {
+  try { const s = localStorage.getItem("caderno-opcoes"); if (s) return { ...OPCOES_PADRAO, ...JSON.parse(s) }; } catch { /* padrão */ }
+  return OPCOES_PADRAO;
+}
+/** Três espessuras salvas por ferramenta (fina, média, grossa), em px de referência. */
+const ESPESSURAS_PADRAO: Record<Ferramenta, number[]> = {
+  caneta: [2, 3.5, 6], lapis: [1.6, 2.6, 4.5], pincel: [4, 7, 13], marcatexto: [10, 16, 26], borracha: [10, 18, 36],
+};
+const ESPESSURAS_FORMA = [2, 3, 6];
+function lerEspessuras(): Record<string, number[]> {
+  try {
+    const s = localStorage.getItem("caderno-espessuras");
+    if (s) { const v = JSON.parse(s); if (v && typeof v === "object") return { ...ESPESSURAS_PADRAO, forma: ESPESSURAS_FORMA, ...v }; }
+  } catch { /* padrão */ }
+  return { ...ESPESSURAS_PADRAO, forma: ESPESSURAS_FORMA };
+}
 const FERRAMENTAS_TRACO: FerramentaUI[] = ["caneta", "lapis", "pincel", "marcatexto", "borracha"];
 /** Modo da borracha: come só o pedaço tocado, ou apaga o objeto inteiro. */
 type ModoBorracha = "pedaco" | "objeto";
@@ -676,6 +707,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   };
   const [ajusteForma, setAjusteForma] = useState<AjusteForma>(lerAjusteForma);
   const mudarForma = (patch: Partial<AjusteForma>) => {
+    if (patch.espessura != null && Math.abs(patch.espessura - ajusteForma.espessura) > 0.01) trocarEspessuraSalva("forma", ajusteForma.espessura, patch.espessura);
     setAjusteForma((a) => {
       const novo = { ...a, ...patch };
       try { localStorage.setItem("caderno-forma", JSON.stringify(novo)); } catch { /* ignora */ }
@@ -722,6 +754,26 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     });
   };
   const [ajustes, setAjustes] = useState<Record<Ferramenta, AjusteTraco>>(lerAjustes);
+  const [opcoes, setOpcoes] = useState<OpcoesCaderno>(lerOpcoes);
+  const mudarOpcoes = (p: Partial<OpcoesCaderno>) => setOpcoes((o) => { const n = { ...o, ...p }; gravarPref("caderno-opcoes", JSON.stringify(n)); return n; });
+  const [espessuras, setEspessuras] = useState<Record<string, number[]>>(lerEspessuras);
+  /** Troca uma das três espessuras salvas: a mais perto do valor antigo vira o novo. */
+  const trocarEspessuraSalva = (f: string, antigo: number, novo: number) => setEspessuras((e) => {
+    const lista = [...(e[f] ?? [])];
+    if (!lista.length || lista.some((v) => Math.abs(v - novo) < 0.01)) return e;
+    let i = 0;
+    lista.forEach((v, k) => { if (Math.abs(v - antigo) < Math.abs(lista[i] - antigo)) i = k; });
+    lista[i] = novo;
+    const n = { ...e, [f]: lista };
+    gravarPref("caderno-espessuras", JSON.stringify(n));
+    return n;
+  });
+  // A ferramenta de antes da borracha (para "voltar à ferramenta" depois de apagar).
+  const antesDaBorracha = useRef<FerramentaUI>("caneta");
+  const escolherFerramenta = (f: FerramentaUI) => {
+    if (f === "borracha" && ferramenta !== "borracha") antesDaBorracha.current = ferramenta;
+    setFerramenta(f);
+  };
   const [ajustando, setAjustando] = useState<FerramentaUI | null>(null);
   const [posBarra, setPosBarra] = useState<PosBarra>(() => {
     try { const p = localStorage.getItem("caderno-pos-barra") as PosBarra; if (p && POS_BARRA.includes(p)) return p; } catch { /* padrão */ }
@@ -755,7 +807,11 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     setCorBarra(c);
     try { if (c) localStorage.setItem("caderno-cor-barra", c); else localStorage.removeItem("caderno-cor-barra"); } catch { /* ignora */ }
   };
-  const mudarAjuste = (f: Ferramenta, patch: Partial<AjusteTraco>) =>
+  const mudarAjuste = (f: Ferramenta, patch: Partial<AjusteTraco>) => {
+    if (patch.tamanho != null && Math.abs(patch.tamanho - ajustes[f].tamanho) > 0.01) trocarEspessuraSalva(f, ajustes[f].tamanho, patch.tamanho);
+    gravarAjuste(f, patch);
+  };
+  const gravarAjuste = (f: Ferramenta, patch: Partial<AjusteTraco>) =>
     setAjustes((a) => {
       const novo = { ...a, [f]: { ...a[f], ...patch } };
       try { localStorage.setItem("caderno-ajustes-traco", JSON.stringify(novo)); } catch { /* ignora */ }
@@ -835,6 +891,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       const novos: Elemento[] = [];
       let mudou = false;
       for (const el of c.elementos) {
+        // "Só o marca-texto": o resto fica como está.
+        if (opcoes.borrachaSoMarca && !(el.tipo === "traco" && el.ferramenta === "marcatexto")) { novos.push(el); continue; }
         if (modoBorracha === "objeto") {
           if (elementoNoPonto(el, x, y, raio, MEDIDA)) mudou = true; else novos.push(el);
           continue;
@@ -855,7 +913,10 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       agendarSalvarCena(pid, nova);
       return { ...m, [pid]: nova };
     });
-  const apagarParcialFim = (pid: string) => registrarCena(pid, cenasRef.current[pid] ?? cenaVazia());
+  const apagarParcialFim = (pid: string) => {
+    registrarCena(pid, cenasRef.current[pid] ?? cenaVazia());
+    if (opcoes.borrachaVolta && antesDaBorracha.current !== "borracha") setFerramenta(antesDaBorracha.current);
+  };
 
   // Caixas de texto. Criar e apagar são um passo de desfazer; digitar e mover
   // atualizam a cena ao vivo (sem encher o histórico) e registram um passo ao
@@ -1678,7 +1739,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId}
                   cena={cenas[p.id] ?? CENA_VAZIA} ferramenta={ferramenta} cor={cor} ajuste={ajustes[fTraco]} modeloPincel={modeloPincel}
                   forma={ajusteForma} editandoTexto={editandoTexto} selecionados={p.id === selPid ? selIds : vazio} imagemUrl={imagemUrl}
-                  soCaneta={soCanetaEfetivo} multiToque={multiToque} aoCaneta={marcarCaneta}
+                  soCaneta={soCanetaEfetivo} multiToque={multiToque} aoCaneta={marcarCaneta} opcoes={opcoes}
                   larguraTela={larguraNaTela(p)} bloco={blocoNaTela} acrescentar={acrescentar}
                   negritoTexto={negritoTexto} slotTexto={slotTexto} aoTamTexto={mudarTamTexto}
                   regua={p.id === selId ? regua : null} unidadeRegua={unidadeRegua} aoMudarRegua={setRegua} aoUnidadeRegua={mudarUnidadeRegua}
@@ -1730,30 +1791,26 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
 
       {!infinito && !telaLimpa && (
         <BarraFerramentas
-          ferramenta={ferramenta} aoFerramenta={(f) => { setFerramenta(f); setPainelFerr(true); }} aoAjustar={setAjustando}
+          ferramenta={ferramenta} aoFerramenta={(f) => { escolherFerramenta(f); setPainelFerr(true); }} aoAjustar={setAjustando}
           painelAberto={painelFerr || !!editandoTexto} aoPainel={setPainelFerr}
-          cor={cor} aoCor={(c) => { usarCor(c); if (ehSelecao && selIds.length) recolorirSelecao(c); if (ehTexto && editandoTexto) recolorTextoEditando(c); }}
-          aoCorPrevia={setCor} favoritos={favoritos}
-          corBarra={corBarra} aoAbrirCorBarra={() => setCorBarraAberta(true)}
+          corBarra={corBarra}
           aoInserirImagem={() => fileRef.current?.click()} aoCriarIa={() => setIaAberta(true)} aoAdesivos={() => setAdesivosAberto(true)}
           reguaLigada={regua !== null} aoRegua={alternarRegua}
           travada={travada} aoTravar={() => mudarTravada(!travada)}
           pos={posBarra} aoPos={mudarPosBarra} aoCiclar={ciclarBarra} miolo={mioloRef}
           dica={dicaBarra} aoFecharDica={fecharDicaBarra}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
-          aoNovaPagina={() => setAdicionando(true)}
-          subbarra={
-            ferramenta === "forma" ? <SubFormas tipo={ajusteForma.tipo} aoMudar={(tipo) => mudarForma({ tipo })} />
-            : ferramenta === "pincel" ? <SubPincel modelo={modeloPincel} cor={cor} ajuste={ajustes.pincel} aoMudar={mudarModeloPincel} />
-            : ferramenta === "seta" ? <p className="caderno-subbarra-dica">{t.seta.ajuda}</p>
-            : ferramenta === "borracha" ? <SubBorracha modo={modoBorracha} aoMudar={mudarModoBorracha} />
-            : ehSelecao ? <SubSelecao acrescentar={acrescentar} aoAcrescentar={setAcrescentar} laco={ferramenta === "laco"} />
-            : ehTexto ? (
-              <>
-                {!editandoTexto && <SubTextoPadrao tamanho={tamTexto} aoTamanho={mudarTamTexto} negrito={negritoTexto} aoNegrito={mudarNegritoTexto} nota={ferramenta === "nota"} />}
-                <div ref={setSlotTexto} className="caderno-subbarra-slot" />
-              </>
-            ) : null
+          contexto={
+            <BarraContexto ferramenta={ferramenta} aoFerramenta={escolherFerramenta}
+              cor={cor} favoritos={favoritos} aoCorPrevia={setCor}
+              aoCor={(c) => { usarCor(c); if (ehSelecao && selIds.length) recolorirSelecao(c); if (ehTexto && editandoTexto) recolorTextoEditando(c); }}
+              ajustes={ajustes} espessuras={espessuras} aoAjuste={gravarAjuste} aoAjustar={setAjustando}
+              aoEspessura={(f, n) => (f === "forma" ? mudarForma({ espessura: n }) : gravarAjuste(f, { tamanho: n }))}
+              forma={ajusteForma} aoForma={mudarForma} modeloPincel={modeloPincel} aoModeloPincel={mudarModeloPincel}
+              modoBorracha={modoBorracha} aoModoBorracha={mudarModoBorracha} opcoes={opcoes} aoOpcoes={mudarOpcoes}
+              acrescentar={acrescentar} aoAcrescentar={setAcrescentar}
+              editandoTexto={!!editandoTexto} tamTexto={tamTexto} aoTamTexto={mudarTamTexto} negritoTexto={negritoTexto} aoNegritoTexto={mudarNegritoTexto}
+              slotTexto={setSlotTexto} />
           }
         />
       )}
@@ -1788,7 +1845,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
           ? <AjustesForma ajuste={ajusteForma} seta={ajustando === "seta"} cor={cor} aoMudar={mudarForma} aoFechar={() => setAjustando(null)} />
           : ajustando === "borracha"
           ? <AjustesBorracha tamanho={ajustes.borracha.tamanho} modo={modoBorracha} aoModo={mudarModoBorracha} aoMudar={(n) => mudarAjuste("borracha", { tamanho: n })} aoFechar={() => setAjustando(null)} />
-          : ajustando === "laco" || ajustando === "selecao"
+          : ajustando === "laco" || ajustando === "selecao" || ajustando === "laser"
           ? null
           : <AjustesFerramenta ferramenta={ajustando} ajuste={ajustes[ajustando]} modeloPincel={modeloPincel} aoMudar={(patch) => mudarAjuste(ajustando, patch)} aoFechar={() => setAjustando(null)} />)}
       </Janela>
@@ -2041,10 +2098,10 @@ function AdicionarPagina({ atual, total, aoAdicionar, aoCancelar }: {
   );
 }
 
-function PaginaView({ id, pagina, numero, cena, ferramenta, cor, ajuste, modeloPincel, forma, editandoTexto, selecionados, imagemUrl, soCaneta, multiToque, aoCaneta, larguraTela, bloco, acrescentar, negritoTexto, slotTexto, aoTamTexto, regua, unidadeRegua, aoMudarRegua, aoUnidadeRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoNivelSelecao, aoAgrupar, aoDesagrupar, aoFimSelecao, aoApagarSelecao, aoEditarTexto }: {
+function PaginaView({ id, pagina, numero, cena, ferramenta, cor, ajuste, modeloPincel, forma, editandoTexto, selecionados, imagemUrl, soCaneta, multiToque, aoCaneta, opcoes, larguraTela, bloco, acrescentar, negritoTexto, slotTexto, aoTamTexto, regua, unidadeRegua, aoMudarRegua, aoUnidadeRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoNivelSelecao, aoAgrupar, aoDesagrupar, aoFimSelecao, aoApagarSelecao, aoEditarTexto }: {
   id: string; pagina: PaginaCaderno; numero?: number; selecionada?: boolean;
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; modeloPincel: ModeloPincel; forma: AjusteForma; editandoTexto: string; selecionados: string[]; imagemUrl: (id: string) => string | undefined;
-  soCaneta: boolean; multiToque: React.RefObject<boolean>; aoCaneta: () => void;
+  soCaneta: boolean; multiToque: React.RefObject<boolean>; aoCaneta: () => void; opcoes: OpcoesCaderno;
   /** Largura da página na tela (px, já com o zoom); 0 enquanto mede. */
   larguraTela: number;
   /** "Página inteira": o bloco ocupa a área toda (com o zoom) e a página fica no meio. */
@@ -2087,7 +2144,7 @@ function PaginaView({ id, pagina, numero, cena, ferramenta, cor, ajuste, modeloP
         onPointerDownCapture={aoSelecionar} onContextMenu={(e) => e.preventDefault()}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
         <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} modeloPincel={modeloPincel} forma={forma} regua={regua} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl}
-          soCaneta={soCaneta} multiToque={multiToque} aoCaneta={aoCaneta} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarParcial={aoApagarParcial} aoApagarFim={aoApagarFim} />
+          soCaneta={soCaneta} multiToque={multiToque} aoCaneta={aoCaneta} opcoes={opcoes} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarParcial={aoApagarParcial} aoApagarFim={aoApagarFim} />
         <CamadaTexto caixas={caixas} ativa={ferramenta === "texto" || ferramenta === "nota"} escala={escala} editandoId={editandoTexto} soCaneta={soCaneta}
           negritoPadrao={negritoTexto} slot={slotTexto} aoTamPadrao={aoTamTexto}
           aoNovo={aoNovoTexto} aoPatch={aoPatchTexto} aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
@@ -2654,7 +2711,7 @@ const TracoSvg = memo(function TracoSvg({ traco }: { traco: Traco }) {
   );
 });
 
-function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma, regua, largura, altura, imagemUrl, soCaneta, multiToque, aoCaneta, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim }: {
+function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma, regua, largura, altura, imagemUrl, soCaneta, multiToque, aoCaneta, opcoes, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim }: {
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; modeloPincel: ModeloPincel; forma: AjusteForma; regua: Regua | null; largura: number; altura: number;
   imagemUrl: (id: string) => string | undefined;
   /** "Escrever só com a caneta": o dedo nunca risca (só caneta e mouse). */
@@ -2662,6 +2719,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
   /** Dois dedos ou mais na tela (pinça): ninguém desenha. */
   multiToque: React.RefObject<boolean>;
   aoCaneta: () => void;
+  opcoes: OpcoesCaderno;
   aoDesenhar: (t: Traco) => void; aoNovaForma: (f: Forma) => void;
   aoApagarParcial: (x: number, y: number, raio: number) => void; aoApagarFim: () => void;
 }) {
@@ -2683,6 +2741,30 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
   const raioApagador = Math.max(4, ajuste.tamanho / 2);
   const comRegua = (p: Ponto) => (naRegua.current && regua ? { ...p, ...projetarNaRegua(p.x, p.y, regua) } : p);
   const ehSeta = ferramenta === "seta";
+  const ehLaser = ferramenta === "laser";
+  // Laser: o traço some sozinho (não fica na página nem no desfazer).
+  const [rastros, setRastros] = useState<Traco[]>([]);
+  const timersLaser = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => timersLaser.current.forEach(clearTimeout), []);
+  // "Desenhar e segurar": parado no fim por um instante, o traço vira forma.
+  const seguraTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const ultimoPonto = useRef<{ x: number; y: number } | null>(null);
+  const [formaSegurada, setFormaSeguradaEstado] = useState<Forma | null>(null);
+  const formaSeguradaRef = useRef<Forma | null>(null);
+  const setFormaSegurada = (f: Forma | null) => { formaSeguradaRef.current = f; setFormaSeguradaEstado(f); };
+  const podeVirarForma = opcoes.segurarForma && (ferramenta === "caneta" || ferramenta === "lapis");
+  const armarSegurar = () => {
+    clearTimeout(seguraTimer.current);
+    if (!podeVirarForma || formaSeguradaRef.current) return;
+    seguraTimer.current = setTimeout(() => {
+      descarregar();
+      const v = vivoRef.current;
+      if (!desenhando.current || !v) return;
+      const r = reconhecerForma(v.pontos.map((p) => [p.x, p.y] as Ponto2));
+      if (!r) return;
+      setFormaSegurada({ tipo: "forma", id: crypto.randomUUID(), forma: r.forma, x1: r.x1, y1: r.y1, x2: r.x2, y2: r.y2, cor: v.cor, espessura: Math.max(1.5, v.espessura) });
+    }, 550);
+  };
   const ehForma = ferramenta === "forma" || ehSeta;
 
   // Posição da folha na tela, medida no começo do traço (medir a cada ponto
@@ -2732,6 +2814,8 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
     naRegua.current = false;
     pendentes.current = [];
     if (quadro.current) { cancelAnimationFrame(quadro.current); quadro.current = 0; }
+    clearTimeout(seguraTimer.current);
+    setFormaSegurada(null);
     setVivo(null);
     setFormaViva(null);
     if (ferramenta === "borracha") { setApagador(null); if (apagouAlgo.current) aoApagarFim(); }
@@ -2765,7 +2849,11 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
     } else {
       naRegua.current = regua != null && distDaRegua(pt.x, pt.y, regua) <= LIMIAR_REGUA;
       // pressao: true → a espessura segue a pressão gravada (fixa para mouse e dedo).
-      const novo: Traco = { tipo: "traco", id: crypto.randomUUID(), ferramenta: ferramenta as Ferramenta, cor, espessura: Math.round(ajuste.tamanho), afinar: ajuste.afinar, alisar: ajuste.alisar, opacidade: ajuste.opacidade, pressao: true, pontos: [comRegua(pt)] };
+      const novo: Traco = ehLaser
+        ? { tipo: "traco", id: crypto.randomUUID(), ferramenta: "caneta", cor: opcoes.corLaser, espessura: 5, afinar: 0, alisar: 0.5, opacidade: 0.9, pressao: false, pontos: [pt] }
+        : { tipo: "traco", id: crypto.randomUUID(), ferramenta: ferramenta as Ferramenta, cor, espessura: Math.round(ajuste.tamanho), afinar: ajuste.afinar, alisar: ajuste.alisar, opacidade: ajuste.opacidade, pressao: true, pontos: [comRegua(pt)] };
+      ultimoPonto.current = { x: pt.x, y: pt.y };
+      setFormaSegurada(null);
       // Pincel com modelo (giz, spray...): guarda o modelo e a semente das texturas.
       if (ferramenta === "pincel" && modeloPincel !== "redondo") { novo.pincel = modeloPincel; novo.semente = novaSemente(); }
       setVivo(novo);
@@ -2780,8 +2868,15 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
       // Todos os pontos que a caneta mandou desde o último quadro (mais suave no iPad).
       const nativo = e.nativeEvent as PointerEvent;
       const lista = typeof nativo.getCoalescedEvents === "function" ? nativo.getCoalescedEvents() : [];
+      if (formaSeguradaRef.current) return; // já virou forma: segura até soltar
       for (const ev of lista.length ? lista : [nativo]) pendentes.current.push(comRegua(ponto(ev)));
       if (!quadro.current) quadro.current = requestAnimationFrame(() => { quadro.current = 0; descarregar(); });
+      // Mexeu de verdade: recomeça a contar o "segurar".
+      const ult = pendentes.current[pendentes.current.length - 1];
+      if (ult && (!ultimoPonto.current || Math.hypot(ult.x - ultimoPonto.current.x, ult.y - ultimoPonto.current.y) > 2.5)) {
+        ultimoPonto.current = { x: ult.x, y: ult.y };
+        armarSegurar();
+      }
     }
   };
   const fim = (e: React.PointerEvent) => {
@@ -2801,11 +2896,27 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
       }
     } else {
       naRegua.current = false;
+      clearTimeout(seguraTimer.current);
       descarregar();
       const v = vivoRef.current;
       setVivo(null);
       caixaFolha.current = null;
-      if (v && v.pontos.length) aoDesenhar(v);
+      const fs = formaSeguradaRef.current;
+      setFormaSegurada(null);
+      if (!v || !v.pontos.length) return;
+      if (ehLaser) {
+        setRastros((r) => [...r, v]);
+        timersLaser.current.push(setTimeout(() => setRastros((r) => r.filter((x) => x.id !== v.id)), 1100));
+        return;
+      }
+      if (fs) { aoNovaForma(fs); return; }
+      // Marca-texto reto: do primeiro ao último ponto.
+      if (v.ferramenta === "marcatexto" && opcoes.marcaReto && v.pontos.length > 1) {
+        const a = v.pontos[0], b = v.pontos[v.pontos.length - 1];
+        aoDesenhar({ ...v, pontos: [a, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, p: a.p }, b] });
+        return;
+      }
+      aoDesenhar(v);
     }
   };
 
@@ -2819,7 +2930,9 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
     <svg ref={ref} className={classe} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none"
       onPointerDown={inicio} onPointerMove={mover} onPointerUp={fim} onPointerCancel={fim}>
       {gravados}
-      {vivo && <TracoSvg traco={vivo} />}
+      {vivo && !formaSegurada && <g className={ehLaser ? "caderno-laser" : undefined}><TracoSvg traco={vivo} /></g>}
+      {formaSegurada && <path d={caminhoDeForma(formaSegurada)} fill="none" stroke={formaSegurada.cor} strokeWidth={formaSegurada.espessura} strokeLinecap="round" strokeLinejoin="round" />}
+      {rastros.map((r) => <g key={r.id} className="caderno-laser some"><TracoSvg traco={r} /></g>)}
       {formaViva && <path d={caminhoDeForma(formaViva)} fill="none" stroke={formaViva.cor} strokeWidth={formaViva.espessura} strokeLinecap="round" strokeLinejoin="round" />}
       {apagador && <circle cx={apagador.x} cy={apagador.y} r={raioApagador} className="caderno-apagador" vectorEffect="non-scaling-stroke" />}
     </svg>
@@ -2827,10 +2940,15 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
 }
 
 type IconeUI = React.ComponentType<{ size?: string; "aria-hidden"?: "true" }>;
-const FERRAMENTAS_UI: { id: FerramentaUI; icone: IconeUI }[] = [
-  { id: "selecao", icone: IconeCursor }, { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 }, { id: "marcatexto", icone: Highlighter },
-  { id: "borracha", icone: Eraser }, { id: "texto", icone: Type }, { id: "nota", icone: StickyNote }, { id: "forma", icone: Shapes }, { id: "seta", icone: IconeSeta }, { id: "laco", icone: Lasso },
+/** Ferramentas da barra principal (como no Goodnotes). Algumas reúnem duas:
+ *  Selecionar (toque ou laço), Formas (com a seta) e Texto (com a nota adesiva).
+ *  A escolha entre elas fica na barra de contexto. */
+type GrupoFerramenta = "selecao" | "caneta" | "lapis" | "pincel" | "marcatexto" | "borracha" | "forma" | "texto" | "laser";
+const FERRAMENTAS_UI: { id: GrupoFerramenta; icone: IconeUI }[] = [
+  { id: "selecao", icone: IconeCursor }, { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 },
+  { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "forma", icone: Shapes }, { id: "texto", icone: Type }, { id: "laser", icone: IconeLaser },
 ];
+const grupoDe = (f: FerramentaUI): GrupoFerramenta => (f === "laco" ? "selecao" : f === "seta" ? "forma" : f === "nota" ? "texto" : (f as GrupoFerramenta));
 
 /** Painel de adesivos prontos, por grupo. Clicar insere o adesivo na página. */
 function AdesivosPainel({ aoInserir }: { aoInserir: (id: string) => void }) {
@@ -2852,15 +2970,16 @@ function AdesivosPainel({ aoInserir }: { aoInserir: (id: string) => void }) {
   );
 }
 
-/** Formas na barra (aparece com a ferramenta de formas ativa). */
-function SubFormas({ tipo, aoMudar }: { tipo: TipoForma; aoMudar: (t: TipoForma) => void }) {
+/** Botões de escolha única da barra de contexto (com texto ou ícone). */
+function Opcoes<T extends string>({ rotulo, valor, opcoes, aoMudar }: { rotulo: string; valor: T; opcoes: { valor: T; nome: string; icone?: IconeUI }[]; aoMudar: (v: T) => void }) {
   return (
-    <span className="caderno-barra-grupo" role="group" aria-label={t.forma.qual}>
-      {FORMAS_BARRA.map((f) => {
-        const Icone = ICONES_FORMA[f];
+    <span className="caderno-ctx-grupo" role="radiogroup" aria-label={rotulo}>
+      {opcoes.map((o) => {
+        const Icone = o.icone;
         return (
-          <button key={f} type="button" className={tipo === f ? "caderno-sub-botao ativo" : "caderno-sub-botao"} onClick={() => aoMudar(f)} aria-pressed={tipo === f} aria-label={t.forma.nomes[f]} title={t.forma.nomes[f]}>
-            <Icone size="1.15em" aria-hidden="true" />
+          <button key={o.valor} type="button" role="radio" aria-checked={valor === o.valor} title={o.nome} aria-label={Icone ? o.nome : undefined}
+            className={`caderno-sub-botao${Icone ? "" : " texto"}${valor === o.valor ? " ativo" : ""}`} onClick={() => aoMudar(o.valor)}>
+            {Icone ? <Icone size="1.15em" aria-hidden="true" /> : o.nome}
           </button>
         );
       })}
@@ -2868,50 +2987,70 @@ function SubFormas({ tipo, aoMudar }: { tipo: TipoForma; aoMudar: (t: TipoForma)
   );
 }
 
-/** Modo da borracha na barra (aparece com a borracha ativa). */
-function SubBorracha({ modo, aoMudar }: { modo: ModoBorracha; aoMudar: (m: ModoBorracha) => void }) {
+/** Liga/desliga pequeno da barra de contexto. */
+function Alternar({ nome, ligado, aoMudar, titulo }: { nome: string; ligado: boolean; aoMudar: (v: boolean) => void; titulo?: string }) {
   return (
-    <span className="caderno-barra-grupo" role="group" aria-label={t.borracha.modo}>
-      {(["pedaco", "objeto"] as const).map((m) => (
-        <button key={m} type="button" className={modo === m ? "caderno-sub-botao texto ativo" : "caderno-sub-botao texto"} onClick={() => aoMudar(m)} aria-pressed={modo === m}>{t.borracha.modos[m]}</button>
-      ))}
+    <button type="button" className={ligado ? "caderno-sub-botao texto ativo" : "caderno-sub-botao texto"} aria-pressed={ligado} title={titulo} onClick={() => aoMudar(!ligado)}>
+      {ligado && <Check size="0.95em" aria-hidden="true" />} {nome}
+    </button>
+  );
+}
+
+/** Três espessuras salvas (como no Goodnotes). Tocar na escolhida abre os ajustes. */
+function Espessuras({ valores, atual, cor, aoEscolher, aoAjustar }: { valores: number[]; atual: number; cor: string; aoEscolher: (n: number, i: number) => void; aoAjustar: () => void }) {
+  const corValida = /^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#1f2937";
+  const maior = Math.max(...valores, 1);
+  return (
+    <span className="caderno-ctx-grupo" role="radiogroup" aria-label={t.contexto.espessura}>
+      {valores.map((v, i) => {
+        const sel = Math.abs(v - atual) < 0.01;
+        const px = 4 + (Math.min(v, maior) / maior) * 14;
+        return (
+          <button key={i} type="button" role="radio" aria-checked={sel} className={sel ? "caderno-espessura ativo" : "caderno-espessura"}
+            aria-label={`${t.contexto.espessuras[i] ?? ""} (${v.toFixed(1)} px)${sel ? `. ${t.contexto.tocarAjustes}` : ""}`}
+            onClick={() => (sel ? aoAjustar() : aoEscolher(v, i))}>
+            <span style={{ width: px, height: px, background: corValida }} aria-hidden="true" />
+          </button>
+        );
+      })}
     </span>
   );
 }
 
-/** Opções da seleção (cursor e laço): "acrescentar" é o Shift do toque. */
-function SubSelecao({ acrescentar, aoAcrescentar, laco }: { acrescentar: boolean; aoAcrescentar: (v: boolean) => void; laco: boolean }) {
+/** Cores salvas e a cor livre. A cor livre é um seletor visível (no iPad, o
+ *  escondido não abria). Marca a cor já no toque, sem esperar o "click". */
+function CoresContexto({ cor, favoritos, aoCor, aoCorPrevia }: { cor: string; favoritos: string[]; aoCor: (c: string) => void; aoCorPrevia: (c: string) => void }) {
+  const seletorRef = useRef<HTMLInputElement>(null);
+  const aoCorRef = useRef(aoCor);
+  aoCorRef.current = aoCor;
+  useEffect(() => {
+    const el = seletorRef.current;
+    if (!el) return;
+    // Enquanto arrasta no seletor, só pré-visualiza; ao confirmar, a cor entra nas salvas.
+    const confirmar = () => aoCorRef.current(el.value);
+    el.addEventListener("change", confirmar);
+    return () => el.removeEventListener("change", confirmar);
+  }, []);
+  const atual = cor.toLowerCase();
   return (
-    <>
-      <button type="button" className={acrescentar ? "caderno-sub-botao texto ativo" : "caderno-sub-botao texto"} onClick={() => aoAcrescentar(!acrescentar)} aria-pressed={acrescentar}>
-        <Plus size="1em" aria-hidden="true" /> {t.selecao.acrescentar}
-      </button>
-      <p className="caderno-subbarra-dica">{laco ? t.laco.dicaCurta : t.selecao.dica}</p>
-    </>
-  );
-}
-
-/** Texto sem caixa aberta: tamanho e negrito das próximas caixas. */
-function SubTextoPadrao({ tamanho, aoTamanho, negrito, aoNegrito, nota }: { tamanho: number; aoTamanho: (n: number) => void; negrito: boolean; aoNegrito: (v: boolean) => void; nota: boolean }) {
-  return (
-    <>
-      <span className="caderno-fmt-barra" role="group" aria-label={t.texto.formatar}>
-        <button type="button" className={negrito ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => aoNegrito(!negrito)} aria-pressed={negrito} aria-label={textos.rico.negrito}><Bold size="1em" aria-hidden="true" /></button>
-        <span className="caderno-fmt-grupo">
-          <button type="button" className="caderno-fmt" onClick={() => aoTamanho(Math.max(12, tamanho - 2))} aria-label={t.texto.diminuir}>A−</button>
-          <span className="caderno-fmt-valor" aria-live="polite">{t.texto.tamanhoAtual(tamanho)}</span>
-          <button type="button" className="caderno-fmt" onClick={() => aoTamanho(Math.min(80, tamanho + 2))} aria-label={t.texto.aumentar}>A+</button>
-        </span>
+    <span className="caderno-ctx-grupo caderno-cores" role="group" aria-label={t.ferramentas.cor}>
+      {favoritos.map((c) => (
+        <button key={c} type="button" className={atual === c.toLowerCase() ? "caderno-cor atual" : "caderno-cor"} style={{ background: c }}
+          onPointerDown={(e) => { if (e.button === 0 && atual !== c.toLowerCase()) aoCorPrevia(c); }}
+          onMouseDown={(e) => e.preventDefault() /* não tira o cursor do texto em edição */}
+          onClick={() => aoCor(c)} aria-label={c} aria-pressed={atual === c.toLowerCase()} />
+      ))}
+      <span className="caderno-cor-mais">
+        <input ref={seletorRef} type="color" className="caderno-cor-nativa" value={/^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#000000"}
+          onChange={(e) => aoCorPrevia(e.target.value)} aria-label={t.ferramentas.escolherCor} title={t.ferramentas.escolherCor} />
+        <Plus aria-hidden="true" size="0.8em" className="caderno-cor-mais-icone" />
       </span>
-      <p className="caderno-subbarra-dica">{nota ? t.texto.dicaNota : t.texto.dica}</p>
-    </>
+    </span>
   );
 }
 
-/** Ferramentas com painel de opções ao lado da barra (marcadas com ▸). As
- *  outras (caneta, lápis, marca-texto) abrem os ajustes ao tocar de novo. */
-const COM_PAINEL: FerramentaUI[] = ["pincel", "borracha", "texto", "nota", "forma", "seta", "laco", "selecao"];
-const SEM_AJUSTES: FerramentaUI[] = ["laco", "selecao"];
+/** Formas na barra de contexto (a seta fica junto). */
+const FORMAS_CONTEXTO = [...FORMAS_BARRA, "seta"] as const;
 
 /** Modelos do pincel, cada um com a sua prévia (na cor e no tamanho atuais). */
 function SubPincel({ modelo, cor, ajuste, aoMudar }: { modelo: ModeloPincel; cor: string; ajuste: AjusteTraco; aoMudar: (m: ModeloPincel) => void }) {
@@ -2935,36 +3074,174 @@ function SubPincel({ modelo, cor, ajuste, aoMudar }: { modelo: ModeloPincel; cor
   );
 }
 
-function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, painelAberto, aoPainel, cor, aoCor, aoCorPrevia, favoritos, corBarra, aoAbrirCorBarra, aoInserirImagem, aoCriarIa, aoAdesivos, reguaLigada, aoRegua, travada, aoTravar, pos, aoPos, aoCiclar, miolo, dica, aoFecharDica, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer, aoNovaPagina, subbarra }: {
+/** Texto sem caixa aberta: tamanho e negrito das próximas caixas. */
+function SubTextoPadrao({ tamanho, aoTamanho, negrito, aoNegrito }: { tamanho: number; aoTamanho: (n: number) => void; negrito: boolean; aoNegrito: (v: boolean) => void }) {
+  return (
+    <span className="caderno-fmt-barra" role="group" aria-label={t.texto.formatar}>
+      <button type="button" className={negrito ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => aoNegrito(!negrito)} aria-pressed={negrito} aria-label={textos.rico.negrito}><Bold size="1em" aria-hidden="true" /></button>
+      <span className="caderno-fmt-grupo">
+        <button type="button" className="caderno-fmt" onClick={() => aoTamanho(Math.max(12, tamanho - 2))} aria-label={t.texto.diminuir}>A−</button>
+        <span className="caderno-fmt-valor" aria-live="polite">{t.texto.tamanhoAtual(tamanho)}</span>
+        <button type="button" className="caderno-fmt" onClick={() => aoTamanho(Math.min(80, tamanho + 2))} aria-label={t.texto.aumentar}>A+</button>
+      </span>
+    </span>
+  );
+}
+
+/** Pontas da caneta (estilos do Goodnotes): mudam a sensibilidade à pressão. */
+type PontaCaneta = "tinteiro" | "esfero" | "pincel";
+const PONTAS: Record<PontaCaneta, { afinar: number; alisar: number }> = {
+  tinteiro: { afinar: 0.6, alisar: 0.5 },
+  esfero: { afinar: 0.08, alisar: 0.55 },
+  pincel: { afinar: 0.85, alisar: 0.45 },
+};
+const pontaDe = (a: AjusteTraco): PontaCaneta | null =>
+  (Object.keys(PONTAS) as PontaCaneta[]).find((k) => Math.abs(PONTAS[k].afinar - a.afinar) < 0.02) ?? null;
+
+/** Tudo o que a barra de contexto precisa saber e fazer. */
+interface Contexto {
+  ferramenta: FerramentaUI;
+  aoFerramenta: (f: FerramentaUI) => void;
+  cor: string; favoritos: string[]; aoCor: (c: string) => void; aoCorPrevia: (c: string) => void;
+  ajustes: Record<Ferramenta, AjusteTraco>; espessuras: Record<string, number[]>;
+  aoEspessura: (f: Ferramenta | "forma", n: number) => void; aoAjuste: (f: Ferramenta, patch: Partial<AjusteTraco>) => void;
+  aoAjustar: (f: FerramentaUI) => void;
+  forma: AjusteForma; aoForma: (p: Partial<AjusteForma>) => void;
+  modeloPincel: ModeloPincel; aoModeloPincel: (m: ModeloPincel) => void;
+  modoBorracha: ModoBorracha; aoModoBorracha: (m: ModoBorracha) => void;
+  opcoes: OpcoesCaderno; aoOpcoes: (p: Partial<OpcoesCaderno>) => void;
+  acrescentar: boolean; aoAcrescentar: (v: boolean) => void;
+  editandoTexto: boolean; tamTexto: number; aoTamTexto: (n: number) => void; negritoTexto: boolean; aoNegritoTexto: (v: boolean) => void;
+  slotTexto: (el: HTMLDivElement | null) => void;
+}
+
+/** A barra de contexto da ferramenta (como a do Goodnotes): espessuras, cores
+ *  salvas e as opções próprias de cada uma. */
+function BarraContexto(c: Contexto) {
+  const g = grupoDe(c.ferramenta);
+  const tc = t.contexto;
+  const cores = <CoresContexto cor={c.cor} favoritos={c.favoritos} aoCor={c.aoCor} aoCorPrevia={c.aoCorPrevia} />;
+  const espessuraDe = (f: Ferramenta) => (
+    <Espessuras valores={c.espessuras[f] ?? ESPESSURAS_PADRAO[f]} atual={c.ajustes[f].tamanho} cor={f === "borracha" ? "#8a8f98" : c.cor}
+      aoEscolher={(n) => c.aoEspessura(f, n)} aoAjustar={() => c.aoAjustar(f)} />
+  );
+  const sep = <span className="caderno-barra-sep" aria-hidden="true" />;
+  switch (g) {
+    case "caneta": {
+      const ponta = pontaDe(c.ajustes.caneta);
+      return (
+        <>
+          <DialogTrigger>
+            <Button className="caderno-sub-botao texto" aria-label={`${tc.ponta}: ${ponta ? tc.pontas[ponta] : tc.pontaPropria}`}>{ponta ? tc.pontas[ponta] : tc.pontaPropria} <ChevronDown size="0.9em" aria-hidden="true" /></Button>
+            <Popover className="caderno-popover" placement="top">
+              <Dialog className="caderno-popover-miolo" aria-label={tc.ponta}>
+                <div className="caderno-pinceis" role="radiogroup" aria-label={tc.ponta}>
+                  {(Object.keys(PONTAS) as PontaCaneta[]).map((k) => {
+                    const amostra: Traco = { tipo: "traco", id: `ponta-${k}`, ferramenta: "caneta", cor: /^#[0-9a-fA-F]{6}$/.test(c.cor) ? c.cor : "#1f2937", espessura: 6, afinar: PONTAS[k].afinar, alisar: PONTAS[k].alisar, opacidade: 1, pressao: true, pontos: PONTOS_AMOSTRA };
+                    return (
+                      <button key={k} type="button" role="radio" aria-checked={ponta === k} className={ponta === k ? "caderno-pincel ativo" : "caderno-pincel"} onClick={() => c.aoAjuste("caneta", PONTAS[k])}>
+                        <svg viewBox="0 0 300 80" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false"><TracoSvg traco={amostra} /></svg>
+                        <span>{tc.pontas[k]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Dialog>
+            </Popover>
+          </DialogTrigger>
+          {sep}{espessuraDe("caneta")}{sep}{cores}{sep}
+          <Alternar nome={tc.segurarForma} titulo={tc.segurarFormaAjuda} ligado={c.opcoes.segurarForma} aoMudar={(v) => c.aoOpcoes({ segurarForma: v })} />
+        </>
+      );
+    }
+    case "lapis":
+      return <>{espessuraDe("lapis")}{sep}{cores}{sep}<Alternar nome={tc.segurarForma} titulo={tc.segurarFormaAjuda} ligado={c.opcoes.segurarForma} aoMudar={(v) => c.aoOpcoes({ segurarForma: v })} /></>;
+    case "pincel":
+      return (
+        <>
+          <DialogTrigger>
+            <Button className="caderno-sub-botao texto">{tc.modeloPincel(t.pincel.modelos[c.modeloPincel])} <ChevronDown size="0.9em" aria-hidden="true" /></Button>
+            <Popover className="caderno-popover" placement="top">
+              <Dialog className="caderno-popover-miolo" aria-label={t.pincel.modelo}>
+                <SubPincel modelo={c.modeloPincel} cor={c.cor} ajuste={c.ajustes.pincel} aoMudar={c.aoModeloPincel} />
+              </Dialog>
+            </Popover>
+          </DialogTrigger>
+          {sep}{espessuraDe("pincel")}{sep}{cores}
+        </>
+      );
+    case "marcatexto":
+      return <>{espessuraDe("marcatexto")}{sep}{cores}{sep}<Alternar nome={tc.linhaReta} titulo={tc.linhaRetaAjuda} ligado={c.opcoes.marcaReto} aoMudar={(v) => c.aoOpcoes({ marcaReto: v })} /></>;
+    case "borracha":
+      return (
+        <>
+          <Opcoes rotulo={t.borracha.modo} valor={c.modoBorracha} aoMudar={c.aoModoBorracha} opcoes={[{ valor: "pedaco", nome: t.borracha.modos.pedaco }, { valor: "objeto", nome: t.borracha.modos.objeto }]} />
+          {sep}{espessuraDe("borracha")}{sep}
+          <Alternar nome={tc.soMarcaTexto} titulo={tc.soMarcaTextoAjuda} ligado={c.opcoes.borrachaSoMarca} aoMudar={(v) => c.aoOpcoes({ borrachaSoMarca: v })} />
+          <Alternar nome={tc.voltarFerramenta} titulo={tc.voltarFerramentaAjuda} ligado={c.opcoes.borrachaVolta} aoMudar={(v) => c.aoOpcoes({ borrachaVolta: v })} />
+        </>
+      );
+    case "forma": {
+      const atual: (typeof FORMAS_CONTEXTO)[number] = c.ferramenta === "seta" ? "seta" : (c.forma.tipo as (typeof FORMAS_CONTEXTO)[number]);
+      return (
+        <>
+          <Opcoes rotulo={t.forma.qual} valor={atual}
+            aoMudar={(f) => { if (f === "seta") c.aoFerramenta("seta"); else { c.aoForma({ tipo: f }); c.aoFerramenta("forma"); } }}
+            opcoes={FORMAS_CONTEXTO.map((f) => ({ valor: f, nome: t.forma.nomes[f], icone: f === "seta" ? IconeSeta : ICONES_FORMA[f] }))} />
+          {sep}
+          <Espessuras valores={c.espessuras.forma ?? ESPESSURAS_FORMA} atual={c.forma.espessura} cor={c.cor} aoEscolher={(n) => c.aoEspessura("forma", n)} aoAjustar={() => c.aoAjustar(c.ferramenta)} />
+          {sep}{cores}
+        </>
+      );
+    }
+    case "texto":
+      return (
+        <>
+          <Opcoes rotulo={tc.tipoTexto} valor={c.ferramenta === "nota" ? "nota" : "texto"} aoMudar={(v) => c.aoFerramenta(v)}
+            opcoes={[{ valor: "texto", nome: tc.caixa }, { valor: "nota", nome: t.ferramentas.nomes.nota }]} />
+          {sep}
+          {!c.editandoTexto && <SubTextoPadrao tamanho={c.tamTexto} aoTamanho={c.aoTamTexto} negrito={c.negritoTexto} aoNegrito={c.aoNegritoTexto} />}
+          <div ref={c.slotTexto} className="caderno-subbarra-slot" />
+          {c.ferramenta === "texto" && <>{sep}{cores}</>}
+        </>
+      );
+    case "selecao":
+      return (
+        <>
+          <Opcoes rotulo={tc.comoSelecionar} valor={c.ferramenta === "laco" ? "laco" : "selecao"} aoMudar={(v) => c.aoFerramenta(v)}
+            opcoes={[{ valor: "selecao", nome: tc.tocar }, { valor: "laco", nome: tc.laco }]} />
+          <Alternar nome={t.selecao.acrescentar} ligado={c.acrescentar} aoMudar={c.aoAcrescentar} />
+          <p className="caderno-subbarra-dica">{c.ferramenta === "laco" ? t.laco.dicaCurta : t.selecao.dica}</p>
+        </>
+      );
+    case "laser":
+      return (
+        <>
+          <span className="caderno-ctx-grupo caderno-cores" role="radiogroup" aria-label={tc.corLaser}>
+            {CORES_LASER.map((k) => (
+              <button key={k} type="button" role="radio" aria-checked={c.opcoes.corLaser === k} aria-label={tc.coresLaser[k as keyof typeof tc.coresLaser]}
+                className={c.opcoes.corLaser === k ? "caderno-cor atual" : "caderno-cor"} style={{ background: k }} onClick={() => c.aoOpcoes({ corLaser: k })} />
+            ))}
+          </span>
+          <p className="caderno-subbarra-dica">{tc.laserDica}</p>
+        </>
+      );
+  }
+}
+
+function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, painelAberto, aoPainel, corBarra, aoInserirImagem, aoCriarIa, aoAdesivos, reguaLigada, aoRegua, travada, aoTravar, pos, aoPos, aoCiclar, miolo, dica, aoFecharDica, aoDesfazer, aoRefazer, podeDesfazer, podeRefazer, contexto }: {
   ferramenta: FerramentaUI; aoFerramenta: (f: FerramentaUI) => void; aoAjustar: (f: FerramentaUI) => void;
   painelAberto: boolean; aoPainel: (v: boolean) => void;
-  /** aoCor: escolha final (entra nas favoritas); aoCorPrevia: só mostra a cor
-   *  enquanto a pessoa ainda mexe no seletor personalizado. */
-  cor: string; aoCor: (c: string) => void; aoCorPrevia: (c: string) => void; favoritos: string[];
-  corBarra: string; aoAbrirCorBarra: () => void; aoInserirImagem: () => void; aoCriarIa: () => void; aoAdesivos: () => void;
+  corBarra: string; aoInserirImagem: () => void; aoCriarIa: () => void; aoAdesivos: () => void;
   reguaLigada: boolean; aoRegua: () => void;
   travada: boolean; aoTravar: () => void;
   /** Lado da tela onde a barra fica; arrastar pela alça muda o lado. */
   pos: PosBarra; aoPos: (p: PosBarra) => void; aoCiclar: () => void; miolo: React.RefObject<HTMLDivElement | null>;
   dica: boolean; aoFecharDica: () => void;
   aoDesfazer: () => void; aoRefazer: () => void; podeDesfazer: boolean; podeRefazer: boolean;
-  aoNovaPagina: () => void;
-  /** Opções da ferramenta ativa (formas, pincéis, borracha, texto…): vão num painel ao lado da barra. */
-  subbarra: React.ReactNode;
+  /** A barra de contexto da ferramenta (espessuras, cores, opções). */
+  contexto: React.ReactNode;
 }) {
-  // Seletor personalizado: enquanto arrasta, só pré-visualiza (evento input);
-  // ao confirmar (evento change nativo), grava a cor de vez. Antes, cada tom
-  // intermediário virava uma favorita nova e a barra se reorganizava sozinha.
-  const seletorRef = useRef<HTMLInputElement>(null);
-  const aoCorRef = useRef(aoCor);
-  aoCorRef.current = aoCor;
-  useEffect(() => {
-    const el = seletorRef.current;
-    if (!el) return;
-    const confirmar = () => aoCorRef.current(el.value);
-    el.addEventListener("change", confirmar);
-    return () => el.removeEventListener("change", confirmar);
-  }, []);
   const vertical = pos === "direita" || pos === "esquerda";
   // Arrastar pela alça: ao soltar, a barra vai para o lado mais perto do dedo.
   // Enquanto arrasta, uma faixa tracejada mostra onde ela vai ficar.
@@ -3000,25 +3277,18 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, painelAberto, a
     const lados: Record<string, PosBarra> = { ArrowUp: "cima", ArrowDown: "baixo", ArrowLeft: "esquerda", ArrowRight: "direita" };
     if (lados[e.key]) { e.preventDefault(); aoPos(lados[e.key]); }
   };
-  const corMinuscula = cor.toLowerCase();
-  const corLivre = !favoritos.some((c) => c.toLowerCase() === corMinuscula);
   const estilo = corBarra ? ({ background: corBarra, "--barra-fg": corContraste(corBarra) } as React.CSSProperties) : undefined;
   const classe = `${vertical ? "caderno-barra vertical" : "caderno-barra"}${corBarra ? " tintada" : ""}`;
-  const temPainel = !!subbarra;
-  const mostrarPainel = temPainel && painelAberto;
-  const mostrarDica = dica && !mostrarPainel;
-  const tocarFerramenta = (id: FerramentaUI) => {
-    if (ferramenta !== id) return aoFerramenta(id);
-    if (COM_PAINEL.includes(id)) aoPainel(!painelAberto);
-    else if (!SEM_AJUSTES.includes(id)) aoAjustar(id);
+  const grupo = grupoDe(ferramenta);
+  const mostrarContexto = !!contexto && painelAberto;
+  const mostrarDica = dica && !mostrarContexto;
+  // Tocar numa ferramenta escolhe; tocar de novo mostra a barra de contexto ou,
+  // com ela à vista, abre os ajustes (como no Goodnotes).
+  const tocarFerramenta = (id: GrupoFerramenta) => {
+    if (grupo !== id) return aoFerramenta(id === "selecao" && ferramenta === "laco" ? "laco" : id);
+    if (!painelAberto) return aoPainel(true);
+    if (id !== "selecao" && id !== "laser") aoAjustar(ferramenta);
   };
-  const rotuloFerramenta = (id: FerramentaUI) => {
-    const nome = t.ferramentas.nomes[id];
-    if (COM_PAINEL.includes(id)) return `${nome} (${t.ferramentas.temOpcoes})`;
-    if (ferramenta === id && !SEM_AJUSTES.includes(id)) return t.ferramentas.ajustesDe(nome);
-    return nome;
-  };
-  const podeAjustar = !SEM_AJUSTES.includes(ferramenta);
   return (
     <div className={`caderno-barra-caixa pos-${pos}`}>
       <div className={classe} style={estilo} role="toolbar" aria-label={t.ferramentas.titulo} aria-orientation={vertical ? "vertical" : "horizontal"}>
@@ -3029,56 +3299,41 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, painelAberto, a
         </button>
         <span id="caderno-alca-ajuda" hidden>{t.ferramentas.moverBarraAjuda}</span>
         <span className="caderno-barra-grupo">
-          {FERRAMENTAS_UI.map(({ id, icone: Icone }) => {
-            const painel = COM_PAINEL.includes(id);
-            return (
-              <Button key={id} className={`caderno-ferramenta${ferramenta === id ? " ativa" : ""}${painel ? " com-painel" : ""}`}
-                onPress={() => tocarFerramenta(id)}
-                aria-label={rotuloFerramenta(id)} aria-pressed={ferramenta === id}
-                aria-expanded={painel && ferramenta === id ? mostrarPainel : undefined}>
-                <Icone aria-hidden="true" size="1.2em" />
-                {painel && <span className="caderno-ferramenta-mais" aria-hidden="true" />}
-              </Button>
-            );
-          })}
-        </span>
-        <span className="caderno-barra-sep" aria-hidden="true" />
-        <span className="caderno-barra-grupo caderno-cores" role="group" aria-label={t.ferramentas.cor}>
-          {favoritos.map((c) => (
-            <button key={c} type="button" className={corMinuscula === c.toLowerCase() ? "caderno-cor atual" : "caderno-cor"} style={{ background: c }}
-              // Marca a cor já no toque (pointerdown), sem esperar o "click" do
-              // Safari, que chega só depois de levantar o dedo/caneta.
-              onPointerDown={(e) => { if (e.button === 0 && corMinuscula !== c.toLowerCase()) aoCorPrevia(c); }}
-              onMouseDown={(e) => e.preventDefault() /* não tira o cursor do texto em edição */}
-              onClick={() => aoCor(c)} aria-label={c} aria-pressed={corMinuscula === c.toLowerCase()} />
-          ))}
-          <label className={corLivre ? "caderno-cor-escolher atual" : "caderno-cor-escolher"} title={t.ferramentas.escolherCor} style={corLivre ? { background: cor } : undefined}>
-            <input ref={seletorRef} type="color" value={/^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#000000"} onChange={(e) => aoCorPrevia(e.target.value)} aria-label={t.ferramentas.escolherCor} />
-            {!corLivre && <Plus aria-hidden="true" size="1em" />}
-          </label>
+          <Button className="botao-icone" onPress={aoDesfazer} isDisabled={!podeDesfazer} aria-label={`${t.ferramentas.desfazer} (Ctrl + Z)`}><Undo2 aria-hidden="true" size="1.1em" /></Button>
+          <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={`${t.ferramentas.refazer} (Ctrl + Y)`}><Redo2 aria-hidden="true" size="1.1em" /></Button>
         </span>
         <span className="caderno-barra-sep" aria-hidden="true" />
         <span className="caderno-barra-grupo">
-          <Button className="botao-icone" onPress={aoDesfazer} isDisabled={!podeDesfazer} aria-label={t.ferramentas.desfazer}><Undo2 aria-hidden="true" size="1.1em" /></Button>
-          <Button className="botao-icone" onPress={aoRefazer} isDisabled={!podeRefazer} aria-label={t.ferramentas.refazer}><Redo2 aria-hidden="true" size="1.1em" /></Button>
+          {FERRAMENTAS_UI.map(({ id, icone: Icone }) => (
+            <Button key={id} className={`caderno-ferramenta${grupo === id ? " ativa" : ""}`}
+              onPress={() => tocarFerramenta(id)} aria-pressed={grupo === id}
+              aria-label={grupo === id ? `${t.ferramentas.nomes[id]}. ${painelAberto ? t.ferramentas.tocarDeNovo : t.contexto.mostrar}` : t.ferramentas.nomes[id]}>
+              <Icone aria-hidden="true" size="1.2em" />
+            </Button>
+          ))}
+        </span>
+        <span className="caderno-barra-sep" aria-hidden="true" />
+        <span className="caderno-barra-grupo">
+          <MenuTrigger>
+            <Button className="botao-icone" aria-label={t.contexto.inserir}><ImagePlus aria-hidden="true" size="1.1em" /></Button>
+            <Popover className="menu-popover" placement={pos === "baixo" ? "top" : pos === "cima" ? "bottom" : pos === "direita" ? "left" : "right"}>
+              <Menu className="menu-lista" aria-label={t.contexto.inserir} onAction={(k) => { if (k === "imagem") aoInserirImagem(); else if (k === "adesivos") aoAdesivos(); else if (k === "ia") aoCriarIa(); }}>
+                <MenuItem id="imagem" className="menu-item">{t.contexto.inserirImagem}</MenuItem>
+                <MenuItem id="adesivos" className="menu-item">{t.adesivos.abrir}</MenuItem>
+                <MenuItem id="ia" className="menu-item">{t.imagemIa.abrir}</MenuItem>
+              </Menu>
+            </Popover>
+          </MenuTrigger>
           <Button className={reguaLigada ? "botao-icone ativo" : "botao-icone"} onPress={aoRegua} aria-label={t.regua.titulo} aria-pressed={reguaLigada}><Ruler aria-hidden="true" size="1.1em" /></Button>
-          <Button className="botao-icone" onPress={aoInserirImagem} aria-label={t.imagem.inserir}><ImagePlus aria-hidden="true" size="1.1em" /></Button>
-          <Button className="botao-icone" onPress={aoAdesivos} aria-label={t.adesivos.abrir}><Sticker aria-hidden="true" size="1.1em" /></Button>
-          <Button className="botao-icone" onPress={aoCriarIa} aria-label={t.imagemIa.abrir}><Sparkles aria-hidden="true" size="1.1em" /></Button>
-          <Button className="botao-icone" onPress={aoAbrirCorBarra} aria-label={t.barraCor.abrir}><Palette aria-hidden="true" size="1.1em" /></Button>
           <Button className={travada ? "botao-icone ativo" : "botao-icone"} onPress={aoTravar} aria-pressed={travada} aria-label={t.trava.travar}>
             {travada ? <IconeCadeado aria-hidden="true" size="1.1em" /> : <IconeCadeadoAberto aria-hidden="true" size="1.1em" />}
           </Button>
-          <Button className="caderno-nova-pagina" onPress={aoNovaPagina} aria-label={t.paginas.nova}><Plus aria-hidden="true" size="1.1em" /><span className="caderno-nova-pagina-texto" aria-hidden="true">{t.paginas.novaCurta}</span></Button>
         </span>
       </div>
-      {mostrarPainel && (
-        <div className="caderno-flutuante caderno-subbarra" role="group" aria-label={t.ferramentas.opcoesDe(t.ferramentas.nomes[ferramenta])}>
-          {subbarra}
-          <span className="caderno-painel-pe">
-            {podeAjustar && <button type="button" className="caderno-sub-botao texto" onClick={() => aoAjustar(ferramenta)}>{t.ferramentas.ajustes}</button>}
-            <button type="button" className="caderno-sub-botao" onClick={() => aoPainel(false)} aria-label={t.ferramentas.fecharOpcoes} title={t.ferramentas.fecharOpcoes}><X aria-hidden="true" size="1em" /></button>
-          </span>
+      {mostrarContexto && (
+        <div className="caderno-flutuante caderno-subbarra caderno-contexto" role="group" aria-label={t.ferramentas.opcoesDe(t.ferramentas.nomes[ferramenta])}>
+          {contexto}
+          <button type="button" className="caderno-sub-botao caderno-contexto-fechar" onClick={() => aoPainel(false)} aria-label={t.ferramentas.fecharOpcoes} title={t.ferramentas.fecharOpcoes}><X aria-hidden="true" size="1em" /></button>
         </div>
       )}
       {mostrarDica && (

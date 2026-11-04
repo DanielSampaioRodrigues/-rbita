@@ -7,3 +7,4 @@ export * from "./tracos";
 export * from "./formas";
 export * from "./selecao";
 export * from "./pinceis";
+export * from "./reconhecer";

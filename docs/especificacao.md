@@ -505,6 +505,14 @@ docs/                especificação e registro de decisões
 - **Sem nome de página no alto da folha.** No alto do caderno ficam: voltar, **Ver as páginas**, a posição ("3 de 12", entre setas; tocar abre a visão de páginas), o marcador da página, **Adicionar página**, a folha e as configurações.
 - **Visão das páginas** (como as miniaturas do Goodnotes): miniaturas com o desenho e os textos, filtro Todas/Marcadas, e em cada página: dar nome, marcar, duplicar, passar para antes/depois e apagar (com confirmação).
 - **Adicionar página:** antes desta, depois desta (padrão) ou no fim; modelo da folha ("Igual à atual" ou um modelo) e tamanho ("Igual à atual", A4, A5, Carta, personalizado). A ordem é um número com casas (a página entra entre duas sem mexer nas outras). Puxar além da última continua criando no fim, e agora já vai para ela.
+- **Barra de ferramentas como a do Goodnotes** (continua nos quatro lados): a barra principal tem a alça, desfazer/refazer, as ferramentas (Selecionar, Caneta, Lápis, Pincel, Marca-texto, Borracha, Formas, Texto, Apontador laser), Inserir (imagem do aparelho, adesivos, criar com IA), Régua e o cadeado. Ferramentas que eram duas viraram uma com a escolha na barra de contexto: Selecionar (tocar/retângulo ou laço), Formas (com a seta) e Texto (caixa ou nota adesiva). A **barra de contexto** de cada ferramenta flutua ao lado da barra (não mexe no tamanho da página): **três espessuras salvas** (tocar na escolhida abre os ajustes; mudar o tamanho nos ajustes troca a salva mais perto), **cores salvas** e a cor livre (seletor visível), e as opções próprias:
+  - Caneta: **ponta** (Tinteiro, Esferográfica, Pincel; com prévia do traço) e **Forma ao segurar**;
+  - Lápis: Forma ao segurar; Pincel: modelo (com prévias);
+  - Marca-texto: **Sempre reto**;
+  - Borracha: por pedaço ou objeto inteiro, **Só marca-texto** e **Voltar depois** (volta para a ferramenta de antes ao terminar de apagar);
+  - Laser: cor; o traço some sozinho em pouco mais de um segundo, não fica na página nem no desfazer (sem esmaecer no baixo estímulo).
+  Tocar de novo na ferramenta ativa abre os ajustes; o X esconde a barra de contexto e tocar na ferramenta mostra de novo. A cor da barra foi para as configurações. Opções guardadas no aparelho (`caderno-opcoes`, `caderno-espessuras`).
+- **Forma ao segurar** (ligado por padrão na caneta e no lápis): desenhou e segurou parado no fim por meio segundo, o traço vira a forma perfeita (reta, retângulo, losango, triângulo ou elipse), já mostrada antes de soltar. Reconhecimento puro em `packages/caderno/src/reconhecer.ts`.
 - **Texto:** tocar cria a caixa; arrastar escolhe a largura. O "Contorno nas letras" da Aparência não vale mais dentro das páginas: era ele que deixava um contorno, "como marca de piloto", em volta do texto digitado.
 
 ## Ondas de construção

@@ -45,3 +45,5 @@ export const IconeAlca = ({ deitada, ...p }: P & { deitada?: boolean }) => (
     {(deitada ? [[6, 9], [12, 9], [18, 9], [6, 15], [12, 15], [18, 15]] : [[9, 6], [15, 6], [9, 12], [15, 12], [9, 18], [15, 18]]).map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r={1.8} />)}
   </svg>
 );
+/** Apontador laser: caneta com o feixe saindo da ponta. */
+export const IconeLaser = (p: P) => <Base {...p}><path d="M14 4l6 6-9.5 9.5H4.5v-6z" /><circle cx="6.5" cy="17.5" r="1" fill="currentColor" /><path d="M2.5 21.5l2-2" /></Base>;
