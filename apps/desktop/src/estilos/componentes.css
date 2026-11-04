@@ -1906,3 +1906,10 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-doc-cor.padrao { background: #fff; }
 /* Lista de modelos do pincel (15): rola por dentro quando não cabe. */
 .caderno-popover-miolo .caderno-pinceis { max-height: min(60vh, 26rem); overflow-y: auto; padding: 2px; }
+/* Caixa de texto em edição: alça de largura (direita) e de mover (canto), como no Goodnotes. */
+.caderno-caixa.editando { outline: 1.5px solid color-mix(in srgb, var(--cor-destaque) 70%, transparent); outline-offset: 2px; border-radius: 3px; }
+.caderno-caixa.editando .caderno-caixa-area { border-color: transparent; }
+.caderno-caixa-alca-largura { position: absolute; top: 50%; right: -22px; width: 44px; height: 44px; transform: translateY(-50%); cursor: ew-resize; touch-action: none; display: grid; place-items: center; z-index: 2; }
+.caderno-caixa-alca-largura::after { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--cor-superficie); border: 2px solid var(--cor-destaque); box-shadow: 0 1px 3px rgb(0 0 0 / 0.25); }
+.caderno-caixa-alca-mover { position: absolute; top: -40px; left: -6px; width: 40px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--cor-superficie); border: 1px solid var(--cor-borda); color: var(--cor-texto-suave); cursor: move; touch-action: none; z-index: 2; box-shadow: 0 1px 4px rgb(0 0 0 / 0.15); }
+:root[data-baixo-estimulo="true"] .caderno-caixa-alca-mover, :root[data-baixo-estimulo="true"] .caderno-caixa-alca-largura::after { box-shadow: none; }

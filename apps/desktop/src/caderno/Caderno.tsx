@@ -736,7 +736,12 @@ function semCapa(p: Papel): Papel {
 
 /** Toque "de palma": área de contato grande (diâmetro, px). Nunca rola nem dá zoom.
  *  Era 30, e o dedo de muita gente no iPad passava disso: a pinça não funcionava. */
-const PALMA_PX = 70;
+const PALMA_PX = 130;
+/** Logo depois de escrever com a caneta (mão apoiada), um toque já conta como palma a
+ *  partir deste tamanho. Fora disso, o polegar (que encosta mais que os outros dedos)
+ *  continua valendo para a pinça. */
+const PALMA_ESCREVENDO_PX = 70;
+const ESCREVENDO_MS = 4000;
 /** Sem movimento suave: baixo estímulo ligado ou "reduzir movimento" no sistema. */
 const semMovimento = () =>
   document.documentElement.dataset.baixoEstimulo === "true" ||
@@ -1320,7 +1325,12 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     const ignorados = new Set<number>();
     const canetaRecente = () => caneta.current.encostada.size > 0 || performance.now() - caneta.current.levantou < CANETA_PAUSA_MS;
     const temCaneta = (ev: TouchEvent) => [...ev.touches].some(ehCanetaToque);
-    const ehPalma = (tq: Touch) => tamanhoDoToque(tq) > PALMA_PX;
+    const ehPalma = (tq: Touch) => {
+      const d = tamanhoDoToque(tq);
+      if (d > PALMA_PX) return true;
+      const escrevendo = caneta.current.encostada.size > 0 || performance.now() - caneta.current.levantou < ESCREVENDO_MS;
+      return soCanetaRef.current && escrevendo && d > PALMA_ESCREVENDO_PX;
+    };
     // Dedos de verdade (a Apple Pencil, no Safari, também gera "toques": fica de fora).
     const dedos = (ev: TouchEvent) => [...ev.touches].filter((tq) => !ehCanetaToque(tq) && !ignorados.has(tq.identifier));
     let pinca: { d0: number; z0: number; mx: number; my: number } | null = null;
@@ -1368,7 +1378,10 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     };
     const mover = (ev: TouchEvent) => {
       for (const tq of ev.changedTouches) det.mover(tq.identifier, tq.clientX, tq.clientY);
-      if (filtrar(ev, ev.touches)) { pinca = null; arrasto = null; return; }
+      // Durante a pinça, os dedos não viram "palma" no meio do gesto (o polegar,
+      // apertando, aumenta a área de contato e a pinça parava).
+      if (!pinca && filtrar(ev, ev.touches)) { pinca = null; arrasto = null; return; }
+      if (pinca && travadaRef.current) { pinca = null; return; }
       const ds = dedos(ev);
       if (pinca && ds.length >= 2) {
         if (ev.cancelable) ev.preventDefault();
@@ -2390,16 +2403,38 @@ function CaixaTexto({ caixa: tx, escala, editando, ativa, negritoPadrao, slot, a
   // linha. Em edição, um mínimo para caber o cursor.
   const estiloCaixa: React.CSSProperties = {
     // Centralizado ou à direita: a caixa usa a largura toda (senão o alinhamento não aparece).
-    left: tx.x * escala, top: tx.y * escala, width: (tx.alinhamento ?? "esquerda") === "esquerda" ? "max-content" : tx.largura * escala,
+    // Em edição, a caixa mostra a largura dela (dá para mudar pela alça da direita).
+    left: tx.x * escala, top: tx.y * escala, width: emEdicao || (tx.alinhamento ?? "esquerda") !== "esquerda" ? tx.largura * escala : "max-content",
     maxWidth: tx.largura * escala, minWidth: emEdicao ? Math.max(40, tx.tamanho * escala * 2.5) : undefined,
     ...(ehNota ? { background: tx.fundo, padding: `${7 * escala}px ${9 * escala}px`, borderRadius: `${5 * escala}px`, boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)" } : {}),
   };
   const estiloTexto: React.CSSProperties = { color: tx.cor, fontSize: `${tx.tamanho * escala}px`, fontFamily: fonteCss(tx.fonte), textAlign: ALINHAR_CSS[tx.alinhamento ?? "esquerda"] };
   const classeCaixa = ehNota ? "caderno-caixa nota" : "caderno-caixa";
 
+  // Alças da caixa em edição: a da direita muda a largura; a do canto move a caixa.
+  const arrastar = (tipo: "largura" | "mover") => (e: React.PointerEvent<HTMLSpanElement>) => {
+    if (e.button != null && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const caixa = ref.current?.getBoundingClientRect();
+    const x0 = e.clientX, y0 = e.clientY, tx0 = tx.x, ty0 = tx.y;
+    const mover = (ev: PointerEvent) => {
+      if (!caixa || escala <= 0) return;
+      if (tipo === "largura") aoPatch({ largura: Math.max(60, Math.min(4000, (ev.clientX - caixa.left) / escala)) });
+      else aoPatch({ x: tx0 + (ev.clientX - x0) / escala, y: ty0 + (ev.clientY - y0) / escala });
+    };
+    const soltar = () => { el.removeEventListener("pointermove", mover); el.removeEventListener("pointerup", soltar); el.removeEventListener("pointercancel", soltar); };
+    el.addEventListener("pointermove", mover);
+    el.addEventListener("pointerup", soltar);
+    el.addEventListener("pointercancel", soltar);
+  };
   if (emEdicao) {
     return (
       <div ref={ref} className={`${classeCaixa} editando`} style={estiloCaixa}>
+        <span className="caderno-caixa-alca-mover" role="presentation" title={t.texto.mover} onPointerDown={arrastar("mover")}><IconeAlca aria-hidden="true" size="0.9em" /></span>
+        <span className="caderno-caixa-alca-largura" role="presentation" title={t.texto.largura} onPointerDown={arrastar("largura")} />
         <CaixaEditor tx={tx} estilo={estiloTexto} slot={slot} negritoPadrao={negritoPadrao} aoTamPadrao={aoTamPadrao} aoPatch={aoPatch} aoFim={aoFim} aoApagar={aoApagar} />
       </div>
     );

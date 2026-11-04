@@ -1535,6 +1535,7 @@ export const textos = {
       novoAjuda: "Toque numa área vazia da folha para escrever, ou arraste para escolher a largura da caixa. Para mover o texto depois, use a ferramenta Selecionar (o cursor).",
       tamanho: "Tamanho da letra",
       mover: "Mover a caixa de texto",
+      largura: "Arraste para mudar a largura da caixa",
       apagar: "Apagar a caixa de texto",
       campo: "Caixa de texto",
       vazio: "Escreva aqui…",

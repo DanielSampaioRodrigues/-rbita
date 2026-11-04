@@ -535,11 +535,11 @@
   --etq-musgo: #9cc28a; --etq-mar: #7cc4c9; --etq-ceu: #8fb2e3; --etq-lavanda: #b9a6e0;
   --etq-rosa: #e09ab9; --etq-terra: #d39b75; --etq-areia: #dcc48c; --etq-cinza: #a8adb4;
 }
-/* Baixo estímulo: as etiquetas ficam neutras; o nome continua lá. */
-:root[data-baixo-estimulo="true"] {
-  --etq-musgo: var(--cor-texto-suave); --etq-mar: var(--cor-texto-suave); --etq-ceu: var(--cor-texto-suave); --etq-lavanda: var(--cor-texto-suave);
-  --etq-rosa: var(--cor-texto-suave); --etq-terra: var(--cor-texto-suave); --etq-areia: var(--cor-texto-suave); --etq-cinza: var(--cor-texto-suave);
-}
+/* Baixo estímulo: as cores ficam mais suaves (misturadas com cinza), mas continuam
+   reconhecíveis — antes todas viravam o mesmo cinza e não dava para escolher uma cor
+   (pedido de Dan, 04/11/2026). O nome continua sempre ao lado. */
+:root[data-baixo-estimulo="true"] { --etq-musgo: color-mix(in srgb, #5b7a4c 70%, var(--cor-texto-suave)); --etq-mar: color-mix(in srgb, #2e7a80 70%, var(--cor-texto-suave)); --etq-ceu: color-mix(in srgb, #44709f 70%, var(--cor-texto-suave)); --etq-lavanda: color-mix(in srgb, #7c68a8 70%, var(--cor-texto-suave)); --etq-rosa: color-mix(in srgb, #a95b7f 70%, var(--cor-texto-suave)); --etq-terra: color-mix(in srgb, #94603d 70%, var(--cor-texto-suave)); --etq-areia: color-mix(in srgb, #8f7738 70%, var(--cor-texto-suave)); --etq-cinza: color-mix(in srgb, #6f747c 70%, var(--cor-texto-suave)); }
+:root[data-baixo-estimulo="true"][data-modo="escuro"] { --etq-musgo: color-mix(in srgb, #9cc28a 70%, var(--cor-texto-suave)); --etq-mar: color-mix(in srgb, #7cc4c9 70%, var(--cor-texto-suave)); --etq-ceu: color-mix(in srgb, #8fb2e3 70%, var(--cor-texto-suave)); --etq-lavanda: color-mix(in srgb, #b9a6e0 70%, var(--cor-texto-suave)); --etq-rosa: color-mix(in srgb, #e09ab9 70%, var(--cor-texto-suave)); --etq-terra: color-mix(in srgb, #d39b75 70%, var(--cor-texto-suave)); --etq-areia: color-mix(in srgb, #dcc48c 70%, var(--cor-texto-suave)); --etq-cinza: color-mix(in srgb, #a8adb4 70%, var(--cor-texto-suave)); }
 .cor-musgo { --etq: var(--etq-musgo); } .cor-mar { --etq: var(--etq-mar); } .cor-ceu { --etq: var(--etq-ceu); } .cor-lavanda { --etq: var(--etq-lavanda); }
 .cor-rosa { --etq: var(--etq-rosa); } .cor-terra { --etq: var(--etq-terra); } .cor-areia { --etq: var(--etq-areia); } .cor-cinza { --etq: var(--etq-cinza); }
 .borda-musgo { --etq: var(--etq-musgo); } .borda-mar { --etq: var(--etq-mar); } .borda-ceu { --etq: var(--etq-ceu); } .borda-lavanda { --etq: var(--etq-lavanda); }
