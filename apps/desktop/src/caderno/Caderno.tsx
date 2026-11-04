@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, 
 import { createPortal, flushSync } from "react-dom";
 import { Button, Dialog, DialogTrigger, Form, Label, Menu, MenuItem, MenuTrigger, Popover, Radio, RadioGroup } from "react-aria-components";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
 import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PINCEL, novaSemente, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type ModeloPincel, type Papel, type Ponto, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
 import { ICONES_FORMA, IconeAgrupar, IconeAlca, IconeLaser, IconeCadeado, IconeCadeadoAberto, IconeCursor, IconeDesagrupar, IconeEngrenagem, IconeNivelFrente, IconeNivelTras, IconeSeta, IconeTudoFrente, IconeTudoTras } from "./iconesCaderno";
@@ -15,11 +14,14 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, Italic, LayoutGrid, List, ListOrdered, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Underline, Undo2, Wand2, X } from "../icones";
+import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { CamadaDocumento, DocumentoEstatico } from "./Documento";
+import { DocumentoAberto } from "./DocumentoAberto";
+import { FitaTexto } from "./editor/Fita";
+import { extensoesBase } from "./editor/extensoes";
 import { acaoDoGesto, criarDetectorDeToques, type AcaoGesto } from "./gestos";
 import { larguraDaPagina, paginaAoSoltar, paginaNaPosicao, type Encaixe } from "./visor";
 import { CAPA_NA_PAGINA, capaJaDecidida, capaNaPagina, SEM_CAPA, cenaDaCapaAntiga, lerCenaCapa, temCapaCena, tituloDaCapa } from "./capa";
@@ -112,6 +114,7 @@ export function PaginaCaderno() {
   const atual = aberto ? cadernos.find((c) => c.id === aberto.id) ?? aberto : null;
   if (atual) {
     const abas = recentes.map((id) => cadernos.find((c) => c.id === id)).filter((c): c is Caderno => !!c);
+    if (atual.modo === "documento") return <DocumentoAberto key={atual.id} caderno={atual} aoFechar={() => setAberto(null)} />;
     return <CadernoAberto key={atual.id} caderno={atual} abas={abas} aoTrocar={abrir} aoFechar={() => setAberto(null)} />;
   }
 
@@ -629,17 +632,12 @@ const MEDIDA: MedidaTexto = {
 /** O conteúdo HTML está vazio (só tags, sem texto)? */
 const textoVazio = (html: string) => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim() === "";
 
-/** Extensões do editor da caixa: só marcas em linha (negrito, itálico,
- *  sublinhado) e parágrafos — nada de título, lista ou citação (é um rótulo). */
-const extensoesCaderno = [
-  StarterKit.configure({ heading: false, blockquote: false, codeBlock: false, code: false, horizontalRule: false, strike: false, link: false }),
-];
+/** Extensões do editor da caixa: as mesmas do editor completo de texto. */
+const extensoesCaixa = extensoesBase();
 
 /** Fontes oferecidas na caixa ("" = padrão do app). */
 // Padrão do tema primeiro; depois todas as fontes do app (as mesmas da Aparência).
-const FONTES_CADERNO: (keyof typeof FONTES | "")[] = ["", ...(Object.keys(FONTES) as (keyof typeof FONTES)[])];
 const fonteCss = (f?: string) => (f && f in FONTES ? FONTES[f as keyof typeof FONTES].css : "var(--fonte-texto)");
-const ALINHAR: AlinharTexto[] = ["esquerda", "centro", "direita"];
 const ALINHAR_CSS: Record<AlinharTexto, "left" | "center" | "right"> = { esquerda: "left", centro: "center", direita: "right" };
 
 /** Lista vazia estável (evita re-render das páginas sem seleção). */
@@ -2406,6 +2404,7 @@ function CaixaTexto({ caixa: tx, escala, editando, ativa, negritoPadrao, slot, a
     // Em edição, a caixa mostra a largura dela (dá para mudar pela alça da direita).
     left: tx.x * escala, top: tx.y * escala, width: emEdicao || (tx.alinhamento ?? "esquerda") !== "esquerda" ? tx.largura * escala : "max-content",
     maxWidth: tx.largura * escala, minWidth: emEdicao ? Math.max(40, tx.tamanho * escala * 2.5) : undefined,
+    ["--caderno-escala" as string]: escala,
     ...(ehNota ? { background: tx.fundo, padding: `${7 * escala}px ${9 * escala}px`, borderRadius: `${5 * escala}px`, boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)" } : {}),
   };
   const estiloTexto: React.CSSProperties = { color: tx.cor, fontSize: `${tx.tamanho * escala}px`, fontFamily: fonteCss(tx.fonte), textAlign: ALINHAR_CSS[tx.alinhamento ?? "esquerda"] };
@@ -2457,7 +2456,7 @@ function CaixaEditor({ tx, estilo, slot, negritoPadrao, aoTamPadrao, aoPatch, ao
 }) {
   const vazioAoAbrir = useRef(textoVazio(tx.texto));
   const editor = useEditor({
-    extensions: extensoesCaderno,
+    extensions: extensoesCaixa,
     content: tx.texto || "",
     autofocus: "end",
     editorProps: {
@@ -2476,14 +2475,6 @@ function CaixaEditor({ tx, estilo, slot, negritoPadrao, aoTamPadrao, aoPatch, ao
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
-  const [marcas, setMarcas] = useState({ b: false, i: false, u: false, lista: false, numerada: false });
-  useEffect(() => {
-    if (!editor) return;
-    const ler = () => setMarcas({ b: editor.isActive("bold"), i: editor.isActive("italic"), u: editor.isActive("underline"), lista: editor.isActive("bulletList"), numerada: editor.isActive("orderedList") });
-    editor.on("selectionUpdate", ler);
-    editor.on("transaction", ler);
-    return () => { editor.off("selectionUpdate", ler); editor.off("transaction", ler); };
-  }, [editor]);
   // Ditado por voz: insere o texto falado no ponto do cursor (só aparece com a
   // transcrição local instalada).
   const ditado = useDitar("", (texto) => editor?.chain().focus().insertContent(texto).run(), true);
@@ -2495,43 +2486,27 @@ function CaixaEditor({ tx, estilo, slot, negritoPadrao, aoTamPadrao, aoPatch, ao
     () => editor?.commands.focus(),
   );
   if (!editor) return null;
-  const fonteAtual = tx.fonte ?? "";
-  const ciclarFonte = () => { const i = FONTES_CADERNO.indexOf(fonteAtual as (typeof FONTES_CADERNO)[number]); aoPatch({ fonte: FONTES_CADERNO[(i + 1) % FONTES_CADERNO.length] }); };
   const mudarTam = (d: number) => { const n = Math.min(80, Math.max(12, tx.tamanho + d)); aoPatch({ tamanho: n }); aoTamPadrao(n); };
-  const alinhoAtual = tx.alinhamento ?? "esquerda";
-  const ciclarAlinho = () => aoPatch({ alinhamento: ALINHAR[(ALINHAR.indexOf(alinhoAtual) + 1) % ALINHAR.length] });
-  const IconeAlinho = alinhoAtual === "centro" ? AlignCenter : alinhoAtual === "direita" ? AlignRight : AlignLeft;
-  const nomeFonte = fonteAtual && fonteAtual in FONTES ? FONTES[fonteAtual as keyof typeof FONTES].nome : t.texto.fontePadrao;
-  // Tocar nos botões não tira o cursor do texto.
-  const segurarFoco = (e: React.PointerEvent | React.MouseEvent) => e.preventDefault();
+  // A barra é a mesma do editor completo; aqui só entram as coisas da caixa: o
+  // tamanho base da letra da caixa, o fundo da nota, o ditado, a IA, apagar e "Pronto".
   const controles = (
-    <div className="caderno-fmt-barra" role="group" aria-label={t.texto.formatar} onPointerDown={segurarFoco} onMouseDown={segurarFoco}>
-      <span className="caderno-fmt-grupo">
-        <button type="button" className={marcas.b ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => editor.chain().focus().toggleBold().run()} aria-label={textos.rico.negrito} aria-pressed={marcas.b}><Bold size="1em" aria-hidden="true" /></button>
-        <button type="button" className={marcas.i ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => editor.chain().focus().toggleItalic().run()} aria-label={textos.rico.italico} aria-pressed={marcas.i}><Italic size="1em" aria-hidden="true" /></button>
-        <button type="button" className={marcas.u ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => editor.chain().focus().toggleUnderline().run()} aria-label={textos.rico.sublinhado} aria-pressed={marcas.u}><Underline size="1em" aria-hidden="true" /></button>
-      </span>
-      <span className="caderno-fmt-grupo">
-        <button type="button" className="caderno-fmt" onClick={() => mudarTam(-2)} aria-label={t.texto.diminuir}>A−</button>
-        <span className="caderno-fmt-valor" aria-live="polite">{t.texto.tamanhoAtual(tx.tamanho)}</span>
-        <button type="button" className="caderno-fmt" onClick={() => mudarTam(2)} aria-label={t.texto.aumentar}>A+</button>
-      </span>
-      <button type="button" className="caderno-fmt fonte" style={{ fontFamily: fonteCss(fonteAtual) }} onClick={ciclarFonte} aria-label={`${t.texto.fonte}: ${nomeFonte}`} title={nomeFonte}>Aa</button>
-      <button type="button" className="caderno-fmt" onClick={ciclarAlinho} aria-label={t.texto.alinhar[alinhoAtual]}><IconeAlinho size="1em" aria-hidden="true" /></button>
-      <span className="caderno-fmt-grupo">
-        <button type="button" className={marcas.lista ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => editor.chain().focus().toggleBulletList().run()} aria-label={textos.rico.lista} aria-pressed={marcas.lista}><List size="1em" aria-hidden="true" /></button>
-        <button type="button" className={marcas.numerada ? "caderno-fmt ativo" : "caderno-fmt"} onClick={() => editor.chain().focus().toggleOrderedList().run()} aria-label={textos.rico.numerada} aria-pressed={marcas.numerada}><ListOrdered size="1em" aria-hidden="true" /></button>
-      </span>
-      {ditado.botao && <span className="caderno-fmt-grupo caderno-fmt-ditado">{ditado.botao}</span>}
-      {tx.fundo && (
-        <button type="button" className="caderno-fmt" onClick={() => aoPatch({ fundo: FUNDOS_NOTA[(FUNDOS_NOTA.indexOf(tx.fundo!) + 1) % FUNDOS_NOTA.length] })} aria-label={t.texto.fundo}>
-          <span className="caderno-fmt-fundo" style={{ background: tx.fundo }} aria-hidden="true" />
-        </button>
-      )}
-      {revisar.botao && <span className="caderno-fmt-grupo">{revisar.botao}</span>}
-      <button type="button" className="caderno-fmt" onClick={aoApagar} aria-label={t.texto.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
-      <button type="button" className="caderno-fmt caderno-fmt-pronto" onClick={aoFim}>{t.texto.pronto}</button>
-    </div>
+    <FitaTexto editor={editor} compacta tamanhoCss={(n) => `calc(${(n / 0.75).toFixed(2)}px * var(--caderno-escala, 1))`}
+      extra={(
+        <span className="fita-grupo">
+          <button type="button" className="fita-botao" onClick={() => mudarTam(-2)} aria-label={t.texto.diminuirCaixa} title={t.texto.diminuirCaixa}><span className="fita-botao-texto">a−</span></button>
+          <span className="fita-info" aria-live="polite">{t.texto.tamanhoAtual(tx.tamanho)}</span>
+          <button type="button" className="fita-botao" onClick={() => mudarTam(2)} aria-label={t.texto.aumentarCaixa} title={t.texto.aumentarCaixa}><span className="fita-botao-texto">a+</span></button>
+          {ditado.botao && <span className="caderno-fmt-ditado">{ditado.botao}</span>}
+          {tx.fundo && (
+            <button type="button" className="fita-botao" onClick={() => aoPatch({ fundo: FUNDOS_NOTA[(FUNDOS_NOTA.indexOf(tx.fundo!) + 1) % FUNDOS_NOTA.length] })} aria-label={t.texto.fundo} title={t.texto.fundo}>
+              <span className="caderno-fmt-fundo" style={{ background: tx.fundo }} aria-hidden="true" />
+            </button>
+          )}
+          {revisar.botao}
+          <button type="button" className="fita-botao" onClick={aoApagar} aria-label={t.texto.apagar} title={t.texto.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
+          <button type="button" className="fita-botao largo caderno-fmt-pronto" onClick={aoFim}>{t.texto.pronto}</button>
+        </span>
+      )} />
   );
   return (
     <>
@@ -3384,7 +3359,6 @@ function BarraContexto(c: Contexto) {
           <Opcoes rotulo={tc.tipoTexto} valor={c.ferramenta === "nota" ? "nota" : "texto"} aoMudar={(v) => c.aoFerramenta(v)}
             opcoes={[{ valor: "texto", nome: c.paginaTexto ? tc.textoDaPagina : tc.caixa }, { valor: "nota", nome: t.ferramentas.nomes.nota }]} />
           {sep}
-          {c.paginaTexto && c.ferramenta === "texto" ? <p className="caderno-subbarra-dica">{t.documento.dica}</p> : null}
           {!c.editandoTexto && !(c.paginaTexto && c.ferramenta === "texto") && <SubTextoPadrao tamanho={c.tamTexto} aoTamanho={c.aoTamTexto} negrito={c.negritoTexto} aoNegrito={c.aoNegritoTexto} />}
           <div ref={c.slotTexto} className="caderno-subbarra-slot" />
           {c.ferramenta === "texto" && !c.paginaTexto && <>{sep}{cores}</>}

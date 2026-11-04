@@ -1913,3 +1913,97 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-caixa-alca-largura::after { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--cor-superficie); border: 2px solid var(--cor-destaque); box-shadow: 0 1px 3px rgb(0 0 0 / 0.25); }
 .caderno-caixa-alca-mover { position: absolute; top: -40px; left: -6px; width: 40px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--cor-superficie); border: 1px solid var(--cor-borda); color: var(--cor-texto-suave); cursor: move; touch-action: none; z-index: 2; box-shadow: 0 1px 4px rgb(0 0 0 / 0.15); }
 :root[data-baixo-estimulo="true"] .caderno-caixa-alca-mover, :root[data-baixo-estimulo="true"] .caderno-caixa-alca-largura::after { box-shadow: none; }
+
+/* ---------- Editor de texto: barra (fita) no estilo do Word/Pages ---------- */
+.fita { display: grid; gap: 4px; min-width: 0; }
+.fita-abas { display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--cor-borda); }
+.fita-aba { min-height: 36px; padding: 0 0.9rem; border: none; border-bottom: 2px solid transparent; background: none; color: var(--cor-texto-suave); font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.fita-aba.ativa { color: var(--cor-destaque); border-bottom-color: var(--cor-destaque); }
+.fita-aba:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: -3px; }
+.fita-abas-fim { margin-left: auto; display: inline-flex; gap: 2px; }
+.fita-miolo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 2px 0; }
+.fita-grupo { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.fita-sep { width: 1px; height: 26px; background: var(--cor-borda); flex: none; }
+.fita-botao { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; min-width: 36px; height: 36px; padding: 0 6px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--cor-texto); font: inherit; font-size: 0.85rem; cursor: pointer; touch-action: manipulation; }
+.fita-botao.largo { padding: 0 0.6rem; border-color: var(--cor-borda-controle); }
+.fita-botao:hover:not(:disabled) { background: var(--cor-superficie-alternativa); }
+.fita-botao.ativo { background: color-mix(in srgb, var(--cor-destaque) 14%, var(--cor-superficie)); color: var(--cor-destaque); border-color: color-mix(in srgb, var(--cor-destaque) 45%, transparent); }
+.fita-botao:disabled { opacity: 0.4; cursor: default; }
+.fita-botao:focus-visible, .fita-botao[data-focus-visible] { outline: 2px solid var(--cor-foco); outline-offset: 1px; }
+.fita-botao-texto { font-weight: 700; font-size: 0.9rem; letter-spacing: -0.01em; }
+.fita-cor-traco { position: absolute; left: 22%; right: 22%; bottom: 4px; height: 3px; border-radius: 2px; }
+.fita-select { min-height: 36px; max-width: 11rem; padding: 0 0.4rem; border: 1px solid var(--cor-borda-controle); border-radius: 8px; background: var(--cor-superficie); color: var(--cor-texto); font: inherit; font-size: 0.85rem; }
+.fita-select.largo { max-width: 13rem; }
+.fita-select.curto { max-width: 4.6rem; }
+.fita-campo { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--cor-texto-suave); }
+.fita-campo .entrada-texto { min-height: 36px; width: 12rem; }
+.fita-busca .entrada-texto { min-height: 36px; width: 10rem; }
+.fita-info { font-size: 0.85rem; color: var(--cor-texto-suave); }
+.fita-cores { display: grid; grid-template-columns: repeat(5, 32px); gap: 6px; padding: 8px; outline: none; }
+.fita-cor { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgb(0 0 0 / 0.18); cursor: pointer; display: grid; place-items: center; font-weight: 700; color: #1f2937; outline: none; }
+.fita-cor[data-focused] { outline: 3px solid var(--cor-foco); outline-offset: 1px; }
+.fita-cor.padrao { background: #fff; }
+.fita-link { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 4px; }
+.fita-link .entrada-texto { min-height: 36px; width: min(22rem, 100%); }
+.fita.compacta .fita-miolo { max-width: min(52rem, calc(100vw - 3rem)); }
+
+/* ---------- Documento de texto: área cinza com as folhas ---------- */
+.documento-tela { display: flex; flex-direction: column; height: 100%; }
+.documento-fita { padding: 4px var(--espaco-3) 6px; border-bottom: 1px solid var(--cor-borda); background: var(--cor-superficie); position: relative; z-index: 3; }
+.documento-rolagem { flex: 1; min-height: 0; overflow: auto; padding: var(--espaco-4) var(--espaco-3) var(--espaco-6); }
+.documento-folhas { width: max-content; margin: 0 auto; }
+.documento-folhas .ProseMirror { background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 8px 24px rgb(0 0 0 / 0.08); outline: none; }
+:root[data-baixo-estimulo="true"] .documento-folhas .ProseMirror { box-shadow: 0 0 0 1px var(--cor-borda); }
+
+/* ---------- Tipografia do texto (documento e página de texto), pelo estilo do documento ---------- */
+.doc-conteudo {
+  color: #1f2937; font-family: var(--doc-fonte, var(--fonte-texto)); font-size: var(--doc-tamanho, 12pt); line-height: var(--doc-entrelinha, 1.5);
+  overflow-wrap: break-word; -webkit-user-select: text; user-select: text;
+}
+.doc-conteudo p { margin: 0 0 var(--doc-espaco-depois, 0.6em); text-align: var(--doc-alinhamento, left); text-indent: var(--doc-recuo, 0); }
+.doc-conteudo li p, .doc-conteudo td p, .doc-conteudo th p, .doc-conteudo blockquote p { text-indent: 0; }
+.doc-conteudo :is(h1, h2, h3, h4) { font-family: var(--doc-fonte-titulos, var(--doc-fonte, var(--fonte-texto))); text-transform: var(--doc-titulos-caixa, none); line-height: 1.25; text-indent: 0; }
+.doc-conteudo h1 { font-size: 1.6em; margin: 0.8em 0 0.4em; }
+.doc-conteudo h2 { font-size: 1.3em; margin: 0.7em 0 0.35em; }
+.doc-conteudo h3 { font-size: 1.12em; margin: 0.6em 0 0.3em; }
+.doc-conteudo h4 { font-size: 1em; margin: 0.5em 0 0.25em; }
+.doc-conteudo h1[data-estilo="titulo"] { font-size: 2.2em; text-align: center; margin: 0.4em 0 0.6em; }
+.doc-conteudo p[data-estilo="subtitulo"] { font-size: 1.25em; color: #4b5563; text-indent: 0; }
+.doc-conteudo p[data-estilo="legenda"] { font-size: 0.85em; color: #4b5563; font-style: italic; text-align: center; text-indent: 0; }
+.doc-conteudo p[data-estilo="destaque"] { padding: 0.6em 0.8em; border-left: 4px solid #2e7a80; background: #eef6f6; border-radius: 4px; text-indent: 0; }
+.doc-conteudo ul, .doc-conteudo ol { margin: 0 0 0.6em; padding-left: 1.6em; }
+.doc-conteudo ul[data-type="taskList"] { list-style: none; padding-left: 0.2em; }
+.doc-conteudo ul[data-type="taskList"] li { display: flex; gap: 0.5em; align-items: flex-start; }
+.doc-conteudo ul[data-type="taskList"] li > label { margin-top: 0.25em; }
+.doc-conteudo blockquote { margin: 0 0 0.6em 2.2cm; padding: 0; font-size: 0.92em; color: #374151; }
+.doc-conteudo hr { border: none; border-top: 1px solid #c9ccd4; margin: 1em 0; }
+.doc-conteudo table { border-collapse: collapse; width: 100%; margin: 0 0 0.8em; table-layout: fixed; }
+.doc-conteudo td, .doc-conteudo th { border: 1px solid #b8bcc6; padding: 0.3em 0.5em; vertical-align: top; position: relative; }
+.doc-conteudo th { background: #f3f4f6; font-weight: 700; text-align: left; }
+.doc-conteudo .selectedCell::after { content: ""; position: absolute; inset: 0; background: rgb(59 130 246 / 0.15); pointer-events: none; }
+.doc-conteudo .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #60a5fa; pointer-events: none; }
+.doc-conteudo.resize-cursor { cursor: col-resize; }
+.doc-conteudo img { max-width: 100%; height: auto; border-radius: 2px; }
+.doc-conteudo [data-resize-handle] { width: 12px; height: 12px; background: #fff; border: 2px solid #2563eb; border-radius: 50%; }
+.doc-conteudo mark { border-radius: 2px; padding: 0 1px; }
+.doc-conteudo a { color: #1d4ed8; text-decoration: underline; }
+.doc-conteudo details { border: 1px solid #d1d5db; border-radius: 6px; padding: 0.3em 0.7em; margin: 0 0 0.6em; }
+.doc-conteudo details summary { font-weight: 600; cursor: pointer; }
+.doc-conteudo .ProseMirror-selectednode { outline: 2px solid #60a5fa; }
+.doc-conteudo p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; float: left; height: 0; }
+.fita-campo .entrada-texto, .fita-busca .entrada-texto, .fita-link .entrada-texto { border: 1px solid var(--cor-borda-controle); border-radius: 8px; padding: 0 0.6rem; background: var(--cor-superficie); color: var(--cor-texto); font: inherit; font-size: 0.9rem; }
+/* Espaço entre as folhas do documento: a cor do fundo do app (parece papel separado). */
+.documento-folhas .rm-pagination-gap { background-color: var(--cor-fundo) !important; border-left-color: var(--cor-fundo) !important; border-right-color: var(--cor-fundo) !important; border-top: 1px solid var(--cor-borda) !important; border-bottom: 1px solid var(--cor-borda) !important; }
+.documento-folhas .rm-with-pagination { border-color: var(--cor-borda) !important; }
+.documento-folhas .rm-page-header, .documento-folhas .rm-page-footer { color: #4b5563; font-family: var(--doc-fonte, var(--fonte-texto)); font-size: 10pt; }
+/* Conteúdo rico dentro da caixa de texto do caderno (o mesmo editor completo). */
+.caderno-caixa-area :is(h1, h2, h3, h4) { margin: 0.2em 0; line-height: 1.2; }
+.caderno-caixa-area h1 { font-size: 1.6em; } .caderno-caixa-area h2 { font-size: 1.3em; } .caderno-caixa-area h3 { font-size: 1.12em; }
+.caderno-caixa-area blockquote { margin: 0; padding-left: 0.7em; border-left: 3px solid currentColor; opacity: 0.85; }
+.caderno-caixa-area table { border-collapse: collapse; width: 100%; }
+.caderno-caixa-area td, .caderno-caixa-area th { border: 1px solid #b8bcc6; padding: 0.15em 0.35em; }
+.caderno-caixa-area mark { border-radius: 2px; }
+.caderno-caixa-area img { max-width: 100%; height: auto; }
+.caderno-caixa-area ul[data-type="taskList"] { list-style: none; padding-left: 0.2em; }
+.caderno-caixa-area ul[data-type="taskList"] li { display: flex; gap: 0.4em; }
+.caderno-caixa-area p[data-estilo="destaque"] { padding: 0.3em 0.5em; border-left: 3px solid #2e7a80; background: #eef6f6; }
