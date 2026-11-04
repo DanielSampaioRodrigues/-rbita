@@ -1079,7 +1079,9 @@ export interface Api {
   /** IA do caderno: pedido livre sobre a página (texto e imagens em data: URL). */
   iaCaderno(pedido: string, contexto: string, imagens: string[], sensivel: boolean): Promise<RespostaIaCaderno>;
   /** IA com liberdade no caderno: recebe a descrição (JSON) e devolve o plano de mudanças. A tela confere e aplica. */
-  iaCadernoAgir(pedido: string, descricao: string, imagens: string[], sensivel: boolean): Promise<PlanoIaCaderno>;
+  iaCadernoAgir(pedido: string, descricao: string, imagens: string[], sensivel: boolean, fontes?: string): Promise<PlanoIaCaderno>;
+  /** Fontes do caderno: responde usando só os trechos (com etiquetas [F2 p.14]). */
+  iaFontes(pedido: string, trechos: string, sensivel: boolean): Promise<RespostaIaCaderno>;
   revisarTextoIa(texto: string, sensivel: boolean, modo?: ModoReescrita, instrucao?: string): Promise<string>;
   ditadoEstado(): Promise<EstadoDitado>;
   ditadoBaixar(modelo: ModeloVoz): Promise<EstadoDitado>;
@@ -1371,7 +1373,8 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   ajustarOrganizacaoIa: (texto, itens, mudanca, sensivel) => chamar("ajustar_organizacao_ia", { texto, itens, mudanca, sensivel }),
   revisarTextoIa: (texto, sensivel, modo, instrucao) => chamar("revisar_texto_ia", { texto, sensivel, modo: modo ?? null, instrucao: instrucao ?? null }),
   iaCaderno: (pedido, contexto, imagens, sensivel) => chamar("ia_caderno", { pedido, contexto, imagens, sensivel }),
-  iaCadernoAgir: (pedido, descricao, imagens, sensivel) => chamar("ia_caderno_agir", { pedido, descricao, imagens, sensivel }),
+  iaCadernoAgir: (pedido, descricao, imagens, sensivel, fontes) => chamar("ia_caderno_agir", { pedido, descricao, imagens, sensivel, fontes: fontes ?? "" }),
+  iaFontes: (pedido, trechos, sensivel) => chamar("ia_fontes", { pedido, trechos, sensivel }),
   conferirEscritaIa: (imagem, quantas, sensivel) => chamar("conferir_escrita_ia", { imagem, quantas, sensivel }),
   ditadoEstado: () => chamar("ditado_estado"),
   ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
@@ -2879,7 +2882,7 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "iaCaderno" | "iaCadernoAgir" | "conferirEscritaIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
+function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "iaCaderno" | "iaCadernoAgir" | "iaFontes" | "conferirEscritaIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, modelos: {}, bloquearSensivel: false };
   if (comClaude) {
@@ -2966,6 +2969,21 @@ ${JSON.stringify(tema)}`;
         ? `<ul><li>Tema central<ul>${linhas.map((l) => `<li>${esc(l)}</li>`).join("") || "<li>Ramo 1</li><li>Ramo 2</li>"}</ul></li></ul>`
         : `<h2>${esc(pedido.slice(0, 60))}</h2><ul>${linhas.map((l) => `<li>${esc(l)}</li>`).join("") || "<li>(página sem texto digitado)</li>"}</ul>${imagens.length ? `<p>Recebi ${imagens.length} imagem(ns) da página.</p>` : ""}`;
       return { html, provedor: "Claude", local: false };
+    },
+    // Simulação das fontes: devolve as primeiras frases dos trechos, com as etiquetas.
+    iaFontes: async (pedido, trechos, sensivel) => {
+      await espera(700);
+      if (comErro) throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");
+      if (sensivel && estado.bloquearSensivel)
+        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do aparelho.", undefined, undefined, undefined, "sensivel_bloqueado");
+      const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const blocos = trechos.split(/\n\n(?=\[F)/).slice(0, 4).map((b) => {
+        const [cab, ...resto] = b.split("\n");
+        const tag = /^\[[^\]]+\]/.exec(cab)?.[0] ?? "";
+        return `<li>${esc(resto.join(" ").split(/(?<=\.)\s/)[0].slice(0, 160))} ${tag}</li>`;
+      });
+      if (/mapa/i.test(pedido)) return { html: `<ul><li>Fontes<ul>${blocos.join("")}</ul></li></ul>`, provedor: "Claude", local: false };
+      return { html: `<h2>${esc(pedido.slice(0, 60))}</h2><ul>${blocos.join("") || "<li>As fontes não falam disso.</li>"}</ul>`, provedor: "Claude", local: false };
     },
     // Simulação da IA com liberdade: lê a descrição e devolve um plano de exemplo.
     iaCadernoAgir: async (pedido, descricao, imagens, sensivel) => {

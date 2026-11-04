@@ -1,5 +1,5 @@
 // Painel ao lado da folha (como no Goodnotes), com abas: Páginas (miniaturas para ir
-// direto a uma página, todas ou só as marcadas), IA e Biblioteca. Abre e fecha pela
+// direto a uma página, todas ou só as marcadas), IA, Fontes e Biblioteca. Abre e fecha pela
 // barra de cima; o lado (esquerda ou direita) fica nas configurações do caderno.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components";
@@ -9,9 +9,9 @@ import { Bookmark, Plus, X } from "../icones";
 import { textos } from "../textos/pt-BR";
 
 const t = textos.caderno.painel;
-export type AbaPainel = "paginas" | "ia" | "biblioteca";
+export type AbaPainel = "paginas" | "ia" | "fontes" | "biblioteca";
 
-export function PainelLateral({ aba, aoAba, aoFechar, paginas, atualId, miniatura, aoIr, aoAdicionar, aoVerGrade, ia, biblioteca }: {
+export function PainelLateral({ aba, aoAba, aoFechar, paginas, atualId, miniatura, aoIr, aoAdicionar, aoVerGrade, ia, fontes, biblioteca }: {
   aba: AbaPainel;
   aoAba: (a: AbaPainel) => void;
   aoFechar: () => void;
@@ -23,6 +23,7 @@ export function PainelLateral({ aba, aoAba, aoFechar, paginas, atualId, miniatur
   aoAdicionar: () => void;
   aoVerGrade: () => void;
   ia: ReactNode;
+  fontes: ReactNode;
   biblioteca: ReactNode;
 }) {
   const [filtro, setFiltro] = useState<"todas" | "marcadas">("todas");
@@ -33,7 +34,7 @@ export function PainelLateral({ aba, aoAba, aoFechar, paginas, atualId, miniatur
     if (aba !== "paginas" || !atualId) return;
     lista.current?.querySelector(`[data-pagina="${atualId}"]`)?.scrollIntoView({ block: "nearest" });
   }, [aba, atualId, filtro]);
-  const abas: AbaPainel[] = ["paginas", "ia", "biblioteca"];
+  const abas: AbaPainel[] = ["paginas", "ia", "fontes", "biblioteca"];
   return (
     <aside className="caderno-painel" aria-label={t.titulo}>
       <div className="caderno-painel-topo">
@@ -70,6 +71,7 @@ export function PainelLateral({ aba, aoAba, aoFechar, paginas, atualId, miniatur
           </>
         )}
         {aba === "ia" && ia}
+        {aba === "fontes" && fontes}
         {aba === "biblioteca" && biblioteca}
       </div>
     </aside>

@@ -683,8 +683,14 @@ pub async fn conferir_escrita_ia(estado: State<'_, Estado>, imagem: String, quan
 
 /// IA com liberdade total no caderno: devolve um plano de mudanças; quem aplica é a tela.
 #[tauri::command]
-pub async fn ia_caderno_agir(estado: State<'_, Estado>, pedido: String, descricao: String, imagens: Vec<String>, sensivel: bool) -> Result<Value, Erro> {
-    rodar_ia(&estado, "ia_caderno_agir", json!({ "pedido": pedido, "descricao": descricao, "imagens": imagens, "sensivel": sensivel })).await
+pub async fn ia_caderno_agir(estado: State<'_, Estado>, pedido: String, descricao: String, imagens: Vec<String>, sensivel: bool, fontes: Option<String>) -> Result<Value, Erro> {
+    rodar_ia(&estado, "ia_caderno_agir", json!({ "pedido": pedido, "descricao": descricao, "imagens": imagens, "sensivel": sensivel, "fontes": fontes.unwrap_or_default() })).await
+}
+
+/// Fontes do caderno: responde usando só os trechos (com etiquetas [F2 p.14]).
+#[tauri::command]
+pub async fn ia_fontes(estado: State<'_, Estado>, pedido: String, trechos: String, sensivel: bool) -> Result<Value, Erro> {
+    rodar_ia(&estado, "ia_fontes", json!({ "pedido": pedido, "trechos": trechos, "sensivel": sensivel })).await
 }
 
 // ---------- Ditado (voz para texto, no computador) ----------

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::protocolo::{self, FormatoImagem, Imagem, Pedido};
-use super::{agente, caderno, escrita, organizar, planejar, revisar, tema, Escolhido, Provedor, TipoProvedor};
+use super::{agente, caderno, escrita, fontes, organizar, planejar, revisar, tema, Escolhido, Provedor, TipoProvedor};
 use crate::erro::Erro;
 
 /// As ordens que passam por aqui (as mesmas, com os mesmos argumentos, no Windows e no navegador).
@@ -28,6 +28,7 @@ pub const COMANDOS: &[&str] = &[
     "ia_caderno",
     "conferir_escrita_ia",
     "ia_caderno_agir",
+    "ia_fontes",
     "gerar_tema_ia",
     "desenhar_icones_ia",
     "modelos_imagem_ia",
@@ -254,6 +255,39 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
         }
 
         // IA com liberdade total no caderno: devolve um plano de mudanças (a tela confere e aplica).
+        "ia_fontes" => {
+            #[derive(Deserialize)]
+            struct A {
+                pedido: String,
+                trechos: String,
+                sensivel: bool,
+            }
+            #[derive(Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct RespostaFontes {
+                html: String,
+                provedor: String,
+                local: bool,
+            }
+            let a: A = ler_args(comando, args)?;
+            if a.pedido.trim().is_empty() || a.trechos.trim().is_empty() {
+                return Err(Erro::TextoVazio);
+            }
+            let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
+            let resposta = match r {
+                None => {
+                    let trechos: String = a.trechos.chars().take(fontes::MAXIMO_DE_CARACTERES).collect();
+                    let mensagem = fontes::montar(&a.pedido, &trechos);
+                    return pedir(protocolo::pedido_completar_com_imagens(&e, fontes::SISTEMA, &mensagem, &[]), 0);
+                }
+                Some(r) => protocolo::ler_completar(e.provedor.tipo, &protocolo::ler_resposta(r.situacao, &r.corpo)?)?,
+            };
+            let html = caderno::limpar(&resposta);
+            if html.is_empty() {
+                return Err(protocolo::erro("resposta", "A IA não respondeu nada. Tente de novo ou pedir de outro jeito."));
+            }
+            pronto(RespostaFontes { html, provedor: e.provedor.nome.clone(), local: e.provedor.local() })
+        }
         "ia_caderno_agir" => {
             #[derive(Deserialize)]
             struct A {
@@ -262,6 +296,8 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
                 #[serde(default)]
                 imagens: Vec<String>,
                 sensivel: bool,
+                #[serde(default)]
+                fontes: String,
             }
             #[derive(Serialize)]
             #[serde(rename_all = "camelCase")]
@@ -284,7 +320,7 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
             let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
             let resposta = match r {
                 None => {
-                    let mensagem = agente::montar(&a.pedido, &a.descricao, a.imagens.len());
+                    let mensagem = agente::montar(&a.pedido, &a.descricao, a.imagens.len(), &a.fontes.chars().take(fontes::MAXIMO_DE_CARACTERES / 2).collect::<String>());
                     return pedir(protocolo::pedido_completar_com_imagens(&e, agente::SISTEMA, &mensagem, &a.imagens), 0);
                 }
                 Some(r) => protocolo::ler_completar(e.provedor.tipo, &protocolo::ler_resposta(r.situacao, &r.corpo)?)?,

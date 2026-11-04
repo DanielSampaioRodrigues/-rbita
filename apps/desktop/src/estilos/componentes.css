@@ -2110,6 +2110,27 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .painel-ia-previa :is(th, td) { border: 1px solid #d1d5db; padding: 4px 6px; }
 .caderno-painel:has(.painel-ia) { width: 320px; }
 
+/* ---------- Fontes do caderno ---------- */
+.fontes-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fonte-item { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: start; padding: 8px; border: 1px solid var(--cor-borda); border-radius: 10px; }
+.fonte-item.desligada .fonte-sobre { opacity: 0.6; }
+.fonte-usar { display: grid; justify-items: center; gap: 2px; cursor: pointer; }
+.fonte-usar input { width: 20px; height: 20px; margin: 0; accent-color: var(--cor-destaque); }
+.fonte-etiqueta { font-size: 0.75rem; font-weight: 700; color: var(--cor-texto-suave); }
+.fonte-sobre { display: grid; gap: 2px; min-width: 0; }
+.fonte-nome { overflow-wrap: anywhere; font-weight: 600; }
+.fonte-item .botao-icone { min-width: 32px; min-height: 32px; }
+.fonte-citacao { display: inline; padding: 0 3px; margin: 0 1px; border: 1px solid #c7d2fe; border-radius: 4px; background: #eef2ff; color: #3730a3; font: inherit; font-size: 0.85em; cursor: pointer; white-space: nowrap; }
+.fonte-citacao:hover { background: #e0e7ff; }
+.fonte-citacao:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 1px; }
+.fonte-ver-pdf { display: grid; gap: 8px; justify-items: center; }
+.fonte-ver-pagina { width: min(560px, 100%); min-height: 120px; border: 1px solid var(--cor-borda); background: #fff; }
+.fonte-ver-pagina canvas { display: block; max-width: 100%; height: auto; }
+.fonte-ver-foto { max-width: 100%; max-height: 50vh; object-fit: contain; border-radius: 6px; }
+.fonte-ver-trecho { margin: 0 0 8px; padding: 8px 12px; border-left: 3px solid var(--cor-destaque); background: var(--cor-superficie-2, rgba(0, 0, 0, 0.03)); white-space: pre-wrap; font-size: 0.92rem; line-height: 1.5; max-height: 30vh; overflow: auto; }
+.fontes-livros { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fontes-livros .botao { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; }
+
 /* ---------- Biblioteca do caderno ---------- */
 .painel-bib { display: grid; gap: 10px; padding: 10px 12px 16px; align-content: start; }
 .painel-bib-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }

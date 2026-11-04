@@ -49,11 +49,16 @@ num span); a lista vem em \"estilos\". Sem script, sem imagens, sem links extern
 - Não invente fatos, datas, autores nem dados de referência: o que faltar vira [falta: o que falta]; palavra ilegível vira [?].\n\
 - Não apague o que a pessoa escreveu se não for preciso para o pedido. Para reorganizar escrita à mão, prefira criar uma \
 página nova com o texto organizado.\n\
-- Use só ids e números de página que existem na descrição.";
+- Use só ids e números de página que existem na descrição.\n\
+- Às vezes vêm também trechos das fontes do caderno (PDFs, livros, textos que a pessoa juntou), cada um com uma etiqueta \
+como [F2 p.14]. Quando usar algo deles, ponha a etiqueta depois da informação, igual veio, e não invente etiqueta nem página.";
 
 /// A mensagem: o pedido e a descrição do caderno.
-pub fn montar(pedido: &str, descricao: &str, imagens: usize) -> String {
+pub fn montar(pedido: &str, descricao: &str, imagens: usize, fontes: &str) -> String {
     let mut m = format!("Pedido: {}\n\nCaderno (JSON):\n{}\n", pedido.trim(), descricao.trim());
+    if !fontes.trim().is_empty() {
+        m.push_str(&format!("\nTrechos das fontes do caderno (entre <<< e >>>):\n<<<\n{}\n>>>\n", fontes.trim()));
+    }
     if imagens > 0 {
         m.push_str(&format!("\nJunto vão {imagens} imagem(ns): a página atual e/ou fotos que a pessoa mandou.\n"));
     }
@@ -90,6 +95,13 @@ mod testes {
         assert_eq!(m[0]["op"], "nova_pagina");
         assert!(ler("não sei").is_none());
         assert!(ler("{\"resposta\":\"\",\"mudancas\":[]}").is_none());
+    }
+
+    #[test]
+    fn monta_com_as_fontes_quando_vierem() {
+        let m = montar("Resuma", "{}", 0, "[F1 p.2] Aula\nTexto.");
+        assert!(m.contains("<<<\n[F1 p.2] Aula\nTexto.\n>>>"));
+        assert!(!montar("Resuma", "{}", 0, "  ").contains("<<<"));
     }
 
     #[test]

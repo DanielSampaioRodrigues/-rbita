@@ -26,6 +26,8 @@ import { PainelIa, type Alcance, type ContextoIa } from "./PainelIa";
 import { elementosDoMapa, lerMapa } from "./mapaMental";
 import { aplicarNasCenas, arranjoDasPaginas, descreverCaderno, lerMudancas, lerReversoes, marcaDaCena, trocarIdsDaReversao, type Mudanca, type PaginaParaIa, type ReversaoIa } from "./agenteIa";
 import { PainelBiblioteca } from "./PainelBiblioteca";
+import { PainelFontes } from "./PainelFontes";
+import { amostrar, buscar, lerFontes, lerTrechos, montarTrechos } from "./fontes";
 import { CamadaCorrecao, type MarcaEscrita } from "./CorrecaoEscrita";
 import { imagemComCaixas, palavrasDaPagina } from "./escrita";
 import { cenaParaGuardar, copiarElementos, guardarNaBiblioteca, normalizarObjetos, type DadosBiblioteca, type ItemBiblioteca } from "./biblioteca";
@@ -805,7 +807,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   // Onde a barra de formatação do texto em edição aparece (dentro da barra de ferramentas).
   const [slotTexto, setSlotTexto] = useState<HTMLDivElement | null>(null);
   // Painel lateral (Páginas, IA, Biblioteca): fica lembrado neste aparelho.
-  const [painel, setPainelBruto] = useState<AbaPainel | null>(() => { const v = lerPref("caderno-painel"); return v === "paginas" || v === "ia" || v === "biblioteca" ? v : null; });
+  const [painel, setPainelBruto] = useState<AbaPainel | null>(() => { const v = lerPref("caderno-painel"); return v === "paginas" || v === "ia" || v === "fontes" || v === "biblioteca" ? v : null; });
   const setPainel = (p: AbaPainel | null) => { setPainelBruto(p); gravarPref("caderno-painel", p ?? ""); };
   const [ladoPainel, setLadoPainelBruto] = useState<"esquerda" | "direita">(() => (lerPref("caderno-painel-lado") === "direita" ? "direita" : "esquerda"));
   const setLadoPainel = (l: "esquerda" | "direita") => { setLadoPainelBruto(l); gravarPref("caderno-painel-lado", l); };
@@ -2063,14 +2065,26 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     return nova.id;
   };
   const meusEstilosAgora = useMeusEstilos();
-  const agirComIa = async (pedido: string, alcance: Alcance, imagens: string[], sensivel: boolean) => {
+  // Fontes do caderno (aba Fontes): a aba IA pode usar os trechos que importam.
+  const [temFontes, setTemFontes] = useState(false);
+  useEffect(() => { void lerFontes(caderno.id).then((l) => setTemFontes(l.some((f) => f.ligada && !f.semTexto))); }, [caderno.id, painel]);
+  const trechosDasFontes = async (pedido: string): Promise<string> => {
+    const lista = await lerFontes(caderno.id);
+    const usaveis = lista.map((f) => f.ligada && !f.semTexto);
+    if (!usaveis.some(Boolean)) return "";
+    const listas = await Promise.all(lista.map((f, i) => (usaveis[i] ? lerTrechos(f) : Promise.resolve([]))));
+    let achados = buscar(listas, pedido, 10, 5);
+    if (!achados.length) achados = amostrar(listas, 30_000);
+    return montarTrechos(achados, lista.map((f) => f.nome), 40_000);
+  };
+  const agirComIa = async (pedido: string, alcance: Alcance, imagens: string[], sensivel: boolean, usarFontes = false) => {
     const atual = sel ?? paginas[0];
     if (!atual) return { resposta: "", feitas: 0 };
     const todas = alcance === "caderno";
     for (const p of todas ? paginas : [atual]) await cenaCarregada(p.id);
     const lista: PaginaParaIa[] = paginas.map((p) => ({ id: p.id, titulo: p.titulo, texto: ehPaginaTexto(p), modelo: folhaDe(p).modelo, ...medidaDe(p.tamanho), marcada: p.marcado }));
     const { descricao, mapa } = descreverCaderno(lista, cenasRef.current, atual.id, todas, meusEstilosAgora, caderno.nome);
-    const plano = await api.iaCadernoAgir(pedido, descricao, imagens, sensivel);
+    const plano = await api.iaCadernoAgir(pedido, descricao, imagens, sensivel, usarFontes ? await trechosDasFontes(pedido) : "");
     const mudancas = lerMudancas(plano.mudancas, paginas.length, mapa);
     if (!mudancas.length) return { resposta: plano.resposta, feitas: 0 };
     // Toda página que a IA vai mexer precisa estar carregada (senão a cópia sairia vazia).
@@ -2250,7 +2264,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             ia={<PainelIa obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
               aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)}
               aoConferirEscrita={conferirEscrita} marcasAtivas={marcasVivas.length} aoTirarMarcas={() => setCorrecao(null)}
-              aoAgir={agirComIa} desfazer={reversoes[0] ? { resumo: reversoes[0].resumo, quando: reversoes[0].quando } : null} aoDesfazer={pedirDesfazerIa} />}
+              aoAgir={agirComIa} temFontes={temFontes} desfazer={reversoes[0] ? { resumo: reversoes[0].resumo, quando: reversoes[0].quando } : null} aoDesfazer={pedirDesfazerIa} />}
+            fontes={<PainelFontes cadernoId={caderno.id} aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoMapaMental={(html) => void desenharMapaMental(html)} />}
             biblioteca={<PainelBiblioteca podeGuardarSelecao={!!selPid && selIds.length > 0} aoGuardarSelecao={guardarSelecaoNaBiblioteca} aoGuardarPagina={guardarPaginaNaBiblioteca}
               aoUsar={(i, d) => void usarDaBiblioteca(i, d)}
               previa={(i, d, c) => {

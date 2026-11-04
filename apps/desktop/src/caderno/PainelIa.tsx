@@ -44,7 +44,7 @@ function quandoCurto(ms: number): string {
   return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
-export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPaginaNova, aoCriarImagem, aoMapaMental, aoConferirEscrita, marcasAtivas = 0, aoTirarMarcas, aoAgir, desfazer, aoDesfazer }: {
+export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPaginaNova, aoCriarImagem, aoMapaMental, aoConferirEscrita, marcasAtivas = 0, aoTirarMarcas, aoAgir, desfazer, aoDesfazer, temFontes = false }: {
   /** Junta o texto (e, se pedir, a imagem da página) do alcance escolhido. */
   obterContexto: (alcance: Alcance, comImagem: boolean) => Promise<ContextoIa>;
   /** A página atual tem escrita à mão, desenho ou imagem? */
@@ -60,7 +60,9 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
   marcasAtivas?: number;
   aoTirarMarcas?: () => void;
   /** A IA com liberdade total: aplica as mudanças direto no caderno (com cópia antes). */
-  aoAgir?: (pedido: string, alcance: Alcance, imagens: string[], sensivel: boolean) => Promise<{ resposta: string; feitas: number }>;
+  aoAgir?: (pedido: string, alcance: Alcance, imagens: string[], sensivel: boolean, usarFontes: boolean) => Promise<{ resposta: string; feitas: number }>;
+  /** O caderno tem fontes com texto (aba Fontes): mostra "Usar as fontes do caderno". */
+  temFontes?: boolean;
   /** A última mudança da IA que dá para desfazer. */
   desfazer?: { resumo: string; quando: number } | null;
   aoDesfazer?: () => void;
@@ -75,6 +77,7 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ continuar: () => void } | null>(null);
   const [resposta, setResposta] = useState<(RespostaIaCaderno & { pedido: string; rotulo: string }) | null>(null);
+  const [usarFontes, setUsarFontes] = useState(false);
   const [feito, setFeito] = useState<{ resposta: string; feitas: number; rotulo: string } | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
   // O resultado aparece embaixo dos botões: rola até ele (sem animação).
@@ -98,7 +101,8 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
       }
       if (confirmou) void marcarAvisado(provedor.id);
       if (aoAgir) {
-        const feitoAgora = await aoAgir(texto, alcance, imagens, sensivel);
+        // Pedido que fala das fontes usa as fontes mesmo com o interruptor desligado.
+        const feitoAgora = await aoAgir(texto, alcance, imagens, sensivel, temFontes && (usarFontes || /\b(fontes?|pdfs?)\b/i.test(texto)));
         setFeito({ ...feitoAgora, rotulo });
         setResposta(null);
         return;
@@ -153,6 +157,7 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
     <div className="painel-ia">
       <Segmentado rotulo={t.alcance} valor={alcance} aoMudar={(v) => setAlcance(v as Alcance)} opcoes={[{ valor: "pagina", nome: t.pagina }, { valor: "caderno", nome: t.caderno }]} />
       {temDesenho && alcance === "pagina" && <Interruptor rotulo={t.lerEscrita} ligado={lerEscrita} aoMudar={setLerEscrita} compacto />}
+      {aoAgir && temFontes && <Interruptor rotulo={t.usarFontes} ligado={usarFontes} aoMudar={setUsarFontes} compacto />}
       {provedor && <p className="texto-suave pequeno">{provedor.local ? t.local : t.vaiPara(provedor.nome, vaiImagem)}</p>}
 
       <div className="painel-ia-acoes" role="group" aria-label={t.acoesTitulo}>
