@@ -29,9 +29,16 @@ Comando novo no Windows entra sozinho na próxima compilação.
 
 Ficam de fora, e precisam de versão própria no navegador (`apps/desktop/src/web/modoWeb.ts`), os comandos que:
 
-- usam algo do sistema: `.await`, `std::fs`, cofre, backup, IA, ditado, nuvem, `tauri::`, janela, caminhos
-  de arquivo (lista `PROIBIDO` no `build.rs`);
+- usam algo do sistema: `.await`, `std::fs`, cofre, backup, envio pela rede da IA (`cliente::`), ditado, nuvem,
+  `tauri::`, janela, caminhos de arquivo (lista `PROIBIDO` no `build.rs`);
 - usam tipos, constantes ou funções definidos só em `comandos.rs`.
+
+## IA
+
+O motor inclui, por `#[path]`, `src-tauri/src/ia/` (menos `cliente.rs`, o envio pela rede do Windows). O
+cadastro de provedores entra na ponte gerada; as ordens que vão à internet passam por `ia_avancar` (monta o
+pedido e confere a resposta, em passos) e `ia_falha_de_rede`. Quem envia é `apps/desktop/src/web/iaWeb.ts`,
+com `fetch`. Decisão em `docs/decisoes/0013-ia-no-navegador.md`.
 
 ## Backup portátil
 

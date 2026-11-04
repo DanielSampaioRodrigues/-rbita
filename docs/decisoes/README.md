@@ -13,3 +13,4 @@ As decisões que mudam o produto também entram em `docs/especificacao.md`.
 - [0008 · Ditado local com whisper.cpp](0008-ditado-local.md)
 - [0009 · Atualização dentro do app](0009-atualizacao.md)
 - [0010 · Recuperação guardada na conta Google ou Microsoft](0010-conta-na-nuvem.md)
+- [0013 · IA na versão de navegador](0013-ia-no-navegador.md)

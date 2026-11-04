@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "react-aria-components";
-import { api, ErroOrbita, type EstadoIa, type ProvedorVisivel } from "../api";
+import { api, ErroOrbita, MODO_WEB, type EstadoIa, type ProvedorVisivel } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Escolha } from "../componentes/Escolha";
 import { Janela } from "../componentes/Janela";
@@ -49,7 +49,7 @@ export function JanelaProvedor({
   const escolhido = MODELOS_PROVEDOR.find((m) => m.id === qual)!;
 
   useEffect(() => {
-    if (aberta && qual === "ollama" && memoria === null) api.memoriaDoComputador().then((gb) => gb && setMemoria(Math.round(gb)), () => {});
+    if (!MODO_WEB && aberta && qual === "ollama" && memoria === null) api.memoriaDoComputador().then((gb) => gb && setMemoria(Math.round(gb)), () => {});
   }, [aberta, qual, memoria]);
 
   const trocarQual = (id: IdModelo) => {
@@ -113,7 +113,13 @@ export function JanelaProvedor({
         {qual === "ollama" && (
           <div className="campo-ajuda">
             <p>{t.ollamaAjuda}</p>
-            {memoria !== null && <p>{t.memoria(memoria)}</p>}
+            {MODO_WEB && <p>{t.ollamaAjudaWeb}</p>}
+            {!MODO_WEB && memoria !== null && <p>{t.memoria(memoria)}</p>}
+          </div>
+        )}
+        {MODO_WEB && qual === "sabia" && (
+          <div className="campo-ajuda">
+            <p>{t.sabiaWeb}</p>
           </div>
         )}
         {qual === "outro" && <Campo rotulo={t.nome} valor={nome} aoMudar={setNome} />}

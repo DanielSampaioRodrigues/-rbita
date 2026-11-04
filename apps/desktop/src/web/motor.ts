@@ -2,7 +2,9 @@
 // (crates/motor-web; ver docs/decisoes/0011-motor-unico.md). Só entra no build da
 // web; montado por `pnpm motor` em src/web/motor/.
 
-export interface Motor {
+import type { MotorIa } from "./iaWeb";
+
+export interface Motor extends MotorIa {
   abrir_vazio(): number;
   abrir_de_bytes(bytes: Uint8Array): number;
   exportar(): Uint8Array;
@@ -11,6 +13,8 @@ export interface Motor {
   executar(comando: string, args: string): string;
   comandos_gerados(): string[];
   comandos_de_fora(): string[];
+  /** Ordens de IA que vão à internet: rodam por `ia_avancar` (ver iaWeb.ts). */
+  ia_comandos(): string[];
   // Backup portátil (o mesmo arquivo do Windows; src-tauri/src/portatil.rs). Erros: JSON do erro do Windows.
   /** JSON do envelope da senha que viaja no backup (Argon2id). */
   portatil_envelope_senha(dek: Uint8Array, senha: string, id: string): string;

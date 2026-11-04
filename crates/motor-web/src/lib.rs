@@ -18,6 +18,12 @@ pub mod portatil;
 #[path = "../../../apps/desktop/src-tauri/src/banco/mod.rs"]
 pub mod banco;
 
+/// A IA do Windows sem a parte de rede: provedores e chaves no banco, textos
+/// enviados e conferência das respostas. Quem envia é o navegador (fetch).
+/// Ver `docs/decisoes/0013-ia-no-navegador.md`.
+#[path = "../../../apps/desktop/src-tauri/src/ia/mod.rs"]
+pub mod ia;
+
 pub mod ponte {
     use rusqlite::Connection;
 
@@ -123,6 +129,38 @@ pub fn comandos_gerados() -> Vec<String> {
 #[wasm_bindgen]
 pub fn comandos_de_fora() -> Vec<String> {
     ponte::COMANDOS_DE_FORA.iter().map(|s| s.to_string()).collect()
+}
+
+// ── IA (ver src-tauri/src/ia/fluxo.rs e docs/decisoes/0013-ia-no-navegador.md) ──
+
+/// Um passo de uma ordem de IA. Sem `resposta`: o primeiro pedido. Com a resposta
+/// do pedido anterior (JSON `{etapa, situacao, corpo}`): o resultado ou mais um pedido.
+/// Devolve o passo em JSON (`{tipo: "pedir", pedido, etapa}` ou `{tipo: "pronto", valor}`).
+/// O pedido leva a chave nos cabeçalhos: só serve para enviar, nunca para mostrar.
+#[wasm_bindgen]
+pub fn ia_avancar(comando: &str, args: &str, resposta: Option<String>) -> Result<String, JsValue> {
+    let resposta: Option<ia::fluxo::Resposta> = match resposta {
+        Some(r) => Some(serde_json::from_str(&r).map_err(|e| interno(format!("resposta da IA: {e}")))?),
+        None => None,
+    };
+    SESSAO.with(|s| {
+        let s = s.borrow();
+        let s = s.as_ref().ok_or_else(|| js(Erro::Bloqueado))?;
+        let passo = ia::fluxo::avancar(&s.conn, comando, args, resposta.as_ref()).map_err(js)?;
+        serde_json::to_string(&passo).map_err(interno)
+    })
+}
+
+/// O erro (JSON, o mesmo do Windows) para um pedido de IA que nem chegou ao provedor.
+#[wasm_bindgen]
+pub fn ia_falha_de_rede(url: &str, local: bool, demorou: bool, sem_internet: bool) -> String {
+    serde_json::to_string(&ia::protocolo::falha_de_rede_em(url, local, demorou, true, sem_internet)).unwrap_or_default()
+}
+
+/// As ordens de IA que passam por `ia_avancar`.
+#[wasm_bindgen]
+pub fn ia_comandos() -> Vec<String> {
+    ia::fluxo::COMANDOS.iter().map(|s| s.to_string()).collect()
 }
 
 // ── Backup portátil e envelopes (ver src-tauri/src/portatil.rs) ─────────────────

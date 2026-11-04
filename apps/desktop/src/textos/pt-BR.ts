@@ -2799,6 +2799,10 @@ export const textos = {
     chaveManter: "Deixe vazio para manter a chave que já está guardada.",
     ollamaAjuda:
       "O Ollama é um programa gratuito que roda modelos de IA no seu computador, sem chave e sem os dados saírem daqui. Instale pelo site ollama.com, baixe um modelo por lá e deixe o Ollama aberto.",
+    ollamaAjudaWeb:
+      "Na versão de navegador, o Ollama só funciona num computador, com o Órbita aberto no navegador desse mesmo computador. No iPad e no celular ele não roda. O Ollama também precisa ser liberado para o navegador: antes de abrir o Ollama, crie a variável de ambiente OLLAMA_ORIGINS com o valor https://danielsampaiorodrigues.github.io (no Windows: Configurações > Sistema > Sobre > Configurações avançadas do sistema > Variáveis de ambiente). Depois, feche e abra o Ollama.",
+    sabiaWeb:
+      "O Sabiá pode não aceitar ser chamado pelo navegador. Se a conferência falhar aqui, use outro provedor na versão de navegador (Claude, GPT, Gemini ou Grok), ou use o Sabiá no app do Windows.",
     memoria: (gb: number) =>
       gb < 8
         ? `Seu computador tem ${gb} GB de memória. Uma IA local deve ficar lenta aqui; um provedor com chave tende a funcionar melhor.`

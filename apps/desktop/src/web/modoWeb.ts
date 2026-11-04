@@ -1,11 +1,13 @@
 // Versão de navegador (iPad) de verdade: roda o MESMO motor do Windows (o banco
 // em Rust, compilado para WebAssembly; ver docs/decisoes/0011-motor-unico.md) e
 // guarda o banco inteiro, criptografado, no próprio aparelho (cofreWeb).
-// O que depende do sistema (cofre, backup, IA, ditado, arquivos) tem versão
-// própria aqui, ou um aviso claro de que ainda não existe no navegador.
+// O que depende do sistema (cofre, backup, ditado, arquivos) tem versão
+// própria aqui, ou um aviso claro de que ainda não existe no navegador. A IA
+// usa o motor para montar e conferir e envia o pedido com fetch (iaWeb.ts).
 
 import type { Anexo, Api, Chamar, Confirmacao, ErroOrbita as TipoErro, InfoBackup, ModoAbrir, SituacaoBackup } from "../api";
 import { carregarMotor, type Motor } from "./motor";
+import { rodarIa } from "./iaWeb";
 import { QUANTIDADE, reconhecer, separar, textoDaChave, LISTA } from "../palavras";
 import {
   abrirAparelho,
@@ -212,8 +214,18 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
       return e;
     }
   };
+  let ordensDeIa: Set<string> | null = null;
   const chamar: Chamar = async <T>(comando: string, args?: Record<string, unknown>): Promise<T> => {
     const m = await motor;
+    // IA: o motor monta o pedido e confere a resposta; o envio é pelo navegador.
+    ordensDeIa ??= new Set(m.ia_comandos());
+    if (ordensDeIa.has(comando)) {
+      try {
+        return await rodarIa<T>(m, comando, args);
+      } catch (e) {
+        throw comoErro(lerErro(e));
+      }
+    }
     let saida: string;
     try {
       saida = m.executar(comando, JSON.stringify(args ?? {}));
@@ -385,7 +397,6 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     return { tipo: "web", a };
   };
 
-  const iaIndisponivel = () => Promise.reject(new E("ia", "A IA ainda não funciona na versão de navegador (iPad). Por enquanto, use no Windows.", undefined, undefined, undefined, "sem_provedor"));
   const nuvemIndisponivel = () => Promise.reject(new E("nuvem", "Guardar na conta ainda não existe na versão de navegador. Vem junto com o login do Google.", undefined, undefined, undefined, "indisponivel"));
   const ditadoIndisponivel = () => Promise.reject(new E("ditado", "O ditado do computador não existe na versão de navegador. No iPad, use o microfone do teclado."));
 
@@ -691,20 +702,7 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     },
 
     // ── O que ainda não existe no navegador ──
-    estadoIa: async () => ({ provedores: [], funcoes: {}, modelos: {}, bloquearSensivel: true }),
-    salvarProvedorIa: iaIndisponivel,
-    removerProvedorIa: iaIndisponivel,
-    definirFuncaoIa: iaIndisponivel,
-    bloquearSensivelIa: iaIndisponivel,
-    testarProvedorIa: iaIndisponivel,
-    planejarComIa: iaIndisponivel,
-    organizarTextoIa: iaIndisponivel,
-    ajustarOrganizacaoIa: iaIndisponivel,
-    desenharIconesIa: iaIndisponivel,
-    revisarTextoIa: iaIndisponivel,
-    gerarTemaIa: iaIndisponivel,
-    modelosImagemIa: iaIndisponivel,
-    gerarImagemIa: iaIndisponivel,
+    // (A IA funciona: passa pelo `chamar` acima, como no Windows.)
     ditadoEstado: async () => ({ instalado: null, baixando: false, gravando: false }),
     ditadoBaixar: ditadoIndisponivel,
     ditadoComecar: ditadoIndisponivel,
@@ -713,7 +711,8 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     ditadoRemover: async () => ({ instalado: null, baixando: false, gravando: false }),
     ditadoParar: ditadoIndisponivel,
     ditadoDescartar: async () => undefined,
-    memoriaDoComputador: async () => (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? null,
+    // A memória serve para recomendar o modelo do Ollama no computador; o navegador não sabe dizer.
+    memoriaDoComputador: async () => null,
     // Bandeja do Windows: não existe no navegador.
     bandejaLigada: async () => false,
     definirBandeja: async () => undefined,

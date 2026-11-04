@@ -5,8 +5,10 @@
 //! aqui, uma função com o mesmo nome e os mesmos argumentos, chamada pelo
 //! navegador. Assim a lógica existe uma vez só, no Rust, e a ponte nunca fica
 //! desatualizada: muda o comando no Windows, muda a ponte na próxima compilação.
-//! Os comandos que dependem do sistema (cofre, backup, IA, ditado, nuvem,
-//! arquivos) ficam de fora e têm versão própria no navegador.
+//! Os comandos que dependem do sistema (cofre, backup, rede, ditado, nuvem,
+//! arquivos) ficam de fora e têm versão própria no navegador. As ordens de IA
+//! que vão à internet passam por `ia_avancar` (lib.rs); as que só mexem nos
+//! provedores guardados no banco entram aqui como as outras.
 
 use std::{env, fs, path::Path};
 
@@ -14,7 +16,7 @@ const COMANDOS: &str = "../../apps/desktop/src-tauri/src/comandos.rs";
 
 /// Palavras que indicam dependência do sistema: o comando fica de fora.
 const PROIBIDO: &[&str] = &[
-    ".await", "std::fs", "s.chave", "cofre", "backup::", "ia::", "ditado", "nuvem", "tauri::", "janela", "app.",
+    ".await", "std::fs", "s.chave", "cofre", "backup::", "cliente::", "memoria_gb", "ditado", "nuvem", "tauri::", "janela", "app.",
     "PathBuf", "estado.cofre", "estado.recuperando", "estado.sessao", "estado.iniciar_sessao",
 ];
 
@@ -24,7 +26,8 @@ fn main() {
     let fonte = fs::read_to_string(COMANDOS).expect("não achei comandos.rs");
     let usos: String = fonte
         .lines()
-        .filter(|l| l.starts_with("use crate::banco") || l.starts_with("use crate::erro") || l.starts_with("use serde"))
+        // `use crate::ia::cliente` fica de fora: o envio pela rede não existe no navegador.
+        .filter(|l| l.starts_with("use crate::banco") || l.starts_with("use crate::erro") || l.starts_with("use serde") || (l.starts_with("use crate::ia") && !l.contains("cliente")))
         .map(|l| format!("#[allow(unused_imports)] {l}\n"))
         .collect();
 
