@@ -17,11 +17,11 @@ import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
 import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, Italic, LayoutGrid, List, ListOrdered, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Underline, Undo2, Wand2, X } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
-import { CapaEditor, RenderCapaCena } from "./CapaEditor";
+import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { acaoDoGesto, criarDetectorDeToques, type AcaoGesto } from "./gestos";
 import { larguraDaPagina, paginaAoSoltar, paginaNaPosicao, type Encaixe } from "./visor";
-import { lerCenaCapa, serializarCenaCapa, temCapaCena, type CenaCapa } from "./capa";
+import { CAPA_NA_PAGINA, capaJaDecidida, capaNaPagina, SEM_CAPA, cenaDaCapaAntiga, lerCenaCapa, temCapaCena, tituloDaCapa } from "./capa";
 import { FONTES } from "../preferencias";
 import { avisarMudanca, useMudancas } from "../dados";
 import { CORES_PASTA, corContraste, IconePasta, NOMES_COR_PASTA } from "../componentes/Pasta3D";
@@ -213,12 +213,18 @@ function GradeCadernos({ cadernos, aoAbrir, aoEditar, aoExcluir, pastas, aoMover
     <ul className="caderno-grade">
       {cadernos.map((c) => (
         <li key={c.id} className="caderno-item">
-          <button className="caderno-capa" style={estiloCapa(c.capa)} onClick={() => aoAbrir(c)} aria-label={`${t.abrir}: ${c.nome}`}>
-            <span className="caderno-capa-modo">{c.modo === "infinito" ? <LayoutGrid aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />}</span>
-            {temCapaCena(c.capaCena) ? <RenderCapaCena cena={lerCenaCapa(c.capaCena)} /> : <span className="caderno-capa-nome">{c.nome}</span>}
-          </button>
+          {capaNaPagina(c.capaCena) ? (
+            <button className="caderno-capa caderno-capa-com-pagina" onClick={() => aoAbrir(c)} aria-label={`${t.abrir}: ${c.nome}`}>
+              <CapaDaEstante caderno={c} />
+            </button>
+          ) : (
+            <button className="caderno-capa" style={estiloCapa(c.capa)} onClick={() => aoAbrir(c)} aria-label={`${t.abrir}: ${c.nome}`}>
+              <span className="caderno-capa-modo">{c.modo === "infinito" ? <LayoutGrid aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />}</span>
+              {temCapaCena(c.capaCena) ? <RenderCapaCena cena={lerCenaCapa(c.capaCena)} /> : <span className="caderno-capa-nome">{c.nome}</span>}
+            </button>
+          )}
           <div className="caderno-item-pe">
-            <span className="livro-selo">{t.modos[c.modo]}</span>
+            <strong className="caderno-item-nome quebra">{c.nome}</strong>
             <span className="linha-ajuste">
               <Button className="botao-icone pequeno" onPress={() => aoEditar(c)} aria-label={`${t.editar}: ${c.nome}`}><Pencil aria-hidden="true" size="1em" /></Button>
               <Button className="botao-icone pequeno" onPress={() => aoExcluir(c)} aria-label={`${t.excluir}: ${c.nome}`}><Trash2 aria-hidden="true" size="1em" /></Button>
@@ -318,16 +324,30 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
   const [nome, setNome] = useState(inicial.nome);
   const [modo, setModo] = useState<Caderno["modo"]>(inicial.modo);
   const [capa, setCapa] = useState<Capa>(inicial.capa);
-  const [cena, setCena] = useState<CenaCapa>(lerCenaCapa(inicial.capaCena));
+  const [comCapa, setComCapa] = useState(true);
   const [pastaId, setPastaId] = useState(inicial.pastaId);
   const [erro, setErro] = useState<string | null>(null);
   const editando = inicial.id !== "";
+  const naPagina = capaNaPagina(inicial.capaCena);
+  const mostrarCapa = editando ? true : comCapa;
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
     try {
-      await api.salvarCaderno({ ...inicial, nome, modo, capa, capaCena: serializarCenaCapa(cena), pastaId });
+      if (!editando) {
+        // A capa é a primeira página: entra antes da página que o caderno já traz.
+        const cad = await api.salvarCaderno({ ...inicial, nome, modo, capa, capaCena: modo !== "caderno" ? "" : comCapa ? CAPA_NA_PAGINA : SEM_CAPA, pastaId });
+        if (comCapa && modo === "caderno") await criarPaginaCapa(cad, capa, nome, 0.5);
+      } else {
+        await api.salvarCaderno({ ...inicial, nome, capa, pastaId });
+        // Capa já na página: troca o modelo da capa lá também.
+        if (naPagina) {
+          const pgs = await api.listarPaginasCaderno(inicial.id);
+          const pg = pgs.find((p) => capaDaPagina(p));
+          if (pg) await api.salvarPaginaCaderno({ ...pg, papel: { ...(pg.papel as object), capa } });
+        }
+      }
       avisarMudanca();
       aoFechar();
     } catch (err) {
@@ -342,10 +362,18 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
         <>
           <Segmentado rotulo={t.form.modo} valor={modo} aoMudar={(v) => setModo(v as Caderno["modo"])} opcoes={[{ valor: "caderno", nome: t.modos.caderno }, { valor: "infinito", nome: t.modos.infinito }]} />
           <p className="campo-ajuda">{t.modoAjuda[modo]}</p>
+          {modo === "caderno" && <Interruptor rotulo={t.form.comCapa} ligado={comCapa} aoMudar={setComCapa} />}
         </>
       )}
-      <EscolherCapa capa={capa} aoMudar={setCapa} ia={ia} aoMudarIa={aoMudarIa} />
-      <CapaEditor nome={nome} cena={cena} aoMudar={setCena} previa={<div className="capa-editor-fundo" style={estiloCapa(capa)} />} />
+      {mostrarCapa && (
+        <>
+          <EscolherCapa capa={capa} aoMudar={setCapa} ia={ia} aoMudarIa={aoMudarIa} />
+          <div className="caderno-capa-previa-nova" style={estiloCapa(capa)} aria-hidden="true">
+            {editando && !naPagina && temCapaCena(inicial.capaCena) ? <RenderCapaCena cena={lerCenaCapa(inicial.capaCena)} /> : <span>{nome.trim() || t.form.nome}</span>}
+          </div>
+          <p className="campo-ajuda">{editando && naPagina ? t.form.capaEditarAjuda : t.form.capaAjuda}</p>
+        </>
+      )}
       {pastas.length > 0 && (
         <div className="campo">
           <label className="campo-rotulo" htmlFor="caderno-pasta">{t.form.pasta}</label>
@@ -361,6 +389,51 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
         <Button className="botao principal" type="submit">{editando ? t.form.salvarMudancas : t.form.salvar}</Button>
       </div>
     </Form>
+  );
+}
+
+/** Cria a página-capa (folha com o modelo da capa e o nome escrito nela). */
+async function criarPaginaCapa(cad: Caderno, capa: Capa, nome: string, ordem: number, cena?: Cena): Promise<PaginaCaderno> {
+  const med = TAMANHOS.a4;
+  const pg = await api.salvarPaginaCaderno({ id: "", cadernoId: cad.id, ordem, tamanho: "a4", papel: { ...papelPadrao(), capa }, titulo: "", marcado: false, criadoEm: 0 });
+  await api.salvarCenaCaderno(pg.id, serializarCena(cena ?? { elementos: [tituloDaCapa(nome, med.largura, med.altura)] }));
+  return pg;
+}
+
+/** Na estante, o caderno com a capa na página mostra a própria página 1. */
+function CapaDaEstante({ caderno }: { caderno: Caderno }) {
+  const [pg, setPg] = useState<PaginaCaderno | null>(null);
+  const [cena, setCena] = useState<Cena | undefined>(undefined);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const mudancas = useMudancas();
+  const caixa = useRef<HTMLDivElement>(null);
+  const [largura, setLargura] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    api.listarPaginasCaderno(caderno.id).then(async (pgs) => {
+      const p = pgs[0];
+      if (!vivo || !p) return;
+      setPg(p);
+      const c = lerCena(await api.carregarCenaCaderno(p.id));
+      if (!vivo) return;
+      setCena(c);
+      for (const el of c.elementos) if (el.tipo === "imagem") api.imagemAnexo(el.anexoId).then((u) => vivo && setUrls((m) => ({ ...m, [el.anexoId]: u })), () => {});
+    }, () => {});
+    return () => { vivo = false; };
+  }, [caderno.id, mudancas]);
+  useEffect(() => {
+    const el = caixa.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setLargura(el.clientWidth));
+    ro.observe(el);
+    setLargura(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+  const imagemUrl = useCallback((id: string) => urls[id], [urls]);
+  return (
+    <div ref={caixa} className="caderno-capa-pagina">
+      {pg && largura > 0 ? <MiniaturaPagina pagina={pg} cena={cena} imagemUrl={imagemUrl} largura={largura} /> : <div className="caderno-capa-pagina-vazia" style={estiloCapa(caderno.capa)} />}
+    </div>
   );
 }
 
@@ -616,7 +689,12 @@ function lerAjustes(): Record<Ferramenta, AjusteTraco> {
 }
 
 /** Desenha a folha (o papel) num tamanho dado, pela SVG do pacote. */
+/** A folha de uma página; a página-capa guarda o modelo da capa em `capa`. */
+type PapelPagina = Papel & { capa?: Capa };
+const capaDaPagina = (pg: PaginaCaderno | undefined): Capa | undefined => (pg?.papel as PapelPagina | null | undefined)?.capa;
+
 function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; className?: string }) {
+  const capa = (papel as PapelPagina).capa;
   // A imagem da folha só é refeita quando o papel ou o tamanho mudam de
   // verdade (a chave em texto evita refazer a cada re-render, ex.: trocar a cor).
   const chave = `${tamanho}|${JSON.stringify(papel)}`;
@@ -626,6 +704,7 @@ function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; c
     return { uri: papelDataUri(papel, m.largura, m.altura, cores), fundo: cores.fundo, med: m };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave]);
+  if (capa) return <div className={className} style={{ aspectRatio: `${med.largura} / ${med.altura}`, ...estiloCapa(capa) }} />;
   return <div className={className} style={{ aspectRatio: `${med.largura} / ${med.altura}`, backgroundImage: `url("${uri}")`, backgroundSize: "100% 100%", backgroundColor: fundo }} />;
 }
 
@@ -843,6 +922,29 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     }
   }, [caderno.id]);
   useEffect(() => void carregar(), [carregar]);
+  // Cadernos de antes da capa na página: na primeira vez que abrem, a capa antiga
+  // (modelo, nome e desenho) vira a página 1, editável como as outras. Só uma vez:
+  // se a pessoa apagar essa página depois, ela não volta.
+  const migrando = useRef(false);
+  useEffect(() => {
+    if (migrando.current || caderno.modo !== "caderno" || capaJaDecidida(caderno.capaCena) || !paginas.length) return;
+    if (paginas.some((p) => capaDaPagina(p))) return;
+    migrando.current = true;
+    void (async () => {
+      try {
+        const med = TAMANHOS.a4;
+        const cena = cenaDaCapaAntiga(lerCenaCapa(caderno.capaCena), caderno.nome, med.largura, med.altura);
+        const primeira = paginas[0].ordem;
+        const pg = await criarPaginaCapa(caderno, caderno.capa, caderno.nome, primeira > 0 ? primeira / 2 : primeira - 1, cena);
+        await api.salvarCaderno({ ...caderno, capaCena: CAPA_NA_PAGINA });
+        rolarPara.current = pg.id;
+        await carregar();
+        avisarMudanca();
+      } catch (e) {
+        setErro(mensagem(e));
+      }
+    })();
+  }, [paginas, caderno, carregar]);
 
   // Carrega a cena (os traços) de cada página uma vez.
   useEffect(() => {
@@ -1615,7 +1717,11 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     else if (alvo === "atual") alvos = sel ? [sel] : [];
     else alvos = paginas.slice(Math.max(0, alvo.de - 1), alvo.ate); // intervalo (1-based, inclusivo)
     try {
-      for (const pg of alvos) await api.salvarPaginaCaderno({ ...pg, papel });
+      // Folha aplicada a várias páginas nunca leva a capa; a página-capa mantém a dela.
+      for (const pg of alvos) {
+        const capa = alvo === "atual" ? (papel as PapelPagina).capa : capaDaPagina(pg);
+        await api.salvarPaginaCaderno({ ...pg, papel: capa ? { ...semCapa(papel), capa } : semCapa(papel) });
+      }
       await carregar();
     } catch (e) {
       setErro(mensagem(e));
@@ -1851,7 +1957,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       </Janela>
 
       <Janela titulo={t.folha.titulo} aberta={editor} aoFechar={() => setEditor(false)}>
-        {editor && <EditorFolha inicial={sel ? folhaDe(sel) : papelPadrao()} tamanho={sel?.tamanho ?? "a4"} total={paginas.length} atual={Math.max(1, paginas.findIndex((p) => p.id === selId) + 1)} aoAplicar={aplicarFolha} aoFechar={() => setEditor(false)} />}
+        {editor && <EditorFolha ia={ia} aoMudarIa={setIa} inicial={sel ? folhaDe(sel) : papelPadrao()} tamanho={sel?.tamanho ?? "a4"} total={paginas.length} atual={Math.max(1, paginas.findIndex((p) => p.id === selId) + 1)} aoAplicar={aplicarFolha} aoFechar={() => setEditor(false)} />}
       </Janela>
 
       <Janela titulo={t.config.titulo} aberta={configAberta} aoFechar={() => setConfigAberta(false)} pequena>
@@ -1943,7 +2049,7 @@ const MiniaturaPagina = memo(function MiniaturaPagina({ pagina, cena, imagemUrl,
           <DesenhoEstatico elementos={els} imagemUrl={imagemUrl} />
         </svg>
         {els.filter((e): e is Texto => e.tipo === "texto").map((tx) => (
-          <div key={tx.id} className="caderno-mini-texto" style={{ left: tx.x, top: tx.y, maxWidth: tx.largura, color: tx.cor, fontSize: tx.tamanho, fontFamily: fonteCss(tx.fonte), textAlign: ALINHAR_CSS[tx.alinhamento ?? "esquerda"], ...(tx.fundo ? { background: tx.fundo, padding: "7px 9px", borderRadius: 5 } : {}) }}
+          <div key={tx.id} className="caderno-mini-texto" style={{ left: tx.x, top: tx.y, maxWidth: tx.largura, ...((tx.alinhamento ?? "esquerda") !== "esquerda" ? { width: tx.largura } : {}), color: tx.cor, fontSize: tx.tamanho, fontFamily: fonteCss(tx.fonte), textAlign: ALINHAR_CSS[tx.alinhamento ?? "esquerda"], ...(tx.fundo ? { background: tx.fundo, padding: "7px 9px", borderRadius: 5 } : {}) }}
             dangerouslySetInnerHTML={{ __html: tx.texto }} />
         ))}
       </div>
@@ -2243,7 +2349,8 @@ function CaixaTexto({ caixa: tx, escala, editando, ativa, negritoPadrao, slot, a
   // A caixa abraça o texto (largura automática), com um limite para quebrar a
   // linha. Em edição, um mínimo para caber o cursor.
   const estiloCaixa: React.CSSProperties = {
-    left: tx.x * escala, top: tx.y * escala, width: "max-content",
+    // Centralizado ou à direita: a caixa usa a largura toda (senão o alinhamento não aparece).
+    left: tx.x * escala, top: tx.y * escala, width: (tx.alinhamento ?? "esquerda") === "esquerda" ? "max-content" : tx.largura * escala,
     maxWidth: tx.largura * escala, minWidth: emEdicao ? Math.max(40, tx.tamanho * escala * 2.5) : undefined,
     ...(ehNota ? { background: tx.fundo, padding: `${7 * escala}px ${9 * escala}px`, borderRadius: `${5 * escala}px`, boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)" } : {}),
   };
@@ -3449,8 +3556,23 @@ function AjustesBorracha({ tamanho, modo, aoModo, aoMudar, aoFechar }: { tamanho
 }
 
 type AlvoFolha = "atual" | "todas" | { de: number; ate: number };
-function EditorFolha({ inicial, tamanho, total, atual, aoAplicar, aoFechar }: { inicial: Papel; tamanho: string; total: number; atual: number; aoAplicar: (p: Papel, alvo: AlvoFolha) => void; aoFechar: () => void }) {
-  const [papel, setPapel] = useState<Papel>(inicial);
+function EditorFolha({ inicial, tamanho, total, atual, ia, aoMudarIa, aoAplicar, aoFechar }: { inicial: Papel; tamanho: string; total: number; atual: number; ia: EstadoIa | null; aoMudarIa: (e: EstadoIa) => void; aoAplicar: (p: Papel, alvo: AlvoFolha) => void; aoFechar: () => void }) {
+  const [papel, setPapel] = useState<PapelPagina>(inicial);
+  if (papel.capa) {
+    // Página-capa: escolhe o modelo da capa (o resto se edita na própria página).
+    return (
+      <div className="formulario">
+        <div className="caderno-folha-previa"><Folha papel={papel} tamanho={tamanho} className="caderno-folha" /></div>
+        <EscolherCapa capa={papel.capa} aoMudar={(capa) => setPapel((p) => ({ ...p, capa }))} ia={ia} aoMudarIa={aoMudarIa} />
+        <p className="campo-ajuda">{t.folha.capaAjuda}</p>
+        <div className="janela-acoes">
+          <Button className="botao" onPress={() => setPapel((p) => semCapa(p))}>{t.folha.virarFolha}</Button>
+          <Button className="botao" onPress={aoFechar}>{textos.comum.cancelar}</Button>
+          <Button className="botao principal" onPress={() => aoAplicar(papel, "atual")}>{t.folha.aplicar}</Button>
+        </div>
+      </div>
+    );
+  }
   const varias = total > 1;
   const [alvo, setAlvo] = useState<"atual" | "intervalo" | "todas">("atual");
   const [de, setDe] = useState(atual);

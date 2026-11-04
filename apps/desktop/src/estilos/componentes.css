@@ -1861,3 +1861,11 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-contexto .caderno-ctx-grupo[role="radiogroup"] .caderno-sub-botao.texto.ativo { background: var(--cor-superficie); border-color: var(--cor-destaque); }
 .caderno-contexto .caderno-sub-botao:not(.texto) { border-radius: 999px; }
 .caderno-contexto-fechar { margin-left: 0; }
+/* Capa como primeira página: prévia no formulário e a página na estante. */
+.caderno-capa-previa-nova { width: 9rem; aspect-ratio: 794 / 1123; border-radius: 4px; display: grid; place-items: center; padding: 0.6rem; color: #fff; font-weight: 700; text-align: center; overflow-wrap: anywhere; box-shadow: 0 2px 8px rgb(0 0 0 / 0.15); position: relative; overflow: hidden; }
+.caderno-capa-com-pagina { padding: 0; background: none; border: none; overflow: hidden; }
+.caderno-capa-pagina { width: 100%; height: 100%; }
+.caderno-capa-pagina .caderno-mini { border: none; border-radius: 0; box-shadow: none; }
+.caderno-capa-pagina-vazia { width: 100%; height: 100%; }
+.caderno-item-nome { font-size: 0.9rem; min-width: 0; flex: 1; }
+.caderno-capa.caderno-capa-com-pagina { aspect-ratio: 794 / 1123; }

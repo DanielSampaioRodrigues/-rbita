@@ -1397,6 +1397,9 @@ export const textos = {
       salvarMudancas: "Salvar mudanças",
       editarTitulo: "Editar caderno",
       novoTitulo: "Novo caderno",
+      comCapa: "Começar com uma capa",
+      capaAjuda: "A capa é a primeira página do caderno, com o nome escrito nela. Depois você escreve, desenha e cola o que quiser nela, com as mesmas ferramentas das outras páginas.",
+      capaEditarAjuda: "A capa é a primeira página do caderno. Aqui muda só o modelo; o nome e o resto você edita na própria página.",
     },
     capas: {
       tipo: "Tipo de capa",
@@ -1496,6 +1499,8 @@ export const textos = {
       intervaloAte: "até",
       aplicar: "Aplicar",
       aplicarTodas: "Aplicar a todas",
+      capaAjuda: "Esta é a página da capa. Escreva, desenhe e cole o que quiser nela com as ferramentas.",
+      virarFolha: "Usar folha comum",
     },
     ferramentas: {
       titulo: "Ferramentas de desenho",
