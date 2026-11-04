@@ -30,6 +30,6 @@ Teste da 0.45.1 no iPad, 29/10/2026. Caderno "ficou bom"; pressão da caneta fun
 - Ideias para depois (Dan ainda não pediu para fazer):
   - **IA no navegador** (iPad/celular): hoje nenhuma função de IA funciona lá, nem o "Planejar com a IA".
   - **Compartilhar um quadro** da Minha organização (ex.: TCC com a Ariana).
-  - Pastas de projetos: **arrastar** para reordenar e arrastar o cartão para dentro da pasta (hoje é por setas e pelo botão "Pastas").
+  - Pastas de projetos: **arrastar** para reordenar e arrastar o cartão para dentro da pasta (hoje é por setas e pelo botão "Pastas"). — **Feito em 04/11.**
   - Sincronização: decidir se a chave muda quando a pessoa liga a "proteção extra".
   - Domínio orbita.arcano3.com.br: parado, esperando o INPI.

@@ -1,7 +1,9 @@
 // Pastas de projetos: atalhos criados pela pessoa (ex.: "Produtos da editora").
 // Um projeto pode estar em várias pastas e continua sempre em "Todos".
 // O desenho da pasta é o mesmo do Caderno (componentes/Pasta3D).
-import { useEffect, useState } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useEffect, useState, type HTMLAttributes } from "react";
 import { Button, Checkbox, Form, Label, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Radio, RadioGroup, type Selection } from "react-aria-components";
 import { api, type PastaProjeto, type Projeto } from "../api";
 import { useRecado } from "../app/Recado";
@@ -65,9 +67,9 @@ export function FileiraPastas({
           <BotaoPasta nome={t.todos} cor="cinza" quantidade={projetos.length} rotulo={t.todosAjuda} ativa={selecionada === null} aoPress={() => aoSelecionar(null)} />
         </li>
         {pastas.map((p) => (
-          <li key={p.id}>
+          <ItemPastaArrastavel key={p.id} id={p.id}>
             <BotaoPasta nome={p.nome} cor={p.cor} quantidade={quantos(p.id)} rotulo={t.abrirPasta(p.nome, quantos(p.id))} ativa={selecionada === p.id} aoPress={() => aoSelecionar(p.id)} />
-          </li>
+          </ItemPastaArrastavel>
         ))}
         <li>
           <Button className="pasta-projeto pasta-projeto-nova" onPress={aoNova}>
@@ -77,6 +79,45 @@ export function FileiraPastas({
         </li>
       </ul>
     </section>
+  );
+}
+
+// ---------- Arrastar (pastas e cartões de projeto) ----------
+// O DndContext fica na página de Projetos. A pasta é ao mesmo tempo item que se
+// reordena e lugar onde se solta um projeto. Pelo teclado continuam as setas
+// ("Mover para a esquerda/direita") e o botão "Pastas" de cada projeto.
+
+/** Id de arrastar de uma pasta e de um projeto (os dois vivem no mesmo DndContext). */
+export const idArrastePasta = (id: string) => `pasta:${id}`;
+export const idArrasteProjeto = (id: string) => `projeto:${id}`;
+
+/**
+ * Os botões do React Aria param a propagação do toque; por isso o arrastar
+ * escuta na fase de captura (antes do botão). Teclado fica de fora de propósito:
+ * Enter e Espaço continuam abrindo a pasta ou o projeto.
+ */
+export function ouvintesNaCaptura(listeners: Record<string, unknown> | undefined): HTMLAttributes<HTMLElement> {
+  if (!listeners) return {};
+  return {
+    onPointerDownCapture: listeners.onPointerDown as HTMLAttributes<HTMLElement>["onPointerDownCapture"],
+    onTouchStartCapture: listeners.onTouchStart as HTMLAttributes<HTMLElement>["onTouchStartCapture"],
+  };
+}
+
+function ItemPastaArrastavel({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef, listeners, transform, transition, isDragging, isOver, active } = useSortable({ id: idArrastePasta(id) });
+  const recebendoProjeto = isOver && String(active?.id ?? "").startsWith("projeto:");
+  return (
+    <li
+      ref={setNodeRef}
+      {...ouvintesNaCaptura(listeners)}
+      className="pasta-projeto-item"
+      data-arrastando={isDragging || undefined}
+      data-recebendo={recebendoProjeto || undefined}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+    >
+      {children}
+    </li>
   );
 }
 

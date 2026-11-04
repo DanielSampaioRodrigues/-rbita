@@ -1740,3 +1740,16 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
   .pasta-projeto { padding: var(--espaco-1); }
   .pasta-projeto-nome { font-size: 0.82rem; }
 }
+
+/* Arrastar pastas de projetos e cartões até uma pasta (sem animação além do deslocamento). */
+.pasta-projeto-item { touch-action: manipulation; }
+.pasta-projeto-item[data-arrastando] { opacity: 0.4; }
+.pasta-projeto-item[data-recebendo] .pasta-projeto { outline: 3px solid var(--cor-destaque); outline-offset: 2px; background: color-mix(in srgb, var(--cor-destaque) 12%, var(--cor-superficie)); }
+.projeto-linha[data-arrastando] { opacity: 0.4; }
+.arraste-etiqueta {
+  display: inline-block; max-width: 18rem; padding: var(--espaco-2) var(--espaco-3); border-radius: var(--canto);
+  background: var(--cor-superficie); color: var(--cor-texto); border: 1px solid var(--cor-borda-controle);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grabbing;
+}
+:root[data-baixo-estimulo="true"] .arraste-etiqueta { box-shadow: none; }
+.projeto-linha, .pasta-projeto-item { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }

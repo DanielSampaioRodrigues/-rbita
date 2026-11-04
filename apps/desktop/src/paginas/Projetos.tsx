@@ -1,5 +1,8 @@
 import { ChevronRight, Eye, Plus } from "../icones";
-import { useEffect, useState } from "react";
+import { DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { arrayMove, rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
+import { useEffect, useRef, useState } from "react";
+import { useRecado } from "../app/Recado";
 import { Button, Form, ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import { LinhaDoTempo } from "../projetos/LinhaDoTempo";
 import { api, type EstadoProjeto, type PastaProjeto, type Projeto } from "../api";
@@ -8,7 +11,9 @@ import { Confirmar, Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
 import { useComLimite } from "../projetos/Limite";
 import { SeletorLimite } from "../projetos/SeletorLimite";
-import { CabecalhoPasta, corSugerida, FileiraPastas, FormPastaProjeto, lembrarPasta, MenuPorEmPasta, pastaLembrada } from "../projetos/Pastas";
+import {
+  CabecalhoPasta, corSugerida, FileiraPastas, FormPastaProjeto, idArrastePasta, idArrasteProjeto, lembrarPasta, MenuPorEmPasta, ouvintesNaCaptura, pastaLembrada,
+} from "../projetos/Pastas";
 import { contarNoLimite, haQuanto, horaDeOlhar, linhaPausa } from "../projetos/tempo";
 import { textos } from "../textos/pt-BR";
 
@@ -18,7 +23,37 @@ const pastaVazia = (pastas: PastaProjeto[]): PastaProjeto => ({ id: "", nome: ""
 
 const GRUPOS: EstadoProjeto[] = ["ativo", "em_uso", "pausado", "concluido"];
 
-export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLimite?: () => void }) {
+/**
+ * Mouse e caneta pegam depois de mexer 6 px; o dedo espera 200 ms parado
+ * (deslizar rápido continua rolando a página, como nos quadros).
+ */
+function useSensoresPastas() {
+  return useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  );
+}
+
+/** Cartão de projeto que pode ser arrastado até uma pasta. */
+function LinhaProjetoArrastavel({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef, listeners, isDragging } = useDraggable({ id: idArrasteProjeto(id) });
+  return (
+    <li ref={setNodeRef} {...ouvintesNaCaptura(listeners)} className="projeto-linha" data-arrastando={isDragging || undefined}>
+      {children}
+    </li>
+  );
+}
+
+export function Projetos({ aoAbrir: abrirProjeto }: { aoAbrir: (id: string) => void; aoMudarLimite?: () => void }) {
+  // Logo depois de arrastar, o toque que solta não abre nada.
+  const arrastouEm = useRef(0);
+  const acabouDeArrastar = () => Date.now() - arrastouEm.current < 400;
+  const aoAbrir = (id: string) => {
+    if (!acabouDeArrastar()) abrirProjeto(id);
+  };
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const sensores = useSensoresPastas();
+  const recado = useRecado();
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [limite, setLimite] = useState(3);
   const [criando, setCriando] = useState(false);
@@ -47,6 +82,7 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
   }, [mudancas]);
 
   const escolherPasta = (id: string | null) => {
+    if (acabouDeArrastar()) return;
     setPastaId(id);
     lembrarPasta(id);
   };
@@ -76,12 +112,72 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
     void executar(() => api.reordenarPastasProjeto(ids));
   };
 
+  const arrastandoRef = useRef("");
+  const aoComecarArrastar = (e: DragStartEvent) => {
+    arrastandoRef.current = String(e.active.id);
+    setArrastando(String(e.active.id));
+  };
+  /** Nome de quem está sendo arrastado ou de onde está (para o leitor de tela). */
+  const nomeDoArraste = (id: string) =>
+    id.startsWith("projeto:")
+      ? projetos.find((p) => p.id === id.slice("projeto:".length))?.titulo ?? ""
+      : pastas?.find((p) => p.id === id.slice("pasta:".length))?.nome ?? "";
+  const aoSoltar = (e: DragEndEvent) => {
+    setArrastando(null);
+    arrastouEm.current = Date.now();
+    const de = String(e.active.id);
+    const para = e.over ? String(e.over.id) : null;
+    if (!para || !pastas || !para.startsWith("pasta:")) return;
+    const destino = para.slice("pasta:".length);
+    if (de.startsWith("pasta:")) {
+      const ids = pastas.map((p) => p.id);
+      const i = ids.indexOf(de.slice("pasta:".length));
+      const j = ids.indexOf(destino);
+      if (i < 0 || j < 0 || i === j) return;
+      const nova = arrayMove(ids, i, j);
+      setPastas(nova.map((id) => pastas.find((p) => p.id === id)!));
+      void executar(() => api.reordenarPastasProjeto(nova));
+    } else if (de.startsWith("projeto:")) {
+      const projeto = projetos.find((p) => p.id === de.slice("projeto:".length));
+      const alvo = pastas.find((p) => p.id === destino);
+      if (!projeto || !alvo) return;
+      if (projeto.pastas.includes(alvo.id)) {
+        recado(tp.jaEstaNaPasta(projeto.titulo, alvo.nome));
+        return;
+      }
+      void executar(async () => {
+        await api.definirPastaDoProjeto(projeto.id, alvo.id, true);
+        recado(tp.postoNaPasta(projeto.titulo, alvo.nome));
+      });
+    }
+  };
+  const tituloArrastando = arrastando?.startsWith("projeto:")
+    ? projetos.find((p) => p.id === arrastando.slice("projeto:".length))?.titulo
+    : arrastando?.startsWith("pasta:")
+      ? pastas?.find((p) => p.id === arrastando.slice("pasta:".length))?.nome
+      : undefined;
+
   // O resumo é sempre de todos os projetos; a pasta só filtra a lista.
   const ativos = contarNoLimite(projetos);
   const emUso = projetos.filter((p) => p.estado === "em_uso").length;
   const visiveis = pasta ? projetos.filter((p) => p.pastas.includes(pasta.id)) : projetos;
 
   return (
+    <DndContext
+      sensors={sensores}
+      onDragStart={aoComecarArrastar}
+      onDragEnd={aoSoltar}
+      onDragCancel={() => setArrastando(null)}
+      accessibility={{
+        screenReaderInstructions: { draggable: tp.arrastarInstrucoes },
+        announcements: {
+          onDragStart: () => `${tp.arrastandoAnuncio(nomeDoArraste(arrastandoRef.current))}`,
+          onDragOver: ({ over }) => (over ? tp.sobreAnuncio(nomeDoArraste(String(over.id))) : tp.foraAnuncio),
+          onDragEnd: ({ over }) => (over ? tp.soltouAnuncio(nomeDoArraste(String(over.id))) : tp.canceladoAnuncio),
+          onDragCancel: () => tp.canceladoAnuncio,
+        },
+      }}
+    >
     <div className="pagina">
       <h1>{t.titulo}</h1>
       <p className="pagina-intro">{t.intro} {t.dicaVisoes}</p>
@@ -110,6 +206,7 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
       <Aviso>{erro}</Aviso>
 
       {pastas && (
+        <SortableContext items={pastas.map((p) => idArrastePasta(p.id))} strategy={rectSortingStrategy}>
         <FileiraPastas
           pastas={pastas}
           projetos={projetos}
@@ -117,6 +214,7 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
           aoSelecionar={escolherPasta}
           aoNova={() => (setPorNaNova(null), setEditandoPasta(pastaVazia(pastas ?? [])))}
         />
+        </SortableContext>
       )}
       {pastas && pastas.length > 0 && !pasta && <p className="campo-ajuda">{tp.ajudaAtalho}</p>}
       {pasta && pastas && (
@@ -166,10 +264,10 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
             ) : (
               <ul className="lista-cartoes">
                 {lista.map((p) => (
-                  <li key={p.id} className="projeto-linha">
+                  <LinhaProjetoArrastavel key={p.id} id={p.id}>
                     <CartaoProjeto projeto={p} aoAbrir={() => aoAbrir(p.id)} />
                     <MenuPorEmPasta projeto={p} pastas={pastas ?? []} aoNova={() => (setPorNaNova(p.id), setEditandoPasta(pastaVazia(pastas ?? [])))} />
-                  </li>
+                  </LinhaProjetoArrastavel>
                 ))}
               </ul>
             )}
@@ -204,6 +302,10 @@ export function Projetos({ aoAbrir }: { aoAbrir: (id: string) => void; aoMudarLi
       />
       <NovoProjeto aberta={criando} aoFechar={() => setCriando(false)} aoCriado={(id) => (setCriando(false), aoAbrir(id))} />
     </div>
+    <DragOverlay dropAnimation={null}>
+      {tituloArrastando ? <div className="arraste-etiqueta" aria-hidden="true">{tituloArrastando}</div> : null}
+    </DragOverlay>
+    </DndContext>
   );
 }
 
