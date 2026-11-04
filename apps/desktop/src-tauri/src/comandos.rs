@@ -1349,8 +1349,9 @@ pub async fn registrar_gasto(
     interesse: bool,
     momento: Option<i64>,
     nota: Option<String>,
+    conta_id: Option<String>,
 ) -> Result<dinheiro::Gasto, Erro> {
-    estado.com_sessao(|s| dinheiro::registrar_gasto(&s.conn, centavos, &grupo_id, &descricao, interesse, momento, nota.as_deref()))
+    estado.com_sessao(|s| dinheiro::registrar_gasto(&s.conn, centavos, &grupo_id, &descricao, interesse, momento, nota.as_deref(), conta_id.as_deref()))
 }
 
 #[tauri::command]

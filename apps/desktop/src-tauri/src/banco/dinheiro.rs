@@ -27,6 +27,10 @@ pub struct Gasto {
     /// Nota livre (opcional), além do "o que foi". Fica de fora quando não há.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nota: Option<String>,
+    /// Conta fixa que este gasto paga (opcional). Com ela, a conta não conta
+    /// de novo no "Saiu" daquele mês. Fica de fora quando não há.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conta_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -42,6 +46,9 @@ struct ValorGasto {
     /// Nota livre. A coluna `nota` do registro já guarda a descrição.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     nota: String,
+    /// Conta fixa paga por este gasto (vazio = nenhuma).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    conta_id: String,
 }
 
 /// Registra um gasto. `momento` (ms desde 1970) permite anotar um gasto de
@@ -54,12 +61,14 @@ pub fn registrar_gasto(
     interesse: bool,
     momento: Option<i64>,
     nota: Option<&str>,
+    conta_id: Option<&str>,
 ) -> Result<Gasto, Erro> {
     if centavos < 0 {
         return Err(Erro::Interno("o valor não pode ser negativo".into()));
     }
     let agora = agora_ms();
     let nota = nota.map(str::trim).unwrap_or("").to_string();
+    let conta_id = conta_id.map(str::trim).unwrap_or("").to_string();
     let g = Gasto {
         id: novo_id(),
         centavos,
@@ -69,8 +78,9 @@ pub fn registrar_gasto(
         descricao: descricao.trim().to_string(),
         momento: momento.unwrap_or(agora),
         nota: if nota.is_empty() { None } else { Some(nota.clone()) },
+        conta_id: if conta_id.is_empty() { None } else { Some(conta_id.clone()) },
     };
-    let valor = ValorGasto { centavos, grupo_id: g.grupo_id.clone(), categoria: String::new(), interesse, nota };
+    let valor = ValorGasto { centavos, grupo_id: g.grupo_id.clone(), categoria: String::new(), interesse, nota, conta_id };
     conn.execute(
         "INSERT INTO registro (id, tipo, momento, valor, nota, criado_em, alterado_em) VALUES (?1, 'gasto', ?2, ?3, ?4, ?5, ?5)",
         params![g.id, g.momento, serde_json::to_string(&valor).unwrap(), g.descricao, agora],
@@ -87,7 +97,8 @@ pub fn listar_gastos(conn: &Connection, de: i64, ate: i64) -> Result<Vec<Gasto>,
         .query_map(params![de, ate], |r| {
             let v: ValorGasto = serde_json::from_str(&r.get::<_, String>(2)?).unwrap_or_default();
             let nota = if v.nota.is_empty() { None } else { Some(v.nota) };
-            Ok(Gasto { id: r.get(0)?, momento: r.get(1)?, centavos: v.centavos, grupo_id: v.grupo_id, categoria: v.categoria, interesse: v.interesse, descricao: r.get(3)?, nota })
+            let conta_id = if v.conta_id.is_empty() { None } else { Some(v.conta_id) };
+            Ok(Gasto { id: r.get(0)?, momento: r.get(1)?, centavos: v.centavos, grupo_id: v.grupo_id, categoria: v.categoria, interesse: v.interesse, descricao: r.get(3)?, nota, conta_id })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lista)
@@ -456,9 +467,9 @@ mod testes {
     #[test]
     fn gastos_registram_e_listam() {
         let (_p, conn) = banco();
-        registrar_gasto(&conn, 1250, "g-mercado", "pão e leite", false, None, None).unwrap();
-        registrar_gasto(&conn, 9900, "g-jogos", "DLC", true, None, None).unwrap();
-        assert!(registrar_gasto(&conn, -1, "x", "", false, None, None).is_err());
+        registrar_gasto(&conn, 1250, "g-mercado", "pão e leite", false, None, None, None).unwrap();
+        registrar_gasto(&conn, 9900, "g-jogos", "DLC", true, None, None, None).unwrap();
+        assert!(registrar_gasto(&conn, -1, "x", "", false, None, None, None).is_err());
         let gs = listar_gastos(&conn, 0, i64::MAX).unwrap();
         assert_eq!(gs.len(), 2);
         assert!(gs.iter().any(|g| g.interesse && g.grupo_id == "g-jogos"));
@@ -469,10 +480,16 @@ mod testes {
     fn gasto_guarda_momento_e_nota() {
         let (_p, conn) = banco();
         let ontem = 1_700_000_000_000;
-        let g = registrar_gasto(&conn, 4500, "g-casa", "farmácia", false, Some(ontem), Some("  remédio do mês  ")).unwrap();
+        let g = registrar_gasto(&conn, 4500, "g-casa", "farmácia", false, Some(ontem), Some("  remédio do mês  "), None).unwrap();
         assert_eq!((g.momento, g.nota.as_deref()), (ontem, Some("remédio do mês")));
         // Nota só de espaços conta como sem nota.
-        registrar_gasto(&conn, 100, "", "bala", false, Some(ontem + 1), Some("   ")).unwrap();
+        registrar_gasto(&conn, 100, "", "bala", false, Some(ontem + 1), Some("   "), None).unwrap();
+        // Gasto que paga uma conta fixa guarda a ligação; sem ela, o campo fica de fora.
+        let pago = registrar_gasto(&conn, 2150, "g-casa", "luz", false, Some(ontem + 2), None, Some(" conta-luz ")).unwrap();
+        assert_eq!(pago.conta_id.as_deref(), Some("conta-luz"));
+        let lidos = listar_gastos(&conn, ontem, ontem + 3).unwrap();
+        assert_eq!(lidos.iter().find(|x| x.id == pago.id).unwrap().conta_id.as_deref(), Some("conta-luz"));
+        assert!(lidos.iter().filter(|x| x.id != pago.id).all(|x| x.conta_id.is_none()));
         let gs = listar_gastos(&conn, ontem, ontem + 2).unwrap();
         assert_eq!(gs.len(), 2);
         assert_eq!(gs[0].descricao, "bala");
@@ -480,7 +497,7 @@ mod testes {
         assert_eq!((gs[1].momento, gs[1].nota.as_deref(), gs[1].descricao.as_str()), (ontem, Some("remédio do mês"), "farmácia"));
         // Fora do intervalo não aparece; sem momento, vale agora.
         assert!(listar_gastos(&conn, 0, ontem).unwrap().is_empty());
-        let agora = registrar_gasto(&conn, 1, "", "x", false, None, None).unwrap();
+        let agora = registrar_gasto(&conn, 1, "", "x", false, None, None, None).unwrap();
         assert!(agora.momento > ontem);
     }
 
@@ -494,7 +511,7 @@ mod testes {
         assert!(registrar_entrada(&conn, 0, "nada", None).is_err());
         assert!(registrar_entrada(&conn, -5, "x", None).is_err());
         // Entradas e gastos não se misturam.
-        registrar_gasto(&conn, 300, "", "café", false, Some(dia + 5), None).unwrap();
+        registrar_gasto(&conn, 300, "", "café", false, Some(dia + 5), None, None).unwrap();
         let es = listar_entradas(&conn, dia, dia + 11).unwrap();
         assert_eq!(es.len(), 2);
         assert_eq!((es[0].descricao.as_str(), es[0].centavos), ("venda", 5000));

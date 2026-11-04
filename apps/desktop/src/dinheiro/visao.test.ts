@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Conta, Entrada, Gasto, Grupo } from "../api";
-import { chaveDia, chaveMes, contasDoMes, diaParaMomento, entradasPorMes, fatiasPizza, filtrar, gastosPorDia, mesesRecentes, mesVizinho, pontosLinha, resumoDoMes, tabelaPorMes } from "./visao";
+import { chaveDia, chaveMes, contasDoMes,
+  contasPagasNoMes, diaParaMomento, entradasPorMes, fatiasPizza, filtrar, gastosPorDia, mesesRecentes, mesVizinho, pontosLinha, resumoDoMes, tabelaPorMes } from "./visao";
 
 const gasto = (centavos: number, grupoId: string, ano: number, mes1: number, interesse = false): Gasto => ({
   id: crypto.randomUUID(), centavos, grupoId, categoria: "", interesse, descricao: "", momento: new Date(ano, mes1 - 1, 15).getTime(),
@@ -110,6 +111,18 @@ describe("dinheiro: este mês (puro)", () => {
     // Sem entrada no mês, a sobra fica negativa (faltou), sem quebrar.
     expect(resumoDoMes(gastos, contas, [], "2026-10").sobra).toBe(-3500);
     expect(contasDoMes(contas, "2026-11")).toHaveLength(2);
+  });
+
+  it("conta paga por um gasto ligado a ela não conta duas vezes (resumo e tabela)", () => {
+    const luz = conta(2000, "g1", new Date(2026, 8, 1).getTime());
+    const pagamento = { ...gasto(2150, "g1", 2026, 10), contaId: luz.id };
+    const r = resumoDoMes([pagamento], [luz], [], "2026-10");
+    expect(r).toEqual({ entrou: 0, gastos: 2150, contas: 0, saiu: 2150, sobra: -2150 });
+    // No mês sem pagamento, a conta continua contando.
+    expect(resumoDoMes([pagamento], [luz], [], "2026-09").contas).toBe(2000);
+    expect([...contasPagasNoMes([pagamento], "2026-10")]).toEqual([luz.id]);
+    const tab = tabelaPorMes([pagamento], [luz], [], ["2026-09", "2026-10"]);
+    expect(tab.totaisMes).toEqual({ "2026-09": 2000, "2026-10": 2150 });
   });
 
   it("entradas por mês", () => {

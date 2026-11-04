@@ -3,7 +3,7 @@
 
 import { useId, useState } from "react";
 import { Button, Form, Input, Label, Radio, RadioGroup, Text, TextField, ToggleButton } from "react-aria-components";
-import { api, type Grupo } from "../api";
+import { api, type Conta, type Grupo } from "../api";
 import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Segmentado } from "../componentes/Segmentado";
@@ -11,7 +11,7 @@ import { avisarMudanca } from "../dados";
 import { Check, Plus, Sparkles } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { proximaCor } from "./FormGrupo";
-import { reaisParaCentavos } from "./moeda";
+import { centavosParaReais, reaisParaCentavos } from "./moeda";
 import { chaveDia, diaParaMomento } from "./visao";
 
 const t = textos.dinheiro;
@@ -68,10 +68,19 @@ function momentoDe(quando: Quando, dia: string): number | null {
   return diaParaMomento(dia);
 }
 
-export function FormGasto({ grupos, aoFechar }: { grupos: Grupo[]; aoFechar: () => void }) {
-  const [valor, setValor] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [grupoId, setGrupoId] = useState("");
+export function FormGasto({ grupos, contas = [], pagando, aoFechar }: {
+  grupos: Grupo[];
+  /** Contas fixas, para dizer que o gasto paga uma delas. */
+  contas?: Conta[];
+  /** Conta que está sendo paga: o formulário já vem preenchido com ela. */
+  pagando?: Conta;
+  aoFechar: () => void;
+}) {
+  const [valor, setValor] = useState(() => (pagando ? centavosParaReais(pagando.centavos) : ""));
+  const [descricao, setDescricao] = useState(pagando?.nome ?? "");
+  const [grupoId, setGrupoId] = useState(pagando?.grupoId ?? "");
+  const [contaId, setContaId] = useState(pagando?.id ?? "");
+  const idConta = useId();
   const [quando, setQuando] = useState<Quando>("hoje");
   const [dia, setDia] = useState(() => chaveDia(Date.now()));
   const [interesse, setInteresse] = useState(false);
@@ -114,7 +123,7 @@ export function FormGasto({ grupos, aoFechar }: { grupos: Grupo[]; aoFechar: () 
       return;
     }
     try {
-      await api.registrarGasto(centavos, grupoId, descricao, interesse, { momento, nota });
+      await api.registrarGasto(centavos, grupoId, descricao, interesse, { momento, nota, ...(contaId ? { contaId } : {}) });
       avisarMudanca();
       recado(t.gasto.registrado);
       aoFechar();
@@ -162,6 +171,17 @@ export function FormGasto({ grupos, aoFechar }: { grupos: Grupo[]; aoFechar: () 
       </div>
 
       <CampoQuando quando={quando} setQuando={setQuando} dia={dia} setDia={setDia} />
+
+      {contas.length > 0 && (
+        <div className="campo">
+          <label className="campo-rotulo" htmlFor={idConta}>{t.gasto.contaFixa}</label>
+          <select id={idConta} className="entrada-texto sozinha" value={contaId} onChange={(e) => setContaId(e.target.value)} aria-describedby={`${idConta}-ajuda`}>
+            <option value="">{t.gasto.contaFixaNenhuma}</option>
+            {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+          <p className="campo-ajuda" id={`${idConta}-ajuda`}>{t.gasto.contaFixaAjuda}</p>
+        </div>
+      )}
 
       <div className="campo">
         <ToggleButton isSelected={interesse} onChange={setInteresse} className="etiqueta-alternar dinheiro-alternar">

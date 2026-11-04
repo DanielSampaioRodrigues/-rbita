@@ -12,8 +12,8 @@ Teste da 0.45.1 no iPad, 29/10/2026. Caderno "ficou bom"; pressão da caneta fun
 7. **Modelos de pincel:** giz, spray, pincel seco, aquarela etc., escolhíveis na ferramenta pincel. — **Feito na 0.45.2** (falta testar no iPad).
 
 ## Decisões pendentes de Dan (levantadas pelos agentes)
-- Energia: camuflagem entra no saldo ou só marca? Hoje só marca.
-- Dinheiro: "Saiu" soma gastos + contas fixas (conta paga registrada como gasto conta duas vezes).
+- Energia: camuflagem entra no saldo ou só marca? — **Decidido em 04/11: entra no saldo (pouco = 1, muito = 2). Feito.**
+- Dinheiro: "Saiu" soma gastos + contas fixas (conta paga registrada como gasto conta duas vezes). — **Corrigido em 04/11: o gasto diz qual conta paga.**
 
 ## Aparência
 8. **"Igual ao Windows" → "Igual ao sistema":** a opção de modo de cor (e qualquer outro texto que cite "Windows" onde vale para iPad, Mac e Android) deve usar "sistema", um padrão só para todas as versões.

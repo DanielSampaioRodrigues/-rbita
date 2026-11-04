@@ -28,7 +28,7 @@ describe("semana em saldo", () => {
     d = marcarCamuflagem(d, "2026-10-28", "muito");
     const s = semanaEmSaldo(d, HOJE);
     expect(s.map((x) => x.dia)).toEqual(["2026-10-23", "2026-10-24", "2026-10-25", "2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29"]);
-    expect(s.map((x) => x.balanco)).toEqual(["gastou-mais", "vazio", "vazio", "vazio", "repos-mais", "equilibrado", "vazio"]);
+    expect(s.map((x) => x.balanco)).toEqual(["gastou-mais", "vazio", "vazio", "vazio", "repos-mais", "gastou-mais", "vazio"]);
     expect(s[5].camuflagem).toBe("muito");
     expect(s[0].camuflagem).toBeNull();
   });

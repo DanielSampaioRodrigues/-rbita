@@ -114,3 +114,13 @@ describe("guardar", () => {
     expect(ultimaVez(d, "x")).toBeNull();
   });
 });
+
+describe("camuflagem no saldo", () => {
+  it("um pouco gasta 1, muito gasta 2, nada não muda", () => {
+    const at = [{ id: "a", nome: "descanso", peso: 2 }];
+    expect(saldoDoDia(at, ["a"], "nada")).toEqual({ gastou: 0, repos: 2, saldo: 2 });
+    expect(saldoDoDia(at, ["a"], "pouco")).toEqual({ gastou: 1, repos: 2, saldo: 1 });
+    expect(saldoDoDia(at, ["a"], "muito")).toEqual({ gastou: 2, repos: 2, saldo: 0 });
+    expect(balanco(saldoDoDia([], [], "muito"))).toBe("gastou-mais");
+  });
+});

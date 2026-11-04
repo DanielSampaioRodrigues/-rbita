@@ -48,7 +48,7 @@ export function ProvedorPreferencias({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Quando a pessoa escolheu "igual ao Windows", acompanha a troca do sistema.
+  // Quando a pessoa escolheu "igual ao sistema", acompanha a troca do sistema.
   useEffect(() => aoMudarModoDoSistema(() => aplicarAparencia(prefs)), [prefs]);
 
   const mudar = useCallback((mudanca: Partial<Preferencias>) => setPrefs((atual) => ({ ...atual, ...mudanca })), []);

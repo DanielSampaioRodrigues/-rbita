@@ -262,7 +262,7 @@ pub fn provedor_da_funcao(conn: &Connection, funcao: &str, sensivel: bool) -> Re
     if sensivel && config.bloquear_sensivel && !escolhido.provedor.local() {
         return Err(Erro::Ia {
             motivo: "sensivel_bloqueado",
-            mensagem: "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do computador.".into(),
+            mensagem: "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do aparelho.".into(),
         });
     }
     Ok(escolhido)

@@ -43,7 +43,7 @@ export const textos = {
   },
   aparencia: {
     titulo: "Aparência",
-    descricao: "Tema, fundo, letras e tela. As mudanças aparecem na hora e ficam salvas neste computador.",
+    descricao: "Tema, fundo, letras e tela. As mudanças aparecem na hora e ficam salvas neste aparelho.",
     secoesRotulo: "Partes da aparência",
     secoes: {
       tema: { nome: "Tema", descricao: "As cores do Órbita: escolha um pronto ou crie o seu." },
@@ -196,7 +196,7 @@ export const textos = {
       "Temas: traço e pontas dos ícones ajustáveis no editor de tema, também pedindo à IA.",
       "Atualizações dentro do Órbita (Ajustes > Atualizações): veja o que mudou antes de instalar, ou deixe para depois.",
       "Começar sem inventar senha: Windows Hello, PIN ou abrir direto, e as 6 palavras para recuperar. A senha virou opcional, em Ajustes > Segurança.",
-      "Guardar a recuperação na sua conta Google (Ajustes > Guardar na minha conta): num computador novo, é só entrar com a conta para trazer tudo de volta.",
+      "Guardar a recuperação na sua conta Google (Ajustes > Guardar na minha conta): num aparelho novo, é só entrar com a conta para trazer tudo de volta.",
       "IA: cada função escolhe a IA e o modelo, inclusive a Personalização (temas e ícones).",
       "Ícones com estilo: três famílias, preenchimento e efeitos (rabiscado, carimbo, brilho), e desenhar os ícones com IA (experimental).",
     ],
@@ -326,7 +326,7 @@ export const textos = {
   },
   ajustes: {
     titulo: "Ajustes",
-    descricao: "As mudanças aparecem na hora e ficam salvas neste computador.",
+    descricao: "As mudanças aparecem na hora e ficam salvas neste aparelho.",
     leitura: "Leitura",
     tela: "Tela",
     fonte: "Fonte",
@@ -404,16 +404,16 @@ export const textos = {
   modos: {
     selo: "Recomendado",
     hello: { nome: "Windows Hello", descricao: "Digital, rosto ou o PIN do próprio Windows. Só funciona neste computador." },
-    pin: { nome: "PIN", descricao: "Você digita um número curto. Só funciona neste computador." },
+    pin: { nome: "PIN", descricao: "Você digita um número curto. Só funciona neste aparelho." },
     senha: { nome: "Senha", descricao: "Você digita a senha toda vez. É o jeito mais protegido." },
-    direto: { nome: "Abrir direto", descricao: "O Órbita abre sem pedir nada. Use só se ninguém mais mexe neste computador." },
+    direto: { nome: "Abrir direto", descricao: "O Órbita abre sem pedir nada. Use só se ninguém mais mexe neste aparelho." },
     aviso:
       "Windows Hello, PIN e abrir direto protegem contra quem mexe no computador, mas não contra um vírus no seu usuário do Windows.",
   },
   criar: {
     boasVindasTitulo: "Boas-vindas ao Órbita",
     boasVindasTexto:
-      "Seus dados vão ficar só neste computador, trancados. Ninguém mais consegue ler, nem quem fez o Órbita.",
+      "Seus dados vão ficar só neste aparelho, trancados. Ninguém mais consegue ler, nem quem fez o Órbita.",
     boasVindasPassos: "São só dois passos: escolher como abrir no dia a dia e guardar uma chave de recuperação. Não precisa inventar senha.",
     comecar: "Começar",
     boasVindasConta: "Seus dados ficam trancados. Ninguém mais consegue ler, nem quem fez o Órbita.",
@@ -434,7 +434,7 @@ export const textos = {
   },
   chave: {
     titulo: "Guarde sua chave de recuperação",
-    texto: "Estas 6 palavras abrem seus dados em qualquer computador: se trocar de computador, esquecer o PIN, o Windows Hello falhar ou para abrir um backup.",
+    texto: "Estas 6 palavras abrem seus dados em qualquer aparelho: se trocar de aparelho, esquecer o PIN, o Windows Hello falhar ou para abrir um backup.",
     ondeGuardar: "Guarde num lugar seguro: pendrive, nuvem, papel ou com uma pessoa de confiança.",
     salvarArquivo: "Salvar arquivo",
     imprimir: "Imprimir",
@@ -456,7 +456,7 @@ export const textos = {
     pinBloqueado: (comSenha: boolean) =>
       `Foram 5 tentativas com o PIN. Para continuar, use ${comSenha ? "a senha ou a chave de recuperação" : "a chave de recuperação (as 6 palavras)"}. Nada foi apagado, e o PIN volta a funcionar depois.`,
     semChave: (comSenha: boolean) =>
-      `Este computador não está guardando a chave para abrir sem senha. Use ${comSenha ? "a senha ou a chave de recuperação" : "a chave de recuperação (as 6 palavras)"}.`,
+      `Este aparelho não está guardando a chave para abrir sem senha. Use ${comSenha ? "a senha ou a chave de recuperação" : "a chave de recuperação (as 6 palavras)"}.`,
     usarSenha: "Usar a senha",
     usarPalavras: "Usar a chave de recuperação",
     usarPin: "Usar o PIN",
@@ -486,7 +486,7 @@ export const textos = {
   },
   seguranca: {
     titulo: "Segurança",
-    comoAbre: "Como o Órbita abre neste computador",
+    comoAbre: "Como o Órbita abre neste aparelho",
     mudar: "Mudar",
     trocarSenha: "Trocar a senha",
     verChave: "Ver a chave de recuperação",
@@ -498,15 +498,15 @@ export const textos = {
     confirmarComSenha: "Para confirmar, digite sua senha.",
     confirmarComPin: "Para confirmar, digite seu PIN.",
     confirmarComHello: "Ao continuar, o Windows Hello pede para confirmar que é você.",
-    confirmarDireto: "Este computador abre o Órbita direto, então não é preciso confirmar.",
+    confirmarDireto: "Este aparelho abre o Órbita direto, então não é preciso confirmar.",
     confirmarComPalavras: "Para confirmar, digite as 6 palavras da chave de recuperação.",
     usarPalavras: "Confirmar com as 6 palavras",
     usarJeitoDeSempre: "Confirmar do jeito de sempre",
     criarSenha: "Criar uma senha (opcional)",
     criarSenhaTexto:
-      "A senha é mais um jeito de abrir os seus dados em outro computador e de abrir backups, além das 6 palavras. Sem ela, tudo continua funcionando.",
-    semSenha: "Sem senha: em outro computador ou num backup, os dados abrem com as 6 palavras.",
-    comSenha: "Com senha: em outro computador ou num backup, os dados abrem com a senha ou com as 6 palavras.",
+      "A senha é mais um jeito de abrir os seus dados em outro aparelho e de abrir backups, além das 6 palavras. Sem ela, tudo continua funcionando.",
+    semSenha: "Sem senha: em outro aparelho ou num backup, os dados abrem com as 6 palavras.",
+    comSenha: "Com senha: em outro aparelho ou num backup, os dados abrem com a senha ou com as 6 palavras.",
     verTitulo: "Chave de recuperação",
     salvoComSucesso: "Pronto, salvo.",
   },
@@ -523,7 +523,7 @@ export const textos = {
   },
   backup: {
     titulo: "Backup",
-    explicacao: "O backup é um arquivo único e criptografado. Abre com as 6 palavras (ou com a senha, se você criou uma), em qualquer computador.",
+    explicacao: "O backup é um arquivo único e criptografado. Abre com as 6 palavras (ou com a senha, se você criou uma), em qualquer aparelho.",
     fazerAgora: "Fazer backup agora",
     feito: "Backup salvo.",
     restaurar: "Restaurar um backup",
@@ -544,7 +544,7 @@ export const textos = {
     usarPalavras: "Usar as 6 palavras",
     usarSenha: "Usar a senha",
     semSenhaTexto: "Este backup não tem senha: ele abre com as 6 palavras da chave de recuperação de quando foi feito.",
-    comoAbrirDepois: "Como abrir o Órbita neste computador depois?",
+    comoAbrirDepois: "Como abrir o Órbita neste aparelho depois?",
     avisoSubstituir: "Os dados de agora vão para uma pasta de segurança, sem apagar nada, e o backup entra no lugar.",
     restaurarBotao: "Restaurar",
     restaurado: "Backup restaurado.",
@@ -947,7 +947,7 @@ export const textos = {
     },
     camuflagem: {
       pergunta: "Hoje precisou se esforçar para parecer “normal”?",
-      ajuda: "Opcional. Esconder o seu jeito para se encaixar também gasta energia.",
+      ajuda: "Opcional. Esconder o seu jeito para se encaixar também gasta energia, e entra no saldo do dia: um pouco conta como gasto 1, muito como gasto 2.",
       opcoes: { nada: "Nada", pouco: "Um pouco", muito: "Muito" } as Record<string, string>,
       marca: { pouco: "camuflou um pouco", muito: "camuflou muito" } as Record<string, string>,
     },
@@ -1053,7 +1053,7 @@ export const textos = {
   },
   saude: {
     titulo: "Saúde",
-    intro: "Remédios, como você está, o que pesa e o que faz bem. Tudo fica só neste computador, dentro do cofre.",
+    intro: "Remédios, como você está, o que pesa e o que faz bem. Tudo fica só neste aparelho, dentro do cofre.",
     abas: { rotulo: "Partes da Saúde", hoje: "Hoje", remedios: "Remédios", historico: "Histórico", planos: "Planos e consultas" },
     hoje: {
       comoEstou: "Como estou agora",
@@ -1207,7 +1207,7 @@ export const textos = {
     resumo: {
       titulo: "Resumo para a consulta",
       abrir: "Montar resumo para a consulta",
-      intro: "Junta seus remédios e os registros do período num texto só, para levar ao médico. Nada sai do computador: você copia e cola onde quiser.",
+      intro: "Junta seus remédios e os registros do período num texto só, para levar ao médico. Nada sai do aparelho: você copia e cola onde quiser.",
       periodo: "Período",
       periodos: { 7: "7 dias", 30: "30 dias", 90: "90 dias" },
       copiar: "Copiar o resumo",
@@ -1220,7 +1220,7 @@ export const textos = {
       abrir: "Abrir meus planos",
       abrirJanela: "Abrir em janela",
       atalho: "Atalho: Ctrl + Shift + C (vai direto para o plano de crise)",
-      intro: "Escritos agora, num momento bom, para ter à mão depois. De crise (quando a coisa aperta) e de estratégia (o que te faz bem e te regula). Você pode ter vários. Ficam só neste computador.",
+      intro: "Escritos agora, num momento bom, para ter à mão depois. De crise (quando a coisa aperta) e de estratégia (o que te faz bem e te regula). Você pode ter vários. Ficam só neste aparelho.",
       tipos: { crise: "Plano de crise", estrategia: "Estratégia / potencialidade" },
       adicionarCrise: "Novo plano de crise",
       adicionarEstrategia: "Nova estratégia",
@@ -2125,6 +2125,11 @@ export const textos = {
       totalDia: (valor: string) => `Total do dia: ${valor}`,
       contasNoMes: (n: number, valor: string) => `${n === 1 ? "1 conta fixa conta" : `${n} contas fixas contam`} neste mês: ${valor}.`,
       verContas: "Ver em Planejar",
+      contasTitulo: "Contas fixas do mês",
+      contasAjuda: "Enquanto a conta não tem pagamento registrado, o valor dela entra no “Saiu”. Ao registrar o pagamento, vale o que você pagou de fato, sem contar duas vezes.",
+      contaPaga: "Paga",
+      registrarPagamento: "Registrar pagamento",
+      registrarPagamentoDe: (nome: string) => `Registrar pagamento: ${nome}`,
       interesse: "Interesse especial",
     },
     gasto: {
@@ -2146,6 +2151,9 @@ export const textos = {
       interesse: "É um interesse especial / hiperfoco",
       interesseAjuda: "Marcar ajuda a ver esses gastos à parte, sem julgamento.",
       nota: "Nota (opcional)",
+      contaFixa: "Paga uma conta fixa? (opcional)",
+      contaFixaNenhuma: "Não, é um gasto avulso",
+      contaFixaAjuda: "Se este gasto é o pagamento de uma conta fixa, escolha qual. Assim ela não conta duas vezes no “Saiu” do mês.",
       guardar: "Guardar",
       registrado: "Gasto guardado.",
       excluir: "Apagar gasto",
@@ -2679,7 +2687,7 @@ export const textos = {
       personalizacao: "Personalização (temas e ícones)",
     },
     naoUsar: "Não usar IA",
-    sensivel: "Não enviar dados de saúde e terapia para fora do computador",
+    sensivel: "Não enviar dados de saúde e terapia para fora do aparelho",
     sensivelAjuda:
       "Saúde e cuidado psicológico chegam na Onda 2. Mesmo com esta opção desligada, o Órbita sempre avisa antes de enviar esses dados. Ligada, só uma IA local (Ollama) recebe.",
     novoTitulo: "Adicionar provedor de IA",
@@ -2737,8 +2745,8 @@ export const textos = {
           ? `Proposta nova: ${etapas === 1 ? "1 passo" : `${etapas} passos`}.`
           : `Proposta nova: ${etapas === 1 ? "1 etapa" : `${etapas} etapas`} e ${subtarefas === 1 ? "1 subtarefa" : `${subtarefas} subtarefas`}.`,
       sensivel: (p: string) =>
-        `Parece que há dados de saúde ou terapia no projeto ou na conversa. Se continuar, eles vão para ${p}, fora do computador.`,
-      sensivelBloqueado: "Parece que há dados de saúde ou terapia no projeto ou na conversa. Você bloqueou o envio desses dados para fora do computador, então esta conversa não vai para a IA.",
+        `Parece que há dados de saúde ou terapia no projeto ou na conversa. Se continuar, eles vão para ${p}, fora do aparelho.`,
+      sensivelBloqueado: "Parece que há dados de saúde ou terapia no projeto ou na conversa. Você bloqueou o envio desses dados para fora do aparelho, então esta conversa não vai para a IA.",
       enviarMesmoAssim: "Enviar mesmo assim",
       proposta: "Proposta",
       lista: "Lista",
@@ -2783,9 +2791,9 @@ export const textos = {
         ? `Separar com IA: a separação é feita no seu computador, com ${p}.`
         : `Separar com IA: o texto vai para ${p}, junto com a data de hoje e os nomes dos seus projetos ativos. Você confere tudo antes de guardar.`,
     sensivelAviso: (p: string) =>
-      `O texto parece falar de saúde ou terapia. Se separar com IA, ele vai para ${p}, fora do seu computador.`,
+      `O texto parece falar de saúde ou terapia. Se separar com IA, ele vai para ${p}, fora do seu aparelho.`,
     sensivelBloqueado:
-      "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do computador. Dá para guardar como ideia, ou escolher uma IA local para a conversa em Ajustes.",
+      "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do aparelho. Dá para guardar como ideia, ou escolher uma IA local para a conversa em Ajustes.",
     enviarMesmoAssim: "Enviar mesmo assim",
     guardarComoIdeia: "Guardar como ideia, sem IA",
     separando: (p: string) => `Separando com ${p}...`,
@@ -2796,7 +2804,7 @@ export const textos = {
     ajustando: (p: string) => `Pedindo a mudança a ${p}...`,
     pedidosFeitos: "O que você já pediu",
     listaRefeita: "A IA refez a lista. Confira de novo antes de guardar.",
-    mudancaSensivel: (p: string) => `O pedido parece falar de saúde ou terapia. Ele vai para ${p}, fora do seu computador.`,
+    mudancaSensivel: (p: string) => `O pedido parece falar de saúde ou terapia. Ele vai para ${p}, fora do seu aparelho.`,
     conferirAjuda: "Marque o que quer guardar. Dá para mudar o texto, o tipo, o projeto e o dia.",
     tipos: { ideia: "Ideia", tarefa: "Tarefa", compromisso: "Compromisso" },
     tipoDe: (n: number) => `Tipo do item ${n}`,
@@ -2849,8 +2857,8 @@ export const textos = {
     usarRevisao: "Usar o revisado",
     manter: "Manter como está",
     semMudanca: "A IA não encontrou nada para corrigir.",
-    sensivelAviso: (p: string) => `O texto parece falar de saúde ou terapia. Para revisar ou reescrever, ele vai para ${p}, fora do seu computador.`,
-    sensivelBloqueado: "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do computador.",
+    sensivelAviso: (p: string) => `O texto parece falar de saúde ou terapia. Para revisar ou reescrever, ele vai para ${p}, fora do seu aparelho.`,
+    sensivelBloqueado: "O texto parece falar de saúde ou terapia, e você bloqueou o envio desses dados para fora do aparelho.",
     revisarMesmoAssim: "Enviar mesmo assim",
   },
   rico: {
@@ -2954,7 +2962,7 @@ export const textos = {
     provedores: { google: "Google", microsoft: "Microsoft" },
     servicos: { google: "Google Drive", microsoft: "OneDrive" },
     recuperacaoTitulo: "Como recuperar seus dados, se precisar?",
-    recuperacaoTexto: "Se você trocar de computador ou perder este, é assim que seus dados voltam. Dá para mudar depois, em Ajustes.",
+    recuperacaoTexto: "Se você trocar de aparelho ou perder este, é assim que seus dados voltam. Dá para mudar depois, em Ajustes.",
     opcoes: {
       google: {
         nome: "Na minha conta Google",
@@ -2974,15 +2982,15 @@ export const textos = {
     verPalavras: "Ver as 6 palavras mesmo assim",
     jaUso: "Já uso o Órbita: trazer meus dados da minha conta",
     recuperarTitulo: "Trazer seus dados da conta",
-    recuperarTexto: "Entre na mesma conta que você ligou no outro computador.",
+    recuperarTexto: "Entre na mesma conta que você ligou no outro aparelho.",
     entrarCom: (p: string) => `Entrar com ${p}`,
     encontrado: (conta: string, data: string) => `Encontrei seus dados em ${conta}, guardados em ${data}.`,
-    comoAbrir: "Como abrir o Órbita neste computador?",
+    comoAbrir: "Como abrir o Órbita neste aparelho?",
     trazer: "Trazer meus dados",
     trazendo: "Trazendo seus dados...",
     titulo: "Guardar na minha conta",
     explicacao:
-      "A chave de recuperação e uma cópia criptografada dos seus dados ficam numa pasta do Órbita na sua conta Google ou Microsoft. Num computador novo, basta entrar com a conta.",
+      "A chave de recuperação e uma cópia criptografada dos seus dados ficam numa pasta do Órbita na sua conta Google ou Microsoft. Num aparelho novo, basta entrar com a conta.",
     ligar: (p: string) => `Ligar conta ${p}`,
     ligadoA: (conta: string, servico: string) => `Ligado a ${conta} (${servico}).`,
     ultimo: (data: string) => `Última cópia: ${data}.`,
@@ -2993,7 +3001,7 @@ export const textos = {
     enviado: "Cópia enviada.",
     desligar: "Desligar",
     desligarTitulo: "Desligar a conta?",
-    desligarTexto: "O Órbita para de guardar a cópia na conta. Dá para apagar também o que já está lá. Seus dados neste computador não mudam.",
+    desligarTexto: "O Órbita para de guardar a cópia na conta. Dá para apagar também o que já está lá. Seus dados neste aparelho não mudam.",
     desligarEApagar: "Desligar e apagar da conta",
     soDesligar: "Só desligar",
     desligado: "Conta desligada.",

@@ -85,10 +85,12 @@ export function tabelaPorMes(gastos: Gasto[], contas: Conta[], grupos: Grupo[], 
   }
 
   // Contas fixas: repetem todo mês, a partir do mês em que foram criadas.
+  // No mês em que um gasto diz que pagou a conta, vale o gasto (não conta duas vezes).
+  const pagas = new Set(gastos.filter((g) => g.contaId).map((g) => `${g.contaId}|${chaveMes(g.momento)}`));
   for (const conta of contas) {
     const desde = chaveMes(conta.criadoEm);
     for (const mes of meses) {
-      if (mes >= desde) somar(conta.grupoId, mes, conta.centavos);
+      if (mes >= desde && !pagas.has(`${conta.id}|${mes}`)) somar(conta.grupoId, mes, conta.centavos);
     }
   }
 
@@ -204,12 +206,17 @@ export function contasDoMes(contas: Conta[], mes: string): Conta[] {
   return contas.filter((c) => chaveMes(c.criadoEm) <= mes);
 }
 
+/** Ids das contas fixas pagas no mês (por um gasto ligado a elas). */
+export function contasPagasNoMes(gastos: Gasto[], mes: string): Set<string> {
+  return new Set(gastos.filter((g) => g.contaId && chaveMes(g.momento) === mes).map((g) => g.contaId!));
+}
+
 export interface ResumoMes {
   /** Quanto entrou. */
   entrou: number;
   /** Gastos registrados no mês. */
   gastos: number;
-  /** Contas fixas que contam no mês. */
+  /** Contas fixas que contam no mês e ainda não têm pagamento registrado como gasto. */
   contas: number;
   /** gastos + contas. */
   saiu: number;
@@ -217,12 +224,16 @@ export interface ResumoMes {
   sobra: number;
 }
 
-/** Entrou, saiu e sobra de um mês ("AAAA-MM"). As contas fixas entram no "saiu", como na tabela. */
+/**
+ * Entrou, saiu e sobra de um mês ("AAAA-MM"). As contas fixas entram no "saiu", como na tabela;
+ * a conta paga por um gasto ligado a ela entra só pelo gasto (antes contava duas vezes).
+ */
 export function resumoDoMes(gastos: Gasto[], contas: Conta[], entradas: Entrada[], mes: string): ResumoMes {
   const soma = (xs: { centavos: number }[]) => xs.reduce((s, x) => s + Math.max(0, x.centavos), 0);
   const entrou = soma(entradas.filter((e) => chaveMes(e.momento) === mes));
   const g = soma(gastos.filter((x) => chaveMes(x.momento) === mes));
-  const c = soma(contasDoMes(contas, mes));
+  const pagas = contasPagasNoMes(gastos, mes);
+  const c = soma(contasDoMes(contas, mes).filter((x) => !pagas.has(x.id)));
   return { entrou, gastos: g, contas: c, saiu: g + c, sobra: entrou - g - c };
 }
 

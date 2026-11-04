@@ -28,6 +28,7 @@ export function PaginaDinheiro() {
   const [desejos, setDesejos] = useState<Desejo[]>([]);
   const [metas, setMetas] = useState<Meta[]>([]);
   const [registrando, setRegistrando] = useState<"gasto" | "entrada" | null>(null);
+  const [pagando, setPagando] = useState<Conta | undefined>(undefined);
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
 
@@ -73,7 +74,8 @@ export function PaginaDinheiro() {
           contas={contas}
           grupos={grupos}
           mesMinimo={chaveMes(de12)}
-          aoRegistrarGasto={() => setRegistrando("gasto")}
+          aoRegistrarGasto={() => { setPagando(undefined); setRegistrando("gasto"); }}
+          aoPagarConta={(c) => { setPagando(c); setRegistrando("gasto"); }}
           aoRegistrarEntrada={() => setRegistrando("entrada")}
           aoVerContas={() => setAba("planejar")}
         />
@@ -84,7 +86,7 @@ export function PaginaDinheiro() {
       <Aviso>{erro}</Aviso>
 
       <Janela titulo={t.gasto.titulo} aberta={registrando === "gasto"} aoFechar={() => setRegistrando(null)}>
-        {registrando === "gasto" && <FormGasto grupos={grupos} aoFechar={() => setRegistrando(null)} />}
+        {registrando === "gasto" && <FormGasto grupos={grupos} contas={contas} pagando={pagando} aoFechar={() => setRegistrando(null)} />}
       </Janela>
       <Janela titulo={t.entrada.titulo} aberta={registrando === "entrada"} aoFechar={() => setRegistrando(null)}>
         {registrando === "entrada" && <FormEntrada aoFechar={() => setRegistrando(null)} />}

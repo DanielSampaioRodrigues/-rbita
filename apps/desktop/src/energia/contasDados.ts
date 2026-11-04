@@ -126,8 +126,11 @@ export interface Saldo {
   saldo: number;
 }
 
-export function saldoDoDia(atividades: Atividade[], ids: string[]): Saldo {
-  let gastou = 0;
+/** Quanto a camuflagem gasta no saldo do dia (decisão de Dan, 04/11/2026: entra no saldo). */
+export const GASTO_CAMUFLAGEM: Record<Camuflagem, number> = { nada: 0, pouco: 1, muito: 2 };
+
+export function saldoDoDia(atividades: Atividade[], ids: string[], camuflagem?: Camuflagem | null): Saldo {
+  let gastou = camuflagem ? GASTO_CAMUFLAGEM[camuflagem] : 0;
   let repos = 0;
   for (const id of new Set(ids)) {
     const a = atividades.find((x) => x.id === id);

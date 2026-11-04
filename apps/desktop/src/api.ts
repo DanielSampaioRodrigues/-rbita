@@ -333,12 +333,16 @@ export interface Gasto {
   momento: number;
   /** Nota livre (opcional), além do "o que foi". */
   nota?: string;
+  /** Conta fixa que este gasto paga: a conta não conta de novo no "Saiu" do mês. */
+  contaId?: string;
 }
 
 /** Opcionais ao registrar um gasto: o dia (ms; sem ele, agora) e uma nota. */
 export interface ExtrasGasto {
   momento?: number;
   nota?: string;
+  /** Conta fixa que o gasto paga (opcional). */
+  contaId?: string;
 }
 
 /** Dinheiro que entrou (salário, venda, presente...), em centavos. */
@@ -1242,7 +1246,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   salvarAula: (aula) => chamar("salvar_aula", { aula }),
   excluirAula: (id) => chamar("excluir_aula", { id }),
   registrarGasto: (centavos, grupoId, descricao, interesse, extras) =>
-    chamar("registrar_gasto", { centavos, grupoId, descricao, interesse, momento: extras?.momento ?? null, nota: extras?.nota ?? null }),
+    chamar("registrar_gasto", { centavos, grupoId, descricao, interesse, momento: extras?.momento ?? null, nota: extras?.nota ?? null, contaId: extras?.contaId ?? null }),
   listarGastos: (de, ate) => chamar("listar_gastos", { de, ate }),
   excluirGasto: (id) => chamar("excluir_gasto", { id }),
   registrarEntrada: (centavos, descricao, momento) => chamar("registrar_entrada", { centavos, descricao, momento: momento ?? null }),
@@ -2158,7 +2162,7 @@ function simularDinheiro() {
       const nota = extras?.nota?.trim() ?? "";
       const g: Gasto = {
         id: crypto.randomUUID(), centavos, grupoId: grupoId.trim(), categoria: "", interesse, descricao: descricao.trim(),
-        momento: extras?.momento ?? Date.now(), ...(nota ? { nota } : {}),
+        momento: extras?.momento ?? Date.now(), ...(nota ? { nota } : {}), ...(extras?.contaId ? { contaId: extras.contaId } : {}),
       };
       gastos.push(g);
       return { ...g };
@@ -2924,7 +2928,7 @@ ${JSON.stringify(tema)}`;
       await espera(1200);
       if (comErro) throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");
       if (sensivel && estado.bloquearSensivel)
-        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do computador.", undefined, undefined, undefined, "sensivel_bloqueado");
+        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do aparelho.", undefined, undefined, undefined, "sensivel_bloqueado");
       const quinta = new Date();
       quinta.setDate(quinta.getDate() + ((4 - quinta.getDay() + 7) % 7 || 7));
       const data = quinta.toLocaleDateString("sv-SE");
@@ -2965,7 +2969,7 @@ ${JSON.stringify(tema)}`;
       await espera(1200);
       if (comErro) throw new ErroOrbita("ia", "O provedor recusou por limite de uso ou falta de créditos. Confira a sua conta ou tente mais tarde.", undefined, undefined, undefined, "limite");
       if (sensivel && estado.bloquearSensivel)
-        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do computador.", undefined, undefined, undefined, "sensivel_bloqueado");
+        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do aparelho.", undefined, undefined, undefined, "sensivel_bloqueado");
       const ultima = [...conversa].reverse().find((f) => f.papel === "pessoa")?.texto ?? "";
       if (/malformad/i.test(ultima)) throw new ErroOrbita("ia", "A IA respondeu num formato que o Órbita não entendeu. Tente de novo.", undefined, undefined, undefined, "resposta");
       const etapaSo = await ehEtapa(alvo);

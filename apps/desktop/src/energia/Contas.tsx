@@ -71,7 +71,7 @@ export function GastaRepoe() {
   const recado = useRecado();
   const hoje = chaveDia(new Date());
   const feitosHoje = dados.feitos[hoje] ?? [];
-  const saldo = saldoDoDia(dados.atividades, feitosHoje);
+  const saldo = saldoDoDia(dados.atividades, feitosHoje, dados.camuflagem[hoje]);
   const estado = balanco(saldo);
   const ordenadas = [...dados.atividades].sort((a, b) => a.peso - b.peso || a.nome.localeCompare(b.nome));
 

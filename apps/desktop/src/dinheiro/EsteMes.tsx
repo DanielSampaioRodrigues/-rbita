@@ -6,10 +6,10 @@ import { Button } from "react-aria-components";
 import { api, type Conta, type Entrada, type Gasto, type Grupo } from "../api";
 import { Confirmar } from "../componentes/Janela";
 import { avisarMudanca } from "../dados";
-import { ChevronLeft, ChevronRight, Plus, Sparkles, Trash2 } from "../icones";
+import { Check, ChevronLeft, ChevronRight, Plus, Sparkles, Trash2 } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { formatarMoeda } from "./moeda";
-import { chaveDia, chaveMes, contasDoMes, gastosPorDia, mesVizinho, resumoDoMes } from "./visao";
+import { chaveDia, chaveMes, contasDoMes, contasPagasNoMes, gastosPorDia, mesVizinho, resumoDoMes } from "./visao";
 
 const t = textos.dinheiro;
 const fmtMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
@@ -40,9 +40,11 @@ interface Props {
   aoRegistrarGasto: () => void;
   aoRegistrarEntrada: () => void;
   aoVerContas: () => void;
+  /** Abre o registro de gasto já preenchido com a conta fixa. */
+  aoPagarConta: (conta: Conta) => void;
 }
 
-export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistrarGasto, aoRegistrarEntrada, aoVerContas }: Props) {
+export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistrarGasto, aoRegistrarEntrada, aoVerContas, aoPagarConta }: Props) {
   const mesAtual = chaveMes(Date.now());
   const [mes, setMes] = useState(mesAtual);
   const [apagandoGasto, setApagandoGasto] = useState<Gasto | null>(null);
@@ -53,6 +55,7 @@ export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistr
   const dias = useMemo(() => gastosPorDia(gastos, mes), [gastos, mes]);
   const entradasDoMes = useMemo(() => entradas.filter((e) => chaveMes(e.momento) === mes).sort((a, b) => b.momento - a.momento), [entradas, mes]);
   const contasMes = useMemo(() => contasDoMes(contas, mes), [contas, mes]);
+  const pagas = useMemo(() => contasPagasNoMes(gastos, mes), [gastos, mes]);
   const faltou = resumo.sobra < 0;
 
   const nomeGasto = (g: Gasto) => g.descricao || porGrupo.get(g.grupoId)?.nome || g.categoria || t.gasto.semDescricao;
@@ -154,13 +157,37 @@ export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistr
             ))}
           </ol>
         )}
-        {contasMes.length > 0 && (
+      </section>
+
+      {contasMes.length > 0 && (
+        <section className="cartao" aria-labelledby="dinheiro-contas-mes">
+          <h2 id="dinheiro-contas-mes">{t.mes.contasTitulo}</h2>
+          <p className="texto-suave dinheiro-nota-contas">{t.mes.contasAjuda}</p>
+          <ul className="dinheiro-lista">
+            {contasMes.map((c) => {
+              const paga = pagas.has(c.id);
+              return (
+                <li key={c.id} className="dinheiro-linha">
+                  <span className={`etiqueta-cor grande cor-${porGrupo.get(c.grupoId)?.cor ?? "cinza"}`} aria-hidden="true" />
+                  <span className="dinheiro-linha-texto">
+                    <span>{c.nome}</span>
+                    {paga && <span className="dinheiro-linha-detalhe"><Check aria-hidden="true" size="0.9em" /> {t.mes.contaPaga}</span>}
+                  </span>
+                  <span className="dinheiro-linha-valor">{formatarMoeda(c.centavos)}</span>
+                  {paga ? <span aria-hidden="true" /> : (
+                    <Button className="botao dinheiro-botao-leve" onPress={() => aoPagarConta(c)} aria-label={t.mes.registrarPagamentoDe(c.nome)}>
+                      {t.mes.registrarPagamento}
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
           <p className="dinheiro-nota-contas">
-            <span className="texto-suave">{t.mes.contasNoMes(contasMes.length, formatarMoeda(resumo.contas))}</span>{" "}
             <Button className="link" onPress={aoVerContas}>{t.mes.verContas}</Button>
           </p>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="cartao" aria-labelledby="dinheiro-entradas-mes">
         <h2 id="dinheiro-entradas-mes">{t.mes.entradasTitulo}</h2>

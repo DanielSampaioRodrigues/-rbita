@@ -18,7 +18,7 @@ export function semanaEmSaldo(d: DadosEnergia, hoje: Date, n = 7): DiaEmSaldo[] 
   const base = inicioDoDia(hoje);
   return Array.from({ length: n }, (_, i) => {
     const dia = chaveDia(somarDias(base, i - (n - 1)));
-    const saldo = saldoDoDia(d.atividades, d.feitos[dia] ?? []);
+    const saldo = saldoDoDia(d.atividades, d.feitos[dia] ?? [], d.camuflagem[dia]);
     return { dia, saldo, balanco: balanco(saldo), camuflagem: d.camuflagem[dia] ?? null };
   });
 }
