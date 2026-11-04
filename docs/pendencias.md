@@ -38,6 +38,7 @@ Teste da 0.45.1 no iPad, 29/10/2026. Caderno "ficou bom"; pressão da caneta fun
   2. painel de IA (conversa sobre a página ou a seleção, envio de imagem para IA que enxerga, prévia com "Pôr na página"; a IA propõe e a pessoa confirma; nunca apaga o original);
   3. biblioteca (cabeçalho, logo, modelo de página, estilo, trechos; sincroniza);
   4. mapa mental; 5. fotos do quadro → texto ou cursiva; 6. trabalho acadêmico ABNT/APA (citation-js + CSL, DOI/ISBN); 7. corretor da escrita à mão (sob pedido; cursiva por fonte, depois "ensinar minha letra").
+- **Antes de publicar no navegador**: rodar `pnpm motor` (a ordem nova `ia_caderno` precisa entrar no motor do navegador).
 - Conectores diretos: Google Drive depende de Dan acrescentar `drive.file` no painel do Google; Classroom pede revisão; OneDrive espera o registro na Microsoft.
 - **Para Dan testar quando sair a 0.51** (iPad e Windows): editor (o que "não funcionava" na 0.50), fontes (inclusive se as do Adobe Fonts aparecem no Windows), estilos próprios, capitular, Enviar (PDF no WhatsApp pelo Compartilhar; Salvar como no Windows; abrir o .docx no Word).
 

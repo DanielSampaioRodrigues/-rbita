@@ -666,6 +666,14 @@ pub async fn revisar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel
     rodar_ia(&estado, "revisar_texto_ia", json!({ "texto": texto, "sensivel": sensivel, "modo": modo, "instrucao": instrucao })).await
 }
 
+/// IA do caderno: um pedido livre sobre a página, com o texto digitado e, se houver,
+/// imagens (escrita à mão, foto do quadro). Devolve HTML simples para a tela mostrar
+/// como proposta. Não grava nada.
+#[tauri::command]
+pub async fn ia_caderno(estado: State<'_, Estado>, pedido: String, contexto: String, imagens: Vec<String>, sensivel: bool) -> Result<Value, Erro> {
+    rodar_ia(&estado, "ia_caderno", json!({ "pedido": pedido, "contexto": contexto, "imagens": imagens, "sensivel": sensivel })).await
+}
+
 // ---------- Ditado (voz para texto, no computador) ----------
 
 #[tauri::command]

@@ -199,6 +199,47 @@ pub fn pedido_completar(e: &Escolhido, sistema: &str, mensagem: &str) -> Pedido 
     }
 }
 
+/// Como `pedido_completar`, com imagens (data: URL) junto da mensagem: a IA lê a
+/// escrita à mão, o desenho ou a foto. Cada empresa recebe no formato dela; quem
+/// não enxerga imagem responde com erro, e a tela mostra.
+pub fn pedido_completar_com_imagens(e: &Escolhido, sistema: &str, mensagem: &str, imagens: &[String]) -> Pedido {
+    if imagens.is_empty() {
+        return pedido_completar(e, sistema, mensagem);
+    }
+    match e.provedor.tipo {
+        TipoProvedor::Claude => {
+            let mut partes: Vec<Value> = imagens
+                .iter()
+                .filter_map(|u| {
+                    let (cab, dados) = u.strip_prefix("data:")?.split_once(',')?;
+                    let tipo = cab.strip_suffix(";base64")?;
+                    Some(json!({ "type": "image", "source": { "type": "base64", "media_type": tipo, "data": dados } }))
+                })
+                .collect();
+            partes.push(json!({ "type": "text", "text": mensagem }));
+            let corpo = json!({
+                "model": e.provedor.modelo,
+                "max_tokens": 16000,
+                "system": sistema,
+                "messages": [{ "role": "user", "content": partes }],
+            });
+            post(e, format!("{}/v1/messages", e.provedor.url), &corpo)
+        }
+        TipoProvedor::Compativel => {
+            let mut partes = vec![json!({ "type": "text", "text": mensagem })];
+            partes.extend(imagens.iter().map(|u| json!({ "type": "image_url", "image_url": { "url": u } })));
+            let corpo = json!({
+                "model": e.provedor.modelo,
+                "messages": [
+                    { "role": "system", "content": sistema },
+                    { "role": "user", "content": partes },
+                ],
+            });
+            post(e, format!("{}/chat/completions", e.provedor.url), &corpo)
+        }
+    }
+}
+
 /// O texto da resposta de `pedido_completar`.
 pub fn ler_completar(tipo: TipoProvedor, v: &Value) -> Result<String, Erro> {
     match tipo {

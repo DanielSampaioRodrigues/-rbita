@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::protocolo::{self, FormatoImagem, Imagem, Pedido};
-use super::{organizar, planejar, revisar, tema, Escolhido, Provedor, TipoProvedor};
+use super::{caderno, organizar, planejar, revisar, tema, Escolhido, Provedor, TipoProvedor};
 use crate::erro::Erro;
 
 /// As ordens que passam por aqui (as mesmas, com os mesmos argumentos, no Windows e no navegador).
@@ -25,6 +25,7 @@ pub const COMANDOS: &[&str] = &[
     "organizar_texto_ia",
     "ajustar_organizacao_ia",
     "revisar_texto_ia",
+    "ia_caderno",
     "gerar_tema_ia",
     "desenhar_icones_ia",
     "modelos_imagem_ia",
@@ -205,6 +206,51 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
             pronto(revisado)
         }
 
+        // IA do caderno: um pedido livre sobre a página (texto e, se houver, imagens).
+        // Devolve HTML simples; a tela mostra a proposta e só põe na página quando a pessoa escolhe.
+        "ia_caderno" => {
+            #[derive(Deserialize)]
+            struct A {
+                pedido: String,
+                #[serde(default)]
+                contexto: String,
+                #[serde(default)]
+                imagens: Vec<String>,
+                sensivel: bool,
+            }
+            #[derive(Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct RespostaCaderno {
+                html: String,
+                provedor: String,
+                local: bool,
+            }
+            let a: A = ler_args(comando, args)?;
+            if a.pedido.trim().is_empty() {
+                return Err(Erro::TextoVazio);
+            }
+            if a.imagens.len() > caderno::MAXIMO_DE_IMAGENS {
+                return Err(protocolo::erro("grande", "São imagens demais de uma vez. Mande até 6 por pedido."));
+            }
+            if !a.imagens.iter().all(|u| caderno::imagem_valida(u)) {
+                return Err(protocolo::erro("grande", "Uma das imagens é grande demais ou não é uma imagem. Tente uma foto menor."));
+            }
+            let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
+            let contexto: String = a.contexto.chars().take(caderno::MAXIMO_DE_CARACTERES).collect();
+            let resposta = match r {
+                None => {
+                    let mensagem = caderno::montar(&a.pedido, &contexto, a.imagens.len());
+                    return pedir(protocolo::pedido_completar_com_imagens(&e, caderno::SISTEMA, &mensagem, &a.imagens), 0);
+                }
+                Some(r) => protocolo::ler_completar(e.provedor.tipo, &protocolo::ler_resposta(r.situacao, &r.corpo)?)?,
+            };
+            let html = caderno::limpar(&resposta);
+            if html.is_empty() {
+                return Err(protocolo::erro("resposta", "A IA não respondeu nada. Tente de novo ou pedir de outro jeito."));
+            }
+            pronto(RespostaCaderno { html, provedor: e.provedor.nome.clone(), local: e.provedor.local() })
+        }
+
         // A IA escreve um tema (JSON). A tela confere e mostra no editor.
         "gerar_tema_ia" => {
             #[derive(Deserialize)]
@@ -330,6 +376,40 @@ mod testes {
 
     fn resposta(etapa: u8, situacao: u16, corpo: Value) -> Resposta {
         Resposta { etapa, situacao, corpo: corpo.to_string() }
+    }
+
+    #[test]
+    fn ia_do_caderno_manda_o_texto_e_a_imagem() {
+        let (_pasta, conn) = banco_de_teste();
+        salvar_provedor(&conn, provedor(TipoProvedor::Claude, "Claude", "https://api.anthropic.com"), Some("sk-segredo")).unwrap();
+        let args = json!({"pedido": "Passe a escrita para texto", "contexto": "Aula 3", "imagens": ["data:image/png;base64,QUJD"], "sensivel": false}).to_string();
+        let (p, _) = pedido(avancar(&conn, "ia_caderno", &args, None).unwrap());
+        let corpo: Value = serde_json::from_str(&p.corpo.unwrap()).unwrap();
+        let partes = &corpo["messages"][0]["content"];
+        assert_eq!(partes[0]["type"], "image");
+        assert_eq!(partes[0]["source"]["media_type"], "image/png");
+        assert_eq!(partes[0]["source"]["data"], "QUJD");
+        assert!(partes[1]["text"].as_str().unwrap().contains("Aula 3"));
+        let r = resposta(0, 200, json!({"content":[{"type":"text","text":"```html\n<p>Neurônio</p>\n```"}]}));
+        let v = valor(avancar(&conn, "ia_caderno", &args, Some(&r)).unwrap());
+        assert_eq!(v["html"], "<p>Neurônio</p>");
+        assert_eq!(v["provedor"], "Claude");
+        // Imagem que não é data: URL não vai.
+        let ruim = json!({"pedido": "x", "imagens": ["https://exemplo.com/a.png"], "sensivel": false}).to_string();
+        assert!(matches!(avancar(&conn, "ia_caderno", &ruim, None), Err(Erro::Ia { motivo: "grande", .. })));
+    }
+
+    #[test]
+    fn ia_do_caderno_no_formato_compativel() {
+        let (_pasta, conn) = banco_de_teste();
+        salvar_provedor(&conn, provedor(TipoProvedor::Compativel, "GPT", "https://api.openai.com/v1"), Some("sk-x")).unwrap();
+        let args = json!({"pedido": "Resuma", "imagens": ["data:image/jpeg;base64,QUJD"], "sensivel": false}).to_string();
+        let (p, _) = pedido(avancar(&conn, "ia_caderno", &args, None).unwrap());
+        assert_eq!(p.url, "https://api.openai.com/v1/chat/completions");
+        let corpo: Value = serde_json::from_str(&p.corpo.unwrap()).unwrap();
+        let partes = &corpo["messages"][1]["content"];
+        assert_eq!(partes[0]["type"], "text");
+        assert_eq!(partes[1]["image_url"]["url"], "data:image/jpeg;base64,QUJD");
     }
 
     #[test]

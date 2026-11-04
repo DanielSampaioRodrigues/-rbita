@@ -740,6 +740,9 @@ export interface ProvedorVisivel extends Provedor {
   local: boolean;
 }
 
+/** Resposta da IA do caderno: HTML simples (a tela limpa de novo antes de mostrar). */
+export interface RespostaIaCaderno { html: string; provedor: string; local: boolean }
+
 export interface EstadoIa {
   provedores: ProvedorVisivel[];
   funcoes: Partial<Record<FuncaoIa, string>>;
@@ -1059,6 +1062,8 @@ export interface Api {
   /** `itens`: a lista atual em JSON, no formato que a IA usa (com o nome do projeto). */
   ajustarOrganizacaoIa(texto: string, itens: string, mudanca: string, sensivel: boolean): Promise<Organizacao>;
   /** Revisa ortografia e pontuação. Não grava nada. */
+  /** IA do caderno: pedido livre sobre a página (texto e imagens em data: URL). */
+  iaCaderno(pedido: string, contexto: string, imagens: string[], sensivel: boolean): Promise<RespostaIaCaderno>;
   revisarTextoIa(texto: string, sensivel: boolean, modo?: ModoReescrita, instrucao?: string): Promise<string>;
   ditadoEstado(): Promise<EstadoDitado>;
   ditadoBaixar(modelo: ModeloVoz): Promise<EstadoDitado>;
@@ -1349,6 +1354,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   organizarTextoIa: (texto, sensivel) => chamar("organizar_texto_ia", { texto, sensivel }),
   ajustarOrganizacaoIa: (texto, itens, mudanca, sensivel) => chamar("ajustar_organizacao_ia", { texto, itens, mudanca, sensivel }),
   revisarTextoIa: (texto, sensivel, modo, instrucao) => chamar("revisar_texto_ia", { texto, sensivel, modo: modo ?? null, instrucao: instrucao ?? null }),
+  iaCaderno: (pedido, contexto, imagens, sensivel) => chamar("ia_caderno", { pedido, contexto, imagens, sensivel }),
   ditadoEstado: () => chamar("ditado_estado"),
   ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
   ditadoCancelarDownload: () => chamar("ditado_cancelar_download"),
@@ -2855,7 +2861,7 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
+function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "iaCaderno" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, modelos: {}, bloquearSensivel: false };
   if (comClaude) {
@@ -2924,6 +2930,19 @@ ${JSON.stringify(tema)}`;
       await espera(1500);
       const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2b3a"/><stop offset="1" stop-color="#2f4a3a"/></linearGradient></defs><rect width="1536" height="1024" fill="url(#g)"/><path d="M0 800 L200 520 L400 800 Z M300 820 L560 460 L820 820 Z M700 830 L980 500 L1260 830 Z M1100 820 L1320 560 L1536 820 Z" fill="#183025"/><circle cx="1200" cy="200" r="60" fill="#d8e2c8" opacity="0.8"/></svg>';
       return `data:image/svg+xml;base64,${btoa(svg)}`;
+    },
+    // Simulação da IA do caderno: devolve uma proposta de exemplo com o que veio.
+    iaCaderno: async (pedido, contexto, imagens, sensivel) => {
+      await espera(700);
+      if (comErro) throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");
+      if (sensivel && estado.bloquearSensivel)
+        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do aparelho.", undefined, undefined, undefined, "sensivel_bloqueado");
+      const linhas = contexto.split(/\n+/).map((l) => l.trim()).filter(Boolean).slice(0, 6);
+      const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const html = /mapa mental/i.test(pedido)
+        ? `<ul><li>Tema central<ul>${linhas.map((l) => `<li>${esc(l)}</li>`).join("") || "<li>Ramo 1</li><li>Ramo 2</li>"}</ul></li></ul>`
+        : `<h2>${esc(pedido.slice(0, 60))}</h2><ul>${linhas.map((l) => `<li>${esc(l)}</li>`).join("") || "<li>(página sem texto digitado)</li>"}</ul>${imagens.length ? `<p>Recebi ${imagens.length} imagem(ns) da página.</p>` : ""}`;
+      return { html, provedor: "Claude", local: false };
     },
     revisarTextoIa: async (texto, _s, modo) => {
       await espera(900);

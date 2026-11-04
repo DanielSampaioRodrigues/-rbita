@@ -131,7 +131,8 @@ export function ajustarConectores(els: Elemento[], m: MedidaTexto): Elemento[] {
   const porId = new Map(els.map((e) => [e.id, e] as const));
   let mudou = false;
   const novos = els.map((e) => {
-    if (e.tipo !== "forma" || e.forma !== "seta" || (!e.ligaInicio && !e.ligaFim)) return e;
+    // Seta e reta podem ficar presas a objetos (a reta liga as caixas do mapa mental).
+    if (e.tipo !== "forma" || (e.forma !== "seta" && e.forma !== "reta") || (!e.ligaInicio && !e.ligaFim)) return e;
     const a = e.ligaInicio ? porId.get(e.ligaInicio) : undefined;
     const b = e.ligaFim ? porId.get(e.ligaFim) : undefined;
     const ba = a ? limitesDoElemento(a, m) : null;

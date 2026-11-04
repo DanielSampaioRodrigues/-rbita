@@ -153,6 +153,7 @@ pub fn run() {
             comandos::organizar_texto_ia,
             comandos::ajustar_organizacao_ia,
             comandos::revisar_texto_ia,
+            comandos::ia_caderno,
             comandos::ditado_estado,
             comandos::ditado_baixar,
             comandos::ditado_cancelar_download,

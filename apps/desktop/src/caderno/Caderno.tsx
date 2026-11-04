@@ -22,6 +22,8 @@ import { CamadaDocumento, DocumentoEstatico } from "./Documento";
 import { DocumentoAberto } from "./DocumentoAberto";
 import { useMeusEstilos } from "./editor/meusEstilos";
 import { PainelLateral, type AbaPainel } from "./PainelLateral";
+import { PainelIa, type Alcance, type ContextoIa } from "./PainelIa";
+import { elementosDoMapa, lerMapa } from "./mapaMental";
 import { MenuEnviar, type ArquivoPronto } from "../exportar/MenuEnviar";
 import { nomeDeArquivo } from "../exportar/entregar";
 import { medir, type PaginaMedida } from "../exportar/medir";
@@ -706,6 +708,23 @@ type PapelPagina = Papel & { capa?: Capa; texto?: boolean };
 /** Página de texto (editor no estilo do Pages/Word, com o desenho por cima). */
 const ehPaginaTexto = (pg: PaginaCaderno | undefined) => !!(pg?.papel as PapelPagina | null | undefined)?.texto;
 const capaDaPagina = (pg: PaginaCaderno | undefined): Capa | undefined => (pg?.papel as PapelPagina | null | undefined)?.capa;
+
+/** O texto de um HTML simples, com uma quebra por parágrafo, item e título. */
+function textoDeHtml(html: string): string {
+  const semMarcas = html.replace(/<(br|\/p|\/li|\/h[1-6]|\/div|\/tr|\/blockquote)[^>]*>/gi, "\n").replace(/<[^>]+>/g, "");
+  const t = document.createElement("textarea");
+  t.innerHTML = semMarcas;
+  return t.value.replace(/\n{3,}/g, "\n\n").trim();
+}
+/** Todo o texto digitado de uma página: o texto da página e as caixas, de cima para baixo. */
+function textoDaCena(c: Cena | undefined): string {
+  const partes: string[] = [];
+  if (c?.documento) partes.push(textoDeHtml(c.documento));
+  const caixas = (c?.elementos ?? []).filter((e): e is Texto => e.tipo === "texto").sort((a, b) => a.y - b.y || a.x - b.x);
+  for (const tx of caixas) { const v = textoDeHtml(tx.texto); if (v) partes.push(v); }
+  return partes.filter(Boolean).join("\n\n");
+}
+const blobParaDataUrl = (b: Blob) => new Promise<string>((ok, erro) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => erro(r.error); r.readAsDataURL(b); });
 
 function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; className?: string }) {
   const capa = (papel as PapelPagina).capa;
@@ -1863,6 +1882,60 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     return () => window.removeEventListener("keydown", ouvir);
   }, [infinito]);
 
+  // IA do caderno: o que vai junto do pedido e onde pôr a resposta.
+  const obterContextoIa = async (alcance: Alcance, comImagem: boolean): Promise<ContextoIa> => {
+    if (alcance === "caderno") {
+      const texto = paginas.map((p, i) => { const v = textoDaCena(cenas[p.id]); return v ? `--- Página ${i + 1} ---\n${v}` : ""; }).filter(Boolean).join("\n\n");
+      return { texto, imagens: [] };
+    }
+    if (!sel) return { texto: "", imagens: [] };
+    const texto = textoDaCena(cenas[sel.id]);
+    if (!comImagem) return { texto, imagens: [] };
+    const [medida] = await medirParaExportar([sel.id]);
+    const { gerarPng } = await import("../exportar/imagem");
+    return { texto, imagens: [await blobParaDataUrl(await gerarPng(medida, 1.25))] };
+  };
+  const temDesenhoNaPagina = !!sel && (cenas[sel.id]?.elementos ?? []).some((e) => e.tipo !== "texto");
+  const porEmPaginaNova = async (html: string) => {
+    const base = sel ?? paginas[paginas.length - 1];
+    try {
+      const nova = await api.salvarPaginaCaderno({
+        id: "", cadernoId: caderno.id, ordem: ordemPara("depois", base), tamanho: base && base.tamanho !== "infinito" ? base.tamanho : "a4",
+        papel: { ...semCapa(base ? folhaDe(base) : papelPadrao()), texto: true } as Papel, titulo: "", marcado: false, criadoEm: 0,
+      });
+      await api.salvarCenaCaderno(nova.id, serializarCena({ ...cenaVazia(), documento: html }));
+      setSelId(nova.id); rolarPara.current = nova.id;
+      await carregar();
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
+  // Mapa mental: numa página nova deitada (A4 de lado), lisa, com caixas e linhas presas.
+  const desenharMapaMental = async (html: string) => {
+    const mapa = lerMapa(html);
+    if (!mapa) { recado(t.ia.semMapa); return; }
+    const base = sel ?? paginas[paginas.length - 1];
+    const larg = 1123, alt = 794;
+    try {
+      const nova = await api.salvarPaginaCaderno({
+        id: "", cadernoId: caderno.id, ordem: ordemPara("depois", base), tamanho: `custom:${larg}x${alt}`,
+        papel: { ...semCapa(base ? folhaDe(base) : papelPadrao()), modelo: "liso", texto: false } as Papel, titulo: mapa.texto.slice(0, 60), marcado: false, criadoEm: 0,
+      });
+      await api.salvarCenaCaderno(nova.id, serializarCena({ ...cenaVazia(), elementos: ajustarConectores(elementosDoMapa(mapa, larg, alt), MEDIDA) }));
+      setSelId(nova.id); rolarPara.current = nova.id;
+      await carregar();
+      recado(t.ia.postoMapa);
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
+  const porNaPagina = (html: string) => {
+    if (!sel) return;
+    const med = medidaDe(sel.tamanho);
+    const novo: Texto = { tipo: "texto", id: crypto.randomUUID(), x: 60, y: 60, largura: Math.max(240, med.largura - 120), texto: html, cor: "#1f2937", tamanho: tamTexto };
+    mudarCena(sel.id, { elementos: [...(cenas[sel.id]?.elementos ?? []), novo] });
+  };
+
   const te = t.enviar;
   const exportarCaderno = async (id: string): Promise<ArquivoPronto | null> => {
     const alvo = id === "cadernoPdf" ? paginas : sel ? [sel] : [];
@@ -1950,7 +2023,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             miniatura={(p, largura) => <MiniaturaPagina pagina={p} cena={cenas[p.id]} imagemUrl={imagemUrl} largura={largura} />}
             aoIr={(id) => { setVisaoPaginas(false); requestAnimationFrame(() => irPara(id)); }}
             aoAdicionar={() => setAdicionando(true)} aoVerGrade={() => setVisaoPaginas(true)}
-            ia={<p className="texto-suave caderno-painel-texto">{t.painel.bibliotecaEmBreve}</p>}
+            ia={<PainelIa obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
+              aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)} />}
             biblioteca={<p className="texto-suave caderno-painel-texto">{t.painel.bibliotecaEmBreve}</p>} />
         )}
         {visaoPaginas && !infinito && (

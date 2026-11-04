@@ -2090,3 +2090,22 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
   .caderno-area.painel-direita .caderno-painel { left: auto; right: 0; }
 }
 :root[data-baixo-estimulo="true"] .caderno-painel { box-shadow: none; }
+
+/* ---------- Painel de IA do caderno ---------- */
+.painel-ia { display: grid; gap: 10px; padding: 10px 12px 16px; align-content: start; }
+.painel-ia-acoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.painel-ia-acao { white-space: normal; text-align: left; }
+.painel-ia-livre { display: grid; gap: 6px; }
+.painel-ia-livre textarea { width: 100%; resize: vertical; min-height: 4.5rem; font: inherit; }
+.painel-ia-linha { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.painel-ia-fotos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.painel-ia-fotos li { position: relative; }
+.painel-ia-fotos img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--cor-borda); display: block; }
+.painel-ia-fotos .botao-icone { position: absolute; top: -8px; right: -8px; min-width: 26px; min-height: 26px; padding: 0; background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: 50%; }
+.painel-ia-resposta { display: grid; gap: 8px; border-top: 1px solid var(--cor-borda); padding-top: 10px; }
+.painel-ia-titulo { margin: 0; font-size: 0.95rem; }
+.painel-ia-previa { max-height: 50vh; overflow: auto; padding: 10px 12px; border: 1px solid var(--cor-borda); border-radius: 8px; background: #fff; color: #1f2937; font-size: 0.95rem; }
+.painel-ia-previa p { text-indent: 0; text-align: left; }
+.painel-ia-previa table { border-collapse: collapse; }
+.painel-ia-previa :is(th, td) { border: 1px solid #d1d5db; padding: 4px 6px; }
+.caderno-painel:has(.painel-ia) { width: 320px; }
