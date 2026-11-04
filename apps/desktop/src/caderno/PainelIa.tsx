@@ -32,7 +32,19 @@ export type Alcance = "pagina" | "caderno";
 export interface ContextoIa { texto: string; imagens: string[] }
 type Acao = keyof typeof t.acoes;
 
-export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPaginaNova, aoCriarImagem, aoMapaMental, aoConferirEscrita, marcasAtivas = 0, aoTirarMarcas }: {
+/** "hoje, 13:10", "ontem, 9:02" ou "3 de nov.". */
+function quandoCurto(ms: number): string {
+  if (!ms) return "";
+  const d = new Date(ms), hoje = new Date();
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const dia = (x: Date) => x.toDateString();
+  if (dia(d) === dia(hoje)) return `hoje, ${hora}`;
+  const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+  if (dia(d) === dia(ontem)) return `ontem, ${hora}`;
+  return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+}
+
+export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPaginaNova, aoCriarImagem, aoMapaMental, aoConferirEscrita, marcasAtivas = 0, aoTirarMarcas, aoAgir, desfazer, aoDesfazer }: {
   /** Junta o texto (e, se pedir, a imagem da página) do alcance escolhido. */
   obterContexto: (alcance: Alcance, comImagem: boolean) => Promise<ContextoIa>;
   /** A página atual tem escrita à mão, desenho ou imagem? */
@@ -47,6 +59,11 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
   /** Quantas palavras estão sublinhadas agora na página. */
   marcasAtivas?: number;
   aoTirarMarcas?: () => void;
+  /** A IA com liberdade total: aplica as mudanças direto no caderno (com cópia antes). */
+  aoAgir?: (pedido: string, alcance: Alcance, imagens: string[], sensivel: boolean) => Promise<{ resposta: string; feitas: number }>;
+  /** A última mudança da IA que dá para desfazer. */
+  desfazer?: { resumo: string; quando: number } | null;
+  aoDesfazer?: () => void;
 }) {
   const recado = useRecado();
   const [estado, setEstado] = useState<EstadoIa | null>(null);
@@ -58,7 +75,11 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ continuar: () => void } | null>(null);
   const [resposta, setResposta] = useState<(RespostaIaCaderno & { pedido: string; rotulo: string }) | null>(null);
+  const [feito, setFeito] = useState<{ resposta: string; feitas: number; rotulo: string } | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
+  // O resultado aparece embaixo dos botões: rola até ele (sem animação).
+  const cartao = useRef<HTMLElement>(null);
+  useEffect(() => { if (feito || resposta) cartao.current?.scrollIntoView({ block: "nearest" }); }, [feito, resposta]);
   useEffect(() => { api.estadoIa().then(setEstado, () => setEstado(null)); }, []);
   const provedor = estado?.provedores.find((p) => p.id === estado.funcoes.conversa) ?? null;
   const vaiImagem = (temDesenho && lerEscrita && alcance === "pagina") || fotos.length > 0;
@@ -76,6 +97,12 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
         return;
       }
       if (confirmou) void marcarAvisado(provedor.id);
+      if (aoAgir) {
+        const feitoAgora = await aoAgir(texto, alcance, imagens, sensivel);
+        setFeito({ ...feitoAgora, rotulo });
+        setResposta(null);
+        return;
+      }
       const r = await api.iaCaderno(texto, ctx.texto, imagens, sensivel);
       setResposta({ ...r, html: htmlDaIa(r.html), pedido: texto, rotulo });
     } catch (e) {
@@ -174,8 +201,27 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
         </div>
       )}
 
+      {aoAgir && !feito && !ocupado && <p className="texto-suave pequeno">{t.liberdade}</p>}
+      {feito && (
+        <section className="painel-ia-resposta" aria-label={t.fez} ref={cartao} role="status">
+          <h3 className="painel-ia-titulo">{t.fez}: {feito.rotulo.length > 60 ? `${feito.rotulo.slice(0, 60)}…` : feito.rotulo}</h3>
+          {feito.resposta && <p>{feito.resposta}</p>}
+          <p className="texto-suave pequeno">{t.mudancas(feito.feitas)}</p>
+          <div className="painel-ia-linha">
+            {desfazer && aoDesfazer && feito.feitas > 0 && <Button className="botao pequeno" onPress={() => { setFeito(null); aoDesfazer(); }}>{t.desfazerTudo}</Button>}
+            <Button className="botao pequeno" onPress={() => setFeito(null)}>{textos.comum.fechar}</Button>
+          </div>
+          <p className="texto-suave pequeno">{t.conferir}</p>
+        </section>
+      )}
+      {!feito && desfazer && aoDesfazer && (
+        <div className="painel-ia-linha">
+          <span className="texto-suave pequeno">{t.ultima(desfazer.resumo, quandoCurto(desfazer.quando))}</span>
+          <Button className="botao pequeno" onPress={() => { setFeito(null); aoDesfazer(); }}>{t.desfazerTudo}</Button>
+        </div>
+      )}
       {resposta && (
-        <section className="painel-ia-resposta" aria-label={t.proposta}>
+        <section className="painel-ia-resposta" aria-label={t.proposta} ref={cartao}>
           <h3 className="painel-ia-titulo">{t.proposta}: {resposta.rotulo.length > 60 ? `${resposta.rotulo.slice(0, 60)}…` : resposta.rotulo}</h3>
           <div className="painel-ia-previa doc-conteudo" dangerouslySetInnerHTML={{ __html: resposta.html }} />
           <div className="painel-ia-linha">

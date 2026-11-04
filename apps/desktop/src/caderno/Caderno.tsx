@@ -24,6 +24,7 @@ import { useMeusEstilos } from "./editor/meusEstilos";
 import { PainelLateral, type AbaPainel } from "./PainelLateral";
 import { PainelIa, type Alcance, type ContextoIa } from "./PainelIa";
 import { elementosDoMapa, lerMapa } from "./mapaMental";
+import { aplicarNasCenas, arranjoDasPaginas, descreverCaderno, lerMudancas, lerReversoes, marcaDaCena, trocarIdsDaReversao, type Mudanca, type PaginaParaIa, type ReversaoIa } from "./agenteIa";
 import { PainelBiblioteca } from "./PainelBiblioteca";
 import { CamadaCorrecao, type MarcaEscrita } from "./CorrecaoEscrita";
 import { imagemComCaixas, palavrasDaPagina } from "./escrita";
@@ -1927,6 +1928,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
         papel: { ...semCapa(base ? folhaDe(base) : papelPadrao()), modelo: "liso", texto: false } as Papel, titulo: mapa.texto.slice(0, 60), marcado: false, criadoEm: 0,
       });
       await api.salvarCenaCaderno(nova.id, serializarCena({ ...cenaVazia(), elementos: ajustarConectores(elementosDoMapa(mapa, larg, alt), MEDIDA) }));
+      // Ao criar, o banco não grava o título: grava depois.
+      if (mapa.texto) await api.salvarPaginaCaderno({ ...nova, titulo: mapa.texto.slice(0, 60) });
       setSelId(nova.id); rolarPara.current = nova.id;
       await carregar();
       recado(t.ia.postoMapa);
@@ -2010,6 +2013,151 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     mudarCena(sel.id, { elementos: [...(cenas[sel.id]?.elementos ?? []), novo] });
   };
 
+  // IA com liberdade total (decisão de Dan, 04/11/2026): a IA muda o caderno direto.
+  // Antes, o Órbita guarda uma cópia do que ela vai mexer (gravada junto com o caderno);
+  // "Desfazer tudo o que a IA fez" volta ao que era.
+  const chaveReversao = `caderno.ia.desfazer.${caderno.id}`;
+  const [reversoes, setReversoes] = useState<ReversaoIa<PaginaCaderno>[]>([]);
+  const [confirmarDesfazer, setConfirmarDesfazer] = useState(false);
+  useEffect(() => { api.lerValor(chaveReversao).then((v) => setReversoes(lerReversoes<PaginaCaderno>(v)), () => {}); }, [chaveReversao]);
+  const guardarReversoes = (lista: ReversaoIa<PaginaCaderno>[]) => {
+    setReversoes(lista);
+    // Cabe no valor guardado (até 2 MB): as mais antigas saem primeiro.
+    let l = lista.slice(0, 5);
+    while (l.length > 1 && JSON.stringify(l).length > 1_800_000) l = l.slice(0, -1);
+    if (JSON.stringify(l).length > 1_800_000) l = [];
+    void (l.length ? api.gravarValor(chaveReversao, l) : api.apagarValor(chaveReversao)).catch(() => {});
+  };
+  /** A cena da página, carregando do banco se ainda não veio. */
+  const cenaCarregada = async (pid: string): Promise<Cena> => {
+    const c = cenasRef.current[pid];
+    if (c) return c;
+    const lida = lerCena(await api.carregarCenaCaderno(pid));
+    carregadas.current.add(pid);
+    cenasRef.current = { ...cenasRef.current, [pid]: lida };
+    setCenas((m) => ({ ...m, [pid]: lida }));
+    setHistoria((h) => ({ ...h, [pid]: { pilha: [lida], i: 0 } }));
+    return lida;
+  };
+  /** Troca a cena inteira (com o texto da página) e grava já. */
+  const trocarCena = async (pid: string, nova: Cena) => {
+    cenasRef.current = { ...cenasRef.current, [pid]: nova };
+    setCenas((m) => ({ ...m, [pid]: nova }));
+    registrarCena(pid, nova);
+    clearTimeout(timers.current[pid]);
+    await api.salvarCenaCaderno(pid, serializarCena(nova));
+  };
+  const criarPaginaDaIa = async (m: Extract<Mudanca, { op: "nova_pagina" | "mapa" }>, base: PaginaCaderno | undefined, ordem: number): Promise<string> => {
+    const folha = semCapa(base ? folhaDe(base) : papelPadrao());
+    const mm = m.op === "mapa" ? lerMapa(m.html) : null;
+    if (mm) {
+      const larg = 1123, alt = 794;
+      const nova = await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem, tamanho: `custom:${larg}x${alt}`, papel: { ...folha, modelo: "liso", texto: false } as Papel, titulo: "", marcado: false, criadoEm: 0 });
+      await api.salvarCenaCaderno(nova.id, serializarCena({ ...cenaVazia(), elementos: ajustarConectores(elementosDoMapa(mm, larg, alt), MEDIDA) }));
+      await api.salvarPaginaCaderno({ ...nova, titulo: (m.titulo || mm.texto).slice(0, 60) });
+      return nova.id;
+    }
+    const nova = await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem, tamanho: base && base.tamanho !== "infinito" ? base.tamanho : "a4", papel: { ...folha, texto: true } as Papel, titulo: "", marcado: false, criadoEm: 0 });
+    await api.salvarCenaCaderno(nova.id, serializarCena({ ...cenaVazia(), documento: m.html }));
+    if (m.titulo) await api.salvarPaginaCaderno({ ...nova, titulo: m.titulo });
+    return nova.id;
+  };
+  const meusEstilosAgora = useMeusEstilos();
+  const agirComIa = async (pedido: string, alcance: Alcance, imagens: string[], sensivel: boolean) => {
+    const atual = sel ?? paginas[0];
+    if (!atual) return { resposta: "", feitas: 0 };
+    const todas = alcance === "caderno";
+    for (const p of todas ? paginas : [atual]) await cenaCarregada(p.id);
+    const lista: PaginaParaIa[] = paginas.map((p) => ({ id: p.id, titulo: p.titulo, texto: ehPaginaTexto(p), modelo: folhaDe(p).modelo, ...medidaDe(p.tamanho), marcada: p.marcado }));
+    const { descricao, mapa } = descreverCaderno(lista, cenasRef.current, atual.id, todas, meusEstilosAgora, caderno.nome);
+    const plano = await api.iaCadernoAgir(pedido, descricao, imagens, sensivel);
+    const mudancas = lerMudancas(plano.mudancas, paginas.length, mapa);
+    if (!mudancas.length) return { resposta: plano.resposta, feitas: 0 };
+    // Toda página que a IA vai mexer precisa estar carregada (senão a cópia sairia vazia).
+    for (const n of new Set(mudancas.flatMap((m) => ("pagina" in m ? [m.pagina] : [])))) await cenaCarregada(paginas[n - 1].id);
+    const { cenas: novas, viraTexto } = aplicarNasCenas(mudancas, lista, cenasRef.current, mapa, undefined, tamTexto);
+    const arranjo = arranjoDasPaginas(paginas, mudancas);
+    const apagadas = new Set(arranjo.apagadas);
+    // O que muda em cada página (título, marcador, folha, lugar).
+    const meta = new Map<string, PaginaCaderno>();
+    const mexer = (pg: PaginaCaderno) => { const at = meta.get(pg.id) ?? { ...pg }; meta.set(pg.id, at); return at; };
+    for (const m of mudancas) {
+      const pg = "pagina" in m ? paginas[m.pagina - 1] : undefined;
+      if (!pg) continue;
+      if (m.op === "titulo_pagina") mexer(pg).titulo = m.titulo;
+      else if (m.op === "marcar_pagina") mexer(pg).marcado = m.marcada;
+      else if (m.op === "folha") { const at = mexer(pg); at.papel = { ...folhaDe(at), ...(m.modelo ? { modelo: m.modelo as ModeloPapel } : {}), ...(m.corPapel ? { corPapel: m.corPapel } : {}), ...(m.corLinha ? { corLinha: m.corLinha } : {}) } as Papel; }
+    }
+    for (const pid of viraTexto) { const pg = paginas.find((p) => p.id === pid); if (pg) { const at = mexer(pg); at.papel = { ...folhaDe(at), texto: true } as Papel; } }
+    for (const [id, ordem] of arranjo.ordens) { const pg = paginas.find((p) => p.id === id); if (pg) mexer(pg).ordem = ordem; }
+    // A cópia de antes.
+    const rev: ReversaoIa<PaginaCaderno> = { resumo: pedido.trim().slice(0, 80), quando: Date.now(), paginas: [], cenas: {}, depois: {}, criadas: [], apagadas: [...apagadas] };
+    for (const id of new Set([...meta.keys(), ...apagadas])) { const pg = paginas.find((p) => p.id === id); if (pg) rev.paginas.push({ ...pg }); }
+    for (const pid of new Set([...Object.keys(novas), ...apagadas])) rev.cenas[pid] = serializarCena(cenasRef.current[pid] ?? cenaVazia());
+    let primeiraNova = "";
+    try {
+      for (const [pid, nova] of Object.entries(novas)) {
+        if (apagadas.has(pid)) continue;
+        await trocarCena(pid, nova);
+        rev.depois[pid] = marcaDaCena(nova);
+      }
+      for (const pg of meta.values()) if (!apagadas.has(pg.id)) await api.salvarPaginaCaderno(pg);
+      for (const id of apagadas) await api.excluirPaginaCaderno(id);
+      for (const [i, ordem] of [...arranjo.novas].sort((a, b) => a[0] - b[0])) {
+        const m = mudancas[i] as Extract<Mudanca, { op: "nova_pagina" | "mapa" }>;
+        const id = await criarPaginaDaIa(m, m.depois > 0 ? paginas[m.depois - 1] : atual, ordem);
+        rev.criadas.push(id);
+        primeiraNova ||= id;
+      }
+    } finally {
+      guardarReversoes([rev, ...reversoes]);
+      if (primeiraNova) { setSelId(primeiraNova); rolarPara.current = primeiraNova; }
+      await carregar();
+      avisarMudanca();
+    }
+    return { resposta: plano.resposta, feitas: mudancas.length };
+  };
+  /** A pessoa mexeu depois da IA nalguma página que ela mudou? */
+  const mexeuDepoisDaIa = (r: ReversaoIa<PaginaCaderno>) =>
+    Object.entries(r.depois).some(([pid, marca]) => { const c = cenasRef.current[pid]; return !!c && marcaDaCena(c) !== marca; });
+  const desfazerIa = async () => {
+    const [r, ...resto] = reversoes;
+    if (!r) return;
+    const trocas = new Map<string, string>();
+    try {
+      for (const id of r.criadas) await api.excluirPaginaCaderno(id).catch(() => {});
+      for (const orig of r.paginas) {
+        if (r.apagadas.includes(orig.id)) {
+          // Volta a página apagada (com outro id), no mesmo lugar e com tudo o que tinha.
+          const nova = await api.salvarPaginaCaderno({ ...orig, id: "", criadoEm: 0 });
+          await api.salvarPaginaCaderno({ ...nova, titulo: orig.titulo, marcado: orig.marcado, papel: orig.papel, ordem: orig.ordem });
+          const c = r.cenas[orig.id];
+          if (c) await api.salvarCenaCaderno(nova.id, c);
+          trocas.set(orig.id, nova.id);
+        } else if (paginas.some((p) => p.id === orig.id)) {
+          await api.salvarPaginaCaderno(orig);
+        }
+      }
+      for (const [pid, txt] of Object.entries(r.cenas)) {
+        if (r.apagadas.includes(pid) || !paginas.some((p) => p.id === pid)) continue;
+        await trocarCena(pid, lerCena(txt));
+      }
+      guardarReversoes(resto.map((x) => trocarIdsDaReversao(x, trocas)));
+      recado(t.ia.desfeito);
+    } catch (e) {
+      setErro(mensagem(e));
+    } finally {
+      await carregar();
+      avisarMudanca();
+    }
+  };
+  const pedirDesfazerIa = () => {
+    const r = reversoes[0];
+    if (!r) return;
+    if (mexeuDepoisDaIa(r)) setConfirmarDesfazer(true);
+    else void desfazerIa();
+  };
+
   const te = t.enviar;
   const exportarCaderno = async (id: string): Promise<ArquivoPronto | null> => {
     const alvo = id === "cadernoPdf" ? paginas : sel ? [sel] : [];
@@ -2089,6 +2237,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       )}
 
       {erro && <div className="leitor-aviso"><Aviso>{erro}</Aviso></div>}
+      <Confirmar titulo={t.ia.desfazerTitulo} texto={t.ia.desfazerDepois} confirmar={t.ia.desfazerMesmo} aberta={confirmarDesfazer}
+        aoCancelar={() => setConfirmarDesfazer(false)} aoConfirmar={() => { setConfirmarDesfazer(false); void desfazerIa(); }} />
 
       <div className={`caderno-miolo pos-${posBarra}`} ref={mioloRef}>
       <div className={painel && !infinito ? `caderno-area com-painel painel-${ladoPainel}` : "caderno-area"}>
@@ -2099,7 +2249,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             aoAdicionar={() => setAdicionando(true)} aoVerGrade={() => setVisaoPaginas(true)}
             ia={<PainelIa obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
               aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)}
-              aoConferirEscrita={conferirEscrita} marcasAtivas={marcasVivas.length} aoTirarMarcas={() => setCorrecao(null)} />}
+              aoConferirEscrita={conferirEscrita} marcasAtivas={marcasVivas.length} aoTirarMarcas={() => setCorrecao(null)}
+              aoAgir={agirComIa} desfazer={reversoes[0] ? { resumo: reversoes[0].resumo, quando: reversoes[0].quando } : null} aoDesfazer={pedirDesfazerIa} />}
             biblioteca={<PainelBiblioteca podeGuardarSelecao={!!selPid && selIds.length > 0} aoGuardarSelecao={guardarSelecaoNaBiblioteca} aoGuardarPagina={guardarPaginaNaBiblioteca}
               aoUsar={(i, d) => void usarDaBiblioteca(i, d)}
               previa={(i, d, c) => {

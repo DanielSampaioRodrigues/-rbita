@@ -11,6 +11,7 @@
 //! `docs/decisoes/0013-ia-no-navegador.md`.
 
 // O envio pela rede (reqwest) só existe no Windows; o navegador envia com fetch.
+pub mod agente;
 pub mod caderno;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cliente;

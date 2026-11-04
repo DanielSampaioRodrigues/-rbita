@@ -155,6 +155,7 @@ pub fn run() {
             comandos::revisar_texto_ia,
             comandos::ia_caderno,
             comandos::conferir_escrita_ia,
+            comandos::ia_caderno_agir,
             comandos::ditado_estado,
             comandos::ditado_baixar,
             comandos::ditado_cancelar_download,

@@ -741,6 +741,15 @@ export interface ProvedorVisivel extends Provedor {
 }
 
 /** Resposta da IA do caderno: HTML simples (a tela limpa de novo antes de mostrar). */
+export interface PlanoIaCaderno {
+  /** Uma ou duas frases dizendo o que a IA fez (ou a resposta, se era só pergunta). */
+  resposta: string;
+  /** As mudanças como a IA mandou; a tela confere cada uma antes de aplicar. */
+  mudancas: unknown[];
+  provedor: string;
+  local: boolean;
+}
+
 export interface RespostaIaCaderno { html: string; provedor: string; local: boolean }
 
 /** Palavra escrita à mão que a IA achou errada (n = número da caixa na imagem). */
@@ -1069,6 +1078,8 @@ export interface Api {
   conferirEscritaIa(imagem: string, quantas: number, sensivel: boolean): Promise<PalavraConferida[]>;
   /** IA do caderno: pedido livre sobre a página (texto e imagens em data: URL). */
   iaCaderno(pedido: string, contexto: string, imagens: string[], sensivel: boolean): Promise<RespostaIaCaderno>;
+  /** IA com liberdade no caderno: recebe a descrição (JSON) e devolve o plano de mudanças. A tela confere e aplica. */
+  iaCadernoAgir(pedido: string, descricao: string, imagens: string[], sensivel: boolean): Promise<PlanoIaCaderno>;
   revisarTextoIa(texto: string, sensivel: boolean, modo?: ModoReescrita, instrucao?: string): Promise<string>;
   ditadoEstado(): Promise<EstadoDitado>;
   ditadoBaixar(modelo: ModeloVoz): Promise<EstadoDitado>;
@@ -1360,6 +1371,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   ajustarOrganizacaoIa: (texto, itens, mudanca, sensivel) => chamar("ajustar_organizacao_ia", { texto, itens, mudanca, sensivel }),
   revisarTextoIa: (texto, sensivel, modo, instrucao) => chamar("revisar_texto_ia", { texto, sensivel, modo: modo ?? null, instrucao: instrucao ?? null }),
   iaCaderno: (pedido, contexto, imagens, sensivel) => chamar("ia_caderno", { pedido, contexto, imagens, sensivel }),
+  iaCadernoAgir: (pedido, descricao, imagens, sensivel) => chamar("ia_caderno_agir", { pedido, descricao, imagens, sensivel }),
   conferirEscritaIa: (imagem, quantas, sensivel) => chamar("conferir_escrita_ia", { imagem, quantas, sensivel }),
   ditadoEstado: () => chamar("ditado_estado"),
   ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
@@ -2867,7 +2879,7 @@ function simularDitado(modo: string | null): Pick<Api, "ditadoEstado" | "ditadoB
 }
 
 /** IA de mentira para ver as telas no navegador. `?ia=1` já vem com Claude; `?ia=erro` falha ao sugerir. */
-function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "iaCaderno" | "conferirEscritaIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
+function simularIa(comClaude: boolean, comErro: boolean, ehEtapa: (id: string) => Promise<boolean>): Pick<Api, "estadoIa" | "salvarProvedorIa" | "removerProvedorIa" | "definirFuncaoIa" | "bloquearSensivelIa" | "testarProvedorIa" | "memoriaDoComputador" | "planejarComIa" | "organizarTextoIa" | "ajustarOrganizacaoIa" | "desenharIconesIa" | "revisarTextoIa" | "iaCaderno" | "iaCadernoAgir" | "conferirEscritaIa" | "gerarTemaIa" | "modelosImagemIa" | "gerarImagemIa"> {
   const espera = (ms = 400) => new Promise((r) => setTimeout(r, ms));
   const estado: EstadoIa = { provedores: [], funcoes: {}, modelos: {}, bloquearSensivel: false };
   if (comClaude) {
@@ -2954,6 +2966,32 @@ ${JSON.stringify(tema)}`;
         ? `<ul><li>Tema central<ul>${linhas.map((l) => `<li>${esc(l)}</li>`).join("") || "<li>Ramo 1</li><li>Ramo 2</li>"}</ul></li></ul>`
         : `<h2>${esc(pedido.slice(0, 60))}</h2><ul>${linhas.map((l) => `<li>${esc(l)}</li>`).join("") || "<li>(página sem texto digitado)</li>"}</ul>${imagens.length ? `<p>Recebi ${imagens.length} imagem(ns) da página.</p>` : ""}`;
       return { html, provedor: "Claude", local: false };
+    },
+    // Simulação da IA com liberdade: lê a descrição e devolve um plano de exemplo.
+    iaCadernoAgir: async (pedido, descricao, imagens, sensivel) => {
+      await espera(700);
+      if (comErro) throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");
+      if (sensivel && estado.bloquearSensivel)
+        throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do aparelho.", undefined, undefined, undefined, "sensivel_bloqueado");
+      type P = { n: number; atual?: boolean; texto_html?: string; resumo?: string; elementos?: { id: string; tipo: string }[] };
+      let d: { pagina_atual: number; paginas: P[] } = { pagina_atual: 1, paginas: [] };
+      try { d = JSON.parse(descricao); } catch { /* descrição vazia */ }
+      const atual = d.paginas.find((p) => p.atual) ?? d.paginas[0];
+      const n = atual?.n ?? 1;
+      const texto = (atual?.texto_html ?? atual?.resumo ?? "").replace(/<[^>]+>/g, "\n").split(/\n+/).map((l) => l.trim()).filter(Boolean).slice(0, 6);
+      const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const lista = texto.map((l) => `<li>${esc(l)}</li>`).join("");
+      const els = atual?.elementos ?? [];
+      if (/azul/i.test(pedido) && els.length)
+        return { resposta: `Pintei ${els.length} elemento(s) da página ${n} de azul.`, mudancas: els.map((e) => ({ op: "cor", id: e.id, cor: "#2563eb" })), provedor: "Claude", local: false };
+      if (/apag/i.test(pedido) && els.length)
+        return { resposta: "Apaguei o primeiro elemento da página.", mudancas: [{ op: "apagar", id: els[0].id }], provedor: "Claude", local: false };
+      if (/mapa/i.test(pedido))
+        return { resposta: "Montei um mapa mental numa página nova.", mudancas: [{ op: "mapa", depois: n, titulo: "Mapa mental", html: `<ul><li>Tema central<ul>${lista || "<li>Ramo 1</li><li>Ramo 2</li>"}</ul></li></ul>` }], provedor: "Claude", local: false };
+      if (/format|título|titulo/i.test(pedido))
+        return { resposta: "Formatei a página com título e tópicos.", mudancas: [{ op: "texto_da_pagina", pagina: n, html: `<h1 style="color: #2563eb">${esc(pedido.slice(0, 40))}</h1><ul>${lista || "<li>(sem texto)</li>"}</ul>` }, { op: "titulo_pagina", pagina: n, titulo: "Formatada pela IA" }], provedor: "Claude", local: false };
+      if (/pergunta|\?$/.test(pedido.trim())) return { resposta: `A página ${n} tem ${texto.length} linha(s) de texto e ${els.length} elemento(s).`, mudancas: [], provedor: "Claude", local: false };
+      return { resposta: "Organizei em tópicos numa página nova, logo depois da atual.", mudancas: [{ op: "nova_pagina", depois: n, titulo: pedido.slice(0, 40), html: `<h2>${esc(pedido.slice(0, 60))}</h2><ul>${lista || "<li>(página sem texto digitado)</li>"}</ul>${imagens.length ? `<p>Recebi ${imagens.length} imagem(ns).</p>` : ""}` }], provedor: "Claude", local: false };
     },
     revisarTextoIa: async (texto, _s, modo) => {
       await espera(900);

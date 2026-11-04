@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::protocolo::{self, FormatoImagem, Imagem, Pedido};
-use super::{caderno, escrita, organizar, planejar, revisar, tema, Escolhido, Provedor, TipoProvedor};
+use super::{agente, caderno, escrita, organizar, planejar, revisar, tema, Escolhido, Provedor, TipoProvedor};
 use crate::erro::Erro;
 
 /// As ordens que passam por aqui (as mesmas, com os mesmos argumentos, no Windows e no navegador).
@@ -27,6 +27,7 @@ pub const COMANDOS: &[&str] = &[
     "revisar_texto_ia",
     "ia_caderno",
     "conferir_escrita_ia",
+    "ia_caderno_agir",
     "gerar_tema_ia",
     "desenhar_icones_ia",
     "modelos_imagem_ia",
@@ -250,6 +251,48 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
                 return Err(protocolo::erro("resposta", "A IA não respondeu nada. Tente de novo ou pedir de outro jeito."));
             }
             pronto(RespostaCaderno { html, provedor: e.provedor.nome.clone(), local: e.provedor.local() })
+        }
+
+        // IA com liberdade total no caderno: devolve um plano de mudanças (a tela confere e aplica).
+        "ia_caderno_agir" => {
+            #[derive(Deserialize)]
+            struct A {
+                pedido: String,
+                descricao: String,
+                #[serde(default)]
+                imagens: Vec<String>,
+                sensivel: bool,
+            }
+            #[derive(Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Plano {
+                resposta: String,
+                mudancas: Vec<Value>,
+                provedor: String,
+                local: bool,
+            }
+            let a: A = ler_args(comando, args)?;
+            if a.pedido.trim().is_empty() {
+                return Err(Erro::TextoVazio);
+            }
+            if a.descricao.len() > agente::MAXIMO_DE_CARACTERES {
+                return Err(protocolo::erro("grande", "O caderno é grande demais para mandar inteiro. Escolha \"Esta página\"."));
+            }
+            if a.imagens.len() > caderno::MAXIMO_DE_IMAGENS || !a.imagens.iter().all(|u| caderno::imagem_valida(u)) {
+                return Err(protocolo::erro("grande", "Uma das imagens é grande demais ou são imagens demais (até 6)."));
+            }
+            let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
+            let resposta = match r {
+                None => {
+                    let mensagem = agente::montar(&a.pedido, &a.descricao, a.imagens.len());
+                    return pedir(protocolo::pedido_completar_com_imagens(&e, agente::SISTEMA, &mensagem, &a.imagens), 0);
+                }
+                Some(r) => protocolo::ler_completar(e.provedor.tipo, &protocolo::ler_resposta(r.situacao, &r.corpo)?)?,
+            };
+            match agente::ler(&resposta) {
+                Some((resposta, mudancas)) => pronto(Plano { resposta, mudancas, provedor: e.provedor.nome.clone(), local: e.provedor.local() }),
+                None => Err(protocolo::erro("resposta", "A IA não respondeu no formato combinado. Tente de novo ou pedir de outro jeito.")),
+            }
         }
 
         // Corretor da escrita à mão: a imagem da página com as palavras numeradas.

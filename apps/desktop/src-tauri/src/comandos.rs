@@ -681,6 +681,12 @@ pub async fn conferir_escrita_ia(estado: State<'_, Estado>, imagem: String, quan
     rodar_ia(&estado, "conferir_escrita_ia", json!({ "imagem": imagem, "quantas": quantas, "sensivel": sensivel })).await
 }
 
+/// IA com liberdade total no caderno: devolve um plano de mudanças; quem aplica é a tela.
+#[tauri::command]
+pub async fn ia_caderno_agir(estado: State<'_, Estado>, pedido: String, descricao: String, imagens: Vec<String>, sensivel: bool) -> Result<Value, Erro> {
+    rodar_ia(&estado, "ia_caderno_agir", json!({ "pedido": pedido, "descricao": descricao, "imagens": imagens, "sensivel": sensivel })).await
+}
+
 // ---------- Ditado (voz para texto, no computador) ----------
 
 #[tauri::command]
