@@ -2129,6 +2129,13 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .fontes-livros { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .fontes-livros .botao { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; }
 
+/* Menu flutuante ao escolher texto (como a mini barra do Word). Sem animação. */
+.menu-flutuante { position: fixed; z-index: 60; display: grid; gap: 2px; padding: 4px; max-width: calc(100vw - 16px); border: 1px solid var(--cor-borda); border-radius: 10px; background: var(--cor-superficie); color: var(--cor-texto); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16); }
+.menu-flutuante-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.menu-flutuante .fita-select { max-width: 9.5rem; }
+.menu-flutuante .fita-select.curto { max-width: 4.6rem; }
+:root[data-sem-sombra="true"] .menu-flutuante, :root[data-baixo-estimulo="true"] .menu-flutuante { box-shadow: none; }
+
 /* Mão (Espaço segurado, tecla H ou botão do meio): arrastar move a página. */
 .caderno-rolagem.com-mao, .caderno-rolagem.com-mao * { cursor: grab !important; }
 .caderno-rolagem.arrastando-mao, .caderno-rolagem.arrastando-mao * { cursor: grabbing !important; user-select: none; }

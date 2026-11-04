@@ -4,6 +4,7 @@
 import type { Editor } from "@tiptap/react";
 import { useEditorState } from "@tiptap/react";
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 import { reduzirImagem } from "../../fundo";
 import {
@@ -18,6 +19,7 @@ import { JanelaEstilo, JanelaMeusEstilos } from "./JanelaEstilos";
 import { JanelaReferencia } from "./JanelaReferencia";
 import { aplicarEstiloLetra, aplicarMeuEstilo, ESTILO_VAZIO, estiloDaSelecao, estiloDoParagrafo, salvarEstilo, tirarEstiloLetra, useMeusEstilos, type EstiloProprio } from "./meusEstilos";
 import { SeletorFonte } from "./SeletorFonte";
+import { ligarMenuFlutuante, useMenuFlutuante, useMenuFlutuanteLigado } from "./menuFlutuante";
 
 const t = textos.caderno.editor;
 
@@ -217,6 +219,11 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
     { id: "revisar", nome: t.abas.revisar },
   ];
   const sep = <span className="fita-sep" aria-hidden="true" />;
+  // Menu flutuante ao selecionar texto (como a mini barra do Word).
+  const flutuanteLigado = useMenuFlutuanteLigado();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const flutuante = useMenuFlutuante(editor, flutuanteLigado, menuRef);
+  const tf = t.flutuante;
   return (
     <div className={compacta ? "fita compacta" : "fita"} onPointerDown={segurar} onMouseDown={segurar}>
       <div className="fita-abas" role="tablist" aria-label={t.titulo}>
@@ -430,6 +437,10 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
             </span>
             {sep}
             <span className="fita-info">{t.revisar.contagem(e.palavras, e.caracteres)}</span>
+            {sep}
+            <button type="button" className={flutuanteLigado ? "fita-botao largo ativo" : "fita-botao largo"} aria-pressed={flutuanteLigado} onClick={() => ligarMenuFlutuante(!flutuanteLigado)}>
+              {flutuanteLigado ? tf.ligado : tf.desligado}
+            </button>
           </>
         )}
       </div>
@@ -453,6 +464,59 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
           {e.linkAtivo && <button type="button" className="fita-botao largo" onClick={() => { c().unsetLink().run(); setLink(null); }}>{t.linkTirar}</button>}
           <B rotulo={textos.comum.fechar} icone={X} acao={() => setLink(null)} />
         </div>
+      )}
+      {flutuante.visivel && createPortal(
+        <div ref={menuRef} className="menu-flutuante" role="toolbar" aria-label={tf.titulo} onPointerDown={segurar} onMouseDown={segurar}
+          style={flutuante.lugar ? { left: flutuante.lugar.left, top: flutuante.lugar.top } : { left: -9999, top: -9999 }}>
+          <div className="menu-flutuante-linha">
+            <select className="fita-select" aria-label={t.estilo} value={meuAtual ? `meu:${meuAtual.id}` : e.estilo} onChange={(ev) => escolherEstilo(ev.target.value)}>
+              <optgroup label={t.meus.grupoPadrao}>
+                {(Object.keys(t.estilos) as EstiloParagrafo[]).map((k) => <option key={k} value={k}>{t.estilos[k]}</option>)}
+              </optgroup>
+              {meus.length > 0 && (
+                <optgroup label={t.meus.grupo}>
+                  {meus.map((m) => <option key={m.id} value={`meu:${m.id}`}>{m.nome}</option>)}
+                </optgroup>
+              )}
+            </select>
+            <SeletorFonte atual={e.fonte} aoEscolher={(css) => (css ? c().setFontFamily(css).run() : c().unsetFontFamily().run())} />
+            <select className="fita-select curto" aria-label={t.tamanho} value={tamanhoAtual ? String(tamanhoAtual) : ""} onChange={(ev) => {
+              if (ev.target.value) c().setFontSize(tamanhoCss(Number(ev.target.value))).run(); else c().unsetFontSize().run();
+            }}>
+              <option value="">{t.tamanhoPadrao}</option>
+              {TAMANHOS.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <B rotulo={t.diminuir} texto="A−" acao={() => mudarTamanho(-1)} />
+            <B rotulo={t.aumentar} texto="A+" acao={() => mudarTamanho(1)} />
+          </div>
+          <div className="menu-flutuante-linha">
+            <B rotulo={`${textos.rico.negrito} (Ctrl + B)`} icone={Bold} ativo={e.b} acao={() => c().toggleBold().run()} />
+            <B rotulo={`${textos.rico.italico} (Ctrl + I)`} icone={Italic} ativo={e.i} acao={() => c().toggleItalic().run()} />
+            <B rotulo={`${textos.rico.sublinhado} (Ctrl + U)`} icone={Underline} ativo={e.u} acao={() => c().toggleUnderline().run()} />
+            <B rotulo={t.tachado} icone={Strikethrough} ativo={e.s} acao={() => c().toggleStrike().run()} />
+            <MenuCores rotulo={t.cor} icone={Baseline} cores={CORES_TEXTO} atual={e.cor} semNome={t.corPadrao} aoEscolher={(k) => c().setColor(k).run()} aoTirar={() => c().unsetColor().run()} />
+            <MenuCores rotulo={t.marcaTexto} icone={Highlighter} cores={CORES_MARCA} atual={e.marca} semNome={t.semMarca} aoEscolher={(k) => c().setHighlight({ color: k }).run()} aoTirar={() => c().unsetHighlight().run()} />
+            <MenuTrigger>
+              <Button className={e.versalete ? "fita-botao ativo" : "fita-botao"} aria-label={t.caixa.titulo}>
+                <span className="fita-botao-texto" aria-hidden="true">Aa</span>
+              </Button>
+              <Popover className="menu-popover" placement="bottom">
+                <Menu className="menu-lista" aria-label={t.caixa.titulo} onAction={(k) => { if (k === "versalete") c().toggleMark("versalete").run(); else aplicarCaixa(editor, k as Caixa); }}>
+                  <MenuItem id="frase" className="menu-item">{t.caixa.frase}</MenuItem>
+                  <MenuItem id="minusculas" className="menu-item">{t.caixa.minusculas}</MenuItem>
+                  <MenuItem id="maiusculas" className="menu-item">{t.caixa.maiusculas}</MenuItem>
+                  <MenuItem id="iniciais" className="menu-item">{t.caixa.iniciais}</MenuItem>
+                  <MenuItem id="versalete" className="menu-item" textValue={t.caixa.versalete}><span style={{ fontVariant: "small-caps" }}>{t.caixa.versalete}</span>{e.versalete ? " ✓" : ""}</MenuItem>
+                </Menu>
+              </Popover>
+            </MenuTrigger>
+            <B rotulo={textos.rico.lista} icone={List} ativo={e.lista} acao={() => c().toggleBulletList().run()} />
+            <B rotulo={textos.rico.numerada} icone={ListOrdered} ativo={e.numerada} acao={() => c().toggleOrderedList().run()} />
+            <B rotulo={t.link} icone={Link2} ativo={e.linkAtivo} acao={() => setLink((editor.getAttributes("link").href as string | undefined) ?? "")} />
+            <B rotulo={t.limpar} texto="T×" acao={() => c().unsetAllMarks().run()} />
+          </div>
+        </div>,
+        document.body,
       )}
       <JanelaEstilo inicial={novoEstilo} aberta={!!novoEstilo} aoFechar={() => setNovoEstilo(null)} aoSalvar={(m) => (m.letra ? aplicarEstiloLetra(editor, m) : aplicarMeuEstilo(editor, m))} />
       <JanelaMeusEstilos aberta={verEstilos} aoFechar={() => setVerEstilos(false)} />

@@ -2045,6 +2045,11 @@ export const textos = {
         inverter: "iNVERTER",
         versalete: "Versalete (maiúsculas pequenas)",
       },
+      flutuante: {
+        titulo: "Formatar o trecho escolhido",
+        ligado: "Menu ao escolher texto: ligado",
+        desligado: "Menu ao escolher texto: desligado",
+      },
       espacoLetras: "Espaço entre letras",
       espacoNormal: "Espaço normal",
       referencia: {
