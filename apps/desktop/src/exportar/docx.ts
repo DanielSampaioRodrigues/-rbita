@@ -7,6 +7,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { CONJUNTOS, lerPt, medidaDocumento, type ConfigDocumento } from "../caderno/editor/estilos";
 import type { EstiloProprio } from "../caderno/editor/meusEstilos";
+import { lerEspaco } from "../caderno/editor/espacoLetras";
 import { familiasDaPilha } from "./fontesPdf";
 
 const CM = 566.93; // twips por centímetro
@@ -63,6 +64,9 @@ export async function gerarDocx(json: JSONContent, config: ConfigDocumento, esti
           if (pt) o.size = pt * 2;
           const c = SEM_HASH(m.attrs?.color as string | undefined);
           if (c) o.color = c;
+          // Espaço entre letras: o Word guarda em vigésimos de ponto.
+          const ls = lerEspaco(m.attrs?.letterSpacing);
+          if (ls) o.characterSpacing = Math.round(ls * 20);
         }
       }
       if (link) saida.push(new ExternalHyperlink({ link, children: [new TextRun({ ...o, style: "Hyperlink" } as ConstructorParameters<typeof TextRun>[0])] }));
@@ -180,6 +184,7 @@ export async function gerarDocx(json: JSONContent, config: ConfigDocumento, esti
     run: {
       font: fonteWord(e.fonte), size: e.tamanho ? e.tamanho * 2 : undefined, color: SEM_HASH(e.cor), bold: e.negrito || undefined, italics: e.italico || undefined,
       underline: e.sublinhado ? {} : undefined, allCaps: e.caixa === "maiusculas" || undefined, smallCaps: e.caixa === "versalete" || undefined,
+      characterSpacing: e.espacoLetras ? Math.round(e.espacoLetras * 20) : undefined,
     },
     paragraph: {
       alignment: alinhar(e.alinhamento),
@@ -208,6 +213,7 @@ export async function gerarDocx(json: JSONContent, config: ConfigDocumento, esti
           font: fonteWord(e.fonte), size: e.tamanho ? e.tamanho * 2 : undefined, color: SEM_HASH(e.cor), bold: e.negrito || undefined, italics: e.italico || undefined,
           underline: e.sublinhado ? {} : undefined, allCaps: e.caixa === "maiusculas" || undefined, smallCaps: e.caixa === "versalete" || undefined,
           shading: e.fundo ? { type: ShadingType.CLEAR, color: "auto", fill: SEM_HASH(e.fundo) } : undefined,
+          characterSpacing: e.espacoLetras ? Math.round(e.espacoLetras * 20) : undefined,
         },
       })),
     },

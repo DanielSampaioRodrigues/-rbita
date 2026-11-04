@@ -2045,6 +2045,8 @@ export const textos = {
         inverter: "iNVERTER",
         versalete: "Versalete (maiúsculas pequenas)",
       },
+      espacoLetras: "Espaço entre letras",
+      espacoNormal: "Espaço normal",
       referencia: {
         botao: "Referência",
         titulo: "Referência bibliográfica",

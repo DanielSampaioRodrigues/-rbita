@@ -15,6 +15,7 @@ import { CharacterCount } from "@tiptap/extensions";
 import { StarterKit } from "@tiptap/starter-kit";
 import { AtalhoCaixa, Versalete } from "./maiusculas";
 import { AtalhosWord } from "./atalhosWord";
+import { EspacoLetras } from "./espacoLetras";
 import { EstiloLetra } from "./meusEstilos";
 
 /** Atributos do parágrafo (e dos títulos): estilo, entrelinha e recuo. Ficam no HTML
@@ -86,5 +87,6 @@ export const extensoesBase = () => [
   Versalete,
   AtalhoCaixa,
   AtalhosWord,
+  EspacoLetras,
   EstiloLetra,
 ];

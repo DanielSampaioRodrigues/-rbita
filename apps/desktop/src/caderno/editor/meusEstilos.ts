@@ -4,6 +4,7 @@
 // documentos, páginas de texto e caixas, e mudar um estilo muda todos os parágrafos
 // que o usam. O texto guarda só o id do estilo (`data-meu-estilo`); o visual vem de
 // um CSS gerado a partir da lista (`cssDosEstilos`, puro e testado).
+import { lerEspaco, nomeDoEspaco } from "./espacoLetras";
 import { Mark, type Editor } from "@tiptap/core";
 import type { Node as NoPM } from "@tiptap/pm/model";
 import { useSyncExternalStore } from "react";
@@ -43,11 +44,13 @@ export interface EstiloProprio {
   letra?: boolean;
   /** Estilo de letra: cor do marca-texto ("" = sem). */
   fundo?: string;
+  /** Espaço entre letras, em pt (0 = normal; negativo = condensado). */
+  espacoLetras?: number;
 }
 
 export const ESTILO_VAZIO: Omit<EstiloProprio, "id" | "nome"> = {
   base: "p", fonte: "", tamanho: 0, cor: "", negrito: false, italico: false, sublinhado: false, caixa: "",
-  alinhamento: "", entrelinha: 0, recuoPrimeira: -1, recuoEsquerda: 0, espacoAntes: -1, espacoDepois: -1, capitular: 0, letra: false, fundo: "",
+  alinhamento: "", entrelinha: 0, recuoPrimeira: -1, recuoEsquerda: 0, espacoAntes: -1, espacoDepois: -1, capitular: 0, letra: false, fundo: "", espacoLetras: 0,
 };
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -83,6 +86,7 @@ export function lerEstilos(bruto: unknown): EstiloProprio[] {
       capitular: [0, 2, 3, 4, 5].includes(b.capitular as number) ? (b.capitular as number) : 0,
       letra: b.letra === true,
       fundo: typeof b.fundo === "string" && HEX.test(b.fundo) ? b.fundo.toLowerCase() : "",
+      espacoLetras: entre(b.espacoLetras, -5, 20, 0),
     });
   }
   return lista;
@@ -102,6 +106,7 @@ export function regrasDoEstilo(e: EstiloProprio): string {
     if (e.caixa === "maiusculas") r.push("text-transform: uppercase");
     if (e.caixa === "versalete") r.push("font-variant: small-caps");
     if (e.fundo) r.push(`background-color: ${e.fundo}`, "border-radius: 2px", "padding: 0 1px");
+    if (e.espacoLetras) r.push(`letter-spacing: calc(${e.espacoLetras}pt * var(--caderno-escala, 1))`);
     return r.join("; ");
   }
   if (e.fonte) r.push(`font-family: ${e.fonte}`);
@@ -119,6 +124,7 @@ export function regrasDoEstilo(e: EstiloProprio): string {
   if (e.recuoEsquerda) r.push(`margin-left: ${e.recuoEsquerda}cm`);
   if (e.espacoAntes >= 0) r.push(`margin-top: ${e.espacoAntes}pt`);
   if (e.espacoDepois >= 0) r.push(`margin-bottom: ${e.espacoDepois}pt`);
+  if (e.espacoLetras) r.push(`letter-spacing: calc(${e.espacoLetras}pt * var(--caderno-escala, 1))`);
   return r.join("; ");
 }
 
@@ -150,6 +156,7 @@ export function estiloDasMarcas(marcas: readonly { type: { name: string }; attrs
       if (m.attrs.fontFamily) e.fonte = fonteSegura(m.attrs.fontFamily);
       if (m.attrs.fontSize) e.tamanho = lerPt(String(m.attrs.fontSize));
       if (m.attrs.color && HEX.test(String(m.attrs.color))) e.cor = String(m.attrs.color).toLowerCase();
+      if (m.attrs.letterSpacing) e.espacoLetras = lerEspaco(m.attrs.letterSpacing);
     }
   }
   return e;
@@ -196,6 +203,7 @@ export function resumoDoEstilo(e: EstiloProprio, nomes: { titulo: (n: number) =>
   if (e.caixa) partes.push(nomes[e.caixa]);
   if (e.alinhamento) partes.push(nomes.alinhamentos[e.alinhamento]);
   if (e.capitular) partes.push(nomes.capitular(e.capitular));
+  if (e.espacoLetras) partes.push(nomeDoEspaco(e.espacoLetras).toLowerCase());
   return partes.join(", ");
 }
 

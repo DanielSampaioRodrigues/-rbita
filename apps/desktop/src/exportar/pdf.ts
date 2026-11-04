@@ -42,7 +42,7 @@ async function paraPng(src: string): Promise<Uint8Array | null> {
 export async function gerarPdf(paginas: PaginaMedida[], meta: { titulo: string; autor?: string }): Promise<ResultadoPdf> {
   const lib = await import("pdf-lib");
   const { default: fontkit } = await import("@pdf-lib/fontkit");
-  const { PDFDocument, rgb, pushGraphicsState, popGraphicsState, concatTransformationMatrix, setTextRenderingMode, TextRenderingMode, setLineWidth, setStrokingRgbColor, LineCapStyle } = lib;
+  const { PDFDocument, rgb, pushGraphicsState, popGraphicsState, concatTransformationMatrix, setTextRenderingMode, TextRenderingMode, setLineWidth, setStrokingRgbColor, LineCapStyle, setCharacterSpacing } = lib;
   const doc: PDFDocument = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   doc.setTitle(meta.titulo || "Documento");
@@ -103,17 +103,21 @@ export async function gerarPdf(paginas: PaginaMedida[], meta: { titulo: string; 
       if (!pedacos.length) return;
       const tam = it.tamanho * PT;
       const larguras = pedacos.map((p) => p.f.fonte.widthOfTextAtSize(p.t, p.pequeno ? tam * 0.78 : tam));
-      const natural = larguras.reduce((a, b) => a + b, 0);
+      // Espaço entre letras: entra em cada letra (operador Tc), sem esticar a letra.
+      const ls = (it.espacamento ?? 0) * PT;
+      const letras = pedacos.map((p) => Array.from(p.t).length);
+      const natural = larguras.reduce((a, b) => a + b, 0) + ls * letras.reduce((a, b) => a + b, 0);
       if (natural <= 0) return;
       const X = it.x * PT, Y = H - it.y * PT;
       const sx = Math.min(1.6, Math.max(0.6, (it.largura * PT) / natural));
       const inclinar = f.italicoFalso ? ITALICO_FALSO : 0;
       page.pushOperators(pushGraphicsState(), concatTransformationMatrix(sx, 0, inclinar, 1, X - sx * X - inclinar * Y, 0));
       if (f.negritoFalso) page.pushOperators(setTextRenderingMode(TextRenderingMode.FillAndOutline), setLineWidth(tam * 0.035), setStrokingRgbColor(it.cor.r, it.cor.g, it.cor.b));
+      if (ls) page.pushOperators(setCharacterSpacing(ls));
       let x = X;
       pedacos.forEach((p, i) => {
         page.drawText(p.t, { x, y: Y, size: p.pequeno ? tam * 0.78 : tam, font: p.f.fonte, color: cor(it.cor), opacity: it.cor.a });
-        x += larguras[i];
+        x += larguras[i] + ls * letras[i];
       });
       page.pushOperators(popGraphicsState());
     };

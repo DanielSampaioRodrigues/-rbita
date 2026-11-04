@@ -11,6 +11,7 @@ import {
   Minus, Plus, Quote, Redo2, Search, Strikethrough, Table, Underline, Undo2, X,
 } from "../../icones";
 import { textos } from "../../textos/pt-BR";
+import { ESPACOS_LETRAS, lerEspaco, nomeDoEspaco } from "./espacoLetras";
 import { CONJUNTOS, lerPt, MARGENS, ocorrencias, type ConfigDocumento, type ConjuntoEstilo, type EstiloParagrafo } from "./estilos";
 import { aplicarCaixa, type Caixa } from "./maiusculas";
 import { JanelaEstilo, JanelaMeusEstilos } from "./JanelaEstilos";
@@ -55,6 +56,17 @@ function MenuCores({ rotulo, icone: Icone, cores, atual, semNome, aoEscolher, ao
 
 export { lerPt } from "./estilos";
 
+/** Espaço entre letras do trecho (Normal, condensado ou expandido, em pt). */
+export function SeletorEspaco({ valor, aoMudar }: { valor: number; aoMudar: (pt: number) => void }) {
+  const opcoes = ESPACOS_LETRAS.includes(valor) || valor === 0 ? ESPACOS_LETRAS : [...ESPACOS_LETRAS, valor].sort((a, b) => a - b);
+  return (
+    <select className="fita-select curto" aria-label={textos.caderno.editor.espacoLetras} title={textos.caderno.editor.espacoLetras} value={String(valor)} onChange={(ev) => aoMudar(Number(ev.target.value))}>
+      <option value="0">{textos.caderno.editor.espacoNormal}</option>
+      {opcoes.filter((n) => n !== 0).map((n) => <option key={n} value={String(n)}>{nomeDoEspaco(n)}</option>)}
+    </select>
+  );
+}
+
 export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n) => `${n}pt`, extra }: {
   editor: Editor;
   /** Dentro do caderno (barra de contexto): sem a aba Página. */
@@ -90,6 +102,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
         lista: ed.isActive("bulletList"), numerada: ed.isActive("orderedList"), tarefas: ed.isActive("taskList"),
         alinhar: (["left", "center", "right", "justify"] as const).find((a) => ed.isActive({ textAlign: a })) ?? "left",
         fonte: (ts.fontFamily as string | undefined) ?? "", tamanho: (ts.fontSize as string | undefined) ?? "", cor: (ts.color as string | undefined) ?? "",
+        espaco: lerEspaco(ts.letterSpacing),
         marca: (ed.getAttributes("highlight").color as string | undefined) ?? "",
         entrelinha: (bloco.entrelinha as string | null) ?? "", recuo: (bloco.recuo as number) ?? 0,
         meuEstilo: (bloco.meuEstilo as string | null) ?? "", capitular: (bloco.capitular as number | null) ?? 0,
@@ -243,6 +256,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
                 {TAMANHOS.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
               <B rotulo={t.aumentar} texto="A+" acao={() => mudarTamanho(1)} />
+              <SeletorEspaco valor={e.espaco} aoMudar={(pt) => (pt ? c().setLetterSpacing(`${pt}pt`).run() : c().unsetLetterSpacing().run())} />
             </span>
             {sep}
             <span className="fita-grupo">

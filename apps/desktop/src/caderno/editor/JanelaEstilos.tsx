@@ -7,6 +7,7 @@ import { Janela } from "../../componentes/Janela";
 import { Segmentado } from "../../componentes/Segmentado";
 import { textos } from "../../textos/pt-BR";
 import { apagarEstilo, cssDosEstilos, ESTILO_VAZIO, novoIdEstilo, resumoDoEstilo, salvarEstilo, useMeusEstilos, type Alinhamento, type BaseEstilo, type EstiloProprio } from "./meusEstilos";
+import { ESPACOS_LETRAS, nomeDoEspaco } from "./espacoLetras";
 import { SeletorFonte } from "./SeletorFonte";
 
 const t = textos.caderno.editor.meus;
@@ -67,6 +68,7 @@ export function JanelaEstilo({ inicial, aberta, aoFechar, aoSalvar }: {
             <SeletorFonte atual={e.fonte} aoEscolher={(css) => mudar({ fonte: css ?? "" })} />
           </div>
           <Lista rotulo={t.tamanho} valor={e.tamanho} aoMudar={(v) => mudar({ tamanho: v })} opcoes={[{ v: 0, nome: doc }, ...TAMANHOS.map((n) => ({ v: n, nome: String(n) }))]} />
+          <Lista rotulo={textos.caderno.editor.espacoLetras} valor={e.espacoLetras ?? 0} aoMudar={(v) => mudar({ espacoLetras: v })} opcoes={[{ v: 0, nome: textos.caderno.editor.espacoNormal }, ...ESPACOS_LETRAS.map((n) => ({ v: n, nome: nomeDoEspaco(n) }))]} />
           {!e.letra && <>
           <Lista rotulo={t.entrelinha} valor={e.entrelinha} aoMudar={(v) => mudar({ entrelinha: v })} opcoes={[{ v: 0, nome: doc }, ...ENTRELINHAS.map((n) => ({ v: n, nome: virgula(n) }))]} />
           <Lista rotulo={t.recuoPrimeira} valor={e.recuoPrimeira} aoMudar={(v) => mudar({ recuoPrimeira: v })} opcoes={[{ v: -1, nome: doc }, ...RECUOS_1A.map((n) => ({ v: n, nome: n ? `${virgula(n)} cm` : t.semRecuo }))]} />

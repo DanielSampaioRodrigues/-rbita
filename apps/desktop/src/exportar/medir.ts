@@ -12,7 +12,7 @@ export interface Cor { r: number; g: number; b: number; a: number }
 export type Matriz = [number, number, number, number, number, number];
 
 export type ItemDesenho =
-  | { tipo: "texto"; x: number; y: number; largura: number; texto: string; familia: string; peso: number; italico: boolean; tamanho: number; cor: Cor; versalete?: boolean }
+  | { tipo: "texto"; x: number; y: number; largura: number; texto: string; familia: string; peso: number; italico: boolean; tamanho: number; cor: Cor; versalete?: boolean; espacamento?: number }
   | { tipo: "retangulo"; x: number; y: number; w: number; h: number; cor: Cor; raio?: number }
   | { tipo: "linha"; x1: number; y1: number; x2: number; y2: number; cor: Cor; largura: number; ponta?: "round" | "butt" }
   | { tipo: "caminho"; d: string; matriz: Matriz; preencher?: Cor; contorno?: Cor; larguraContorno?: number; parImpar?: boolean; ponta?: "round" | "butt" | "square" }
@@ -253,6 +253,8 @@ export function medirPaginas(raiz: Element, regioes: Regiao[], escala: number, l
       tipo: "texto", x, y: base, largura: w, texto: t, familia: cs.fontFamily,
       peso: Number(cs.fontWeight) || 400, italico: cs.fontStyle !== "normal", tamanho, cor,
       versalete: /small-caps/.test(cs.fontVariantCaps || cs.fontVariant) || undefined,
+      // Espaço entre letras (px de tela, já com o zoom): o PDF usa o espaçamento de verdade.
+      espacamento: (parseFloat(cs.letterSpacing) || 0) / escala || undefined,
     });
     const grossura = Math.max(0.6, tamanho / 16);
     if (decoracoes.has("underline")) itens.push({ tipo: "linha", x1: x, y1: base + tamanho * 0.12, x2: x + w, y2: base + tamanho * 0.12, cor, largura: grossura, ponta: "butt" });
