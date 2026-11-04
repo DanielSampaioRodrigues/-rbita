@@ -1691,6 +1691,15 @@ export const textos = {
       telaLimpa: "Tela limpa. Toque com quatro dedos (ou Esc) para mostrar as barras de novo.",
       mostrarBarras: "Mostrar as barras",
     },
+    temaCaderno: {
+      tema: "Tema do caderno",
+      igual: "O mesmo do Órbita",
+      modo: "Cores do caderno",
+      igualModo: "Como no Órbita",
+      claro: "Claro",
+      escuro: "Escuro",
+      ajuda: "Vale só para os cadernos e documentos, neste aparelho. O resto do Órbita continua com o seu tema. O baixo estímulo continua valendo aqui.",
+    },
     encaixe: {
       rotulo: "Tamanho da página na tela",
       opcoes: { pagina: "Página inteira", largura: "Largura toda" },

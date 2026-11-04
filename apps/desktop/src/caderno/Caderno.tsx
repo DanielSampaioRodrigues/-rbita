@@ -20,6 +20,7 @@ import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { CamadaDocumento, DocumentoEstatico } from "./Documento";
 import { DocumentoAberto } from "./DocumentoAberto";
+import { useTemaCaderno } from "./temaCaderno";
 import { FitaTexto } from "./editor/Fita";
 import { extensoesBase } from "./editor/extensoes";
 import { acaoDoGesto, criarDetectorDeToques, type AcaoGesto } from "./gestos";
@@ -789,6 +790,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   // Tela limpa: esconde as barras (quatro dedos ou o botão; Esc volta).
   const [telaLimpa, setTelaLimpa] = useState(false);
   const recado = useRecado();
+  // Tema próprio do caderno (opcional): as cores valem só dentro desta tela.
+  const temaCaderno = useTemaCaderno();
   const [tamTexto, setTamTexto] = useState<number>(lerTamTexto);
   const [editandoTexto, setEditandoTexto] = useState("");
   const mudarTamTexto = (n: number) => {
@@ -1817,7 +1820,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   }, [infinito]);
 
   return (
-    <div className="caderno-tela">
+    <div className="caderno-tela" style={temaCaderno.estilo}>
       {!telaLimpa && (
       <div className="leitor-barra caderno-barra-topo">
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
@@ -2013,6 +2016,16 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
               <p className="campo-ajuda">{t.encaixe.ajuda}</p>
             </>
           )}
+          <div className="campo">
+            <label className="campo-rotulo" htmlFor="caderno-tema">{t.temaCaderno.tema}</label>
+            <select id="caderno-tema" className="entrada-texto sozinha" value={temaCaderno.escolha.tema} onChange={(e) => temaCaderno.mudar({ ...temaCaderno.escolha, tema: e.target.value })}>
+              <option value="">{t.temaCaderno.igual}</option>
+              {temaCaderno.temas.map((tm) => <option key={tm.id} value={tm.id}>{tm.nome}</option>)}
+            </select>
+          </div>
+          <Segmentado rotulo={t.temaCaderno.modo} valor={temaCaderno.escolha.modo} aoMudar={(v) => temaCaderno.mudar({ ...temaCaderno.escolha, modo: v as "igual" | "claro" | "escuro" })}
+            opcoes={[{ valor: "igual", nome: t.temaCaderno.igualModo }, { valor: "claro", nome: t.temaCaderno.claro }, { valor: "escuro", nome: t.temaCaderno.escuro }]} />
+          <p className="campo-ajuda">{t.temaCaderno.ajuda}</p>
           <Interruptor rotulo={t.gestos.ligar} ligado={gestosLigados} aoMudar={mudarGestos} />
           <ul className="campo-ajuda caderno-lista-gestos">{t.gestos.lista.map((g) => <li key={g}>{g}</li>)}</ul>
           <Segmentado rotulo={t.config.unidadeRegua} valor={unidadeRegua} aoMudar={(v) => mudarUnidadeRegua(v as UnidadeRegua)}

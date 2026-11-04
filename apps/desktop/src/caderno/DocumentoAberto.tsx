@@ -16,6 +16,7 @@ import { textos } from "../textos/pt-BR";
 import { FitaTexto } from "./editor/Fita";
 import { cabecalhoRodape, cm, CONJUNTOS, lerConfigDocumento, medidaDocumento, varsDoConjunto, type ConfigDocumento } from "./editor/estilos";
 import { extensoesBase } from "./editor/extensoes";
+import { useTemaCaderno } from "./temaCaderno";
 
 const t = textos.caderno;
 const te = t.editor;
@@ -62,6 +63,7 @@ function EditorPaginado({ html, config, aoMudar, aoEditor }: { html: string; con
 
 export function DocumentoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () => void }) {
   useEntrarImersivo();
+  const temaCaderno = useTemaCaderno();
   const [pagina, setPagina] = useState<PaginaCaderno | null>(null);
   const [cena, setCena] = useState<Cena | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -129,7 +131,7 @@ export function DocumentoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFec
   const chave = JSON.stringify(config);
 
   return (
-    <div className="documento-tela">
+    <div className="documento-tela" style={temaCaderno.estilo}>
       <div className="leitor-barra caderno-barra-topo">
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
         <strong className="leitor-titulo quebra"><FileText aria-hidden="true" size="1em" /> {caderno.nome}</strong>
