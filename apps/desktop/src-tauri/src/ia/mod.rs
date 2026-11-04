@@ -4,10 +4,19 @@
 //! As chaves ficam dentro do banco criptografado, numa linha própria de `config`,
 //! e nunca voltam para a interface: ela só vê os quatro últimos caracteres.
 //! A IA só propõe; quem grava é a interface, depois que a pessoa confirma.
+//!
+//! Este módulo roda também no navegador, dentro do motor (`crates/motor-web`):
+//! `protocolo.rs` e `fluxo.rs` montam os pedidos e conferem as respostas; só o
+//! envio muda (`cliente.rs` no Windows, `fetch` no navegador). Ver
+//! `docs/decisoes/0013-ia-no-navegador.md`.
 
+// O envio pela rede (reqwest) só existe no Windows; o navegador envia com fetch.
+#[cfg(not(target_arch = "wasm32"))]
 pub mod cliente;
+pub mod fluxo;
 pub mod organizar;
 pub mod planejar;
+pub mod protocolo;
 pub mod revisar;
 pub mod tema;
 

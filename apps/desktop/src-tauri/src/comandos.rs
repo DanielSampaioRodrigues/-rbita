@@ -6,6 +6,7 @@ use std::sync::Mutex;
 
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use tauri::{State, WebviewWindow};
 
 use crate::backup;
@@ -14,7 +15,9 @@ use crate::cofre::cripto::Chave;
 use crate::cofre::{palavras, Cofre, ModoAbrir, Situacao};
 use crate::erro::Erro;
 use crate::ditado::{self, Ditado, EstadoDitado};
-use crate::ia::{self, cliente, organizar, planejar, revisar, tema, EstadoIa, Provedor};
+use crate::ia::{self, fluxo, planejar, EstadoIa, Provedor};
+// O envio pela rede só existe no Windows (o navegador envia com fetch).
+use crate::ia::cliente;
 use crate::nuvem::{self, ProvedorNuvem};
 
 use crate::portatil::CONFIG_PALAVRAS;
@@ -590,16 +593,8 @@ pub async fn bloquear_sensivel_ia(estado: State<'_, Estado>, bloquear: bool) -> 
 /// Testa um provedor ainda não salvo (ou um salvo, se `chave` vier vazia e
 /// houver `id`). Devolve os modelos disponíveis.
 #[tauri::command]
-pub async fn testar_provedor_ia(estado: State<'_, Estado>, provedor: Provedor, chave: Option<String>) -> Result<Vec<String>, Erro> {
-    let chave = chave.map(zeroize::Zeroizing::new).filter(|c| !c.trim().is_empty());
-    let guardada = if chave.is_none() && !provedor.id.is_empty() {
-        estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor.id))?.chave
-    } else {
-        chave.map(|c| zeroize::Zeroizing::new(c.trim().to_string()))
-    };
-    let mut provedor = provedor;
-    provedor.url = provedor.url.trim().trim_end_matches('/').to_string();
-    cliente::listar_modelos(&ia::Escolhido { provedor, chave: guardada }).await
+pub async fn testar_provedor_ia(estado: State<'_, Estado>, provedor: Provedor, chave: Option<String>) -> Result<Value, Erro> {
+    rodar_ia(&estado, "testar_provedor_ia", json!({ "provedor": provedor, "chave": chave })).await
 }
 
 #[tauri::command]
@@ -607,13 +602,22 @@ pub async fn memoria_do_computador() -> Result<Option<f64>, Erro> {
     Ok(ia::memoria_gb())
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Plano {
-    etapas: Vec<planejar::EtapaProposta>,
-    explicacao: Option<String>,
-    provedor: String,
-    local: bool,
+/// Roda uma ordem de IA (`ia/fluxo.rs`, a mesma do navegador): lê o banco,
+/// envia o pedido sem segurar o banco e volta com a resposta, até terminar.
+async fn rodar_ia(estado: &Estado, comando: &str, args: Value) -> Result<Value, Erro> {
+    // Os argumentos podem levar uma chave nova (conferir provedor): apagados da memória no fim.
+    let args = zeroize::Zeroizing::new(args.to_string());
+    let mut passo = estado.com_sessao(|s| fluxo::avancar(&s.conn, comando, &args, None))?;
+    loop {
+        match passo {
+            fluxo::Passo::Pronto { valor } => return Ok(valor),
+            fluxo::Passo::Pedir { pedido, etapa } => {
+                let (situacao, corpo) = cliente::enviar(&pedido).await?;
+                let r = fluxo::Resposta { etapa, situacao, corpo };
+                passo = estado.com_sessao(|s| fluxo::avancar(&s.conn, comando, &args, Some(&r)))?;
+            }
+        }
+    }
 }
 
 /// "Planejar com a IA": manda o contexto do projeto (ou da etapa), a proposta
@@ -626,51 +630,21 @@ pub async fn planejar_com_ia(
     conversa: Vec<planejar::Fala>,
     proposta_atual: Option<Vec<planejar::EtapaProposta>>,
     sensivel: bool,
-) -> Result<Plano, Erro> {
-    let (escolhido, contexto) = estado.com_sessao(|s| Ok((ia::provedor_da_funcao(&s.conn, "quebrar", sensivel)?, planejar::contexto(&s.conn, &alvo)?)))?;
-    let pedido = planejar::montar_pedido(&contexto, &conversa, proposta_atual.as_deref());
-    let resposta = cliente::completar(&escolhido, &planejar::sistema(contexto.etapa), &pedido).await?;
-    let (etapas, explicacao) = planejar::ler_proposta(&resposta, contexto.etapa)?;
-    Ok(Plano { etapas, explicacao, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Organizacao {
-    itens: Vec<organizar::ItemProposto>,
-    provedor: String,
-    local: bool,
+) -> Result<Value, Erro> {
+    rodar_ia(&estado, "planejar_com_ia", json!({ "alvo": alvo, "conversa": conversa, "propostaAtual": proposta_atual, "sensivel": sensivel })).await
 }
 
 /// Separa um texto solto em ideias, tarefas e compromissos. Não grava nada.
 /// `sensivel`: a interface achou sinais de saúde ou terapia no texto.
 #[tauri::command]
-pub async fn organizar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel: bool) -> Result<Organizacao, Erro> {
-    let (escolhido, pedido, projetos) = estado.com_sessao(|s| {
-        Ok((ia::provedor_da_funcao(&s.conn, "conversa", sensivel)?, organizar::pedido_de_agora(&s.conn, &texto)?, organizar::projetos_ativos(&s.conn)?))
-    })?;
-    let resposta = cliente::completar(&escolhido, organizar::SISTEMA, &pedido).await?;
-    let itens = organizar::ler_itens(&resposta, &projetos);
-    if itens.is_empty() {
-        return Err(Erro::Ia { motivo: "resposta", mensagem: "A IA não conseguiu separar o texto. Tente de novo, ou guarde como ideia.".into() });
-    }
-    Ok(Organizacao { itens, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
+pub async fn organizar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel: bool) -> Result<Value, Erro> {
+    rodar_ia(&estado, "organizar_texto_ia", json!({ "texto": texto, "sensivel": sensivel })).await
 }
 
 /// Revisa ortografia e pontuação. Não grava nada: a tela mostra antes e depois.
 #[tauri::command]
-pub async fn revisar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel: bool, modo: Option<String>, instrucao: Option<String>) -> Result<String, Erro> {
-    let texto: String = texto.trim().chars().take(revisar::MAXIMO_DE_CARACTERES).collect();
-    if texto.is_empty() {
-        return Err(Erro::TextoVazio);
-    }
-    let escolhido = estado.com_sessao(|s| ia::provedor_da_funcao(&s.conn, "revisao", sensivel))?;
-    let sistema = revisar::sistema(modo.as_deref().unwrap_or("revisar"), instrucao.as_deref());
-    let revisado = revisar::limpar(&cliente::completar(&escolhido, &sistema, &texto).await?);
-    if revisado.is_empty() {
-        return Err(Erro::Ia { motivo: "resposta", mensagem: "A revisão veio vazia. Tente de novo.".into() });
-    }
-    Ok(revisado)
+pub async fn revisar_texto_ia(estado: State<'_, Estado>, texto: String, sensivel: bool, modo: Option<String>, instrucao: Option<String>) -> Result<Value, Erro> {
+    rodar_ia(&estado, "revisar_texto_ia", json!({ "texto": texto, "sensivel": sensivel, "modo": modo, "instrucao": instrucao })).await
 }
 
 // ---------- Ditado (voz para texto, no computador) ----------
@@ -793,12 +767,8 @@ pub async fn ligar_itens(estado: State<'_, Estado>, a: String, b: String, ligar:
 
 /// A IA escreve um tema (JSON). Não grava nada: a tela confere e mostra no editor.
 #[tauri::command]
-pub async fn gerar_tema_ia(estado: State<'_, Estado>, provedor_id: String, pedido: String, anterior: Option<String>, com_desenho: bool) -> Result<String, Erro> {
-    if pedido.trim().is_empty() {
-        return Err(Erro::TextoVazio);
-    }
-    let escolhido = estado.com_sessao(|s| ia::provedor_para(&s.conn, "personalizacao", &provedor_id))?;
-    cliente::completar(&escolhido, tema::SISTEMA, &tema::montar_pedido(&pedido, anterior.as_deref(), com_desenho)).await
+pub async fn gerar_tema_ia(estado: State<'_, Estado>, provedor_id: String, pedido: String, anterior: Option<String>, com_desenho: bool) -> Result<Value, Erro> {
+    rodar_ia(&estado, "gerar_tema_ia", json!({ "provedorId": provedor_id, "pedido": pedido, "anterior": anterior, "comDesenho": com_desenho })).await
 }
 
 /// Experimental: a IA desenha um lote de ícones (nome e o que mostram) no estilo pedido.
@@ -810,29 +780,20 @@ pub async fn desenhar_icones_ia(
     estilo: String,
     icones: Vec<(String, String)>,
     referencia: Option<String>,
-) -> Result<String, Erro> {
-    if estilo.trim().is_empty() || icones.is_empty() {
-        return Err(Erro::TextoVazio);
-    }
-    let escolhido = estado.com_sessao(|s| ia::provedor_para(&s.conn, "personalizacao", &provedor_id))?;
-    cliente::completar(&escolhido, tema::SISTEMA_ICONES, &tema::pedido_de_icones(&estilo, &icones, referencia.as_deref())).await
+) -> Result<Value, Erro> {
+    rodar_ia(&estado, "desenhar_icones_ia", json!({ "provedorId": provedor_id, "estilo": estilo, "icones": icones, "referencia": referencia })).await
 }
 
 /// Modelos de imagem que a conta da pessoa tem nesse provedor (pode ser nenhum).
 #[tauri::command]
-pub async fn modelos_imagem_ia(estado: State<'_, Estado>, provedor_id: String) -> Result<Vec<String>, Erro> {
-    let escolhido = estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor_id))?;
-    if escolhido.provedor.tipo == ia::TipoProvedor::Claude || escolhido.provedor.local() {
-        return Ok(vec![]);
-    }
-    Ok(tema::modelos_de_imagem(&cliente::listar_todos_modelos(&escolhido).await?))
+pub async fn modelos_imagem_ia(estado: State<'_, Estado>, provedor_id: String) -> Result<Value, Erro> {
+    rodar_ia(&estado, "modelos_imagem_ia", json!({ "provedorId": provedor_id })).await
 }
 
 /// Gera a imagem de fundo do tema. Devolve um endereço de dados (PNG).
 #[tauri::command]
-pub async fn gerar_imagem_ia(estado: State<'_, Estado>, provedor_id: String, modelo: String, pedido: String, alta: bool, vivas: bool) -> Result<String, Erro> {
-    let escolhido = estado.com_sessao(|s| ia::provedor_por_id(&s.conn, &provedor_id))?;
-    cliente::gerar_imagem(&escolhido, &modelo, &tema::pedido_de_imagem(&pedido, vivas), alta).await
+pub async fn gerar_imagem_ia(estado: State<'_, Estado>, provedor_id: String, modelo: String, pedido: String, alta: bool, vivas: bool) -> Result<Value, Erro> {
+    rodar_ia(&estado, "gerar_imagem_ia", json!({ "provedorId": provedor_id, "modelo": modelo, "pedido": pedido, "alta": alta, "vivas": vivas })).await
 }
 
 #[tauri::command]
@@ -927,19 +888,8 @@ pub async fn excluir_anexo(estado: State<'_, Estado>, id: String) -> Result<(), 
 
 /// Conversa sobre a lista separada: a IA refaz a lista com a mudança pedida.
 #[tauri::command]
-pub async fn ajustar_organizacao_ia(estado: State<'_, Estado>, texto: String, itens: String, mudanca: String, sensivel: bool) -> Result<Organizacao, Erro> {
-    if mudanca.trim().is_empty() {
-        return Err(Erro::TextoVazio);
-    }
-    let (escolhido, pedido, projetos) = estado.com_sessao(|s| {
-        Ok((ia::provedor_da_funcao(&s.conn, "conversa", sensivel)?, organizar::pedido_de_agora(&s.conn, &texto)?, organizar::projetos_ativos(&s.conn)?))
-    })?;
-    let resposta = cliente::completar(&escolhido, organizar::SISTEMA, &organizar::montar_ajuste(&pedido, &itens, &mudanca)).await?;
-    let itens = organizar::ler_itens(&resposta, &projetos);
-    if itens.is_empty() {
-        return Err(Erro::Ia { motivo: "resposta", mensagem: "A IA não conseguiu refazer a lista. Tente explicar a mudança de outro jeito.".into() });
-    }
-    Ok(Organizacao { itens, provedor: escolhido.provedor.nome.clone(), local: escolhido.provedor.local() })
+pub async fn ajustar_organizacao_ia(estado: State<'_, Estado>, texto: String, itens: String, mudanca: String, sensivel: bool) -> Result<Value, Erro> {
+    rodar_ia(&estado, "ajustar_organizacao_ia", json!({ "texto": texto, "itens": itens, "mudanca": mudanca, "sensivel": sensivel })).await
 }
 
 // ---------- Conta Google ou Microsoft (recuperação guardada na conta da pessoa) ----------
