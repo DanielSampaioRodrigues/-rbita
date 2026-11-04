@@ -1721,8 +1721,6 @@ export const textos = {
         mapa: "Faça um mapa mental do conteúdo.",
         quadro: "As fotos são do quadro (ou dos slides) de uma aula, tiradas em qualquer ordem. Descubra a ordem certa e passe tudo para texto organizado, com títulos e listas, sem deixar nada de fora. Descreva em palavras os desenhos e esquemas.",
         abnt: "Reorganize o conteúdo como trabalho acadêmico no padrão ABNT: títulos de seção numerados (1, 1.1...), parágrafos completos e, se houver fontes citadas, uma seção REFERÊNCIAS no padrão ABNT NBR 6023. Não invente dados das referências.",
-        imagem: "",
-        conferir: "",
       },
       livre: "Peça o que quiser",
       livreExemplo: "Ex.: transforme em tabela; corrija a ortografia; explique o item 3; formate as referências em APA.",

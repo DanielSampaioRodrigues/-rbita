@@ -106,7 +106,7 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
   const acao = (a: Acao) => {
     if (a === "imagem") { aoCriarImagem(); return; }
     if (a === "conferir") { void conferir(); return; }
-    void enviar(t.pedidos[a], t.acoes[a]);
+    void enviar(t.pedidos[a as keyof typeof t.pedidos], t.acoes[a]);
   };
   const juntarFotos = async (lista: FileList | null) => {
     if (!lista) return;
