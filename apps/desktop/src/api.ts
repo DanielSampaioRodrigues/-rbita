@@ -1034,6 +1034,8 @@ export interface Api {
   exportarTexto(caminho: string, conteudo: string): Promise<void>;
   /** Nomes das fontes instaladas no computador (no navegador, lista vazia: o editor descobre sozinho). */
   listarFontesSistema(): Promise<string[]>;
+  /** Grava um arquivo exportado (base64) no caminho escolhido (só no app do computador). */
+  exportarArquivo(caminho: string, conteudo: string): Promise<void>;
   infoBackup(caminho: string): Promise<InfoBackup>;
   /** `escolha`: como abrir no dia a dia depois (obrigatória se o backup não tem senha). */
   restaurarBackup(caminho: string, segredo: { senha?: string; palavras?: string }, escolha?: { modo: ModoAbrir; pin?: string }): Promise<ModoAbrir>;
@@ -1330,6 +1332,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   fazerBackup: (caminho) => chamar("fazer_backup", { caminho }),
   exportarTexto: (caminho, conteudo) => chamar("exportar_texto", { caminho, conteudo }),
   listarFontesSistema: () => chamar("listar_fontes_sistema"),
+  exportarArquivo: (caminho, conteudo) => chamar("exportar_arquivo", { caminho, conteudo }),
   infoBackup: (caminho) => chamar("info_backup", { caminho }),
   restaurarBackup: (caminho, { senha, palavras }, escolha) =>
     chamar("restaurar_backup", { caminho, senha: senha ?? null, palavras: palavras ?? null, modo: escolha?.modo ?? null, pin: escolha?.pin ?? null }),
@@ -2711,6 +2714,7 @@ function criarSimulacao(): Api {
       await espera();
     },
     listarFontesSistema: async () => [],
+    exportarArquivo: async () => {},
     exportarTexto: async () => {
       await espera();
     },

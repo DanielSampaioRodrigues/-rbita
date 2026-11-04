@@ -21,6 +21,9 @@ import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { CamadaDocumento, DocumentoEstatico } from "./Documento";
 import { DocumentoAberto } from "./DocumentoAberto";
 import { useMeusEstilos } from "./editor/meusEstilos";
+import { MenuEnviar, type ArquivoPronto } from "../exportar/MenuEnviar";
+import { nomeDeArquivo } from "../exportar/entregar";
+import { medir, type PaginaMedida } from "../exportar/medir";
 import { useTemaCaderno } from "./temaCaderno";
 import { FitaTexto } from "./editor/Fita";
 import { extensoesBase } from "./editor/extensoes";
@@ -795,6 +798,38 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   const recado = useRecado();
   // Tema próprio do caderno (opcional): as cores valem só dentro desta tela.
   const temaCaderno = useTemaCaderno();
+  // Exportar: as páginas pedidas são desenhadas fora da tela, no tamanho real, e medidas.
+  const [exportando, setExportando] = useState<{ ids: string[]; pronto: (p: PaginaMedida[]) => void; erro: (e: unknown) => void } | null>(null);
+  const caixaExportar = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!exportando) return;
+    let vivo = true;
+    void (async () => {
+      try {
+        await document.fonts.ready;
+        const raiz = caixaExportar.current;
+        if (!raiz) throw new Error("exportar");
+        // Espera as imagens (fotos, capas de arte) ficarem prontas para desenhar.
+        const fontes = Array.from(raiz.querySelectorAll("image, img")).map((el) => el.getAttribute("href") ?? (el as HTMLImageElement).currentSrc ?? "").filter(Boolean);
+        await Promise.all(fontes.map((src) => { const i = new Image(); i.src = src; return i.decode().catch(() => undefined); }));
+        await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+        if (!vivo) return;
+        const medidas: PaginaMedida[] = [];
+        for (const el of Array.from(raiz.querySelectorAll<HTMLElement>(".caderno-mini-miolo"))) {
+          const r = el.getBoundingClientRect();
+          const w = Number(el.dataset.largura), h = Number(el.dataset.altura);
+          medidas.push(medir(el, { x: r.left, y: r.top, largura: r.width, altura: r.height }, r.width / w || 1, w, h));
+        }
+        exportando.pronto(medidas);
+      } catch (e) {
+        exportando.erro(e);
+      } finally {
+        if (vivo) setExportando(null);
+      }
+    })();
+    return () => { vivo = false; };
+  }, [exportando]);
+  const medirParaExportar = (ids: string[]) => new Promise<PaginaMedida[]>((pronto, erro) => setExportando({ ids, pronto, erro }));
   const [tamTexto, setTamTexto] = useState<number>(lerTamTexto);
   const [editandoTexto, setEditandoTexto] = useState("");
   const mudarTamTexto = (n: number) => {
@@ -1822,8 +1857,38 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     return () => window.removeEventListener("keydown", ouvir);
   }, [infinito]);
 
+  const te = t.enviar;
+  const exportarCaderno = async (id: string): Promise<ArquivoPronto | null> => {
+    const alvo = id === "cadernoPdf" ? paginas : sel ? [sel] : [];
+    if (!alvo.length) return null;
+    // Tudo carregado? (cenas e imagens de cada página)
+    const faltaImagem = alvo.some((p) => (cenas[p.id]?.elementos ?? []).some((e) => e.tipo === "imagem" && !imagemUrl(e.anexoId)));
+    if (alvo.some((p) => !cenas[p.id]) || faltaImagem) { recado(te.carregando); return null; }
+    const medidas = await medirParaExportar(alvo.map((p) => p.id));
+    const sufixo = id === "cadernoPdf" ? "" : ` - ${t.posicao(indiceSel + 1, paginas.length)}`;
+    if (id === "paginaPng") {
+      const { gerarPng } = await import("../exportar/imagem");
+      const png = await gerarPng(medidas[0], 2);
+      return { nome: nomeDeArquivo(`${caderno.nome}${sufixo}`, "png"), tipo: "image/png", dados: png, filtro: { nome: "PNG", extensao: "png" } };
+    }
+    const { gerarPdf } = await import("../exportar/pdf");
+    const r = await gerarPdf(medidas, { titulo: caderno.nome });
+    return {
+      nome: nomeDeArquivo(`${caderno.nome}${sufixo}`, "pdf"), tipo: "application/pdf", dados: r.bytes, filtro: { nome: "PDF", extensao: "pdf" },
+      aviso: r.aproximadas.length ? te.aproximadas(r.aproximadas.join(", ")) : undefined,
+    };
+  };
+
   return (
     <div className="caderno-tela" style={temaCaderno.estilo}>
+      {exportando && (
+        <div ref={caixaExportar} className="caderno-exportar" aria-hidden="true">
+          {exportando.ids.map((id) => {
+            const p = paginas.find((x) => x.id === id);
+            return p ? <MiniaturaPagina key={id} pagina={p} cena={cenas[id]} imagemUrl={imagemUrl} largura={medidaDe(p.tamanho).largura} /> : null;
+          })}
+        </div>
+      )}
       {!telaLimpa && (
       <div className="leitor-barra caderno-barra-topo">
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
@@ -1848,6 +1913,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             <Button className={sel.marcado ? "botao-icone ativo" : "botao-icone"} onPress={() => void salvar({ ...sel, marcado: !sel.marcado })} aria-pressed={sel.marcado} aria-label={sel.marcado ? t.paginas.desmarcar : t.paginas.marcar}><Bookmark aria-hidden="true" size="1.1em" /></Button>
           )}
           {!infinito && <Button className="botao-icone" onPress={() => setAdicionando(true)} aria-label={t.adicionar.abrir}><FilePlus aria-hidden="true" size="1.1em" /></Button>}
+          {!infinito && paginas.length > 0 && <MenuEnviar opcoes={[{ id: "cadernoPdf", nome: te.cadernoPdf }, { id: "paginaPdf", nome: te.paginaPdf }, { id: "paginaPng", nome: te.paginaPng }]} aoEscolher={exportarCaderno} />}
           <Button className="botao-icone" onPress={() => setEditor(true)} aria-label={t.folha.abrir}><SlidersHorizontal aria-hidden="true" size="1.1em" /></Button>
           <Button className="botao-icone" onPress={() => setConfigAberta(true)} aria-label={t.config.abrir}><IconeEngrenagem aria-hidden="true" size="1.1em" /></Button>
         </span>
@@ -2097,7 +2163,7 @@ const MiniaturaPagina = memo(function MiniaturaPagina({ pagina, cena, imagemUrl,
   const els = cena?.elementos ?? [];
   return (
     <div className="caderno-mini" style={{ width: largura, height: Math.round(med.altura * k) }} aria-hidden="true">
-      <div className="caderno-mini-miolo" style={{ width: med.largura, height: med.altura, transform: `scale(${k})` }}>
+      <div className="caderno-mini-miolo" data-largura={med.largura} data-altura={med.altura} style={{ width: med.largura, height: med.altura, transform: `scale(${k})` }}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-mini-folha" />
         {cena?.documento && <DocumentoEstatico html={cena.documento} largura={med.largura} altura={med.altura} />}
         <svg className="caderno-mini-desenho" viewBox={`0 0 ${med.largura} ${med.altura}`} preserveAspectRatio="none">

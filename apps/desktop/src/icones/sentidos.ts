@@ -80,6 +80,7 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   Minus: "traço horizontal curto, sinal de menos",
   AlignJustify: "linhas de texto todas do mesmo comprimento, justificadas",
   Baseline: "letra A com uma linha grossa embaixo, cor do texto",
+  Share: "caixa aberta em cima com uma seta saindo para cima (compartilhar)",
   AlignCenter: "linhas de texto centralizadas",
   AlignRight: "linhas de texto alinhadas à direita",
   Ruler: "uma régua inclinada com marcas de medida",

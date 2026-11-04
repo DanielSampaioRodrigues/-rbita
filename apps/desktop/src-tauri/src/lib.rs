@@ -96,6 +96,7 @@ pub fn run() {
             comandos::fazer_backup,
             comandos::exportar_texto,
             comandos::listar_fontes_sistema,
+            comandos::exportar_arquivo,
             comandos::info_backup,
             comandos::restaurar_backup,
             comandos::situacao_backup,

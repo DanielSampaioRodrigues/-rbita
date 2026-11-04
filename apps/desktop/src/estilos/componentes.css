@@ -2057,3 +2057,7 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .estilo-item-texto .texto-suave { color: #4b5563; }
 .estilo-item-texto .estilo-item-nome { margin: 0 !important; font-size: min(1.4em, 20pt) !important; text-indent: 0 !important; }
 .estilo-item-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espaco-2); }
+
+/* Páginas desenhadas fora da tela para exportar (PDF e imagem). */
+.caderno-exportar { position: fixed; left: -100000px; top: 0; pointer-events: none; }
+.caderno-exportar .caderno-mini { border: 0; box-shadow: none; border-radius: 0; margin-bottom: 24px; }

@@ -572,6 +572,8 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     },
     // O navegador não lista as fontes: o editor confere uma lista conhecida (caderno/editor/fontes.ts).
     listarFontesSistema: async () => [],
+    // No navegador, o arquivo vai pelo Compartilhar ou é baixado (exportar/entregar.ts).
+    exportarArquivo: async () => {},
     exportarTexto: async (caminho, conteudo) => {
       baixar(nomeDe(caminho, "orbita-exportacao.txt"), new Blob([conteudo], { type: `${mimeDe(caminho)};charset=utf-8` }));
     },

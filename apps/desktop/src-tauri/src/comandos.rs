@@ -264,6 +264,17 @@ pub async fn exportar_texto(caminho: PathBuf, conteudo: String) -> Result<(), Er
     std::fs::write(&caminho, conteudo).map_err(Erro::from)
 }
 
+/// Grava um arquivo exportado (PDF, imagem, Word) no lugar escolhido pela pessoa.
+/// O conteúdo vem em base64 do frontend, que monta o arquivo.
+#[tauri::command]
+pub async fn exportar_arquivo(caminho: PathBuf, conteudo: String) -> Result<(), Erro> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(conteudo.as_bytes())
+        .map_err(|e| Erro::Interno(format!("arquivo exportado: {e}")))?;
+    std::fs::write(&caminho, bytes).map_err(Erro::from)
+}
+
 /// Nomes das fontes instaladas no computador (lista do editor de texto).
 #[tauri::command]
 pub async fn listar_fontes_sistema() -> Result<Vec<String>, Erro> {

@@ -17,6 +17,10 @@ import { FitaTexto } from "./editor/Fita";
 import { cabecalhoRodape, cm, CONJUNTOS, lerConfigDocumento, medidaDocumento, varsDoConjunto, type ConfigDocumento } from "./editor/estilos";
 import { extensoesBase } from "./editor/extensoes";
 import { useTemaCaderno } from "./temaCaderno";
+import { markdown, medirDocumento, textoSimples } from "../exportar/documento";
+import { MenuEnviar, type ArquivoPronto } from "../exportar/MenuEnviar";
+import { useMeusEstilos } from "./editor/meusEstilos";
+import { nomeDeArquivo } from "../exportar/entregar";
 
 const t = textos.caderno;
 const te = t.editor;
@@ -53,6 +57,16 @@ function EditorPaginado({ html, config, aoMudar, aoEditor }: { html: string; con
     },
   });
   useEffect(() => { aoEditor(editor); }, [editor, aoEditor]);
+  // A paginação mede o cabeçalho e o rodapé só depois que eles aparecem: pede uma
+  // medida nova logo depois de abrir (e quando as fontes terminam de carregar), para
+  // cada página ter a altura exata do papel.
+  useEffect(() => {
+    if (!editor) return;
+    const medir = () => { if (!editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta("addToHistory", false)); };
+    const t1 = setTimeout(medir, 120);
+    void document.fonts?.ready.then(() => setTimeout(medir, 0));
+    return () => clearTimeout(t1);
+  }, [editor]);
   useEffect(() => () => {
     clearTimeout(timer.current);
     if (editor && !editor.isDestroyed) aoMudarRef.current(editor.getHTML());
@@ -126,6 +140,26 @@ export function DocumentoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFec
     }, 600);
   };
   const vista = configTela ?? config;
+  const te2 = t.enviar;
+  const meusEstilos = useMeusEstilos();
+  const exportar = async (id: string): Promise<ArquivoPronto | null> => {
+    if (!editor || editor.isDestroyed) return null;
+    const html = editor.getHTML();
+    if (id === "txt") return { nome: nomeDeArquivo(caderno.nome, "txt"), tipo: "text/plain;charset=utf-8", dados: new Blob([textoSimples(html)], { type: "text/plain;charset=utf-8" }), filtro: { nome: "Texto", extensao: "txt" } };
+    if (id === "word") {
+      const { gerarDocx } = await import("../exportar/docx");
+      const blob = await gerarDocx(editor.getJSON(), config, meusEstilos, caderno.nome);
+      return { nome: nomeDeArquivo(caderno.nome, "docx"), tipo: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", dados: blob, filtro: { nome: "Word", extensao: "docx" } };
+    }
+    if (id === "md") return { nome: nomeDeArquivo(caderno.nome, "md"), tipo: "text/markdown;charset=utf-8", dados: new Blob([await markdown(html)], { type: "text/markdown;charset=utf-8" }), filtro: { nome: "Markdown", extensao: "md" } };
+    const { gerarPdf } = await import("../exportar/pdf");
+    const paginas = await medirDocumento(editor.view.dom as HTMLElement, medidaDocumento(config.tamanho));
+    const r = await gerarPdf(paginas, { titulo: caderno.nome });
+    return {
+      nome: nomeDeArquivo(caderno.nome, "pdf"), tipo: "application/pdf", dados: r.bytes, filtro: { nome: "PDF", extensao: "pdf" },
+      aviso: r.aproximadas.length ? te2.aproximadas(r.aproximadas.join(", ")) : undefined,
+    };
+  };
   const vars = varsDoConjunto(CONJUNTOS[config.conjunto]) as React.CSSProperties;
   // O editor é refeito só quando a página muda de verdade (tamanho, margens, cabeçalho...).
   const chave = JSON.stringify(config);
@@ -135,6 +169,7 @@ export function DocumentoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFec
       <div className="leitor-barra caderno-barra-topo">
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
         <strong className="leitor-titulo quebra"><FileText aria-hidden="true" size="1em" /> {caderno.nome}</strong>
+        <MenuEnviar opcoes={[{ id: "pdf", nome: te2.pdf }, { id: "word", nome: te2.word }, { id: "txt", nome: te2.txt }, { id: "md", nome: te2.md }]} aoEscolher={exportar} />
         <span className="linha-ajuste">
           <Button className="botao-icone" onPress={() => mudarZoom(zoom - 0.1)} aria-label={te.zoomMenos} isDisabled={zoom <= 0.5}><Minus aria-hidden="true" size="1.1em" /></Button>
           <Button className="botao pequeno caderno-zoom" onPress={() => mudarZoom(1)} aria-label={t.zoom.voltar(Math.round(zoom * 100))}>{Math.round(zoom * 100)}%</Button>
