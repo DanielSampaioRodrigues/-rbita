@@ -2118,3 +2118,7 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .painel-bib-trecho { display: block; width: 100%; padding: 8px; border-radius: 6px; background: #fff; color: #1f2937; font-size: 0.85rem; line-height: 1.4; }
 .painel-bib-nome { margin: 0; overflow-wrap: anywhere; }
 .caderno-painel:has(.painel-bib) { width: 300px; }
+
+/* Referência bibliográfica (ABNT: à esquerda, espaço simples, linha em branco entre elas). */
+.doc-conteudo p[data-estilo="referencia"] { text-align: left; text-indent: 0; line-height: 1.15; margin: 0 0 1em; }
+.referencia-busca { flex: 1; min-width: 12rem; }

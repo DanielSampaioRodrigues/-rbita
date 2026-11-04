@@ -10,6 +10,18 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@citation-js/core':
+        specifier: 0.9.0
+        version: 0.9.0
+      '@citation-js/plugin-csl':
+        specifier: 0.9.0
+        version: 0.9.0(@citation-js/core@0.9.0)
+      '@citation-js/plugin-doi':
+        specifier: 0.9.0
+        version: 0.9.0(@citation-js/core@0.9.0)
+      '@citation-js/plugin-isbn':
+        specifier: 0.5.0
+        version: 0.5.0(@citation-js/core@0.9.0)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -295,6 +307,36 @@ packages:
   '@bramus/specificity@2.4.3':
     resolution: {integrity: sha512-0GEz8qJWokkUVYQYRukmkSHIFNoBH8QTreeHrAFbvz1XFYc3Y+puhMs8PQ5x8GNugiC2l5jvDBXKLbBIByeSBw==}
     hasBin: true
+
+  '@citation-js/core@0.9.0':
+    resolution: {integrity: sha512-IIIfDFirx8B7eYiYIg412If3WVJAefJUS7IsAnkW3YSuThHK4fW9Ibog6wCqmT6pfXW1VM9wfGPFvO2J5k859A==}
+    engines: {node: '>=22.12.0'}
+
+  '@citation-js/date@0.5.1':
+    resolution: {integrity: sha512-1iDKAZ4ie48PVhovsOXQ+C6o55dWJloXqtznnnKy6CltJBQLIuLLuUqa8zlIvma0ZigjVjgDUhnVaNU1MErtZw==}
+    engines: {node: '>=10.0.0'}
+
+  '@citation-js/name@0.4.2':
+    resolution: {integrity: sha512-brSPsjs2fOVzSnARLKu0qncn6suWjHVQtrqSUrnqyaRH95r/Ad4wPF5EsoWr+Dx8HzkCGb/ogmoAzfCsqlTwTQ==}
+    engines: {node: '>=6'}
+
+  '@citation-js/plugin-csl@0.9.0':
+    resolution: {integrity: sha512-P0uxGr/rE9LaT5mY0T+Xh6JqDc+rdA7U3HDR/tLkiJ1ITRszQVhV9wBaOLc7vwCD+vuwh+m0Bha13hlgZEB7Ng==}
+    engines: {node: '>=22.12.0'}
+    peerDependencies:
+      '@citation-js/core': ^0.9.0
+
+  '@citation-js/plugin-doi@0.9.0':
+    resolution: {integrity: sha512-X82nWiv9G6BTQN0oo1lpzaVa1MKKr8nkJNvcNrWBz0unRJ303CoDf8KHvzKjHjd6gJFe/XiM9em+eAHYyneBjQ==}
+    engines: {node: '>=22.12.0'}
+    peerDependencies:
+      '@citation-js/core': ^0.9.0
+
+  '@citation-js/plugin-isbn@0.5.0':
+    resolution: {integrity: sha512-rcsSi7edCYZjeUwHK0FUyLfTcdE+s9FCqaV1YrDU03uKDlNC6WApfsrA782+cFpDrLhskRxu2pEpLdNL2WYc6Q==}
+    engines: {node: '>=22.12.0'}
+    peerDependencies:
+      '@citation-js/core': '>=0.9.0'
 
   '@csstools/color-helpers@6.1.2':
     resolution: {integrity: sha512-grhRy3OKmniaAEKXMjua5z/EODX0MSqBGjunw8+j/3HQjOnahs2AGhvEOIYVUWcU6ScApbhLhVrQTX8XqrMrow==}
@@ -1168,6 +1210,9 @@ packages:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
     engines: {node: '>=18'}
 
+  citeproc@2.4.63:
+    resolution: {integrity: sha512-68F95Bp4UbgZU/DBUGQn0qV3HDZLCdI9+Bb2ByrTaNJDL5VEm9LqaiNaxljsvoaExSLEXe1/r6n2Z06SCzW3/Q==}
+
   client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
 
@@ -1576,6 +1621,10 @@ packages:
   string_decoder@1.1.1:
     resolution: {integrity: sha512-n/ShnvDi6FHbbVfviro+WojiFzv+s8MPMHBczVePfUpDJLwoLT0ht1l4YwBCbi8pJAveEEdnkHyPyTP/mzRfwg==}
 
+  sync-fetch-undici@0.7.1:
+    resolution: {integrity: sha512-t/rJBTRr3/WCs/04MnLStgGGFac1Ge6WDugNxO+KoMqtfmWENMPJbtAmGqIWnwsXi+B7Uh0P0ea2QRkKIZTIPg==}
+    engines: {node: '>=22.12.0'}
+
   tinybench@6.2.2:
     resolution: {integrity: sha512-nIZ2N2dFpjBsg2hgitKu7mA+FvsIJuGJOwysRngmVRRmWgR/UyPjwJj8c/fT/dhm8EkHnF5EOogRf+0Z2qrimA==}
     engines: {node: '>=20.0.0'}
@@ -1787,6 +1836,33 @@ snapshots:
   '@bramus/specificity@2.4.3':
     dependencies:
       css-tree: 3.2.1
+
+  '@citation-js/core@0.9.0':
+    dependencies:
+      '@citation-js/date': 0.5.1
+      '@citation-js/name': 0.4.2
+      sync-fetch-undici: 0.7.1
+
+  '@citation-js/date@0.5.1': {}
+
+  '@citation-js/name@0.4.2': {}
+
+  '@citation-js/plugin-csl@0.9.0(@citation-js/core@0.9.0)':
+    dependencies:
+      '@citation-js/core': 0.9.0
+      '@citation-js/date': 0.5.1
+      citeproc: 2.4.63
+
+  '@citation-js/plugin-doi@0.9.0(@citation-js/core@0.9.0)':
+    dependencies:
+      '@citation-js/core': 0.9.0
+      '@citation-js/date': 0.5.1
+
+  '@citation-js/plugin-isbn@0.5.0(@citation-js/core@0.9.0)':
+    dependencies:
+      '@citation-js/core': 0.9.0
+      '@citation-js/date': 0.5.1
+      '@citation-js/name': 0.4.2
 
   '@csstools/color-helpers@6.1.2': {}
 
@@ -2479,6 +2555,8 @@ snapshots:
 
   chai@6.3.0: {}
 
+  citeproc@2.4.63: {}
+
   client-only@0.0.1: {}
 
   clsx@2.1.1: {}
@@ -2941,6 +3019,10 @@ snapshots:
   string_decoder@1.1.1:
     dependencies:
       safe-buffer: 5.1.2
+
+  sync-fetch-undici@0.7.1:
+    dependencies:
+      whatwg-mimetype: 5.0.0
 
   tinybench@6.2.2: {}
 

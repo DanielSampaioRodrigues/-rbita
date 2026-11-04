@@ -14,6 +14,7 @@ import { textos } from "../../textos/pt-BR";
 import { CONJUNTOS, lerPt, MARGENS, ocorrencias, type ConfigDocumento, type ConjuntoEstilo, type EstiloParagrafo } from "./estilos";
 import { aplicarCaixa, type Caixa } from "./maiusculas";
 import { JanelaEstilo, JanelaMeusEstilos } from "./JanelaEstilos";
+import { JanelaReferencia } from "./JanelaReferencia";
 import { aplicarMeuEstilo, ESTILO_VAZIO, estiloDoParagrafo, salvarEstilo, useMeusEstilos, type EstiloProprio } from "./meusEstilos";
 import { SeletorFonte } from "./SeletorFonte";
 
@@ -118,6 +119,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
   const meuAtual = meus.find((m) => m.id === e.meuEstilo);
   const [novoEstilo, setNovoEstilo] = useState<(Omit<EstiloProprio, "id"> & { id?: string }) | null>(null);
   const [verEstilos, setVerEstilos] = useState(false);
+  const [referencia, setReferencia] = useState(false);
   const noAtual = () => {
     const { $from } = editor.state.selection;
     return { no: $from.parent, alinhamento: (editor.getAttributes($from.parent.type.name).textAlign as string | null) ?? null };
@@ -343,6 +345,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
                 </Popover>
               </MenuTrigger>
               <button type="button" className="fita-botao largo" onClick={() => c().insertContent(new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })).run()}><Plus size="1.05em" aria-hidden="true" /> {t.data}</button>
+              <button type="button" className="fita-botao largo" onClick={() => setReferencia(true)}><Quote size="1.05em" aria-hidden="true" /> {t.referencia.botao}</button>
             </span>
           </>
         )}
@@ -413,6 +416,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
       )}
       <JanelaEstilo inicial={novoEstilo} aberta={!!novoEstilo} aoFechar={() => setNovoEstilo(null)} aoSalvar={(m) => aplicarMeuEstilo(editor, m)} />
       <JanelaMeusEstilos aberta={verEstilos} aoFechar={() => setVerEstilos(false)} />
+      <JanelaReferencia editor={editor} aberta={referencia} aoFechar={() => setReferencia(false)} normaInicial={config?.conjunto === "apa" ? "apa" : "abnt"} />
     </div>
   );
 }

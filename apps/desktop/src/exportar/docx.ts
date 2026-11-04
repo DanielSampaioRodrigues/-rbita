@@ -97,6 +97,8 @@ export async function gerarDocx(json: JSONContent, config: ConfigDocumento, esti
     const base: Record<string, unknown> = {};
     if (a.estilo === "subtitulo") { base.size = Math.round(conj.tamanho * 1.25 * 2); base.color = "4B5563"; }
     if (a.estilo === "legenda") { base.size = Math.round(conj.tamanho * 0.85 * 2); base.italics = true; o.alignment ??= AlignmentType.CENTER; }
+    // Referência (ABNT): alinhada à esquerda, espaço simples, sem recuo, uma linha em branco depois.
+    if (a.estilo === "referencia") { o.alignment = AlignmentType.LEFT; o.indent = { firstLine: 0 }; o.spacing = { line: 240, after: 240 }; }
     if (a.estilo === "destaque") o.shading = { type: ShadingType.CLEAR, color: "auto", fill: "EEF6F6" };
     o.children = await runs(n.content, base);
     return new Paragraph(o as ConstructorParameters<typeof Paragraph>[0]);
