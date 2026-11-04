@@ -23,8 +23,8 @@ export interface DadosConjunto {
 }
 export interface Margens { topo: number; baixo: number; esquerda: number; direita: number }
 
-const SERIFA = '"Times New Roman", Times, "Liberation Serif", serif';
-const SEM_SERIFA = 'Arial, "Helvetica Neue", "Liberation Sans", sans-serif';
+const SERIFA = '"Times New Roman", Times, Tinos, serif';
+const SEM_SERIFA = 'Arial, Helvetica, Arimo, sans-serif';
 
 /** cm → px a 96 dpi. */
 export const cm = (n: number) => Math.round((n * 96) / 2.54);
@@ -43,7 +43,7 @@ export const CONJUNTOS: Record<ConjuntoEstilo, DadosConjunto> = {
   abnt: { fonte: SERIFA, tamanho: 12, entrelinha: 1.5, recuoPrimeira: 1.25, espacoDepois: 0, alinhamento: "justify", titulosMaiusculos: true, margens: MARGENS.abnt },
   // APA 7: fonte legível 12, espaço duplo, recuo de 1,27 cm, alinhado à esquerda.
   apa: { fonte: SERIFA, tamanho: 12, entrelinha: 2, recuoPrimeira: 1.27, espacoDepois: 0, alinhamento: "left", titulosMaiusculos: false, margens: { topo: 2.54, baixo: 2.54, esquerda: 2.54, direita: 2.54 } },
-  classico: { fonte: '"Georgia", "Times New Roman", serif', tamanho: 12, entrelinha: 1.45, recuoPrimeira: 0.75, espacoDepois: 0.3, alinhamento: "justify", titulosMaiusculos: false, margens: MARGENS.normal },
+  classico: { fonte: 'Georgia, Gelasio, "Times New Roman", serif', tamanho: 12, entrelinha: 1.45, recuoPrimeira: 0.75, espacoDepois: 0.3, alinhamento: "justify", titulosMaiusculos: false, margens: MARGENS.normal },
   moderno: { fonte: SEM_SERIFA, tamanho: 11, entrelinha: 1.5, recuoPrimeira: 0, espacoDepois: 0.8, alinhamento: "left", titulosMaiusculos: false, fonteTitulos: SEM_SERIFA, margens: MARGENS.normal },
   // Leitura confortável (dislexia e leitura longa): fonte do app, letra maior, mais espaço.
   leitura: { fonte: "", tamanho: 14, entrelinha: 1.8, recuoPrimeira: 0, espacoDepois: 1, alinhamento: "left", titulosMaiusculos: false, margens: MARGENS.normal },

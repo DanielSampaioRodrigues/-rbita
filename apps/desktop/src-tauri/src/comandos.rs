@@ -264,6 +264,14 @@ pub async fn exportar_texto(caminho: PathBuf, conteudo: String) -> Result<(), Er
     std::fs::write(&caminho, conteudo).map_err(Erro::from)
 }
 
+/// Nomes das fontes instaladas no computador (lista do editor de texto).
+#[tauri::command]
+pub async fn listar_fontes_sistema() -> Result<Vec<String>, Erro> {
+    tauri::async_runtime::spawn_blocking(crate::fontes::familias_do_sistema)
+        .await
+        .map_err(|e| Erro::Interno(e.to_string()))
+}
+
 #[tauri::command]
 pub async fn info_backup(caminho: PathBuf) -> Result<backup::Informacao, Erro> {
     backup::informacao(&caminho)

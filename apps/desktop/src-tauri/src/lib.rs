@@ -6,6 +6,7 @@ mod cofre;
 mod comandos;
 mod ditado;
 mod erro;
+mod fontes;
 mod hello;
 mod ia;
 mod nuvem;
@@ -94,6 +95,7 @@ pub fn run() {
             comandos::bloquear,
             comandos::fazer_backup,
             comandos::exportar_texto,
+            comandos::listar_fontes_sistema,
             comandos::info_backup,
             comandos::restaurar_backup,
             comandos::situacao_backup,

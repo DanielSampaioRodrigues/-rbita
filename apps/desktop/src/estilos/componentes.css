@@ -2007,3 +2007,20 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-caixa-area ul[data-type="taskList"] { list-style: none; padding-left: 0.2em; }
 .caderno-caixa-area ul[data-type="taskList"] li { display: flex; gap: 0.4em; }
 .caderno-caixa-area p[data-estilo="destaque"] { padding: 0.3em 0.5em; border-left: 3px solid #2e7a80; background: #eef6f6; }
+
+/* Seletor de fonte do editor: nome escrito na própria fonte, lista com busca e grupos. */
+.fita-fonte { display: inline-flex; align-items: center; justify-content: space-between; gap: 0.4rem; width: 13rem; cursor: pointer; text-align: left; }
+.fita-fonte-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; }
+.fita-fontes { width: min(22rem, calc(100vw - 1.5rem)); padding: 0; }
+.fita-fontes-dialogo { display: flex; flex-direction: column; max-height: min(30rem, 70vh); outline: none; }
+.fita-fontes-busca { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--cor-borda); color: var(--cor-texto-suave); }
+.fita-fontes-busca .entrada-texto { flex: 1; min-height: 38px; }
+.fita-fontes-busca input::-webkit-search-cancel-button { display: none; }
+.fita-fontes-lista { overflow-y: auto; overscroll-behavior: contain; padding: 0.3rem; outline: none; flex: 1; }
+.fita-fontes-titulo { position: sticky; top: -0.3rem; z-index: 1; padding: 0.55rem 0.6rem 0.3rem; background: var(--cor-superficie); color: var(--cor-texto-suave); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.fita-fonte-item { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; }
+.fita-fonte-amostra { font-size: 1.1rem; line-height: 1.25; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fita-fonte-nota { font-size: 0.75rem; color: var(--cor-texto-suave); white-space: nowrap; }
+.fita-fonte-item[data-focused] .fita-fonte-nota { color: var(--cor-texto); }
+.fita-fontes-vazio { padding: 0.8rem; color: var(--cor-texto-suave); }
+.fita-fontes-computador { margin: 0.4rem 0.7rem 0.7rem; }

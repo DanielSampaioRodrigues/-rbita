@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { aplicarFundo } from "./fundo";
 // Arquivos das fontes extras (Inter, Nunito, Literata...): só baixados quando a fonte é escolhida.
 import "./fontes/extras.css";
+import "./fontes/documento.css";
 import { fundoPendente } from "./imagensFundo";
 import { definirEstiloIcones } from "./icones";
 import {

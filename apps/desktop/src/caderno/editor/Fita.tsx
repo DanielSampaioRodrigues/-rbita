@@ -10,9 +10,10 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, ChevronDown, Highlighter, ImagePlus, Italic, Link2, List, ListChecks, ListOrdered,
   Minus, Plus, Quote, Redo2, Search, Strikethrough, Table, Underline, Undo2, X,
 } from "../../icones";
-import { FONTES } from "../../preferencias";
 import { textos } from "../../textos/pt-BR";
 import { CONJUNTOS, MARGENS, ocorrencias, type ConfigDocumento, type ConjuntoEstilo, type EstiloParagrafo } from "./estilos";
+import { aplicarCaixa, type Caixa } from "./maiusculas";
+import { SeletorFonte } from "./SeletorFonte";
 
 const t = textos.caderno.editor;
 
@@ -20,16 +21,6 @@ const TAMANHOS = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 60, 72];
 const CORES_TEXTO = ["#1f2937", "#6b7280", "#991b1b", "#dc2626", "#c2410c", "#ca8a04", "#15803d", "#0f766e", "#0e7490", "#1d4ed8", "#4338ca", "#7e22ce", "#be185d", "#ffffff"];
 const CORES_MARCA = ["#fef08a", "#fde68a", "#bbf7d0", "#a7f3d0", "#bae6fd", "#c7d2fe", "#fbcfe8", "#fed7aa", "#e9d5ff", "#e5e7eb"];
 const ENTRELINHAS = ["1", "1.15", "1.5", "2", "2.5", "3"];
-/** Fontes do documento: as do app e as clássicas de trabalho acadêmico. */
-const FONTES_DOC: { chave: string; nome: string; css: string }[] = [
-  { chave: "times", nome: "Times New Roman", css: '"Times New Roman", Times, "Liberation Serif", serif' },
-  { chave: "arial", nome: "Arial", css: 'Arial, "Helvetica Neue", "Liberation Sans", sans-serif' },
-  { chave: "georgia", nome: "Georgia", css: 'Georgia, "Times New Roman", serif' },
-  { chave: "verdana", nome: "Verdana", css: "Verdana, Geneva, sans-serif" },
-  { chave: "mono", nome: "Monoespaçada", css: '"Courier New", ui-monospace, monospace' },
-  ...Object.entries(FONTES).map(([chave, f]) => ({ chave, nome: f.nome, css: f.css })),
-];
-
 type Aba = "inicio" | "inserir" | "pagina" | "revisar";
 
 /** Botão pequeno da barra (ícone com nome). */
@@ -98,7 +89,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
       const palavras = (texto.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) ?? []).length;
       return {
         estilo, b: ed.isActive("bold"), i: ed.isActive("italic"), u: ed.isActive("underline"), s: ed.isActive("strike"),
-        sobre: ed.isActive("superscript"), sub: ed.isActive("subscript"),
+        sobre: ed.isActive("superscript"), sub: ed.isActive("subscript"), versalete: ed.isActive("versalete"),
         lista: ed.isActive("bulletList"), numerada: ed.isActive("orderedList"), tarefas: ed.isActive("taskList"),
         alinhar: (["left", "center", "right", "justify"] as const).find((a) => ed.isActive({ textAlign: a })) ?? "left",
         fonte: (ts.fontFamily as string | undefined) ?? "", tamanho: (ts.fontSize as string | undefined) ?? "", cor: (ts.color as string | undefined) ?? "",
@@ -173,7 +164,6 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
     setAchados(t.revisar.trocados(ps.length));
   };
 
-  const fonteAtual = FONTES_DOC.find((f) => f.css === e.fonte)?.chave ?? "";
   const abas: { id: Aba; nome: string }[] = [
     { id: "inicio", nome: t.abas.inicio }, { id: "inserir", nome: t.abas.inserir },
     ...(config && !compacta ? [{ id: "pagina" as Aba, nome: t.abas.pagina }] : []),
@@ -197,13 +187,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
             <select className="fita-select largo" aria-label={t.estilo} value={e.estilo} onChange={(ev) => aplicarEstilo(ev.target.value as EstiloParagrafo)}>
               {(Object.keys(t.estilos) as EstiloParagrafo[]).map((k) => <option key={k} value={k}>{t.estilos[k]}</option>)}
             </select>
-            <select className="fita-select largo" aria-label={t.fonte} value={fonteAtual} onChange={(ev) => {
-              const f = FONTES_DOC.find((x) => x.chave === ev.target.value);
-              if (f) c().setFontFamily(f.css).run(); else c().unsetFontFamily().run();
-            }}>
-              <option value="">{t.fontePadrao}</option>
-              {FONTES_DOC.map((f) => <option key={f.chave} value={f.chave}>{f.nome}</option>)}
-            </select>
+            <SeletorFonte atual={e.fonte} aoEscolher={(css) => (css ? c().setFontFamily(css).run() : c().unsetFontFamily().run())} />
             <span className="fita-grupo">
               <B rotulo={t.diminuir} texto="A−" acao={() => mudarTamanho(-1)} />
               <select className="fita-select curto" aria-label={t.tamanho} value={tamanhoAtual ? String(tamanhoAtual) : ""} onChange={(ev) => {
@@ -222,6 +206,26 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
               <B rotulo={t.tachado} icone={Strikethrough} ativo={e.s} acao={() => c().toggleStrike().run()} />
               <B rotulo={t.sobrescrito} texto="x²" ativo={e.sobre} acao={() => c().toggleSuperscript().run()} />
               <B rotulo={t.subscrito} texto="x₂" ativo={e.sub} acao={() => c().toggleSubscript().run()} />
+              <MenuTrigger>
+                <Button className={e.versalete ? "fita-botao ativo" : "fita-botao"} aria-label={t.caixa.titulo}>
+                  <span className="fita-botao-texto" aria-hidden="true">Aa</span>
+                </Button>
+                <Popover className="menu-popover" placement="bottom">
+                  <Menu className="menu-lista" aria-label={t.caixa.titulo} onAction={(k) => {
+                    if (k === "versalete") c().toggleMark("versalete").run();
+                    else aplicarCaixa(editor, k as Caixa);
+                  }}>
+                    <MenuItem id="frase" className="menu-item">{t.caixa.frase}</MenuItem>
+                    <MenuItem id="minusculas" className="menu-item">{t.caixa.minusculas}</MenuItem>
+                    <MenuItem id="maiusculas" className="menu-item">{t.caixa.maiusculas}</MenuItem>
+                    <MenuItem id="iniciais" className="menu-item">{t.caixa.iniciais}</MenuItem>
+                    <MenuItem id="inverter" className="menu-item">{t.caixa.inverter}</MenuItem>
+                    <MenuItem id="versalete" className="menu-item" textValue={t.caixa.versalete}>
+                      <span style={{ fontVariant: "small-caps" }}>{t.caixa.versalete}</span>{e.versalete ? " ✓" : ""}
+                    </MenuItem>
+                  </Menu>
+                </Popover>
+              </MenuTrigger>
               <MenuCores rotulo={t.cor} icone={Baseline} cores={CORES_TEXTO} atual={e.cor} semNome={t.corPadrao} aoEscolher={(k) => c().setColor(k).run()} aoTirar={() => c().unsetColor().run()} />
               <MenuCores rotulo={t.marcaTexto} icone={Highlighter} cores={CORES_MARCA} atual={e.marca} semNome={t.semMarca} aoEscolher={(k) => c().setHighlight({ color: k }).run()} aoTirar={() => c().unsetHighlight().run()} />
               <B rotulo={t.limpar} texto="T×" acao={() => c().unsetAllMarks().updateAttributes("paragraph", { estilo: null, entrelinha: null }).run()} />

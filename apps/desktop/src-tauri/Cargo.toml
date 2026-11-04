@@ -39,6 +39,8 @@ sha1 = "0.10"
 # Comprime o retrato da sincronização (puro Rust, compila também para o navegador).
 miniz_oxide = "0.8"
 base64 = "0.22"
+# Lista as fontes instaladas no computador (para o editor de texto). Só lê os nomes.
+fontdb = { version = "0.24", default-features = false, features = ["std", "fs", "memmap", "fontconfig"] }
 
 [target.'cfg(any(windows, target_os = "macos", target_os = "linux"))'.dependencies]
 tauri-plugin-global-shortcut = "2.4"
