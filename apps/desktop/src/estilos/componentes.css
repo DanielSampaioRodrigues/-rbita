@@ -2131,6 +2131,15 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .fontes-livros { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .fontes-livros .botao { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; }
 
+/* ---------- Conectores (Classroom) ---------- */
+.menu-cabecalho { padding: 6px 12px 2px; font-size: 0.8rem; font-weight: 650; color: var(--cor-texto-suave); }
+.classroom-grupo { margin: 12px 0 6px; font-size: 0.95rem; }
+.classroom-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.classroom-tarefa { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--cor-borda); border-radius: 10px; }
+.classroom-sobre { display: grid; gap: 2px; }
+.classroom-titulo { font-weight: 650; overflow-wrap: anywhere; }
+.classroom-passos ol { margin: 0 0 8px; padding-left: 1.4em; display: grid; gap: 6px; line-height: 1.5; }
+
 /* ---------- Biblioteca do caderno ---------- */
 .painel-bib { display: grid; gap: 10px; padding: 10px 12px 16px; align-content: start; }
 .painel-bib-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }

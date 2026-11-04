@@ -741,6 +741,12 @@ export interface ProvedorVisivel extends Provedor {
 }
 
 /** Resposta da IA do caderno: HTML simples (a tela limpa de novo antes de mostrar). */
+export interface SituacaoConector {
+  conta: string;
+  /** As permissões que a pessoa deixou marcadas no Google. */
+  escopos: string;
+}
+
 export interface PlanoIaCaderno {
   /** Uma ou duas frases dizendo o que a IA fez (ou a resposta, se era só pergunta). */
   resposta: string;
@@ -1080,6 +1086,16 @@ export interface Api {
   iaCaderno(pedido: string, contexto: string, imagens: string[], sensivel: boolean): Promise<RespostaIaCaderno>;
   /** IA com liberdade no caderno: recebe a descrição (JSON) e devolve o plano de mudanças. A tela confere e aplica. */
   iaCadernoAgir(pedido: string, descricao: string, imagens: string[], sensivel: boolean, fontes?: string): Promise<PlanoIaCaderno>;
+  /** Conectores (Windows): a conta Google ligada a Drive, Docs e Classroom (à parte da sincronização). */
+  conectorGoogleSituacao(): Promise<SituacaoConector | null>;
+  /** Abre o navegador para autorizar; `escopos` separados por espaço. */
+  conectorGoogleEntrar(escopos: string): Promise<SituacaoConector>;
+  conectorGoogleToken(): Promise<{ token: string; expiraEm: number; escopos: string }>;
+  conectorGoogleSair(): Promise<void>;
+  /** Zotero aberto neste computador (só leitura). `caminho` começa com /api/users/0/. */
+  zoteroLocal(caminho: string): Promise<string>;
+  /** Abre no navegador um endereço do Classroom, Drive, Docs ou Zotero. */
+  abrirEndereco(url: string): Promise<void>;
   /** Fontes do caderno: responde usando só os trechos (com etiquetas [F2 p.14]). */
   iaFontes(pedido: string, trechos: string, sensivel: boolean): Promise<RespostaIaCaderno>;
   revisarTextoIa(texto: string, sensivel: boolean, modo?: ModoReescrita, instrucao?: string): Promise<string>;
@@ -1375,6 +1391,12 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   iaCaderno: (pedido, contexto, imagens, sensivel) => chamar("ia_caderno", { pedido, contexto, imagens, sensivel }),
   iaCadernoAgir: (pedido, descricao, imagens, sensivel, fontes) => chamar("ia_caderno_agir", { pedido, descricao, imagens, sensivel, fontes: fontes ?? "" }),
   iaFontes: (pedido, trechos, sensivel) => chamar("ia_fontes", { pedido, trechos, sensivel }),
+  conectorGoogleSituacao: () => chamar("conector_google_situacao"),
+  conectorGoogleEntrar: (escopos) => chamar("conector_google_entrar", { escopos }),
+  conectorGoogleToken: () => chamar("conector_google_token"),
+  conectorGoogleSair: () => chamar("conector_google_sair"),
+  zoteroLocal: (caminho) => chamar("zotero_local", { caminho }),
+  abrirEndereco: (url) => chamar("abrir_endereco", { url }),
   conferirEscritaIa: (imagem, quantas, sensivel) => chamar("conferir_escrita_ia", { imagem, quantas, sensivel }),
   ditadoEstado: () => chamar("ditado_estado"),
   ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
@@ -2638,6 +2660,12 @@ function simularLeitura() {
 /** Simulação para ver as telas no navegador. Nada aqui é seguro nem guardado. */
 const semSincronia = (): Promise<never> => Promise.reject(new ErroOrbita("interno", "A sincronização não existe na simulação."));
 
+/** Itens de exemplo do Zotero (simulação), em CSL JSON. */
+const ZOTERO_DE_EXEMPLO = [
+  { id: "z1", type: "book", title: "Funções executivas e aprendizagem", author: [{ family: "Malloy-Diniz", given: "Leandro F." }], issued: { "date-parts": [[2018]] }, publisher: "Artmed", "publisher-place": "Porto Alegre" },
+  { id: "z2", type: "article-journal", title: "Working memory: looking back and looking forward", author: [{ family: "Baddeley", given: "Alan" }], issued: { "date-parts": [[2003]] }, "container-title": "Nature Reviews Neuroscience", volume: "4", issue: "10", page: "829-839", DOI: "10.1038/nrn1201" },
+];
+
 function criarSimulacao(): Api {
   const PALAVRAS = ["jardim", "girafa", "pipoca", "abacate", "orvalho", "tijolo"];
   const s = { existe: false, modo: null as ModoAbrir | null, senha: "", pin: "", erradas: 0, aberto: false };
@@ -2664,8 +2692,16 @@ function criarSimulacao(): Api {
     if (conf.tipo === "palavras") await conferir(conf.valor);
   };
   if (params.get("aberto")) s.aberto = true;
+  let conector: SituacaoConector | null = null;
   return {
     situacao: async () => ({ existe: s.existe, modo: s.modo, tentativasRestantes: 5 - s.erradas, aberto: s.aberto, temSenha: !!s.senha }),
+    // Conectores na simulação: a conta "liga" na hora; Drive e Classroom são de mentira (conectores/simulacao.ts).
+    conectorGoogleSituacao: async () => conector,
+    conectorGoogleEntrar: async (escopos) => { await espera(); conector = { conta: "estudante@exemplo.com", escopos }; return conector; },
+    conectorGoogleToken: async () => { if (!conector) throw new ErroOrbita("nuvem", "Nenhuma conta Google ligada aos conectores."); return { token: "simulado", expiraEm: Date.now() + 3_600_000, escopos: conector.escopos }; },
+    conectorGoogleSair: async () => { conector = null; },
+    zoteroLocal: async (caminho) => { await espera(); return JSON.stringify({ items: ZOTERO_DE_EXEMPLO.filter((i) => !/q=/.test(caminho) || JSON.stringify(i).toLowerCase().includes(decodeURIComponent(/q=([^&]*)/.exec(caminho)?.[1] ?? "").toLowerCase())) }); },
+    abrirEndereco: async (url) => { globalThis.open?.(url, "_blank", "noopener"); },
     criarCofre: async (senha, modo, pin) => {
       await espera();
       Object.assign(s, { existe: true, modo, senha: senha ?? "", pin: pin ?? "", aberto: true });

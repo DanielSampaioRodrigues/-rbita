@@ -92,3 +92,40 @@ Igual ao que você fez com a chave das atualizações.
 ### Por que esses códigos não são perigosos como a chave das atualizações
 
 Eles só dizem "este é o app Órbita". Não dão acesso a nenhuma conta: quem entra é sempre a própria pessoa, no site do Google ou da Microsoft, e ela vê exatamente o que o Órbita pede (só a pasta do app). Mesmo assim, ficam nos segredos do GitHub e não no código, por organização.
+
+---
+
+## Parte 5: Drive, Docs e Classroom (conectores, uns 10 minutos)
+
+Vale para o Windows e para o iPad (usa o mesmo projeto **Órbita** do Google e as mesmas chaves das Partes 2 e 4; não precisa de código novo no GitHub).
+
+### 5.1 Ligar o Classroom
+1. Abra **console.cloud.google.com** com o projeto **Órbita** selecionado no alto.
+2. No menu (☰), vá em **APIs e serviços > Biblioteca**.
+3. Procure **Google Classroom API**, abra e clique em **Ativar**.
+4. (O **Google Drive API** já está ativado desde a Parte 2.)
+
+### 5.2 Acrescentar as permissões
+1. Vá em **Google Auth Platform > Acesso a dados** (ou "Tela de consentimento OAuth > Escopos") > **Adicionar ou remover escopos**.
+2. Marque estes três, além dos que já estão (dá para buscar pelo nome), e salve:
+   - `.../auth/drive.file` (o Órbita só vê os arquivos que ele mesmo põe no Drive)
+   - `.../auth/classroom.courses.readonly` (ver as turmas)
+   - `.../auth/classroom.coursework.me.readonly` (ver as suas tarefas, os prazos e se já entregou)
+3. Os dois do Classroom são do tipo que o Google chama de "sensível". Enquanto o Google não analisar o Órbita, **na hora de ligar a conta** aparece a tela "O Google não verificou este app". Para seguir: clique em **Avançado** e depois em **Acessar Órbita (não seguro)**. É o seu próprio app; isso só aparece ao ligar os conectores, não na sincronização.
+4. Sem a análise do Google, até 100 pessoas podem ligar o Classroom. Para lançar o Órbita para todo mundo, depois é preciso pedir a análise (Google Auth Platform > **Central de verificação**: um vídeo curto mostrando o uso e a política de privacidade). Isso fica para a Onda 4.
+
+### 5.3 Testar
+1. Abra o Órbita, vá em **Ajustes > Contas conectadas** e clique em **Ligar a conta Google**.
+2. O navegador abre a tela do Google. Escolha a conta **da faculdade** (a do Classroom).
+3. Deixe **marcadas** as três opções (Drive e as duas do Classroom) e clique em **Continuar**.
+4. No Órbita deve aparecer "Ligado a (seu e-mail)". Clique em **Ver as tarefas do Classroom**: devem aparecer as tarefas das suas turmas, com os prazos.
+5. Mande para o Claude um print dessa janela (pode cobrir os nomes) ou a mensagem de erro, se aparecer.
+
+### Se a conta da faculdade não deixar
+Contas de faculdade (Google Workspace for Education) seguem as regras do administrador de TI. Se aparecer "Acesso bloqueado" ou "Seu administrador não permite", a faculdade bloqueia apps de fora. Nesse caso:
+- peça ao suporte de TI para **permitir o app Órbita** (o ID do cliente está no GitHub, em Secrets) ou para liberar o acesso de apps ao Classroom; ou
+- use o Órbita com a sua conta pessoal só para o Drive e o Docs, e entregue pelo Classroom como sempre.
+
+### O que o Google não deixa (e o Órbita contorna)
+O Google **não deixa apps de fora anexarem arquivo nem entregarem** uma tarefa criada pelo professor (só o app que criou a tarefa pode). Por isso, em **Enviar > Entregar no Classroom**, o Órbita salva o PDF na pasta **Órbita** do seu Drive e abre a tarefa; lá, você toca em **Adicionar ou criar > Google Drive**, escolhe o arquivo e toca em **Entregar**.
+

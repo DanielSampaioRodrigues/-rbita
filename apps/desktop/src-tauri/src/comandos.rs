@@ -1150,6 +1150,154 @@ pub async fn nuvem_token_google(estado: State<'_, Estado>) -> Result<TokenGoogle
     Ok(TokenGoogle { token, expira_em: banco::agora_ms() + (validade as i64) * 1000 })
 }
 
+// ---------- Conectores: Google (Drive, Docs, Classroom) e Zotero ----------
+// Ligação à parte da sincronização. A renovação fica no banco criptografado e
+// nunca sai do lado nativo; a interface recebe só o acesso de curta duração.
+
+const CONFIG_CONECTOR_GOOGLE: &str = "conector.google";
+/// Permissões que os conectores podem pedir (a interface escolhe entre estas).
+const ESCOPOS_CONECTORES: [&str; 6] = [
+    "openid",
+    "email",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/classroom.courses.readonly",
+    "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+    "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
+];
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ConfigConector {
+    renovacao: String,
+    conta: String,
+    escopos: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SituacaoConector {
+    conta: String,
+    escopos: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AcessoConector {
+    token: String,
+    expira_em: i64,
+    escopos: String,
+}
+
+fn ler_conector(s: &Sessao) -> Result<Option<ConfigConector>, Erro> {
+    Ok(banco::ler_config(&s.conn, CONFIG_CONECTOR_GOOGLE)?.and_then(|t| serde_json::from_str(&t).ok()))
+}
+
+/// Só deixa pedir as permissões da lista (a interface não inventa outras).
+fn escopos_validos(pedidos: &str) -> Result<String, Erro> {
+    let lista: Vec<&str> = pedidos.split_whitespace().collect();
+    if lista.is_empty() || !lista.iter().all(|e| ESCOPOS_CONECTORES.contains(e)) {
+        return Err(Erro::Interno("permissão do Google fora da lista dos conectores".into()));
+    }
+    Ok(lista.join(" "))
+}
+
+#[tauri::command]
+pub async fn conector_google_situacao(estado: State<'_, Estado>) -> Result<Option<SituacaoConector>, Erro> {
+    estado.com_sessao(|s| Ok(ler_conector(s)?.map(|c| SituacaoConector { conta: c.conta, escopos: c.escopos })))
+}
+
+/// Abre o navegador para a pessoa autorizar os conectores; guarda a renovação.
+#[tauri::command]
+pub async fn conector_google_entrar(app: tauri::AppHandle, estado: State<'_, Estado>, escopos: String) -> Result<SituacaoConector, Erro> {
+    estado.com_sessao(|_| Ok(()))?;
+    let escopos = escopos_validos(&escopos)?;
+    let (conta, dados) = nuvem::entrar_conectores_google(abrir_navegador(&app), &escopos).await?;
+    let config = ConfigConector { renovacao: conta.renovacao, conta: conta.email, escopos: dados };
+    estado.com_sessao(|s| banco::gravar_config(&s.conn, CONFIG_CONECTOR_GOOGLE, &serde_json::to_string(&config).map_err(|e| Erro::Interno(e.to_string()))?))?;
+    Ok(SituacaoConector { conta: config.conta, escopos: config.escopos })
+}
+
+#[tauri::command]
+pub async fn conector_google_token(estado: State<'_, Estado>) -> Result<AcessoConector, Erro> {
+    let config = estado.com_sessao(ler_conector)?.ok_or_else(|| nuvem::erro("desligada", "Nenhuma conta Google ligada aos conectores. Ligue em Ajustes > Contas conectadas."))?;
+    let (token, validade) = nuvem::acesso_google(&config.renovacao).await?;
+    Ok(AcessoConector { token, expira_em: banco::agora_ms() + (validade as i64) * 1000, escopos: config.escopos })
+}
+
+/// Desliga os conectores: tira o acesso no Google e apaga a renovação.
+#[tauri::command]
+pub async fn conector_google_sair(estado: State<'_, Estado>) -> Result<(), Erro> {
+    if let Some(config) = estado.com_sessao(ler_conector)? {
+        nuvem::revogar(ProvedorNuvem::Google, &config.renovacao).await;
+    }
+    estado.com_sessao(|s| banco::apagar_config(&s.conn, CONFIG_CONECTOR_GOOGLE))
+}
+
+/// Zotero no computador (Zotero 7, "Permitir que outros aplicativos deste computador
+/// se comuniquem com o Zotero"). Só leitura e só o endereço local da API.
+#[tauri::command]
+pub async fn zotero_local(caminho: String) -> Result<String, Erro> {
+    if !caminho.starts_with("/api/users/0/") || caminho.contains("..") || caminho.contains(['\r', '\n', ' ']) {
+        return Err(Erro::Interno("endereço do Zotero fora do permitido".into()));
+    }
+    let cliente = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|e| Erro::Interno(e.to_string()))?;
+    let resposta = cliente
+        .get(format!("http://127.0.0.1:23119{caminho}"))
+        .header("Zotero-API-Version", "3")
+        .send()
+        .await
+        .map_err(|_| nuvem::erro("zotero", "Não achei o Zotero aberto neste computador. Abra o Zotero e, nas configurações (Avançado), ligue \"Permitir que outros aplicativos deste computador se comuniquem com o Zotero\"."))?;
+    let status = resposta.status();
+    if status.as_u16() == 403 || status.as_u16() == 404 {
+        return Err(nuvem::erro("zotero", "O Zotero está aberto, mas não deixou o Órbita ler. Nas configurações do Zotero (Avançado), ligue \"Permitir que outros aplicativos deste computador se comuniquem com o Zotero\"."));
+    }
+    if !status.is_success() {
+        return Err(nuvem::erro("zotero", format!("O Zotero respondeu com o código {}. Tente de novo.", status.as_u16())));
+    }
+    resposta.text().await.map_err(|_| nuvem::erro("zotero", "O Zotero não respondeu direito. Tente de novo."))
+}
+
+/// Abre no navegador do computador um endereço dos serviços ligados (Classroom, Drive,
+/// Docs, Zotero). Só https e só estes endereços.
+#[tauri::command]
+pub async fn abrir_endereco(app: tauri::AppHandle, url: String) -> Result<(), Erro> {
+    if !endereco_permitido(&url) {
+        return Err(Erro::Interno("endereço fora dos serviços ligados".into()));
+    }
+    use tauri_plugin_opener::OpenerExt;
+    app.opener().open_url(&url, None::<&str>).map_err(|e| Erro::Interno(e.to_string()))
+}
+
+fn endereco_permitido(url: &str) -> bool {
+    let Ok(u) = reqwest::Url::parse(url) else { return false };
+    u.scheme() == "https" && matches!(u.host_str(), Some("classroom.google.com" | "drive.google.com" | "docs.google.com" | "www.zotero.org" | "zotero.org"))
+}
+
+#[cfg(test)]
+mod testes_conectores {
+    use super::escopos_validos;
+
+    #[test]
+    fn so_abre_os_enderecos_dos_servicos() {
+        use super::endereco_permitido;
+        assert!(endereco_permitido("https://classroom.google.com/c/abc/a/def/details"));
+        assert!(endereco_permitido("https://docs.google.com/document/d/x/edit"));
+        assert!(!endereco_permitido("http://classroom.google.com/"));
+        assert!(!endereco_permitido("https://classroom.google.com.exemplo.com/"));
+        assert!(!endereco_permitido("file:///C:/x"));
+    }
+
+    #[test]
+    fn so_aceita_as_permissoes_da_lista() {
+        assert_eq!(escopos_validos("openid  email https://www.googleapis.com/auth/drive.file").unwrap(), "openid email https://www.googleapis.com/auth/drive.file");
+        assert!(escopos_validos("https://www.googleapis.com/auth/drive").is_err());
+        assert!(escopos_validos("").is_err());
+    }
+}
+
 // ---------- Saúde: medicação ----------
 
 #[tauri::command]

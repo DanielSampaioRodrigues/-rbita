@@ -2230,7 +2230,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
           )}
           {!infinito && <Button className="botao-icone" onPress={() => setAdicionando(true)} aria-label={t.adicionar.abrir}><FilePlus aria-hidden="true" size="1.1em" /></Button>}
           {!infinito && <Button className={painel === "ia" ? "botao-icone ativo" : "botao-icone"} onPress={() => setPainel(painel === "ia" ? null : "ia")} aria-label={t.painel.abrirIa} aria-pressed={painel === "ia"}><Sparkles aria-hidden="true" size="1.1em" /></Button>}
-          {!infinito && paginas.length > 0 && <MenuEnviar opcoes={[{ id: "cadernoPdf", nome: te.cadernoPdf }, { id: "paginaPdf", nome: te.paginaPdf }, { id: "paginaPng", nome: te.paginaPng }]} aoEscolher={exportarCaderno} />}
+          {!infinito && paginas.length > 0 && <MenuEnviar opcoes={[{ id: "cadernoPdf", nome: te.cadernoPdf }, { id: "paginaPdf", nome: te.paginaPdf }, { id: "paginaPng", nome: te.paginaPng }]} aoEscolher={exportarCaderno} google={{ pdf: "cadernoPdf" }} />}
           <Button className="botao-icone" onPress={() => setEditor(true)} aria-label={t.folha.abrir}><SlidersHorizontal aria-hidden="true" size="1.1em" /></Button>
           <Button className="botao-icone" onPress={() => setConfigAberta(true)} aria-label={t.config.abrir}><IconeEngrenagem aria-hidden="true" size="1.1em" /></Button>
         </span>

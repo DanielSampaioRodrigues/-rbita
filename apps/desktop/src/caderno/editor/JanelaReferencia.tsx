@@ -8,7 +8,8 @@ import { Aviso } from "../../componentes/Campo";
 import { Janela } from "../../componentes/Janela";
 import { Segmentado } from "../../componentes/Segmentado";
 import { textos } from "../../textos/pt-BR";
-import { autoresEmTexto, buscarReferencia, citacaoNoTexto, formatarReferencia, lerAutores, type Norma, type Referencia, type TipoReferencia } from "./referencias";
+import { autoresEmTexto, buscarReferencia, citacaoNoTexto, deCsl, formatarReferencia, lerAutores, type Norma, type Referencia, type TipoReferencia } from "./referencias";
+import { buscarNoZotero, lerConfigZotero, resumoDoItem, type ConfigZotero } from "../../conectores/zotero";
 
 const t = textos.caderno.editor.referencia;
 const VAZIA: Referencia = { tipo: "book", autores: [], titulo: "", ano: "" };
@@ -22,6 +23,18 @@ export function JanelaReferencia({ editor, aberta, aoFechar, normaInicial }: { e
   const [erro, setErro] = useState<string | null>(null);
   const [previa, setPrevia] = useState<{ html: string; citacao: string } | null>(null);
   useEffect(() => { if (aberta) setNorma(normaInicial); }, [aberta, normaInicial]);
+  // Zotero (se estiver ligado em Ajustes > Contas conectadas).
+  const tz = textos.conectores.referencia;
+  const [zotero, setZotero] = useState<ConfigZotero | null>(null);
+  const [termoZ, setTermoZ] = useState("");
+  const [achadosZ, setAchadosZ] = useState<Record<string, unknown>[] | null>(null);
+  useEffect(() => { if (aberta) void lerConfigZotero().then(setZotero); }, [aberta]);
+  const buscarZ = async () => {
+    if (!zotero) return;
+    setErro(null); setBuscando(true);
+    try { setAchadosZ(await buscarNoZotero(zotero, termoZ)); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setBuscando(false); }
+  };
+  const usarZ = (item: Record<string, unknown>) => { const achada = deCsl(item); setR(achada); setAutores(autoresEmTexto(achada.autores)); setAchadosZ(null); };
   const atual: Referencia = { ...r, autores: lerAutores(autores) };
   const pronta = !!atual.titulo.trim() && (atual.autores.length > 0 || atual.tipo === "webpage");
   // Prévia ao vivo (um instante depois de parar de digitar).
@@ -68,6 +81,22 @@ export function JanelaReferencia({ editor, aberta, aoFechar, normaInicial }: { e
           <Button type="submit" className="botao" isDisabled={!id.trim() || buscando}>{buscando ? t.buscando : t.buscarBotao}</Button>
         </form>
         <p className="campo-ajuda">{t.buscarAjuda}</p>
+        {zotero ? (
+          <>
+            <form className="painel-ia-linha" onSubmit={(e) => { e.preventDefault(); void buscarZ(); }}>
+              <label className="campo estilo-campo referencia-busca">
+                <span className="campo-rotulo">{tz.buscar}</span>
+                <input className="entrada-texto" value={termoZ} onChange={(e) => setTermoZ(e.target.value)} placeholder={tz.buscarDica} />
+              </label>
+              <Button type="submit" className="botao" isDisabled={buscando}>{buscando ? t.buscando : t.buscarBotao}</Button>
+            </form>
+            {achadosZ && (achadosZ.length === 0 ? <p className="texto-suave pequeno">{tz.nada}</p> : (
+              <ul className="fontes-livros" aria-label={tz.zotero}>
+                {achadosZ.map((i, k) => <li key={k}><Button className="botao pequeno" aria-label={tz.usar(resumoDoItem(i))} onPress={() => usarZ(i)}>{resumoDoItem(i)}</Button></li>)}
+              </ul>
+            ))}
+          </>
+        ) : <p className="texto-suave pequeno">{tz.ligar}</p>}
         {erro && <Aviso>{erro}</Aviso>}
         <div className="estilo-grade">
           <label className="campo estilo-campo">

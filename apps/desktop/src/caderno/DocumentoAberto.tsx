@@ -169,7 +169,7 @@ export function DocumentoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFec
       <div className="leitor-barra caderno-barra-topo">
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
         <strong className="leitor-titulo quebra"><FileText aria-hidden="true" size="1em" /> {caderno.nome}</strong>
-        <MenuEnviar opcoes={[{ id: "pdf", nome: te2.pdf }, { id: "word", nome: te2.word }, { id: "txt", nome: te2.txt }, { id: "md", nome: te2.md }]} aoEscolher={exportar} />
+        <MenuEnviar opcoes={[{ id: "pdf", nome: te2.pdf }, { id: "word", nome: te2.word }, { id: "txt", nome: te2.txt }, { id: "md", nome: te2.md }]} aoEscolher={exportar} google={{ pdf: "pdf", word: "word" }} />
         <span className="linha-ajuste">
           <Button className="botao-icone" onPress={() => mudarZoom(zoom - 0.1)} aria-label={te.zoomMenos} isDisabled={zoom <= 0.5}><Minus aria-hidden="true" size="1.1em" /></Button>
           <Button className="botao pequeno caderno-zoom" onPress={() => mudarZoom(1)} aria-label={t.zoom.voltar(Math.round(zoom * 100))}>{Math.round(zoom * 100)}%</Button>

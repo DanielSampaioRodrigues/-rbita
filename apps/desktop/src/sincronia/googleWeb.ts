@@ -273,13 +273,13 @@ export function criarLoginGoogle(op: OpcoesLogin): LoginGoogle {
 
 type JanelaComGoogle = Window & { google?: { accounts?: { oauth2?: GoogleOauth2 } } };
 
-function oauth2Carregado(): GoogleOauth2 | null {
+export function oauth2Carregado(): GoogleOauth2 | null {
   return typeof window === "undefined" ? null : ((window as JanelaComGoogle).google?.accounts?.oauth2 ?? null);
 }
 
 let carregando: Promise<GoogleOauth2> | null = null;
 
-function carregarScript(): Promise<GoogleOauth2> {
+export function carregarScript(): Promise<GoogleOauth2> {
   const ja = oauth2Carregado();
   if (ja) return Promise.resolve(ja);
   carregando ??= new Promise<GoogleOauth2>((resolver, rejeitar) => {
@@ -303,7 +303,7 @@ function carregarScript(): Promise<GoogleOauth2> {
   return carregando;
 }
 
-function idDoCliente(): string {
+export function idDoCliente(): string {
   const doBuild = (import.meta.env?.VITE_GOOGLE_CLIENT_ID_WEB as string | undefined) ?? "";
   return (doBuild || CLIENTE_WEB_GOOGLE).trim();
 }

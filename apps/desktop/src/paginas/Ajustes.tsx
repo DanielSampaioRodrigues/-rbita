@@ -16,6 +16,7 @@ import { Seguranca } from "./Seguranca";
 import { AjustesIa } from "../ia/AjustesIa";
 import { AjustesBandeja, AjustesBloqueio } from "../app/AjustesJanela";
 import { AjustesDitado } from "../ditado/AjustesDitado";
+import { AjustesContas } from "../conectores/AjustesContas";
 import {
   ArrowLeft,
   BellRing,
@@ -24,6 +25,7 @@ import {
   Download,
   FolderKanban,
   Laptop,
+  Link2,
   Lock,
   Mic,
   RefreshCw,
@@ -45,10 +47,11 @@ const ICONES: Record<IdSecao, LucideIcon> = {
   janela: Laptop,
   ia: Sparkles,
   ditado: Mic,
+  contas: Link2,
 };
 
 /** Ordem do menu: o que mais se mexe primeiro, o opcional por último. */
-const ORDEM: IdSecao[] = ["seguranca", "avisos", "projetos", "backup", "sincronizar", "exportar", "janela", "ia", "ditado"];
+const ORDEM: IdSecao[] = ["seguranca", "avisos", "projetos", "backup", "sincronizar", "contas", "exportar", "janela", "ia", "ditado"];
 
 /** Guarda a seção aberta só nesta sessão: reabrir Ajustes volta ao mesmo lugar. */
 const CHAVE_SESSAO = "orbita.ajustes.secao";
@@ -162,6 +165,7 @@ export function Ajustes({ modo, temSenha, aoMudarSeguranca, aoRestaurar }: Props
     ),
     ia: <AjustesIa />,
     ditado: <AjustesDitado />,
+    contas: <AjustesContas />,
   };
 
   return (

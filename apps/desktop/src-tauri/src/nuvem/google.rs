@@ -15,12 +15,18 @@ const ENVIO: &str = "https://www.googleapis.com/upload/drive/v3/files";
 const ESCOPOS: &str = "openid email https://www.googleapis.com/auth/drive.appdata";
 
 pub fn url_de_entrada(id: &str, retorno: &str, desafio: &str, estado: &str) -> String {
+    url_de_entrada_com(id, retorno, desafio, estado, ESCOPOS)
+}
+
+/// Os conectores (Drive, Docs, Classroom) pedem outras permissões, numa ligação à parte
+/// da sincronização: desligar um não mexe no outro.
+pub fn url_de_entrada_com(id: &str, retorno: &str, desafio: &str, estado: &str, escopos: &str) -> String {
     let mut url = reqwest::Url::parse(ENTRADA).expect("endereço fixo");
     url.query_pairs_mut()
         .append_pair("client_id", id)
         .append_pair("redirect_uri", retorno)
         .append_pair("response_type", "code")
-        .append_pair("scope", ESCOPOS)
+        .append_pair("scope", escopos)
         .append_pair("code_challenge", desafio)
         .append_pair("code_challenge_method", "S256")
         .append_pair("state", estado)
@@ -64,6 +70,25 @@ pub async fn trocar_codigo(cred: Credenciais, codigo: &str, verificador: &str, r
     }
     let email = corpo["id_token"].as_str().and_then(email_do_id_token).unwrap_or_else(|| "conta Google".into());
     Ok(Conta { renovacao: renovacao.to_string(), email })
+}
+
+/// Troca o código dos conectores: devolve a conta e as permissões que a pessoa deixou marcadas.
+pub async fn trocar_codigo_conectores(cred: Credenciais, codigo: &str, verificador: &str, retorno: &str) -> Result<(Conta, String), Erro> {
+    let mut campos = vec![
+        ("client_id", cred.id),
+        ("code", codigo),
+        ("code_verifier", verificador),
+        ("grant_type", "authorization_code"),
+        ("redirect_uri", retorno),
+    ];
+    if let Some(s) = cred.segredo {
+        campos.push(("client_secret", s));
+    }
+    let corpo = pedir_token(&campos).await?;
+    let renovacao = corpo["refresh_token"].as_str().ok_or_else(|| erro("resposta", "O Google não devolveu a autorização completa. Tente entrar de novo."))?;
+    let escopos = corpo["scope"].as_str().unwrap_or_default().to_string();
+    let email = corpo["id_token"].as_str().and_then(email_do_id_token).unwrap_or_else(|| "conta Google".into());
+    Ok((Conta { renovacao: renovacao.to_string(), email }, escopos))
 }
 
 pub async fn renovar(cred: Credenciais, renovacao: &str) -> Result<(String, Option<String>), Erro> {

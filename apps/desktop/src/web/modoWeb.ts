@@ -574,6 +574,14 @@ export function modoWeb(criarBase: (chamar: Chamar) => Api, { ErroOrbita: E, com
     listarFontesSistema: async () => [],
     // No navegador, o arquivo vai pelo Compartilhar ou é baixado (exportar/entregar.ts).
     exportarArquivo: async () => {},
+    // Conectores: no navegador, o login do Google é feito pela própria tela (conectores/google.ts).
+    conectorGoogleSituacao: async () => null,
+    conectorGoogleEntrar: async () => { throw new E("nuvem", "No navegador, a conta Google dos conectores liga pela tela de Ajustes."); },
+    conectorGoogleToken: async () => { throw new E("nuvem", "No navegador, a conta Google dos conectores liga pela tela de Ajustes."); },
+    conectorGoogleSair: async () => {},
+    // O navegador não deixa um site falar com o Zotero do computador: use a chave da web.
+    zoteroLocal: async () => { throw new E("nuvem", "No navegador, o Zotero do computador não aparece. Use a chave do Zotero na web (Ajustes > Contas conectadas)."); },
+    abrirEndereco: async (url) => { window.open(url, "_blank", "noopener"); },
     exportarTexto: async (caminho, conteudo) => {
       baixar(nomeDe(caminho, "orbita-exportacao.txt"), new Blob([conteudo], { type: `${mimeDe(caminho)};charset=utf-8` }));
     },

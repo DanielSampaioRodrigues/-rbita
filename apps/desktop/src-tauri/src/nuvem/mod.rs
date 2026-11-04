@@ -104,6 +104,19 @@ pub async fn entrar(abrir_no_navegador: impl Fn(&str) -> Result<(), Erro>, prove
     }
 }
 
+/// Liga os conectores do Google (Drive, Docs, Classroom) com as permissões pedidas.
+/// Devolve a conta e as permissões que a pessoa deixou marcadas.
+pub async fn entrar_conectores_google(abrir_no_navegador: impl Fn(&str) -> Result<(), Erro>, escopos: &str) -> Result<(Conta, String), Erro> {
+    let cred = ProvedorNuvem::Google.credenciais().ok_or_else(|| erro("indisponivel", "Esta versão do Órbita não tem a conta Google configurada."))?;
+    let porta = oauth::Porta::abrir()?;
+    let pkce = oauth::Pkce::novo();
+    let estado = oauth::aleatorio_url(24);
+    let retorno = porta.endereco(ProvedorNuvem::Google);
+    abrir_no_navegador(&google::url_de_entrada_com(cred.id, &retorno, &pkce.desafio, &estado, escopos))?;
+    let codigo = porta.esperar_codigo(estado).await?;
+    google::trocar_codigo_conectores(cred, &codigo, &pkce.verificador, &retorno).await
+}
+
 /// Acesso de curta duração. A Microsoft troca a renovação a cada uso: a nova volta junto.
 pub async fn acesso(provedor: ProvedorNuvem, renovacao: &str) -> Result<(String, Option<String>), Erro> {
     let cred = provedor.credenciais().ok_or_else(|| erro("indisponivel", "Esta versão do Órbita não tem a conta configurada."))?;
