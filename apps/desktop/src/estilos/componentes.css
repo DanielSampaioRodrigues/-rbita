@@ -2061,3 +2061,32 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 /* Páginas desenhadas fora da tela para exportar (PDF e imagem). */
 .caderno-exportar { position: fixed; left: -100000px; top: 0; pointer-events: none; }
 .caderno-exportar .caderno-mini { border: 0; box-shadow: none; border-radius: 0; margin-bottom: 24px; }
+
+/* ---------- Painel lateral do caderno (Páginas, IA, Biblioteca) ---------- */
+.caderno-area.com-painel.painel-direita { flex-direction: row-reverse; }
+.caderno-painel { flex: none; width: 260px; display: flex; flex-direction: column; min-height: 0; background: var(--cor-superficie); border-right: 1px solid var(--cor-borda); z-index: 6; }
+.caderno-area.painel-direita .caderno-painel { border-right: 0; border-left: 1px solid var(--cor-borda); }
+.caderno-painel-topo { display: flex; align-items: center; gap: 4px; padding: 6px 6px 0 8px; border-bottom: 1px solid var(--cor-borda); }
+.caderno-painel-abas { display: flex; flex: 1; min-width: 0; }
+.caderno-painel-aba { flex: 1; min-height: 40px; padding: 0 0.4rem; border: none; border-bottom: 2px solid transparent; background: none; color: var(--cor-texto-suave); font: inherit; font-size: 0.9rem; font-weight: 650; cursor: pointer; }
+.caderno-painel-aba.ativa { color: var(--cor-destaque); border-bottom-color: var(--cor-destaque); }
+.caderno-painel-aba:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: -3px; }
+.caderno-painel-miolo { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
+.caderno-painel-filtro { padding: 8px 10px 4px; }
+.caderno-painel-vazio { padding: 0 12px; }
+.caderno-painel-paginas { list-style: none; margin: 0; padding: 6px 10px; display: grid; gap: 10px; justify-items: center; }
+.caderno-painel-pagina { display: grid; justify-items: center; gap: 4px; padding: 6px; border: 2px solid transparent; border-radius: 8px; background: none; cursor: pointer; color: var(--cor-texto); font: inherit; }
+.caderno-painel-pagina:hover { background: var(--cor-superficie-alternativa); }
+.caderno-painel-pagina.atual { border-color: var(--cor-destaque); }
+.caderno-painel-pagina:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.caderno-painel-numero { display: inline-flex; align-items: center; gap: 3px; font-size: 0.8rem; color: var(--cor-texto-suave); }
+.caderno-painel-pagina.atual .caderno-painel-numero { color: var(--cor-destaque); font-weight: 700; }
+.caderno-painel-acoes { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 12px; position: sticky; bottom: 0; background: var(--cor-superficie); border-top: 1px solid var(--cor-borda); margin-top: auto; }
+.caderno-painel-texto { padding: 12px; }
+/* Tela estreita (celular): o painel cobre a folha, como uma gaveta. */
+@media (max-width: 720px) {
+  .caderno-area.com-painel { position: relative; }
+  .caderno-painel { position: absolute; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); box-shadow: 0 8px 30px rgb(0 0 0 / 0.25); }
+  .caderno-area.painel-direita .caderno-painel { left: auto; right: 0; }
+}
+:root[data-baixo-estimulo="true"] .caderno-painel { box-shadow: none; }

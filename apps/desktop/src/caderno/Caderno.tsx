@@ -14,13 +14,14 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
+import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, PainelLateral as IconePainel, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { CamadaDocumento, DocumentoEstatico } from "./Documento";
 import { DocumentoAberto } from "./DocumentoAberto";
 import { useMeusEstilos } from "./editor/meusEstilos";
+import { PainelLateral, type AbaPainel } from "./PainelLateral";
 import { MenuEnviar, type ArquivoPronto } from "../exportar/MenuEnviar";
 import { nomeDeArquivo } from "../exportar/entregar";
 import { medir, type PaginaMedida } from "../exportar/medir";
@@ -778,6 +779,11 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   const mudarNegritoTexto = (v: boolean) => { setNegritoTexto(v); gravarPref("caderno-texto-negrito", v ? "1" : "0"); };
   // Onde a barra de formatação do texto em edição aparece (dentro da barra de ferramentas).
   const [slotTexto, setSlotTexto] = useState<HTMLDivElement | null>(null);
+  // Painel lateral (Páginas, IA, Biblioteca): fica lembrado neste aparelho.
+  const [painel, setPainelBruto] = useState<AbaPainel | null>(() => { const v = lerPref("caderno-painel"); return v === "paginas" || v === "ia" || v === "biblioteca" ? v : null; });
+  const setPainel = (p: AbaPainel | null) => { setPainelBruto(p); gravarPref("caderno-painel", p ?? ""); };
+  const [ladoPainel, setLadoPainelBruto] = useState<"esquerda" | "direita">(() => (lerPref("caderno-painel-lado") === "direita" ? "direita" : "esquerda"));
+  const setLadoPainel = (l: "esquerda" | "direita") => { setLadoPainelBruto(l); gravarPref("caderno-painel-lado", l); };
   const [modoBorracha, setModoBorracha] = useState<ModoBorracha>(() => (lerPref("caderno-borracha-modo") === "objeto" ? "objeto" : "pedaco"));
   const mudarModoBorracha = (m: ModoBorracha) => { setModoBorracha(m); gravarPref("caderno-borracha-modo", m); };
   // Seleção: "acrescentar" faz cada toque somar à seleção (o Shift do toque).
@@ -1892,6 +1898,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       {!telaLimpa && (
       <div className="leitor-barra caderno-barra-topo">
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
+        {!infinito && <Button className={painel ? "botao-icone ativo" : "botao-icone"} onPress={() => setPainel(painel ? null : "paginas")} aria-label={t.painel.alternar} aria-pressed={!!painel}><IconePainel aria-hidden="true" size="1.1em" /></Button>}
         {!infinito && <Button className={visaoPaginas ? "botao-icone ativo" : "botao-icone"} onPress={() => setVisaoPaginas((v) => !v)} aria-label={t.visao.abrir} aria-pressed={visaoPaginas}><LayoutGrid aria-hidden="true" size="1.1em" /></Button>}
         <strong className="leitor-titulo quebra">
           {infinito ? <LayoutGrid aria-hidden="true" size="1em" /> : documento ? <FileText aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />} {caderno.nome}
@@ -1913,6 +1920,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             <Button className={sel.marcado ? "botao-icone ativo" : "botao-icone"} onPress={() => void salvar({ ...sel, marcado: !sel.marcado })} aria-pressed={sel.marcado} aria-label={sel.marcado ? t.paginas.desmarcar : t.paginas.marcar}><Bookmark aria-hidden="true" size="1.1em" /></Button>
           )}
           {!infinito && <Button className="botao-icone" onPress={() => setAdicionando(true)} aria-label={t.adicionar.abrir}><FilePlus aria-hidden="true" size="1.1em" /></Button>}
+          {!infinito && <Button className={painel === "ia" ? "botao-icone ativo" : "botao-icone"} onPress={() => setPainel(painel === "ia" ? null : "ia")} aria-label={t.painel.abrirIa} aria-pressed={painel === "ia"}><Sparkles aria-hidden="true" size="1.1em" /></Button>}
           {!infinito && paginas.length > 0 && <MenuEnviar opcoes={[{ id: "cadernoPdf", nome: te.cadernoPdf }, { id: "paginaPdf", nome: te.paginaPdf }, { id: "paginaPng", nome: te.paginaPng }]} aoEscolher={exportarCaderno} />}
           <Button className="botao-icone" onPress={() => setEditor(true)} aria-label={t.folha.abrir}><SlidersHorizontal aria-hidden="true" size="1.1em" /></Button>
           <Button className="botao-icone" onPress={() => setConfigAberta(true)} aria-label={t.config.abrir}><IconeEngrenagem aria-hidden="true" size="1.1em" /></Button>
@@ -1936,7 +1944,15 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       {erro && <div className="leitor-aviso"><Aviso>{erro}</Aviso></div>}
 
       <div className={`caderno-miolo pos-${posBarra}`} ref={mioloRef}>
-      <div className="caderno-area">
+      <div className={painel && !infinito ? `caderno-area com-painel painel-${ladoPainel}` : "caderno-area"}>
+        {painel && !infinito && (
+          <PainelLateral aba={painel} aoAba={setPainel} aoFechar={() => setPainel(null)} paginas={paginas} atualId={selId}
+            miniatura={(p, largura) => <MiniaturaPagina pagina={p} cena={cenas[p.id]} imagemUrl={imagemUrl} largura={largura} />}
+            aoIr={(id) => { setVisaoPaginas(false); requestAnimationFrame(() => irPara(id)); }}
+            aoAdicionar={() => setAdicionando(true)} aoVerGrade={() => setVisaoPaginas(true)}
+            ia={<p className="texto-suave caderno-painel-texto">{t.painel.bibliotecaEmBreve}</p>}
+            biblioteca={<p className="texto-suave caderno-painel-texto">{t.painel.bibliotecaEmBreve}</p>} />
+        )}
         {visaoPaginas && !infinito && (
           <VisaoPaginas paginas={paginas} cenas={cenas} imagemUrl={imagemUrl} atualId={selId}
             aoIr={(id) => { setVisaoPaginas(false); requestAnimationFrame(() => irPara(id)); }}
@@ -2085,6 +2101,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
               <p className="campo-ajuda">{t.encaixe.ajuda}</p>
             </>
           )}
+          <Segmentado rotulo={t.painel.lado} valor={ladoPainel} aoMudar={(v) => setLadoPainel(v as "esquerda" | "direita")}
+            opcoes={[{ valor: "esquerda", nome: t.painel.esquerda }, { valor: "direita", nome: t.painel.direita }]} />
           <div className="campo">
             <label className="campo-rotulo" htmlFor="caderno-tema">{t.temaCaderno.tema}</label>
             <select id="caderno-tema" className="entrada-texto sozinha" value={temaCaderno.escolha.tema} onChange={(e) => temaCaderno.mudar({ ...temaCaderno.escolha, tema: e.target.value })}>

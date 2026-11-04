@@ -81,6 +81,7 @@ export const SENTIDOS: Record<NomeIcone, string> = {
   AlignJustify: "linhas de texto todas do mesmo comprimento, justificadas",
   Baseline: "letra A com uma linha grossa embaixo, cor do texto",
   Share: "caixa aberta em cima com uma seta saindo para cima (compartilhar)",
+  PainelLateral: "retângulo com uma faixa estreita do lado esquerdo (painel lateral)",
   AlignCenter: "linhas de texto centralizadas",
   AlignRight: "linhas de texto alinhadas à direita",
   Ruler: "uma régua inclinada com marcas de medida",
