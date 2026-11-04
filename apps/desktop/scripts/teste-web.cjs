@@ -434,10 +434,13 @@ async function criarDados(p) {
   await espera(p, 1500);
   const entendi = p.getByRole("button", { name: "Entendi" });
   if (await entendi.count()) await entendi.click();
-  await p.mouse.move(200, 300);
+  // Desenha dentro da página (desde a 0.50 ela fica inteira e centralizada na tela).
+  const folha = await p.locator(".caderno-folha-area").first().boundingBox();
+  const x0 = folha.x + folha.width * 0.2, y0 = folha.y + folha.height * 0.45;
+  await p.mouse.move(x0, y0);
   await p.mouse.down();
   for (let i = 0; i < 20; i++) {
-    await p.mouse.move(200 + i * 15, 300 + Math.sin(i / 3) * 60);
+    await p.mouse.move(x0 + i * 15, y0 + Math.sin(i / 3) * 60);
     await espera(p, 16);
   }
   await p.mouse.up();
