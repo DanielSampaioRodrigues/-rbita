@@ -118,3 +118,11 @@ export function ocorrencias(texto: string, busca: string): number[] {
   for (let i = a.indexOf(b); i >= 0; i = a.indexOf(b, i + Math.max(1, b.length))) out.push(i);
   return out;
 }
+
+/** Lê um tamanho guardado ("18pt", "24px" ou "calc(24px * …)") em pontos. */
+export function lerPt(v: string): number {
+  const m = /([\d.]+)\s*(pt|px)/.exec(v);
+  if (!m) return 0;
+  const n = Number(m[1]);
+  return Math.round(m[2] === "px" ? n * 0.75 : n);
+}

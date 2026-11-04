@@ -34,6 +34,24 @@ export const AtributosParagrafo = Extension.create({
             parseHTML: (el: HTMLElement) => el.style.lineHeight || null,
             renderHTML: (a: { entrelinha?: string | null }) => (a.entrelinha ? { style: `line-height: ${a.entrelinha}` } : {}),
           },
+          // Estilo próprio da pessoa (ver meusEstilos.ts): só o id; o visual vem do CSS gerado.
+          meuEstilo: {
+            default: null,
+            parseHTML: (el: HTMLElement) => {
+              const v = el.getAttribute("data-meu-estilo");
+              return v && /^[a-z0-9-]{1,40}$/.test(v) ? v : null;
+            },
+            renderHTML: (a: { meuEstilo?: string | null }) => (a.meuEstilo ? { "data-meu-estilo": a.meuEstilo } : {}),
+          },
+          // Capitular: a primeira letra ocupa 2 a 5 linhas.
+          capitular: {
+            default: null,
+            parseHTML: (el: HTMLElement) => {
+              const n = Number(el.getAttribute("data-capitular"));
+              return n >= 2 && n <= 5 ? n : null;
+            },
+            renderHTML: (a: { capitular?: number | null }) => (a.capitular ? { "data-capitular": String(a.capitular) } : {}),
+          },
           recuo: {
             default: 0,
             parseHTML: (el: HTMLElement) => Math.max(0, Math.min(8, Number(el.getAttribute("data-recuo")) || 0)),

@@ -11,8 +11,10 @@ import {
   Minus, Plus, Quote, Redo2, Search, Strikethrough, Table, Underline, Undo2, X,
 } from "../../icones";
 import { textos } from "../../textos/pt-BR";
-import { CONJUNTOS, MARGENS, ocorrencias, type ConfigDocumento, type ConjuntoEstilo, type EstiloParagrafo } from "./estilos";
+import { CONJUNTOS, lerPt, MARGENS, ocorrencias, type ConfigDocumento, type ConjuntoEstilo, type EstiloParagrafo } from "./estilos";
 import { aplicarCaixa, type Caixa } from "./maiusculas";
+import { JanelaEstilo, JanelaMeusEstilos } from "./JanelaEstilos";
+import { aplicarMeuEstilo, ESTILO_VAZIO, estiloDoParagrafo, salvarEstilo, useMeusEstilos, type EstiloProprio } from "./meusEstilos";
 import { SeletorFonte } from "./SeletorFonte";
 
 const t = textos.caderno.editor;
@@ -50,13 +52,7 @@ function MenuCores({ rotulo, icone: Icone, cores, atual, semNome, aoEscolher, ao
   );
 }
 
-/** Lê um tamanho guardado ("18pt", "24px" ou "calc(24px * …)") em pontos. */
-export function lerPt(v: string): number {
-  const m = /([\d.]+)\s*(pt|px)/.exec(v);
-  if (!m) return 0;
-  const n = Number(m[1]);
-  return Math.round(m[2] === "px" ? n * 0.75 : n);
-}
+export { lerPt } from "./estilos";
 
 export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n) => `${n}pt`, extra }: {
   editor: Editor;
@@ -95,6 +91,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
         fonte: (ts.fontFamily as string | undefined) ?? "", tamanho: (ts.fontSize as string | undefined) ?? "", cor: (ts.color as string | undefined) ?? "",
         marca: (ed.getAttributes("highlight").color as string | undefined) ?? "",
         entrelinha: (bloco.entrelinha as string | null) ?? "", recuo: (bloco.recuo as number) ?? 0,
+        meuEstilo: (bloco.meuEstilo as string | null) ?? "", capitular: (bloco.capitular as number | null) ?? 0,
         tabela: ed.isActive("table"), linkAtivo: ed.isActive("link"),
         desfazer: ed.can().undo(), refazer: ed.can().redo(),
         palavras, caracteres: texto.replace(/\s+/g, " ").trim().length,
@@ -116,6 +113,38 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
     else ch.setParagraph().updateAttributes("paragraph", { estilo: v });
     ch.run();
   };
+  // Estilos da pessoa: aplicar, criar a partir do parágrafo, atualizar e ver a lista.
+  const meus = useMeusEstilos();
+  const meuAtual = meus.find((m) => m.id === e.meuEstilo);
+  const [novoEstilo, setNovoEstilo] = useState<(Omit<EstiloProprio, "id"> & { id?: string }) | null>(null);
+  const [verEstilos, setVerEstilos] = useState(false);
+  const noAtual = () => {
+    const { $from } = editor.state.selection;
+    return { no: $from.parent, alinhamento: (editor.getAttributes($from.parent.type.name).textAlign as string | null) ?? null };
+  };
+  const escolherEstilo = (v: string) => {
+    if (v.startsWith("meu:")) {
+      const m = meus.find((x) => x.id === v.slice(4));
+      if (m) aplicarMeuEstilo(editor, m);
+    } else if (v === "acao:criar") {
+      const { no, alinhamento } = noAtual();
+      setNovoEstilo({ ...estiloDoParagrafo(no, alinhamento), nome: t.meus.nomePadrao(meus.length + 1) });
+    } else if (v === "acao:atualizar" && meuAtual) {
+      // O que foi mudado à mão neste parágrafo passa para o estilo (o resto do estilo fica).
+      const { no, alinhamento } = noAtual();
+      const lido = estiloDoParagrafo(no, alinhamento);
+      const mudado = Object.fromEntries(Object.entries(lido).filter(([k, val]) => k !== "base" && val !== ESTILO_VAZIO[k as keyof typeof ESTILO_VAZIO]));
+      const novo = { ...meuAtual, ...mudado } as EstiloProprio;
+      void salvarEstilo(novo).then(() => aplicarMeuEstilo(editor, novo));
+    } else if (v === "acao:gerenciar") {
+      setVerEstilos(true);
+    } else {
+      c().updateAttributes("paragraph", { meuEstilo: null }).updateAttributes("heading", { meuEstilo: null }).run();
+      aplicarEstilo(v as EstiloParagrafo);
+    }
+  };
+  // Sem alinhamento posto à mão, os botões mostram o do estilo da pessoa.
+  const alinhar = e.alinhar === "left" && meuAtual?.alinhamento ? meuAtual.alinhamento : e.alinhar;
   const tamanhoAtual = lerPt(e.tamanho);
   const mudarTamanho = (passo: number) => {
     const base = tamanhoAtual || 12;
@@ -184,8 +213,20 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
       <div className="fita-miolo" role="toolbar" aria-label={abas.find((a) => a.id === aba)?.nome}>
         {aba === "inicio" && (
           <>
-            <select className="fita-select largo" aria-label={t.estilo} value={e.estilo} onChange={(ev) => aplicarEstilo(ev.target.value as EstiloParagrafo)}>
-              {(Object.keys(t.estilos) as EstiloParagrafo[]).map((k) => <option key={k} value={k}>{t.estilos[k]}</option>)}
+            <select className="fita-select largo" aria-label={t.estilo} value={meuAtual ? `meu:${meuAtual.id}` : e.estilo} onChange={(ev) => escolherEstilo(ev.target.value)}>
+              <optgroup label={t.meus.grupoPadrao}>
+                {(Object.keys(t.estilos) as EstiloParagrafo[]).map((k) => <option key={k} value={k}>{t.estilos[k]}</option>)}
+              </optgroup>
+              {meus.length > 0 && (
+                <optgroup label={t.meus.grupo}>
+                  {meus.map((m) => <option key={m.id} value={`meu:${m.id}`}>{m.nome}</option>)}
+                </optgroup>
+              )}
+              <optgroup label={t.meus.opcoes}>
+                <option value="acao:criar">{t.meus.criar}</option>
+                {meuAtual && <option value="acao:atualizar">{t.meus.atualizar(meuAtual.nome)}</option>}
+                <option value="acao:gerenciar">{t.meus.gerenciar}</option>
+              </optgroup>
             </select>
             <SeletorFonte atual={e.fonte} aoEscolher={(css) => (css ? c().setFontFamily(css).run() : c().unsetFontFamily().run())} />
             <span className="fita-grupo">
@@ -232,10 +273,10 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
             </span>
             {sep}
             <span className="fita-grupo">
-              <B rotulo={t.alinhar.esquerda} icone={AlignLeft} ativo={e.alinhar === "left"} acao={() => c().setTextAlign("left").run()} />
-              <B rotulo={t.alinhar.centro} icone={AlignCenter} ativo={e.alinhar === "center"} acao={() => c().setTextAlign("center").run()} />
-              <B rotulo={t.alinhar.direita} icone={AlignRight} ativo={e.alinhar === "right"} acao={() => c().setTextAlign("right").run()} />
-              <B rotulo={t.alinhar.justificar} icone={AlignJustify} ativo={e.alinhar === "justify"} acao={() => c().setTextAlign("justify").run()} />
+              <B rotulo={t.alinhar.esquerda} icone={AlignLeft} ativo={alinhar === "left"} acao={() => c().setTextAlign("left").run()} />
+              <B rotulo={t.alinhar.centro} icone={AlignCenter} ativo={alinhar === "center"} acao={() => c().setTextAlign("center").run()} />
+              <B rotulo={t.alinhar.direita} icone={AlignRight} ativo={alinhar === "right"} acao={() => c().setTextAlign("right").run()} />
+              <B rotulo={t.alinhar.justificar} icone={AlignJustify} ativo={alinhar === "justify"} acao={() => c().setTextAlign("justify").run()} />
               <select className="fita-select curto" aria-label={t.entrelinha} title={t.entrelinha} value={e.entrelinha} onChange={(ev) => paragrafo({ entrelinha: ev.target.value || null })}>
                 <option value="">{t.entrelinhaPadrao}</option>
                 {ENTRELINHAS.map((n) => <option key={n} value={n}>{n.replace(".", ",")}</option>)}
@@ -289,6 +330,18 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
               <button type="button" className="fita-botao largo" onClick={() => c().toggleBlockquote().run()}><Quote size="1.05em" aria-hidden="true" /> {t.citacao}</button>
               <button type="button" className="fita-botao largo" onClick={() => c().setHorizontalRule().run()}><Minus size="1.05em" aria-hidden="true" /> {t.linha}</button>
               <button type="button" className="fita-botao largo" onClick={() => c().setDetails().run()}><ChevronDown size="1.05em" aria-hidden="true" /> {t.recolhivel}</button>
+              <MenuTrigger>
+                <Button className={e.capitular ? "fita-botao largo ativo" : "fita-botao largo"} aria-label={t.capitular.titulo}>
+                  <span className="fita-capitular-icone" aria-hidden="true">A</span> {t.capitular.titulo} <ChevronDown size="0.8em" aria-hidden="true" />
+                </Button>
+                <Popover className="menu-popover" placement="bottom">
+                  <Menu className="menu-lista" aria-label={t.capitular.titulo} onAction={(k) => paragrafo({ capitular: Number(k) || null })}>
+                    {[0, 2, 3, 4].map((n) => (
+                      <MenuItem key={n} id={String(n)} className="menu-item">{n ? t.capitular.linhas(n) : t.capitular.sem}{(e.capitular || 0) === n ? " ✓" : ""}</MenuItem>
+                    ))}
+                  </Menu>
+                </Popover>
+              </MenuTrigger>
               <button type="button" className="fita-botao largo" onClick={() => c().insertContent(new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })).run()}><Plus size="1.05em" aria-hidden="true" /> {t.data}</button>
             </span>
           </>
@@ -358,6 +411,8 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
           <B rotulo={textos.comum.fechar} icone={X} acao={() => setLink(null)} />
         </div>
       )}
+      <JanelaEstilo inicial={novoEstilo} aberta={!!novoEstilo} aoFechar={() => setNovoEstilo(null)} aoSalvar={(m) => aplicarMeuEstilo(editor, m)} />
+      <JanelaMeusEstilos aberta={verEstilos} aoFechar={() => setVerEstilos(false)} />
     </div>
   );
 }

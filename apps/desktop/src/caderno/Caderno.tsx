@@ -20,6 +20,7 @@ import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { CamadaDocumento, DocumentoEstatico } from "./Documento";
 import { DocumentoAberto } from "./DocumentoAberto";
+import { useMeusEstilos } from "./editor/meusEstilos";
 import { useTemaCaderno } from "./temaCaderno";
 import { FitaTexto } from "./editor/Fita";
 import { extensoesBase } from "./editor/extensoes";
@@ -68,6 +69,8 @@ function estiloCapa(capa: Capa): React.CSSProperties {
 }
 
 export function PaginaCaderno() {
+  // Os estilos da pessoa (o CSS deles) valem na estante, nas miniaturas e nas páginas.
+  useMeusEstilos();
   const [cadernos, setCadernos] = useState<Caderno[]>([]);
   const [pastas, setPastas] = useState<PastaCaderno[]>([]);
   const [editando, setEditando] = useState<Caderno | null>(null);
