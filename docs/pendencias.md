@@ -24,7 +24,24 @@ Teste da 0.45.1 no iPad, 29/10/2026. Caderno "ficou bom"; pressão da caneta fun
 ## Textos
 10. "neste computador" em textos que também aparecem no iPad/celular (ex.: cabeçalho de Ajustes: "ficam salvas neste computador") → "neste aparelho" onde valer para todas as versões. — **Feito em 04/11** (textos do Windows Hello, Ollama e ditado continuam com "computador", porque só existem lá).
 
-## Retomar daqui (04/11/2026: versão 0.50.0 publicada no navegador e no Windows)
+## Retomar daqui (04/11/2026, depois da 0.50.0: rodada do caderno e do editor, ainda sem publicar)
+- Tudo commitado na branch `claude/awesome-allen-kkfoij`. **Nada desta rodada foi publicado.** Dan pediu para **juntar tudo numa atualização só** (a 0.51.0), com o painel de IA e o resto do plano. Publicar só quando ele mandar.
+- Feito nesta rodada (detalhes na especificação, parte do caderno):
+  - editor completo (TipTap) com abas Início, Inserir, Página e Revisar; estilos prontos (Órbita, ABNT, APA...); documento com páginas de verdade; caixa de texto com a barra completa e alças;
+  - fontes: normas acadêmicas (com substitutas de mesma medida), as do Órbita, 15 livres e as do aparelho (Rust `fontes.rs` no Windows; lista completa do iPadOS no navegador); botão "Aa" (maiúsculas/minúsculas, versalete, Shift+F3);
+  - estilos de parágrafo próprios (criar a partir do parágrafo, atualizar, lista "Meus estilos"; banco `caderno.estilos`, viajam na sincronização) e capitular;
+  - tema próprio do caderno (opcional); pinça com o polegar; cores no baixo estímulo no app todo;
+  - aviso de dado sensível só na primeira vez com cada provedor (`ia.avisoSensivel`);
+  - **exportar e compartilhar**: PDF com texto de verdade (motor próprio, `exportar/medir.ts` + `pdf.ts`), Word, PNG, TXT e MD; Compartilhar no iPad, "Salvar como" no Windows.
+- **Próximas etapas aprovadas por Dan** (ordem combinada; plano na conversa de 04/11):
+  1. barra de cima e painel lateral no estilo do Goodnotes (abas Páginas, IA, Biblioteca), borracha com 3 tipos;
+  2. painel de IA (conversa sobre a página ou a seleção, envio de imagem para IA que enxerga, prévia com "Pôr na página"; a IA propõe e a pessoa confirma; nunca apaga o original);
+  3. biblioteca (cabeçalho, logo, modelo de página, estilo, trechos; sincroniza);
+  4. mapa mental; 5. fotos do quadro → texto ou cursiva; 6. trabalho acadêmico ABNT/APA (citation-js + CSL, DOI/ISBN); 7. corretor da escrita à mão (sob pedido; cursiva por fonte, depois "ensinar minha letra").
+- Conectores diretos: Google Drive depende de Dan acrescentar `drive.file` no painel do Google; Classroom pede revisão; OneDrive espera o registro na Microsoft.
+- **Para Dan testar quando sair a 0.51** (iPad e Windows): editor (o que "não funcionava" na 0.50), fontes (inclusive se as do Adobe Fonts aparecem no Windows), estilos próprios, capitular, Enviar (PDF no WhatsApp pelo Compartilhar; Salvar como no Windows; abrir o .docx no Word).
+
+## Antes (04/11/2026: versão 0.50.0 publicada no navegador e no Windows)
 - Tudo commitado na branch `claude/awesome-allen-kkfoij`. **0.50.0 publicada** (navegador e Windows). Combinado: juntar os pedidos e só publicar quando Dan mandar; a próxima é a **0.51.0**.
 - Feito nesta rodada (ver a especificação, "Decisões de 04/11/2026"):
   - textos "neste aparelho"; camuflagem no saldo da Energia; conta fixa paga sem contar duas vezes no Dinheiro; arrastar pastas e projetos em Projetos;
