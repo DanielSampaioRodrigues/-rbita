@@ -1,3 +1,22 @@
+- **Texto sem a caixa escura em volta**: no caderno, no quadro e no documento de texto, o texto não ganha mais aquela faixa escura com sombra. Era o ajuste "Contorno nas letras" (Aparência) entrando também no papel; agora ele vale só para o texto do app por cima de fotos e desenhos.
+
+- **Menu flutuante ao escolher texto**, como no Word: estilo, fonte, tamanho, negrito, itálico, sublinhado, cores, marca-texto, "Aa", listas, link e limpar a formatação. No computador fica em cima do trecho; no iPad, embaixo. Esc ou tocar fora fecha. Dá para desligar na aba Revisar.
+
+- **Espaço entre letras**: na barra, ao lado do tamanho, de condensado a expandido (como no Word). Vale também nos seus estilos e sai igual no PDF e no Word.
+
+- **Atalhos revisados**
+  - **Espaço segurado** vira a mão: arraste para mover a página. O botão do meio do mouse também arrasta, e a tecla **H** deixa a mão fixa (H ou Esc volta).
+  - **Letras das ferramentas**: V seleção, L laço, P caneta, N lápis, B pincel, M marca-texto, E borracha, T texto, U formas, K laser.
+  - **Ctrl+C, X, V e D** copiam, recortam, colam e duplicam também desenhos e imagens selecionados. Home e End vão para a primeira e a última página.
+  - **Caneta do Windows**: virada (ponta de borracha) ou com o botão lateral, apaga; ao soltar, volta para a caneta.
+  - **No texto, como no Word**: Ctrl+E, L, R e J alinham; Ctrl+1, 2 e 5 mudam o espaço entre linhas; Ctrl+Shift+> e < mudam o tamanho; Ctrl+Espaço limpa a formatação.
+  - **Corrigido**: no caderno, Ctrl + e Ctrl − mudavam também a letra do app inteiro; no texto, Ctrl+Shift+L e Ctrl+Shift+E trocavam o claro/escuro e o baixa energia; Ctrl+2 no documento levava para Ideias.
+  - A janela de atalhos (F1) agora mostra os do caderno, os da caneta e dos dedos e os do texto.
+
+---
+
+<!-- Abaixo: o que veio na 0.51.0. -->
+
 - **Editor de texto completo** (no documento, na página de texto e na caixa de texto), com uma barra como a do Word: abas Início, Inserir, Página e Revisar.
   - **Estilos prontos** (Órbita, ABNT, APA e outros) e **os seus estilos**: formate um parágrafo, guarde como estilo e use de novo com um toque. Também há **estilos de letra**, para um trecho (por exemplo, "termo técnico" em azul e negrito).
   - **Capitular** (a primeira letra grande do parágrafo).
@@ -25,34 +44,3 @@
 - **Aviso de dado de saúde**: aparece só na primeira vez com cada provedor de IA, numa linha calma.
 
 - **Também**: pinça com o polegar no caderno, cores que aparecem no baixo estímulo em todo o app e alças na caixa de texto.
-
----
-
-<!-- Abaixo: o que veio na 0.50.0. -->
-
-- **Caderno renovado** (inspirado no Goodnotes)
-  - **A página cabe inteira na tela**, sem aparecer um pedaço da próxima, em pé ou deitado e com a barra em qualquer lado. Arrastar com o dedo vira a página. Se preferir a letra maior, em Configurações do caderno escolha "Largura toda".
-  - **A caneta não falha mais**: o traço não é mais cortado no meio, e o traço leve (encostando de leve) continua aparecendo.
-  - **Zoom com dois dedos** voltou a funcionar. Soltando perto de 100%, volta para a página inteira.
-  - **Gestos**: dois dedos, dois toques: desfazer. Três dedos, dois toques: refazer. Um dedo, dois toques: aproximar. Quatro dedos, um toque: esconder as barras. Dá para desligar nas configurações do caderno.
-  - **Barra nova**: uma barra enxuta com as ferramentas e, para cada ferramenta, uma barra de opções com três espessuras salvas, as suas cores e opções próprias. Novidades: pontas da caneta (tinteiro, esferográfica, pincel), marca-texto sempre reto, borracha que apaga só o marca-texto, borracha que volta para a ferramenta de antes e apontador laser (o traço some sozinho). A barra continua indo para qualquer lado.
-  - **Forma ao segurar**: desenhe um círculo, um retângulo, um triângulo ou uma linha e segure a caneta parada no fim: vira a forma perfeita.
-  - **15 modelos de pincel**: além dos de antes, marcador, nanquim, guache, giz de cera, carvão, lápis de cor, neon, pontilhado e tracejado.
-  - **Lápis corrigido**: sem a borda mais escura que o corpo; agora é contínuo, com cara de grafite.
-  - **Cor e linhas da folha** agora mudam a página que está na tela (antes iam para outra página). As cores aparecem de verdade, também no baixo estímulo, e há "Outra cor" e o código da cor.
-  - **A capa é a primeira página**: escreva, desenhe e cole o que quiser nela, com as mesmas ferramentas. Seus cadernos antigos ganham a capa como página 1 na primeira vez que você abre cada um.
-  - **Ver as páginas**: miniaturas de todas as páginas, com nome, marcador, duplicar, mudar de lugar e apagar. O nome da página saiu do alto da folha.
-  - **Adicionar página** antes desta, depois desta ou no fim, escolhendo o modelo da folha e o tamanho.
-  - **Página de texto** (como no Pages ou no Word): títulos, fontes, tamanhos, cores, marca-texto, alinhamento, listas, lista de tarefas, citação e tabela. Com uma caneta, você escreve por cima do texto. Dá para misturar páginas à mão e de texto no mesmo caderno.
-  - **Documento de texto**: um tipo novo na estante, para quem quer só digitar.
-  - **Caixa de texto**: arraste para escolher a largura. O contorno estranho em volta do texto digitado sumiu.
-
-- **IA no iPad e no celular**: todas as funções de IA agora funcionam no navegador também, com a chave que você já cadastrou (ela vem pela sincronização). Funcionam Claude, ChatGPT, Gemini e Grok. O Sabiá não aceita ser chamado pelo navegador; nesse caso, o Órbita avisa.
-
-- **Projetos**: arraste as pastas para mudar a ordem e arraste um projeto até uma pasta para pôr ele lá.
-
-- **Dinheiro**: uma conta fixa paga não conta mais duas vezes no "Saiu". Em "Este mês", cada conta mostra "Paga" ou o botão "Registrar pagamento", que já abre o gasto preenchido.
-
-- **Energia**: o esforço de "parecer normal" (camuflagem) agora entra no saldo do dia: um pouco conta como gasto 1, muito como gasto 2.
-
-- **Textos**: onde valia para todos os aparelhos, "neste computador" virou "neste aparelho".
