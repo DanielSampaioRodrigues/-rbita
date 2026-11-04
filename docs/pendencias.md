@@ -24,12 +24,19 @@ Teste da 0.45.1 no iPad, 29/10/2026. Caderno "ficou bom"; pressão da caneta fun
 ## Textos
 10. "neste computador" em textos que também aparecem no iPad/celular (ex.: cabeçalho de Ajustes: "ficam salvas neste computador") → "neste aparelho" onde valer para todas as versões. — **Feito em 04/11** (textos do Windows Hello, Ollama e ditado continuam com "computador", porque só existem lá).
 
-## Retomar daqui (fim da sessão de 03/11/2026, versão 0.49.0 publicada no Windows e no navegador)
-- Tudo commitado na branch `claude/awesome-allen-kkfoij`. Nada pendente de publicação.
-- Combinado com Dan: **juntar os pedidos e só publicar quando ele mandar** (economiza minutos do Actions). Cada publicação sobe a versão (a próxima é 0.50.0).
-- Ideias para depois (Dan ainda não pediu para fazer):
-  - **IA no navegador** (iPad/celular): hoje nenhuma função de IA funciona lá, nem o "Planejar com a IA".
-  - **Compartilhar um quadro** da Minha organização (ex.: TCC com a Ariana).
-  - Pastas de projetos: **arrastar** para reordenar e arrastar o cartão para dentro da pasta (hoje é por setas e pelo botão "Pastas"). — **Feito em 04/11.**
-  - Sincronização: decidir se a chave muda quando a pessoa liga a "proteção extra".
-  - Domínio orbita.arcano3.com.br: parado, esperando o INPI.
+## Retomar daqui (fim da sessão de 04/11/2026, versão 0.49.0 publicada; nada novo publicado ainda)
+- Tudo commitado na branch `claude/awesome-allen-kkfoij`. **Nada publicado** (Dan pediu para juntar e só publicar quando ele mandar; a próxima é a **0.50.0**, navegador + Windows).
+- Feito nesta rodada (ver a especificação, "Decisões de 04/11/2026"):
+  - textos "neste aparelho"; camuflagem no saldo da Energia; conta fixa paga sem contar duas vezes no Dinheiro; arrastar pastas e projetos em Projetos;
+  - **IA no navegador** (decisão 0013): o Rust monta os pedidos e confere as respostas, o navegador só envia;
+  - **Caderno**: página inteira na tela e virar a página; rolagem, pinça e gestos próprios (2 dedos desfazem, 3 refazem, 1 dedo 2 toques aproxima, 4 dedos tela limpa); piso de pressão e traço sem falhas; cores da folha com amostras reais; visão das páginas; adicionar página antes/depois/no fim; barra no estilo Goodnotes com barra de contexto; forma ao segurar; laser; capa como página 1 (com conversão dos cadernos antigos); página de texto e documento de texto.
+- **Para Dan testar no iPad** (só dá no aparelho de verdade):
+  1. Escrever rápido e devagar com a Pencil (caneta, lápis, pincel): o traço não pode mais falhar.
+  2. Arrastar a folha com um dedo (com "só caneta" ligado), pinça para aproximar, dois dedos dois toques (desfazer) e três dedos dois toques (refazer).
+  3. A página cabe inteira na tela, em pé e deitado, com a barra em cada lado.
+  4. Palma apoiada não deve rolar nem dar zoom (o limite da palma mudou de 30 para 70 px).
+  5. Cor da folha e linhas mudam a página que está na tela; "Outra cor" abre o seletor.
+  6. Abrir um caderno antigo: a capa antiga deve virar a página 1 do jeito que estava.
+  7. IA no Safari com uma chave real (Claude, GPT, Gemini ou Grok): Planejar com a IA e Separar com IA.
+- **Antes de publicar:** os comandos de IA no Windows agora devolvem outro tipo por dentro (o JSON é o mesmo); vale um build do Windows na publicação da 0.50.0, como sempre.
+- Ideias para depois (Dan ainda não pediu): compartilhar um quadro da Minha organização; quadro infinito do caderno; arrastar para reordenar páginas na visão de páginas; imagens dentro da página de texto; domínio orbita.arcano3.com.br (esperando o INPI).
