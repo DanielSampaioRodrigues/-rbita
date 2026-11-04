@@ -15,10 +15,11 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, Italic, LayoutGrid, List, ListOrdered, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Underline, Undo2, Wand2, X } from "../icones";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, Italic, LayoutGrid, List, ListOrdered, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, Sparkles, Trash2, Type, Underline, Undo2, Wand2, X } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
+import { CamadaDocumento, DocumentoEstatico } from "./Documento";
 import { acaoDoGesto, criarDetectorDeToques, type AcaoGesto } from "./gestos";
 import { larguraDaPagina, paginaAoSoltar, paginaNaPosicao, type Encaixe } from "./visor";
 import { CAPA_NA_PAGINA, capaJaDecidida, capaNaPagina, SEM_CAPA, cenaDaCapaAntiga, lerCenaCapa, temCapaCena, tituloDaCapa } from "./capa";
@@ -219,7 +220,7 @@ function GradeCadernos({ cadernos, aoAbrir, aoEditar, aoExcluir, pastas, aoMover
             </button>
           ) : (
             <button className="caderno-capa" style={estiloCapa(c.capa)} onClick={() => aoAbrir(c)} aria-label={`${t.abrir}: ${c.nome}`}>
-              <span className="caderno-capa-modo">{c.modo === "infinito" ? <LayoutGrid aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />}</span>
+              <span className="caderno-capa-modo">{c.modo === "infinito" ? <LayoutGrid aria-hidden="true" size="1em" /> : c.modo === "documento" ? <FileText aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />}</span>
               {temCapaCena(c.capaCena) ? <RenderCapaCena cena={lerCenaCapa(c.capaCena)} /> : <span className="caderno-capa-nome">{c.nome}</span>}
             </button>
           )}
@@ -329,7 +330,7 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
   const [erro, setErro] = useState<string | null>(null);
   const editando = inicial.id !== "";
   const naPagina = capaNaPagina(inicial.capaCena);
-  const mostrarCapa = editando ? true : comCapa;
+  const mostrarCapa = editando ? inicial.modo === "caderno" : comCapa && modo === "caderno";
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -337,8 +338,13 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
     try {
       if (!editando) {
         // A capa é a primeira página: entra antes da página que o caderno já traz.
-        const cad = await api.salvarCaderno({ ...inicial, nome, modo, capa, capaCena: modo !== "caderno" ? "" : comCapa ? CAPA_NA_PAGINA : SEM_CAPA, pastaId });
+        const cad = await api.salvarCaderno({ ...inicial, nome, modo, capa, capaCena: modo === "infinito" ? "" : modo === "documento" ? CAPA_NA_PAGINA : comCapa ? CAPA_NA_PAGINA : SEM_CAPA, pastaId });
         if (comCapa && modo === "caderno") await criarPaginaCapa(cad, capa, nome, 0.5);
+        // Documento de texto: a primeira página já é de texto.
+        if (modo === "documento") {
+          const [pg] = await api.listarPaginasCaderno(cad.id);
+          if (pg) await api.salvarPaginaCaderno({ ...pg, papel: { ...papelPadrao(), texto: true } });
+        }
       } else {
         await api.salvarCaderno({ ...inicial, nome, capa, pastaId });
         // Capa já na página: troca o modelo da capa lá também.
@@ -360,7 +366,7 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
       <Campo rotulo={t.form.nome} valor={nome} aoMudar={setNome} autoFocus maximo={80} semDitado />
       {!editando && (
         <>
-          <Segmentado rotulo={t.form.modo} valor={modo} aoMudar={(v) => setModo(v as Caderno["modo"])} opcoes={[{ valor: "caderno", nome: t.modos.caderno }, { valor: "infinito", nome: t.modos.infinito }]} />
+          <Segmentado rotulo={t.form.modo} valor={modo} aoMudar={(v) => setModo(v as Caderno["modo"])} opcoes={[{ valor: "caderno", nome: t.modos.caderno }, { valor: "documento", nome: t.modos.documento }, { valor: "infinito", nome: t.modos.infinito }]} />
           <p className="campo-ajuda">{t.modoAjuda[modo]}</p>
           {modo === "caderno" && <Interruptor rotulo={t.form.comCapa} ligado={comCapa} aoMudar={setComCapa} />}
         </>
@@ -690,7 +696,9 @@ function lerAjustes(): Record<Ferramenta, AjusteTraco> {
 
 /** Desenha a folha (o papel) num tamanho dado, pela SVG do pacote. */
 /** A folha de uma página; a página-capa guarda o modelo da capa em `capa`. */
-type PapelPagina = Papel & { capa?: Capa };
+type PapelPagina = Papel & { capa?: Capa; texto?: boolean };
+/** Página de texto (editor no estilo do Pages/Word, com o desenho por cima). */
+const ehPaginaTexto = (pg: PaginaCaderno | undefined) => !!(pg?.papel as PapelPagina | null | undefined)?.texto;
 const capaDaPagina = (pg: PaginaCaderno | undefined): Capa | undefined => (pg?.papel as PapelPagina | null | undefined)?.capa;
 
 function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; className?: string }) {
@@ -751,7 +759,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   const [erro, setErro] = useState<string | null>(null);
   const area = useRef<HTMLDivElement>(null);
   // Desenho: ferramenta, cor e grossura ativas; cenas e histórico por página.
-  const [ferramenta, setFerramenta] = useState<FerramentaUI>("caneta");
+  const [ferramenta, setFerramenta] = useState<FerramentaUI>(caderno.modo === "documento" ? "texto" : "caneta");
   const ehTexto = ferramenta === "texto" || ferramenta === "nota";
   const ehSelecao = ferramenta === "laco" || ferramenta === "selecao";
   const fTraco: Ferramenta = FERRAMENTAS_TRACO.includes(ferramenta) ? (ferramenta as Ferramenta) : "caneta";
@@ -963,13 +971,21 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   }, [paginas]);
 
   const infinito = caderno.modo === "infinito";
+  // Documento de texto: abre na ferramenta Texto e com a página na largura toda (letra maior).
+  const documento = caderno.modo === "documento";
   const sel = paginas.find((p) => p.id === selId) ?? paginas[0];
 
   const agendarSalvarCena = (id: string, nova: Cena) => {
     clearTimeout(timers.current[id]);
     timers.current[id] = setTimeout(() => void api.salvarCenaCaderno(id, serializarCena(nova)).catch((e) => setErro(mensagem(e))), 700);
   };
-  const mudarCena = (id: string, nova: Cena) => {
+  /** A cena com o texto da página de texto preservado (o desenho não mexe nele). */
+  const comDocumento = (id: string, nova: Cena): Cena => {
+    const doc = cenasRef.current[id]?.documento;
+    return doc === undefined ? { elementos: nova.elementos } : { elementos: nova.elementos, documento: doc };
+  };
+  const mudarCena = (id: string, novaSo: Cena) => {
+    const nova = comDocumento(id, novaSo);
     setCenas((m) => ({ ...m, [id]: nova }));
     setHistoria((h) => {
       const at = h[id] ?? { pilha: [cenaVazia()], i: 0 };
@@ -1011,7 +1027,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
         } else novos.push(el); // o texto só sai no modo "objeto inteiro"
       }
       if (!mudou) return m;
-      const nova: Cena = { elementos: ajustarConectores(novos, MEDIDA) };
+      const nova: Cena = { ...c, elementos: ajustarConectores(novos, MEDIDA) };
       agendarSalvarCena(pid, nova);
       return { ...m, [pid]: nova };
     });
@@ -1045,7 +1061,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   const atualizarTexto = (pid: string, id: string, patch: Partial<Texto>) =>
     setCenas((m) => {
       const c = m[pid] ?? cenaVazia();
-      const nova: Cena = { elementos: c.elementos.map((e) => (e.id === id && e.tipo === "texto" ? { ...e, ...patch } : e)) };
+      const nova: Cena = { ...c, elementos: c.elementos.map((e) => (e.id === id && e.tipo === "texto" ? { ...e, ...patch } : e)) };
       agendarSalvarCena(pid, nova);
       return { ...m, [pid]: nova };
     });
@@ -1055,7 +1071,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     if (!c) return;
     const el = c.elementos.find((e) => e.id === id);
     if (el && el.tipo === "texto" && textoVazio(el.texto)) {
-      const nova: Cena = { elementos: c.elementos.filter((e) => e.id !== id) };
+      const nova: Cena = { ...c, elementos: c.elementos.filter((e) => e.id !== id) };
       setCenas((m) => ({ ...m, [pid]: nova }));
       registrarCena(pid, nova);
       agendarSalvarCena(pid, nova);
@@ -1063,6 +1079,15 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       registrarCena(pid, c);
     }
   };
+  // Página de texto: o editor tem o próprio desfazer; aqui só guarda (sem encher o histórico do desenho).
+  const atualizarDocumento = (pid: string, html: string) =>
+    setCenas((m) => {
+      const c = m[pid] ?? cenaVazia();
+      if ((c.documento ?? "") === html) return m;
+      const nova: Cena = { ...c, documento: html };
+      agendarSalvarCena(pid, nova);
+      return { ...m, [pid]: nova };
+    });
   const aoMoverFimTexto = (pid: string) => registrarCena(pid, cenasRef.current[pid] ?? cenaVazia());
   const apagarElemento = (pid: string, id: string) => mudarCena(pid, { elementos: (cenas[pid]?.elementos ?? []).filter((e) => e.id !== id) });
   // Recolore a caixa de texto em edição (tocar numa cor com a caixa aberta).
@@ -1100,7 +1125,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     setCenas((m) => {
       const c = m[pid] ?? cenaVazia();
       const movidos = c.elementos.map((e) => (ids.includes(e.id) ? fn(e) : e));
-      const nova: Cena = { elementos: ajustarConectores(soltarSetasMovidas(movidos, ids), MEDIDA) };
+      const nova: Cena = { ...c, elementos: ajustarConectores(soltarSetasMovidas(movidos, ids), MEDIDA) };
       agendarSalvarCena(pid, nova);
       return { ...m, [pid]: nova };
     });
@@ -1452,7 +1477,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   }, [infinito]);
   // "Página inteira" (ou rolagem lateral): cada página ocupa a área toda; no zoom
   // 100%, soltar a rolagem vira a página. "Largura toda": rola livre.
-  const modoPagina = lateral || encaixe === "pagina";
+  const modoPagina = lateral || (encaixe === "pagina" && !documento);
   const paginando = modoPagina && Math.abs(zoom - 1) < 0.02;
   paginandoRef.current = paginando;
   const larguraNaTela = (pg: PaginaCaderno) => (larguraArea && alturaArea
@@ -1539,7 +1564,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     if (!h) return;
     const i = h.i + passo;
     if (i < 0 || i >= h.pilha.length) return;
-    const nova = h.pilha[i];
+    const nova = comDocumento(selId, h.pilha[i]);
     setHistoria((hs) => ({ ...hs, [selId]: { ...h, i } }));
     setCenas((m) => ({ ...m, [selId]: nova }));
     agendarSalvarCena(selId, nova);
@@ -1787,7 +1812,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
         {!infinito && <Button className={visaoPaginas ? "botao-icone ativo" : "botao-icone"} onPress={() => setVisaoPaginas((v) => !v)} aria-label={t.visao.abrir} aria-pressed={visaoPaginas}><LayoutGrid aria-hidden="true" size="1.1em" /></Button>}
         <strong className="leitor-titulo quebra">
-          {infinito ? <LayoutGrid aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />} {caderno.nome}
+          {infinito ? <LayoutGrid aria-hidden="true" size="1em" /> : documento ? <FileText aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />} {caderno.nome}
         </strong>
         <span className="linha-ajuste">
           {!infinito && zoom !== 1 && (
@@ -1818,7 +1843,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             <button key={c.id} type="button" role="tab" aria-selected={c.id === caderno.id}
               className={c.id === caderno.id ? "caderno-aba atual" : "caderno-aba"}
               onClick={() => c.id !== caderno.id && aoTrocar(c)}>
-              {c.modo === "infinito" ? <LayoutGrid aria-hidden="true" size="0.9em" /> : <PenLine aria-hidden="true" size="0.9em" />}
+              {c.modo === "infinito" ? <LayoutGrid aria-hidden="true" size="0.9em" /> : c.modo === "documento" ? <FileText aria-hidden="true" size="0.9em" /> : <PenLine aria-hidden="true" size="0.9em" />}
               <span className="quebra">{c.nome}</span>
             </button>
           ))}
@@ -1850,6 +1875,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
                   negritoTexto={negritoTexto} slotTexto={slotTexto} aoTamTexto={mudarTamTexto}
                   regua={p.id === selId ? regua : null} unidadeRegua={unidadeRegua} aoMudarRegua={setRegua} aoUnidadeRegua={mudarUnidadeRegua}
                   aoSelecionar={() => setSelId(p.id)}
+                  aoDocumento={(html) => atualizarDocumento(p.id, html)}
+                  aoContinuarTexto={() => { setSelId(p.id); void adicionar(true, "depois", p.tamanho, { ...semCapa(folhaDe(p)), texto: true } as Papel); }}
                   aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
                   aoNovaForma={(fm) => aoNovaForma(p.id, fm)}
                   aoApagarParcial={(x, y, raio) => apagarParcial(p.id, x, y, raio)}
@@ -1916,7 +1943,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
               modoBorracha={modoBorracha} aoModoBorracha={mudarModoBorracha} opcoes={opcoes} aoOpcoes={mudarOpcoes}
               acrescentar={acrescentar} aoAcrescentar={setAcrescentar}
               editandoTexto={!!editandoTexto} tamTexto={tamTexto} aoTamTexto={mudarTamTexto} negritoTexto={negritoTexto} aoNegritoTexto={mudarNegritoTexto}
-              slotTexto={setSlotTexto} />
+              slotTexto={setSlotTexto} paginaTexto={ehPaginaTexto(sel)} />
           }
         />
       )}
@@ -2045,6 +2072,7 @@ const MiniaturaPagina = memo(function MiniaturaPagina({ pagina, cena, imagemUrl,
     <div className="caderno-mini" style={{ width: largura, height: Math.round(med.altura * k) }} aria-hidden="true">
       <div className="caderno-mini-miolo" style={{ width: med.largura, height: med.altura, transform: `scale(${k})` }}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-mini-folha" />
+        {cena?.documento && <DocumentoEstatico html={cena.documento} largura={med.largura} altura={med.altura} />}
         <svg className="caderno-mini-desenho" viewBox={`0 0 ${med.largura} ${med.altura}`} preserveAspectRatio="none">
           <DesenhoEstatico elementos={els} imagemUrl={imagemUrl} />
         </svg>
@@ -2157,10 +2185,13 @@ function AdicionarPagina({ atual, total, aoAdicionar, aoCancelar }: {
   const [larg, setLarg] = useState(16);
   const [alt, setAlt] = useState(22);
   const [modelo, setModelo] = useState<ModeloPapel | "igual">("igual");
+  const [tipo, setTipo] = useState<"mao" | "texto">(ehPaginaTexto(atual) ? "texto" : "mao");
   const base = atual ? semCapa(folhaDe(atual)) : papelPadrao();
   const confirmar = () => {
     const tam = tamanho === "igual" ? undefined : tamanho === "personalizado" ? `custom:${Math.round(larg * PX_CM)}x${Math.round(alt * PX_CM)}` : tamanho;
-    aoAdicionar(onde, tam, modelo === "igual" ? undefined : { ...base, modelo });
+    const folha: PapelPagina = { ...base, ...(modelo === "igual" ? {} : { modelo }) };
+    if (tipo === "texto") folha.texto = true; else delete folha.texto;
+    aoAdicionar(onde, tam, folha);
   };
   return (
     <div className="formulario">
@@ -2168,6 +2199,9 @@ function AdicionarPagina({ atual, total, aoAdicionar, aoCancelar }: {
         <Segmentado rotulo={ta.onde} valor={onde} aoMudar={(v) => setOnde(v as OndeNova)}
           opcoes={[{ valor: "antes", nome: ta.antes }, { valor: "depois", nome: ta.depois }, { valor: "fim", nome: ta.fim }]} />
       )}
+      <Segmentado rotulo={ta.tipo} valor={tipo} aoMudar={(v) => setTipo(v as typeof tipo)}
+        opcoes={[{ valor: "mao", nome: ta.tipos.mao }, { valor: "texto", nome: ta.tipos.texto }]} />
+      <p className="campo-ajuda">{ta.tiposAjuda[tipo]}</p>
       <div className="campo">
         <span className="campo-rotulo">{t.folha.modelo}</span>
         <div className="caderno-modelos">
@@ -2204,8 +2238,10 @@ function AdicionarPagina({ atual, total, aoAdicionar, aoCancelar }: {
   );
 }
 
-function PaginaView({ id, pagina, numero, cena, ferramenta, cor, ajuste, modeloPincel, forma, editandoTexto, selecionados, imagemUrl, soCaneta, multiToque, aoCaneta, opcoes, larguraTela, bloco, acrescentar, negritoTexto, slotTexto, aoTamTexto, regua, unidadeRegua, aoMudarRegua, aoUnidadeRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoNivelSelecao, aoAgrupar, aoDesagrupar, aoFimSelecao, aoApagarSelecao, aoEditarTexto }: {
+function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarTexto, cena, ferramenta, cor, ajuste, modeloPincel, forma, editandoTexto, selecionados, imagemUrl, soCaneta, multiToque, aoCaneta, opcoes, larguraTela, bloco, acrescentar, negritoTexto, slotTexto, aoTamTexto, regua, unidadeRegua, aoMudarRegua, aoUnidadeRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoNivelSelecao, aoAgrupar, aoDesagrupar, aoFimSelecao, aoApagarSelecao, aoEditarTexto }: {
   id: string; pagina: PaginaCaderno; numero?: number; selecionada?: boolean;
+  /** Página de texto: o texto digitado mudou; e "continuar numa página nova". */
+  aoDocumento: (html: string) => void; aoContinuarTexto: () => void;
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; modeloPincel: ModeloPincel; forma: AjusteForma; editandoTexto: string; selecionados: string[]; imagemUrl: (id: string) => string | undefined;
   soCaneta: boolean; multiToque: React.RefObject<boolean>; aoCaneta: () => void; opcoes: OpcoesCaderno;
   /** Largura da página na tela (px, já com o zoom); 0 enquanto mede. */
@@ -2249,9 +2285,13 @@ function PaginaView({ id, pagina, numero, cena, ferramenta, cor, ajuste, modeloP
       <div ref={areaRef} className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}`, width: bloco ? larguraPg : undefined }}
         onPointerDownCapture={aoSelecionar} onContextMenu={(e) => e.preventDefault()}>
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
+        {ehPaginaTexto(pagina) && escala > 0 && (
+          <CamadaDocumento html={cena.documento ?? ""} editavel={ferramenta === "texto"} escala={escala} largura={med.largura} altura={med.altura}
+            slot={selecionada ? slotTexto : null} aoMudar={aoDocumento} aoContinuar={aoContinuarTexto} />
+        )}
         <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} modeloPincel={modeloPincel} forma={forma} regua={regua} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl}
           soCaneta={soCaneta} multiToque={multiToque} aoCaneta={aoCaneta} opcoes={opcoes} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarParcial={aoApagarParcial} aoApagarFim={aoApagarFim} />
-        <CamadaTexto caixas={caixas} ativa={ferramenta === "texto" || ferramenta === "nota"} escala={escala} editandoId={editandoTexto} soCaneta={soCaneta}
+        <CamadaTexto caixas={caixas} ativa={ferramenta === "nota" || (ferramenta === "texto" && !ehPaginaTexto(pagina))} escala={escala} editandoId={editandoTexto} soCaneta={soCaneta}
           negritoPadrao={negritoTexto} slot={slotTexto} aoTamPadrao={aoTamTexto}
           aoNovo={aoNovoTexto} aoPatch={aoPatchTexto} aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
         <CamadaSelecao elementos={cena.elementos} selecionados={selecionados} modo={modoSel} acrescentar={acrescentar} soCaneta={soCaneta} escala={escala} largura={med.largura} altura={med.altura}
@@ -3220,6 +3260,8 @@ interface Contexto {
   acrescentar: boolean; aoAcrescentar: (v: boolean) => void;
   editandoTexto: boolean; tamTexto: number; aoTamTexto: (n: number) => void; negritoTexto: boolean; aoNegritoTexto: (v: boolean) => void;
   slotTexto: (el: HTMLDivElement | null) => void;
+  /** A página atual é de texto: a ferramenta Texto edita o texto dela. */
+  paginaTexto: boolean;
 }
 
 /** A barra de contexto da ferramenta (como a do Goodnotes): espessuras, cores
@@ -3305,11 +3347,12 @@ function BarraContexto(c: Contexto) {
       return (
         <>
           <Opcoes rotulo={tc.tipoTexto} valor={c.ferramenta === "nota" ? "nota" : "texto"} aoMudar={(v) => c.aoFerramenta(v)}
-            opcoes={[{ valor: "texto", nome: tc.caixa }, { valor: "nota", nome: t.ferramentas.nomes.nota }]} />
+            opcoes={[{ valor: "texto", nome: c.paginaTexto ? tc.textoDaPagina : tc.caixa }, { valor: "nota", nome: t.ferramentas.nomes.nota }]} />
           {sep}
-          {!c.editandoTexto && <SubTextoPadrao tamanho={c.tamTexto} aoTamanho={c.aoTamTexto} negrito={c.negritoTexto} aoNegrito={c.aoNegritoTexto} />}
+          {c.paginaTexto && c.ferramenta === "texto" ? <p className="caderno-subbarra-dica">{t.documento.dica}</p> : null}
+          {!c.editandoTexto && !(c.paginaTexto && c.ferramenta === "texto") && <SubTextoPadrao tamanho={c.tamTexto} aoTamanho={c.aoTamTexto} negrito={c.negritoTexto} aoNegrito={c.aoNegritoTexto} />}
           <div ref={c.slotTexto} className="caderno-subbarra-slot" />
-          {c.ferramenta === "texto" && <>{sep}{cores}</>}
+          {c.ferramenta === "texto" && !c.paginaTexto && <>{sep}{cores}</>}
         </>
       );
     case "selecao":

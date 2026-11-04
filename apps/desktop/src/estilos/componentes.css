@@ -1869,3 +1869,38 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-capa-pagina-vazia { width: 100%; height: 100%; }
 .caderno-item-nome { font-size: 0.9rem; min-width: 0; flex: 1; }
 .caderno-capa.caderno-capa-com-pagina { aspect-ratio: 794 / 1123; }
+
+/* ---------- Caderno: página de texto (editor no estilo do Pages/Word) ---------- */
+.caderno-doc { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.caderno-doc.editavel { pointer-events: auto; }
+.caderno-doc-folha { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-sizing: border-box; overflow: hidden; }
+.caderno-doc .ProseMirror { outline: none; min-height: 100%; }
+.caderno-doc.editavel .ProseMirror { cursor: text; -webkit-user-select: text; user-select: text; }
+.caderno-doc-conteudo { color: #1f2937; font-family: var(--fonte-texto); font-size: 16px; line-height: 1.5; overflow-wrap: break-word; }
+.caderno-doc-conteudo > :first-child { margin-top: 0; }
+.caderno-doc-conteudo p { margin: 0 0 0.6em; }
+.caderno-doc-conteudo h1 { font-size: 2em; line-height: 1.2; margin: 0.6em 0 0.4em; }
+.caderno-doc-conteudo h2 { font-size: 1.5em; line-height: 1.25; margin: 0.6em 0 0.35em; }
+.caderno-doc-conteudo h3 { font-size: 1.2em; line-height: 1.3; margin: 0.5em 0 0.3em; }
+.caderno-doc-conteudo ul, .caderno-doc-conteudo ol { margin: 0 0 0.6em; padding-left: 1.5em; }
+.caderno-doc-conteudo ul[data-type="taskList"] { list-style: none; padding-left: 0.2em; }
+.caderno-doc-conteudo ul[data-type="taskList"] li { display: flex; gap: 0.5em; align-items: flex-start; }
+.caderno-doc-conteudo ul[data-type="taskList"] li > label { margin-top: 0.2em; }
+.caderno-doc-conteudo blockquote { margin: 0 0 0.6em; padding-left: 0.9em; border-left: 3px solid #c9ccd4; color: #4b5563; }
+.caderno-doc-conteudo hr { border: none; border-top: 1px solid #c9ccd4; margin: 1em 0; }
+.caderno-doc-conteudo table { border-collapse: collapse; width: 100%; margin: 0 0 0.8em; table-layout: fixed; }
+.caderno-doc-conteudo td, .caderno-doc-conteudo th { border: 1px solid #c9ccd4; padding: 0.3em 0.5em; vertical-align: top; }
+.caderno-doc-conteudo th { background: #f3f4f6; font-weight: 700; text-align: left; }
+.caderno-doc-conteudo .selectedCell { background: #dbeafe; }
+.caderno-doc-conteudo mark { border-radius: 2px; padding: 0 1px; }
+.caderno-doc-conteudo a { color: #1d4ed8; text-decoration: underline; }
+.caderno-doc-passou { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: var(--espaco-2); padding: 6px 10px; border-radius: 999px; background: var(--cor-superficie); border: 1px solid var(--cor-borda); color: var(--cor-texto); font-size: 0.85rem; pointer-events: auto; box-shadow: 0 2px 8px rgb(0 0 0 / 0.12); white-space: nowrap; }
+.caderno-doc-barra { gap: 4px; }
+.caderno-doc-select { min-height: 36px; max-width: 9.5rem; padding: 0 0.4rem; border: 1px solid var(--cor-borda-controle); border-radius: 8px; background: var(--cor-superficie); color: var(--cor-texto); font: inherit; font-size: 0.85rem; }
+.caderno-doc-select.curto { max-width: 4.2rem; }
+.caderno-doc-cor-traco { position: absolute; left: 25%; right: 25%; bottom: 3px; height: 3px; border-radius: 2px; }
+.caderno-fmt { position: relative; }
+.caderno-doc-cores { display: grid; grid-template-columns: repeat(6, 32px); gap: 6px; padding: 8px; outline: none; }
+.caderno-doc-cor { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgb(0 0 0 / 0.15); cursor: pointer; display: grid; place-items: center; font-weight: 700; color: #1f2937; outline: none; }
+.caderno-doc-cor[data-focused] { outline: 3px solid var(--cor-foco); outline-offset: 1px; }
+.caderno-doc-cor.padrao { background: #fff; }

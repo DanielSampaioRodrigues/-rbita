@@ -161,6 +161,8 @@ export type Elemento = Traco | Texto | Forma | Imagem;
 /** A cena desenhável de uma página (ou do quadro infinito). */
 export interface Cena {
   elementos: Elemento[];
+  /** Página de texto: o texto digitado (HTML do editor), por baixo do desenho. */
+  documento?: string;
 }
 
 export function cenaVazia(): Cena {

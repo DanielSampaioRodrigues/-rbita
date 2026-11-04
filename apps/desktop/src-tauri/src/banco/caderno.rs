@@ -16,7 +16,8 @@ use serde_json::Value;
 use super::{agora_ms, novo_id};
 use crate::erro::Erro;
 
-const MODOS: [&str; 2] = ["caderno", "infinito"];
+/// "documento": documento de texto (páginas de texto, como no Pages ou no Word).
+const MODOS: [&str; 3] = ["caderno", "infinito", "documento"];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -37,7 +38,7 @@ pub struct Caderno {
     #[serde(default)]
     pub id: String,
     pub nome: String,
-    /// "caderno" ou "infinito".
+    /// "caderno", "infinito" ou "documento" (documento de texto).
     #[serde(default)]
     pub modo: String,
     #[serde(default)]
@@ -307,6 +308,15 @@ mod testes {
         let pasta = tempfile::tempdir().unwrap();
         let conn = abrir(&pasta.path().join("orbita.db"), &nova_chave()).unwrap();
         (pasta, conn)
+    }
+
+    #[test]
+    fn documento_de_texto_e_um_modo_valido() {
+        let (_p, conn) = banco();
+        let c = salvar_caderno(&conn, Caderno { id: String::new(), nome: "Relatório".into(), modo: "documento".into(), capa: Default::default(), capa_cena: String::new(), pasta_id: String::new(), criado_em: 0 }).unwrap();
+        assert_eq!(c.modo, "documento");
+        assert_eq!(listar_cadernos(&conn).unwrap()[0].modo, "documento");
+        assert_eq!(listar_paginas(&conn, &c.id).unwrap().len(), 1);
     }
 
     #[test]

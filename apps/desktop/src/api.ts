@@ -551,7 +551,7 @@ export interface Capa {
 export interface Caderno {
   id: string;
   nome: string;
-  modo: "caderno" | "infinito";
+  modo: "caderno" | "infinito" | "documento";
   capa: Capa;
   /** Cena desenhada sobre a capa (título e traços), em JSON. Vazio = sem cena. */
   capaCena?: string;
@@ -2484,7 +2484,7 @@ function simularCaderno() {
         cadernos[i] = { ...cadernos[i], nome: c.nome.trim(), capa: c.capa, capaCena: c.capaCena, pastaId: c.pastaId };
         return { ...cadernos[i] };
       }
-      const modo = c.modo === "infinito" ? "infinito" : "caderno";
+      const modo = c.modo === "infinito" || c.modo === "documento" ? c.modo : "caderno";
       const novo: Caderno = { ...c, id: crypto.randomUUID(), nome: c.nome.trim(), modo, criadoEm: Date.now() };
       cadernos.push(novo);
       paginas.push({ id: crypto.randomUUID(), cadernoId: novo.id, ordem: 1, tamanho: modo === "infinito" ? "infinito" : "a4", papel: null, titulo: "", marcado: false, criadoEm: Date.now() });
