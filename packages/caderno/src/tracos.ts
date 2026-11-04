@@ -43,17 +43,18 @@ export function caminhoSVG(pts: number[][]): string {
   return d + " Z";
 }
 
-/** Pressão mínima do lápis: com a Apple Pencil encostando de leve, a pressão
- *  chega perto de zero e o traço sumia em trechos (parecia "falhar"). O lápis
- *  agora tem um piso: leve continua visível, só mais fino. */
+/** Pressão mínima de cada ferramenta com caneta de verdade. Com a Apple Pencil
+ *  encostando de leve, a pressão chega perto de zero e o traço sumia em trechos
+ *  (parecia uma caneta "falhando"). Com o piso, o traço leve continua visível,
+ *  só mais fino. O lápis já tinha piso; a caneta e o pincel ganharam em 11/2026. */
 export const PISO_LAPIS = 0.35;
+export const PISO_PRESSAO: Partial<Record<Ferramenta, number>> = { lapis: PISO_LAPIS, caneta: 0.28, pincel: 0.22 };
 
-/** Pontos do traço como a biblioteca espera ([x, y, pressão]). No lápis com
- *  pressão real, a pressão ganha o piso acima. */
+/** Pontos do traço como a biblioteca espera ([x, y, pressão]). Com pressão
+ *  real, a pressão ganha o piso da ferramenta. */
 export function pontosDoTraco(traco: Traco): number[][] {
-  if (traco.ferramenta === "lapis" && traco.pressao) {
-    return traco.pontos.map((p) => [p.x, p.y, PISO_LAPIS + (1 - PISO_LAPIS) * p.p]);
-  }
+  const piso = traco.pressao ? PISO_PRESSAO[traco.ferramenta] ?? 0 : 0;
+  if (piso > 0) return traco.pontos.map((p) => [p.x, p.y, piso + (1 - piso) * p.p]);
   return traco.pontos.map((p) => [p.x, p.y, p.p]);
 }
 

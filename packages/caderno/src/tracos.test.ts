@@ -46,3 +46,14 @@ describe("caderno: pressão da caneta", () => {
     expect(alturaDe(caminhoDeTraco(comPressao(0.9)))).toBeGreaterThan(alturaDe(caminhoDeTraco(comPressao(0.15))) * 1.5);
   });
 });
+
+describe("piso de pressão (a caneta não 'falha' com a Pencil leve)", () => {
+  it("caneta e pincel com pressão real ganham piso; sem pressão real, fica igual", async () => {
+    const { pontosDoTraco, PISO_PRESSAO } = await import("./tracos");
+    const base = { tipo: "traco" as const, id: "t", cor: "#000", espessura: 3, pontos: [{ x: 0, y: 0, p: 0 }, { x: 5, y: 5, p: 1 }] };
+    expect(pontosDoTraco({ ...base, ferramenta: "caneta", pressao: true })[0][2]).toBeCloseTo(PISO_PRESSAO.caneta!);
+    expect(pontosDoTraco({ ...base, ferramenta: "pincel", pressao: true })[1][2]).toBeCloseTo(1);
+    expect(pontosDoTraco({ ...base, ferramenta: "caneta", pressao: false })[0][2]).toBe(0);
+    expect(pontosDoTraco({ ...base, ferramenta: "marcatexto", pressao: true })[0][2]).toBe(0);
+  });
+});

@@ -1753,3 +1753,72 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 }
 :root[data-baixo-estimulo="true"] .arraste-etiqueta { box-shadow: none; }
 .projeto-linha, .pasta-projeto-item { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* Seletor de cor do caderno: a amostra mostra a cor de verdade (também no baixo
+   estímulo, porque é a cor que vai para a página). */
+.seletor-cor-amostras { display: flex; flex-wrap: wrap; gap: var(--espaco-2); }
+.amostra-cor {
+  position: relative; width: 2.5rem; height: 2.5rem; min-width: 44px; min-height: 44px; border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--cor-texto) 28%, transparent); cursor: pointer; padding: 0;
+  display: inline-grid; place-items: center;
+}
+.amostra-cor.atual { outline: 3px solid var(--cor-destaque); outline-offset: 2px; }
+.amostra-cor:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.amostra-cor-marca { color: #1f2937; background: rgb(255 255 255 / 0.85); border-radius: 50%; padding: 2px; }
+.seletor-cor-livre { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espaco-2); margin-top: var(--espaco-2); }
+.amostra-cor-livre { display: inline-flex; align-items: center; gap: var(--espaco-2); min-height: 44px; padding: 0 var(--espaco-3) 0 var(--espaco-1); border: 1px solid var(--cor-borda-controle); border-radius: 999px; cursor: pointer; }
+.amostra-cor-livre.atual { outline: 3px solid var(--cor-destaque); outline-offset: 2px; }
+.seletor-cor-nativo { width: 2.25rem; height: 2.25rem; padding: 0; border: none; border-radius: 50%; background: none; cursor: pointer; }
+.seletor-cor-nativo::-webkit-color-swatch-wrapper { padding: 0; }
+.seletor-cor-nativo::-webkit-color-swatch { border: 1px solid color-mix(in srgb, var(--cor-texto) 28%, transparent); border-radius: 50%; }
+.seletor-cor-nativo::-moz-color-swatch { border-radius: 50%; }
+.seletor-cor-codigo { width: 7.5rem; font-family: var(--fonte-mono, monospace); }
+
+/* O contorno nas letras (Aparência) não vale dentro das páginas do caderno: lá o
+   texto é da pessoa, e o contorno parecia uma marcação de caneta em volta. */
+:root[data-contorno="true"] :is(.caderno-folha-area, .caderno-folha-area *, .caderno-mini, .caderno-mini *) { text-shadow: none; }
+/* Caixa de texto sendo desenhada (arrastar para escolher a largura). */
+.caderno-texto-rascunho { position: absolute; border: 1.5px dashed var(--cor-destaque); border-radius: 3px; pointer-events: none; background: color-mix(in srgb, var(--cor-destaque) 6%, transparent); }
+
+/* ---------- Caderno: página inteira na tela, visão das páginas ---------- */
+.caderno-rolagem { position: relative; }
+.caderno-rolagem:not(.lateral) { touch-action: none; }
+.caderno-rolagem.lateral { touch-action: none; }
+.caderno-rolagem.modo-pagina { padding: 0; gap: 0; }
+.caderno-rolagem.modo-pagina > .caderno-folha-bloco { margin: 0; }
+.caderno-folha-bloco.inteira { display: flex; align-items: center; justify-content: center; flex: none; }
+.caderno-folha-bloco.inteira .caderno-folha-area { flex: none; }
+.caderno-rolagem.modo-pagina:not(.lateral) > .caderno-folha-bloco.inteira { margin-inline: auto; }
+.caderno-folha-bloco.atual .caderno-folha-area { outline: none; }
+.caderno-paginador { display: inline-flex; align-items: center; gap: 2px; }
+.caderno-pagina-atual {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 44px; min-width: 4.5rem; justify-content: center; padding: 0 var(--espaco-2);
+  border: 1px solid var(--cor-borda-controle); border-radius: 999px; background: var(--cor-superficie); color: var(--cor-texto); font: inherit; font-size: 0.9rem; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.caderno-pagina-atual[data-focus-visible] { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.caderno-mostrar-barras {
+  position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 30;
+  width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--cor-borda);
+  background: color-mix(in srgb, var(--cor-superficie) 88%, transparent); color: var(--cor-texto-suave); opacity: 0.75; cursor: pointer;
+}
+.caderno-lista-gestos { margin: 0; padding-left: 1.2em; display: grid; gap: 2px; }
+.caderno-visao { flex: 1; min-height: 0; overflow: auto; padding: var(--espaco-3) var(--espaco-4) var(--espaco-6); display: grid; align-content: start; gap: var(--espaco-3); }
+.caderno-visao-cabeca { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espaco-3); }
+.caderno-visao-cabeca h2 { margin: 0; margin-right: auto; }
+.caderno-visao-grade { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--espaco-4) var(--espaco-3); }
+.caderno-visao-item { display: grid; justify-items: center; gap: var(--espaco-1); }
+.caderno-visao-mini { position: relative; padding: 0; border: 2px solid transparent; border-radius: 6px; background: none; cursor: pointer; line-height: 0; }
+.caderno-visao-item.atual .caderno-visao-mini { border-color: var(--cor-destaque); }
+.caderno-visao-mini:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.caderno-visao-marca { position: absolute; top: -2px; right: 10px; color: var(--cor-destaque); line-height: 1; }
+.caderno-visao-pe { display: flex; align-items: center; gap: var(--espaco-1); width: 150px; font-size: 0.85rem; }
+.caderno-visao-num { font-variant-numeric: tabular-nums; color: var(--cor-texto-suave); }
+.caderno-visao-nome { flex: 1; min-width: 0; }
+.caderno-mini { position: relative; overflow: hidden; border: 1px solid var(--cor-borda); border-radius: 3px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); background: #fff; }
+.caderno-mini-miolo { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.caderno-mini-folha { position: absolute; inset: 0; width: 100%; height: 100%; }
+.caderno-mini-desenho { position: absolute; inset: 0; width: 100%; height: 100%; }
+.caderno-mini-texto { position: absolute; width: max-content; line-height: 1.3; overflow-wrap: break-word; }
+.caderno-mini-texto p { margin: 0; }
+:root[data-baixo-estimulo="true"] .caderno-mini { box-shadow: none; }
+.caderno-rolagem[hidden] { display: none; }
