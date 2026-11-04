@@ -28,6 +28,7 @@ import { aplicarNasCenas, arranjoDasPaginas, descreverCaderno, lerMudancas, lerR
 import { PainelBiblioteca } from "./PainelBiblioteca";
 import { PainelFontes } from "./PainelFontes";
 import { amostrar, buscar, lerFontes, lerTrechos, montarTrechos } from "./fontes";
+import { acaoDaTecla, canetaApagando, ehEspaco } from "./atalhosCaderno";
 import { CamadaCorrecao, type MarcaEscrita } from "./CorrecaoEscrita";
 import { imagemComCaixas, palavrasDaPagina } from "./escrita";
 import { cenaParaGuardar, copiarElementos, guardarNaBiblioteca, normalizarObjetos, type DadosBiblioteca, type ItemBiblioteca } from "./biblioteca";
@@ -580,6 +581,11 @@ function lerCorBarra(): string {
  *  formas, seta, o laço e a seleção (cursor). */
 type FerramentaUI = Ferramenta | "texto" | "nota" | "forma" | "seta" | "laco" | "selecao" | "laser";
 
+/** O que foi copiado no caderno (Ctrl+C): fica no Órbita, para colar em qualquer página. */
+let areaDeCopia: { els: Elemento[]; pid: string; colagens: number } | null = null;
+/** O que vai para a área de transferência do sistema: só uma marca (o desenho fica no Órbita). */
+const MARCA_COPIA = "[desenho copiado no caderno do Órbita]";
+
 /** Opções das ferramentas (barra de contexto), guardadas no aparelho. */
 interface OpcoesCaderno {
   /** Desenhar e segurar parado no fim: o traço vira forma perfeita. */
@@ -798,6 +804,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   const area = useRef<HTMLDivElement>(null);
   // Desenho: ferramenta, cor e grossura ativas; cenas e histórico por página.
   const [ferramenta, setFerramenta] = useState<FerramentaUI>(caderno.modo === "documento" ? "texto" : "caneta");
+  const ferramentaRef = useRef(ferramenta);
+  ferramentaRef.current = ferramenta;
   const ehTexto = ferramenta === "texto" || ferramenta === "nota";
   const ehSelecao = ferramenta === "laco" || ferramenta === "selecao";
   const fTraco: Ferramenta = FERRAMENTAS_TRACO.includes(ferramenta) ? (ferramenta as Ferramenta) : "caneta";
@@ -1636,9 +1644,11 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   // Colar imagem (Ctrl + V) com o caderno aberto.
   useEffect(() => {
     const aoColar = (e: ClipboardEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable='true']")) return;
       const it = [...(e.clipboardData?.items ?? [])].find((x) => x.type.startsWith("image/"));
       const b = it?.getAsFile();
-      if (b) { e.preventDefault(); void inserirRef.current(b, `colado.${extDeMime(b.type)}`); }
+      if (b) { e.preventDefault(); void inserirRef.current(b, `colado.${extDeMime(b.type)}`); return; }
+      copiaRef.current.colar(e);
     };
     document.addEventListener("paste", aoColar);
     return () => document.removeEventListener("paste", aoColar);
@@ -1881,14 +1891,170 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     if (ctrl && (e.key === "=" || e.key === "+") && el) { e.preventDefault(); aplicarZoom(zoomRef.current * 1.25, el.clientWidth / 2, el.clientHeight / 2); return; }
     if (ctrl && e.key === "-" && el) { e.preventDefault(); aplicarZoom(zoomRef.current / 1.25, el.clientWidth / 2, el.clientHeight / 2); return; }
     if (ctrl && e.key === "0") { e.preventDefault(); voltarZoom(); return; }
-    if (!ctrl && !e.altKey && (e.key === "PageDown" || e.key === "PageUp")) { e.preventDefault(); irRelativo(e.key === "PageDown" ? 1 : -1); }
+    if (!ctrl && !e.altKey && (e.key === "PageDown" || e.key === "PageUp")) { e.preventDefault(); irRelativo(e.key === "PageDown" ? 1 : -1); return; }
+    if (e.key === "Escape" && maoFixa) { setMaoFixa(false); return; }
+    // Letras das ferramentas, mão fixa, duplicar, primeira e última página (atalhosCaderno.ts).
+    const a = acaoDaTecla(e);
+    if (!a) return;
+    e.preventDefault();
+    if (a.tipo === "ferramenta") { setMaoFixa(false); escolherFerramenta(a.ferramenta); }
+    else if (a.tipo === "maoFixa") { if (!maoFixa) recado(t.maoFixa); setMaoFixa(!maoFixa); }
+    else if (a.tipo === "duplicar") duplicarSelecao();
+    else if (a.tipo === "primeira" && paginas[0]) irPara(paginas[0].id, true);
+    else if (a.tipo === "ultima" && paginas.length) irPara(paginas[paginas.length - 1].id, true);
   };
   useEffect(() => {
     if (infinito) return;
     const ouvir = (e: KeyboardEvent) => tecladoRef.current(e);
-    window.addEventListener("keydown", ouvir);
-    return () => window.removeEventListener("keydown", ouvir);
+    // Na captura: o caderno decide antes dos atalhos do app (Ctrl + e Ctrl − são o zoom aqui, não a letra do app).
+    window.addEventListener("keydown", ouvir, true);
+    return () => window.removeEventListener("keydown", ouvir, true);
   }, [infinito]);
+
+  // Mão: segurar o Espaço (ou a mão fixa, tecla H) e arrastar move a página; o botão do
+  // meio do mouse também. A caneta do Windows virada (ponta de borracha) ou com o botão
+  // lateral apaga, sem trocar a ferramenta escolhida.
+  const [maoFixa, setMaoFixa] = useState(false);
+  const [maoEspaco, setMaoEspaco] = useState(false);
+  const [arrastandoMao, setArrastandoMao] = useState(false);
+  const maoRef = useRef(false);
+  maoRef.current = maoFixa || maoEspaco;
+  const antesDaCaneta = useRef<FerramentaUI | null>(null);
+  useEffect(() => {
+    // O Espaço vira a mão no caderno e nas barras dele (depois de tocar numa ferramenta, o
+    // foco fica no botão; ali o Enter continua apertando o botão). Em campos, janelas,
+    // menus e no resto do app, o Espaço segue escrevendo e apertando botões.
+    const vale = (el: EventTarget | null) => {
+      const h = el as HTMLElement | null;
+      if (!h || h === document.body || h === document.documentElement) return true;
+      if (h.closest?.("input, textarea, select, [contenteditable='true'], [role='dialog'], [role='menu'], [role='listbox']")) return false;
+      return !!h.closest?.(".caderno-rolagem, .caderno-barra-caixa, .caderno-contexto, .caderno-topo");
+    };
+    const desce = (e: KeyboardEvent) => {
+      if (!ehEspaco(e) || e.ctrlKey || e.metaKey || e.altKey || !vale(e.target)) return;
+      // O Espaço não rola a página nem aperta o botão da ferramenta em foco.
+      e.preventDefault();
+      e.stopPropagation();
+      espacoNaMao = true;
+      if (!e.repeat) setMaoEspaco(true);
+    };
+    let espacoNaMao = false;
+    const sobe = (e: KeyboardEvent) => {
+      if (!ehEspaco(e)) return;
+      if (espacoNaMao) { e.preventDefault(); e.stopPropagation(); espacoNaMao = false; }
+      setMaoEspaco(false);
+    };
+    const sair = () => setMaoEspaco(false);
+    window.addEventListener("keydown", desce, true);
+    window.addEventListener("keyup", sobe, true);
+    window.addEventListener("blur", sair);
+    return () => { window.removeEventListener("keydown", desce, true); window.removeEventListener("keyup", sobe, true); window.removeEventListener("blur", sair); };
+  }, []);
+  useEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    let arrasto: { id: number; x: number; y: number; esq: number; topo: number } | null = null;
+    const desce = (e: PointerEvent) => {
+      // Caneta apagando: a borracha vale só enquanto ela encosta.
+      if (canetaApagando(e) && !arrasto) {
+        if (ferramentaRef.current !== "borracha") {
+          antesDaCaneta.current = ferramentaRef.current;
+          flushSync(() => setFerramenta("borracha"));
+        }
+        return;
+      }
+      if (!(maoRef.current || e.button === 1)) return;
+      if ((e.target as HTMLElement | null)?.closest?.("button, input, select, textarea, [contenteditable='true']")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      arrasto = { id: e.pointerId, x: e.clientX, y: e.clientY, esq: el.scrollLeft, topo: el.scrollTop };
+      try { el.setPointerCapture(e.pointerId); } catch { /* ok */ }
+      setArrastandoMao(true);
+    };
+    const move = (e: PointerEvent) => {
+      if (!arrasto || e.pointerId !== arrasto.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollLeft = arrasto.esq - (e.clientX - arrasto.x);
+      el.scrollTop = arrasto.topo - (e.clientY - arrasto.y);
+    };
+    const sobe = (e: PointerEvent) => {
+      if (arrasto && e.pointerId === arrasto.id) {
+        e.stopPropagation();
+        arrasto = null;
+        setArrastandoMao(false);
+      }
+    };
+    // Soltou a caneta que apagava: volta a ferramenta de antes.
+    const soltaCaneta = (e: PointerEvent) => {
+      if (e.pointerType !== "pen" || !antesDaCaneta.current) return;
+      const f = antesDaCaneta.current;
+      antesDaCaneta.current = null;
+      setTimeout(() => setFerramenta(f), 0);
+    };
+    // O botão do meio abre a "rolagem automática" do Windows: aqui não.
+    const meio = (e: MouseEvent) => { if (e.button === 1) e.preventDefault(); };
+    el.addEventListener("pointerdown", desce, true);
+    el.addEventListener("pointermove", move, true);
+    el.addEventListener("pointerup", sobe, true);
+    el.addEventListener("pointercancel", sobe, true);
+    el.addEventListener("mousedown", meio);
+    window.addEventListener("pointerup", soltaCaneta);
+    window.addEventListener("pointercancel", soltaCaneta);
+    return () => {
+      el.removeEventListener("pointerdown", desce, true);
+      el.removeEventListener("pointermove", move, true);
+      el.removeEventListener("pointerup", sobe, true);
+      el.removeEventListener("pointercancel", sobe, true);
+      el.removeEventListener("mousedown", meio);
+      window.removeEventListener("pointerup", soltaCaneta);
+      window.removeEventListener("pointercancel", soltaCaneta);
+    };
+  }, [infinito, visaoPaginas]);
+
+  // Copiar, recortar, colar e duplicar o que está selecionado (traços, formas, textos e
+  // imagens). Fica no Órbita (vale entre páginas e cadernos); no sistema vai só uma marca.
+  const duplicarSelecao = () => {
+    if (!selPid || !selIds.length) return;
+    const els = (cenas[selPid]?.elementos ?? []).filter((e) => selIds.includes(e.id));
+    const novos = copiarElementos(els, 20, 20);
+    mudarCena(selPid, { elementos: ajustarConectores([...(cenas[selPid]?.elementos ?? []), ...novos], MEDIDA) });
+    setSelIds(novos.map((e) => e.id));
+  };
+  const copiaRef = useRef<{ copiar: (e: ClipboardEvent, recortar: boolean) => boolean; colar: (e: ClipboardEvent) => boolean }>({ copiar: () => false, colar: () => false });
+  copiaRef.current = {
+    copiar: (e, recortar) => {
+      if (!ehSelecao || !selPid || !selIds.length) return false;
+      const els = (cenas[selPid]?.elementos ?? []).filter((x) => selIds.includes(x.id));
+      if (!els.length) return false;
+      areaDeCopia = { els: JSON.parse(JSON.stringify(els)) as Elemento[], pid: selPid, colagens: 0 };
+      e.clipboardData?.setData("text/plain", MARCA_COPIA);
+      e.preventDefault();
+      if (recortar) apagarSelecao();
+      return true;
+    },
+    colar: (e) => {
+      if (!areaDeCopia || !sel) return false;
+      const texto = e.clipboardData?.getData("text/plain") ?? "";
+      if (texto && texto !== MARCA_COPIA) return false; // copiou outra coisa depois
+      e.preventDefault();
+      areaDeCopia.colagens += 1;
+      const passo = areaDeCopia.pid === sel.id ? 20 * areaDeCopia.colagens : 0;
+      const novos = copiarElementos(areaDeCopia.els, passo, passo);
+      mudarCena(sel.id, { elementos: ajustarConectores([...(cenas[sel.id]?.elementos ?? []), ...novos], MEDIDA) });
+      // Já fica selecionado, para mover para o lugar certo.
+      setFerramenta("selecao"); setSelPid(sel.id); setSelIds(novos.map((x) => x.id));
+      return true;
+    },
+  };
+  useEffect(() => {
+    const fora = (e: Event) => !(e.target as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable='true']");
+    const copiar = (e: ClipboardEvent) => { if (fora(e)) copiaRef.current.copiar(e, false); };
+    const recortar = (e: ClipboardEvent) => { if (fora(e)) copiaRef.current.copiar(e, true); };
+    document.addEventListener("copy", copiar);
+    document.addEventListener("cut", recortar);
+    return () => { document.removeEventListener("copy", copiar); document.removeEventListener("cut", recortar); };
+  }, []);
 
   // IA do caderno: o que vai junto do pedido e onde pôr a resposta.
   const obterContextoIa = async (alcance: Alcance, comImagem: boolean): Promise<ContextoIa> => {
@@ -2280,7 +2446,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             aoSalvar={(pg) => void salvar(pg)} aoApagar={(id) => void apagar(id)} aoDuplicar={(id) => void duplicar(id)}
             aoMover={(id, para) => void moverPagina(id, para)} aoAdicionar={() => setAdicionando(true)} />
         )}
-        <div className={`caderno-rolagem${lateral && !infinito ? " lateral" : ""}${travada ? " travada" : ""}${modoPagina && !infinito ? " modo-pagina" : ""}`} ref={area} onScroll={aoRolar} hidden={visaoPaginas && !infinito}>
+        <div className={`caderno-rolagem${lateral && !infinito ? " lateral" : ""}${travada ? " travada" : ""}${modoPagina && !infinito ? " modo-pagina" : ""}${maoFixa || maoEspaco ? " com-mao" : ""}${arrastandoMao ? " arrastando-mao" : ""}`} ref={area} onScroll={aoRolar} hidden={visaoPaginas && !infinito}>
           {infinito ? (
             <div className="caderno-aviso-breve"><LayoutGrid aria-hidden="true" size="1.1em" /> {t.infinitoEmBreve}</div>
           ) : (
@@ -3416,7 +3582,7 @@ function SuperficieDesenho({ cena, ferramenta, cor, ajuste, modeloPincel, forma,
       // Dedo não risca com "só caneta"; dois dedos (pinça) nunca riscam.
       if (soCaneta || toques.current.size > 1 || multiToque.current) { cancelar(); return; }
     }
-    if (e.button != null && e.button !== 0) return;
+    if (e.button != null && e.button !== 0 && !canetaApagando(e.nativeEvent)) return;
     e.preventDefault();
     ref.current?.setPointerCapture(e.pointerId);
     desenhando.current = true;

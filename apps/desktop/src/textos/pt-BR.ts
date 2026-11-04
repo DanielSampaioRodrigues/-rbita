@@ -1928,6 +1928,7 @@ export const textos = {
       fechar: "Fechar",
       naoAchou: "Não achei nas fontes nada sobre isso. Tente com outras palavras.",
     },
+    maoFixa: "Mão: arraste para mover a página. H ou Esc volta para a ferramenta.",
     painel: {
       titulo: "Painel lateral",
       alternar: "Mostrar ou esconder o painel lateral (páginas, IA, fontes e biblioteca)",
@@ -3936,6 +3937,9 @@ export const textos = {
     titulo: "Atalhos de teclado",
     doApp: "Do Órbita",
     gerais: "Para andar pela tela",
+    caderno: "No caderno",
+    gestos: "Caneta e dedos",
+    editor: "No texto (como no Word)",
     ou: "ou",
     fechar: "Fechar",
   },

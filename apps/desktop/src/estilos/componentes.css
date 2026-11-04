@@ -2129,6 +2129,10 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .fontes-livros { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .fontes-livros .botao { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; }
 
+/* Mão (Espaço segurado, tecla H ou botão do meio): arrastar move a página. */
+.caderno-rolagem.com-mao, .caderno-rolagem.com-mao * { cursor: grab !important; }
+.caderno-rolagem.arrastando-mao, .caderno-rolagem.arrastando-mao * { cursor: grabbing !important; user-select: none; }
+
 /* ---------- Conectores (Classroom) ---------- */
 .menu-cabecalho { padding: 6px 12px 2px; font-size: 0.8rem; font-weight: 650; color: var(--cor-texto-suave); }
 .classroom-grupo { margin: 12px 0 6px; font-size: 0.95rem; }

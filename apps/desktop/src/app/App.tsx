@@ -167,6 +167,9 @@ export function App() {
       bloquear: () => void bloquear(),
     };
     const aoTeclar = (e: KeyboardEvent) => {
+      // Quem já tratou a tecla (o editor de texto, o zoom do caderno) tem a vez:
+      // assim Ctrl+Shift+L alinha o texto em vez de trocar o claro/escuro.
+      if (e.defaultPrevented) return;
       const acao = acaoDoEvento(e);
       if (!acao || (!aberto && SO_ABERTO.includes(acao))) return;
       e.preventDefault();
