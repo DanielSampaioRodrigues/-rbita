@@ -86,3 +86,27 @@ export async function desenharPaginaPdf(bytes: ArrayBuffer, n: number, largura: 
     await pdf.destroy();
   }
 }
+
+/** Abre o PDF uma vez para desenhar várias páginas (importar no caderno). */
+export async function abrirPdf(bytes: ArrayBuffer): Promise<{ total: number; desenhar: (n: number, larguraPx: number) => Promise<{ canvas: HTMLCanvasElement; largura: number; altura: number }>; fechar: () => Promise<void> }> {
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes.slice(0)) }).promise;
+  return {
+    total: pdf.numPages,
+    async desenhar(n, larguraPx) {
+      const pg = await pdf.getPage(n);
+      const base = pg.getViewport({ scale: 1 });
+      const vista = pg.getViewport({ scale: larguraPx / base.width });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(vista.width);
+      canvas.height = Math.round(vista.height);
+      const ctx = canvas.getContext("2d")!;
+      // Fundo branco (PDF sem fundo ficaria transparente e o JPEG sairia preto).
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await pg.render({ canvasContext: ctx, viewport: vista, canvas } as any).promise;
+      pg.cleanup();
+      return { canvas, largura: base.width, altura: base.height };
+    },
+    fechar: () => pdf.destroy(),
+  };
+}

@@ -7,7 +7,7 @@ O histórico do que já foi feito está na especificação (`docs/especificacao.
 ## 1. Caderno e documento
 
 - [ ] **Quadro infinito**: o modo aparece ao criar um caderno, mas abre só o aviso "chega na próxima etapa" (`Caderno.tsx`, texto `infinitoEmBreve`). Rolagem e zoom livres, com as mesmas ferramentas.
-- [ ] **Importar PDF para anotar no caderno** (slides da aula, apostila): cada página do PDF vira uma página do caderno, com a folha por baixo. Hoje o caderno só exporta PDF; anotar PDF só dá na Leitura.
+- [x] ~~**Importar PDF para anotar no caderno**~~ (12/11/2026): PDF e imagens viram páginas com o arquivo de fundo.
 - [ ] **Arrastar para reordenar as páginas** na visão das páginas e no painel lateral (hoje só os botões de subir e descer).
 - [ ] **Sumário automático** no documento de texto (a partir dos títulos).
 - [ ] **Ensinar a minha letra** ao corretor da escrita à mão.

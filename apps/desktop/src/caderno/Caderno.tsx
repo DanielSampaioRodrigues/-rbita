@@ -14,7 +14,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, PainelLateral as IconePainel, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
+import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, FileUp, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, PainelLateral as IconePainel, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
@@ -29,6 +29,7 @@ import { PainelBiblioteca } from "./PainelBiblioteca";
 import { PainelFontes } from "./PainelFontes";
 import { amostrar, buscar, lerFontes, lerTrechos, montarTrechos } from "./fontes";
 import { acaoDaTecla, canetaApagando, ehEspaco } from "./atalhosCaderno";
+import { ehImagem, ehPdf, MAXIMO_PAGINAS, nomeSemExtensao, ordensEntre, tamanhoImportado } from "./importarPaginas";
 import { CamadaCorrecao, type MarcaEscrita } from "./CorrecaoEscrita";
 import { imagemComCaixas, palavrasDaPagina } from "./escrita";
 import { cenaParaGuardar, copiarElementos, guardarNaBiblioteca, normalizarObjetos, type DadosBiblioteca, type ItemBiblioteca } from "./biblioteca";
@@ -740,8 +741,18 @@ function textoDaCena(c: Cena | undefined): string {
 }
 const blobParaDataUrl = (b: Blob) => new Promise<string>((ok, erro) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => erro(r.error); r.readAsDataURL(b); });
 
-function Folha({ papel, tamanho, className }: { papel: Papel; tamanho: string; className?: string }) {
+function Folha({ papel, tamanho, className, imagemUrl }: { papel: Papel; tamanho: string; className?: string; imagemUrl?: (id: string) => string | undefined }) {
   const capa = (papel as PapelPagina).capa;
+  // Folha própria (página de PDF ou imagem importada): a imagem é o fundo da página.
+  if (papel.modelo === "proprio" && papel.anexoId) {
+    const m = medidaDe(tamanho);
+    const url = imagemUrl?.(papel.anexoId);
+    return (
+      <div className={`${className ?? ""} caderno-folha-propria`} style={{ aspectRatio: `${m.largura} / ${m.altura}`, backgroundColor: "#ffffff" }}>
+        {url && <img src={url} alt="" draggable={false} />}
+      </div>
+    );
+  }
   // A imagem da folha só é refeita quando o papel ou o tamanho mudam de
   // verdade (a chave em texto evita refazer a cada re-render, ex.: trocar a cor).
   const chave = `${tamanho}|${JSON.stringify(papel)}`;
@@ -770,6 +781,8 @@ type OndeNova = "antes" | "depois" | "fim";
 /** A folha sem a capa (a página nova nunca herda a capa da primeira página). */
 function semCapa(p: Papel): Papel {
   const { capa: _capa, ...resto } = p as Papel & { capa?: unknown };
+  // A folha própria (PDF importado) é daquela página só: a página nova volta à folha lisa.
+  if (resto.modelo === "proprio") return { ...(resto as Papel), modelo: "liso", anexoId: "" };
   return resto as Papel;
 }
 
@@ -1592,12 +1605,14 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   useEffect(() => {
     const ids = new Set<string>();
     for (const c of Object.values(cenas)) for (const el of c.elementos) if (el.tipo === "imagem") ids.add(el.anexoId);
+    // A folha própria (PDF ou imagem importada como página) também é uma imagem do cofre.
+    for (const p of paginas) { const f = folhaDe(p); if (f.modelo === "proprio" && f.anexoId) ids.add(f.anexoId); }
     for (const id of ids) {
       if (!id || imagemUrls[id] || carregandoImg.current.has(id)) continue;
       carregandoImg.current.add(id);
       api.imagemAnexo(id).then((url) => setImagemUrls((u) => ({ ...u, [id]: url })), () => carregandoImg.current.delete(id));
     }
-  }, [cenas, imagemUrls]);
+  }, [cenas, imagemUrls, paginas]);
 
   const inserirImagem = async (b: Blob, nome: string, fracao = 0.5) => {
     const pid = selId || paginas[0]?.id;
@@ -1620,6 +1635,84 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       setErro(mensagem(e));
     }
   };
+  // Importar PDF ou imagens como páginas para anotar: cada página vira uma página do
+  // caderno com a folha própria (a imagem da página de fundo). Entram onde a pessoa escolheu.
+  const [importando, setImportando] = useState<string | null>(null);
+  const importarArquivos = async (lista: File[], onde: OndeNova) => {
+    const ti = t.adicionar;
+    const arquivos = lista.filter((f) => ehPdf(f) || ehImagem(f));
+    if (!arquivos.length) { recado(ti.importarNada); return; }
+    const i = sel ? paginas.findIndex((p) => p.id === sel.id) : -1;
+    const ultima = paginas[paginas.length - 1];
+    const antesDe = onde === "fim" || i < 0 ? ultima : onde === "depois" ? paginas[i] : paginas[i - 1];
+    const depoisDe = onde === "fim" || i < 0 ? undefined : onde === "depois" ? paginas[i + 1] : paginas[i];
+    setImportando(ti.preparando);
+    const { abrirPdf } = await import("@orbita/leitor");
+    // Primeiro abre tudo e conta as páginas (para a ordem); depois cria uma a uma.
+    type Fonte = { arq: File; nome: string; pdf?: Awaited<ReturnType<typeof abrirPdf>>; paginas: number };
+    const fontes: Fonte[] = [];
+    let cortou = false;
+    for (const arq of arquivos) {
+      try {
+        if (ehPdf(arq)) {
+          const pdf = await abrirPdf(await arq.arrayBuffer());
+          if (pdf.total > MAXIMO_PAGINAS) cortou = true;
+          fontes.push({ arq, nome: nomeSemExtensao(arq.name), pdf, paginas: Math.min(pdf.total, MAXIMO_PAGINAS) });
+        } else fontes.push({ arq, nome: nomeSemExtensao(arq.name), paginas: 1 });
+      } catch {
+        setErro(ti.importarErro(arq.name));
+      }
+    }
+    const total = fontes.reduce((n, f) => n + f.paginas, 0);
+    const ordens = ordensEntre(antesDe?.ordem, depoisDe?.ordem, total);
+    let feitas = 0;
+    let primeira = "";
+    const criar = async (base64: string, tipo: string, nomeAnexo: string, largura: number, altura: number, titulo: string) => {
+      const anexo = await api.anexarBytes(caderno.id, nomeAnexo, base64);
+      setImagemUrls((u) => ({ ...u, [anexo.id]: `data:${tipo};base64,${base64}` }));
+      const pg = await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem: ordens[feitas], tamanho: tamanhoImportado(largura, altura), papel: { ...papelPadrao(), modelo: "proprio", anexoId: anexo.id }, titulo: "", marcado: false, criadoEm: 0 });
+      // Ao criar, o banco não grava o título: grava depois.
+      await api.salvarPaginaCaderno({ ...pg, titulo });
+      primeira ||= pg.id;
+      feitas += 1;
+    };
+    try {
+      for (const f of fontes) {
+        if (f.pdf) {
+          try {
+            for (let n = 1; n <= f.paginas; n++) {
+              setImportando(ti.importandoPagina(feitas + 1, total));
+              const { canvas, largura, altura } = await f.pdf.desenhar(n, 1800);
+              const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, "image/jpeg", 0.85));
+              canvas.width = 0; canvas.height = 0;
+              if (!blob) continue;
+              await criar(await blobParaBase64(blob), "image/jpeg", `${f.nome} p${n}.jpg`, largura, altura, f.paginas > 1 ? ti.tituloPagina(f.nome, n) : f.nome);
+            }
+          } finally {
+            await f.pdf.fechar();
+          }
+        } else {
+          setImportando(ti.importandoPagina(feitas + 1, total));
+          const u = URL.createObjectURL(f.arq);
+          try {
+            const dataUrl = await reduzirImagem(u, 2200);
+            const b = await (await fetch(dataUrl)).blob();
+            const { w, h } = await tamanhoImagem(b);
+            await criar(dataUrl.split(",")[1] ?? "", b.type || "image/jpeg", f.arq.name, w, h, f.nome);
+          } finally { URL.revokeObjectURL(u); }
+        }
+      }
+      recado(cortou ? ti.importadoCortado(feitas, MAXIMO_PAGINAS) : ti.importado(feitas));
+    } catch (e) {
+      setErro(mensagem(e));
+    } finally {
+      setImportando(null);
+      if (primeira) { setSelId(primeira); rolarPara.current = primeira; }
+      await carregar();
+      avisarMudanca();
+    }
+  };
+
   // Insere o que a IA criou: imagem normal é reduzida (JPEG); adesivo mantém o
   // PNG original para preservar a transparência, e entra menor.
   const inserirDaIa = async (dataUrl: string, tipo: "imagem" | "adesivo") => {
@@ -1839,6 +1932,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     try {
       // Folha aplicada a várias páginas nunca leva a capa; a página-capa mantém a dela.
       for (const pg of alvos) {
+        // Página importada (PDF ou imagem) mantém o fundo quando a folha vai para várias páginas.
+        if (alvo !== "atual" && folhaDe(pg).modelo === "proprio") continue;
         const capa = alvo === "atual" ? (papel as PapelPagina).capa : capaDaPagina(pg);
         await api.salvarPaginaCaderno({ ...pg, papel: capa ? { ...semCapa(papel), capa } : semCapa(papel) });
       }
@@ -2266,7 +2361,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       if (!pg) continue;
       if (m.op === "titulo_pagina") mexer(pg).titulo = m.titulo;
       else if (m.op === "marcar_pagina") mexer(pg).marcado = m.marcada;
-      else if (m.op === "folha") { const at = mexer(pg); at.papel = { ...folhaDe(at), ...(m.modelo ? { modelo: m.modelo as ModeloPapel } : {}), ...(m.corPapel ? { corPapel: m.corPapel } : {}), ...(m.corLinha ? { corLinha: m.corLinha } : {}) } as Papel; }
+      else if (m.op === "folha" && folhaDe(pg).modelo !== "proprio") { const at = mexer(pg); at.papel = { ...folhaDe(at), ...(m.modelo ? { modelo: m.modelo as ModeloPapel } : {}), ...(m.corPapel ? { corPapel: m.corPapel } : {}), ...(m.corLinha ? { corLinha: m.corLinha } : {}) } as Papel; }
     }
     for (const pid of viraTexto) { const pg = paginas.find((p) => p.id === pid); if (pg) { const at = mexer(pg); at.papel = { ...folhaDe(at), texto: true } as Papel; } }
     for (const [id, ordem] of arranjo.ordens) { const pg = paginas.find((p) => p.id === id); if (pg) mexer(pg).ordem = ordem; }
@@ -2343,7 +2438,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     const alvo = id === "cadernoPdf" ? paginas : sel ? [sel] : [];
     if (!alvo.length) return null;
     // Tudo carregado? (cenas e imagens de cada página)
-    const faltaImagem = alvo.some((p) => (cenas[p.id]?.elementos ?? []).some((e) => e.tipo === "imagem" && !imagemUrl(e.anexoId)));
+    const faltaImagem = alvo.some((p) => (cenas[p.id]?.elementos ?? []).some((e) => e.tipo === "imagem" && !imagemUrl(e.anexoId))
+      || (folhaDe(p).modelo === "proprio" && !!folhaDe(p).anexoId && !imagemUrl(folhaDe(p).anexoId)));
     if (alvo.some((p) => !cenas[p.id]) || faltaImagem) { recado(te.carregando); return null; }
     const medidas = await medirParaExportar(alvo.map((p) => p.id));
     const sufixo = id === "cadernoPdf" ? "" : ` - ${t.posicao(indiceSel + 1, paginas.length)}`;
@@ -2417,6 +2513,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       )}
 
       {erro && <div className="leitor-aviso"><Aviso>{erro}</Aviso></div>}
+      {importando && <div className="leitor-aviso" role="status"><Aviso tipo="info">{importando}</Aviso></div>}
       <Confirmar titulo={t.ia.desfazerTitulo} texto={t.ia.desfazerDepois} confirmar={t.ia.desfazerMesmo} aberta={confirmarDesfazer}
         aoCancelar={() => setConfirmarDesfazer(false)} aoConfirmar={() => { setConfirmarDesfazer(false); void desfazerIa(); }} />
 
@@ -2546,6 +2643,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
         {adicionando && (
           <AdicionarPagina atual={sel} total={paginas.length}
             aoAdicionar={(onde, tamanhoNovo, papel) => { setAdicionando(false); void adicionar(true, onde, tamanhoNovo, papel); }}
+            aoImportar={(lista, onde) => { setAdicionando(false); void importarArquivos(lista, onde); }}
             aoCancelar={() => setAdicionando(false)} />
         )}
       </Janela>
@@ -2672,7 +2770,7 @@ const MiniaturaPagina = memo(function MiniaturaPagina({ pagina, cena, imagemUrl,
   return (
     <div className="caderno-mini" style={{ width: largura, height: Math.round(med.altura * k) }} aria-hidden="true">
       <div className="caderno-mini-miolo" data-largura={med.largura} data-altura={med.altura} style={{ width: med.largura, height: med.altura, transform: `scale(${k})` }}>
-        <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-mini-folha" />
+        <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-mini-folha" imagemUrl={imagemUrl} />
         {cena?.documento && <DocumentoEstatico html={cena.documento} largura={med.largura} altura={med.altura} />}
         <svg className="caderno-mini-desenho" viewBox={`0 0 ${med.largura} ${med.altura}`} preserveAspectRatio="none">
           <DesenhoEstatico elementos={els} imagemUrl={imagemUrl} />
@@ -2776,11 +2874,14 @@ function VisaoPaginas({ paginas, cenas, imagemUrl, atualId, aoIr, aoFechar, aoSa
 }
 
 /** Janela "Adicionar página": onde (antes, depois, no fim), o tamanho e o modelo da folha. */
-function AdicionarPagina({ atual, total, aoAdicionar, aoCancelar }: {
+function AdicionarPagina({ atual, total, aoAdicionar, aoImportar, aoCancelar }: {
   atual: PaginaCaderno | undefined; total: number;
-  aoAdicionar: (onde: OndeNova, tamanho: string | undefined, papel: Papel | undefined) => void; aoCancelar: () => void;
+  aoAdicionar: (onde: OndeNova, tamanho: string | undefined, papel: Papel | undefined) => void;
+  aoImportar: (arquivos: File[], onde: OndeNova) => void;
+  aoCancelar: () => void;
 }) {
   const ta = t.adicionar;
+  const arquivoImportar = useRef<HTMLInputElement>(null);
   const [onde, setOnde] = useState<OndeNova>(total > 0 ? "depois" : "fim");
   const [tamanho, setTamanho] = useState<string>("igual");
   const [larg, setLarg] = useState(16);
@@ -2803,6 +2904,12 @@ function AdicionarPagina({ atual, total, aoAdicionar, aoCancelar }: {
       <Segmentado rotulo={ta.tipo} valor={tipo} aoMudar={(v) => setTipo(v as typeof tipo)}
         opcoes={[{ valor: "mao", nome: ta.tipos.mao }, { valor: "texto", nome: ta.tipos.texto }]} />
       <p className="campo-ajuda">{ta.tiposAjuda[tipo]}</p>
+      <div className="caderno-importar">
+        <Button className="botao com-icone" onPress={() => arquivoImportar.current?.click()}><FileUp aria-hidden="true" size="1em" /> {ta.importar}</Button>
+        <input ref={arquivoImportar} type="file" hidden multiple accept=".pdf,application/pdf,image/*"
+          onChange={(e) => { const l = Array.from(e.target.files ?? []); e.target.value = ""; if (l.length) aoImportar(l, onde); }} />
+        <p className="campo-ajuda">{ta.importarAjuda}</p>
+      </div>
       <div className="campo">
         <span className="campo-rotulo">{t.folha.modelo}</span>
         <div className="caderno-modelos">
@@ -2887,7 +2994,7 @@ function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarT
     <section id={id} className={bloco ? "caderno-folha-bloco inteira" : "caderno-folha-bloco"} style={estiloBloco} aria-label={numero ? t.paginas.numero(numero) : undefined}>
       <div ref={areaRef} className="caderno-folha-area" style={{ aspectRatio: `${med.largura} / ${med.altura}`, width: bloco ? larguraPg : undefined }}
         onPointerDownCapture={aoSelecionar} onContextMenu={(e) => e.preventDefault()}>
-        <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" />
+        <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" imagemUrl={imagemUrl} />
         {ehPaginaTexto(pagina) && escala > 0 && (
           <CamadaDocumento html={cena.documento ?? ""} editavel={ferramenta === "texto"} escala={escala} largura={med.largura} altura={med.altura}
             slot={selecionada ? slotTexto : null} aoMudar={aoDocumento} aoContinuar={aoContinuarTexto} />
