@@ -11,7 +11,7 @@ import { Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
 import { EscolherCor } from "../ideias/etiquetas";
 import { Bookmark, ChevronLeft, ChevronRight, FileText, Highlighter, List, Pause, PenLine, Play, Ruler, Search, SlidersHorizontal, StickyNote, Trash2, X } from "../icones";
-import { PainelFichamento, type RascunhoFicha } from "./Fichamento";
+import { PainelFichamento, type RascunhoFicha } from "./PainelFichamento";
 import { dividirEmFrases, vozesEmPortugues } from "./voz";
 import { textos } from "../textos/pt-BR";
 

@@ -1,7 +1,7 @@
 // Fichamento de um livro, nas regras da ABNT (NBR 10520:2023 para as citações e
 // NBR 6023 para a referência). Cada ficha é citação direta, paráfrase (citação
 // indireta), resumo ou comentário. Aqui ficam as contas e a montagem do texto e do
-// Word; a tela fica em Fichamento.tsx.
+// Word; a tela fica em PainelFichamento.tsx.
 import type { Anotacao, TipoFicha } from "../api";
 
 export interface CabecalhoFichamento {
