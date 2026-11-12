@@ -2050,6 +2050,13 @@ export const textos = {
         ligado: "Menu ao escolher texto: ligado",
         desligado: "Menu ao escolher texto: desligado",
       },
+      sumario: {
+        botao: "Sumário",
+        ajuda: "Põe o sumário onde está o cursor, feito a partir dos títulos (Título 1, 2 e 3), com o número da página. Toque de novo para atualizar.",
+        posto: (n: number) => (n === 1 ? "Sumário posto, com 1 título." : `Sumário posto, com ${n} títulos.`),
+        atualizado: (n: number) => (n === 1 ? "Sumário atualizado (1 título)." : `Sumário atualizado (${n} títulos).`),
+        semTitulos: "O texto ainda não tem títulos. Use Título 1, 2 ou 3 nas seções e toque em Sumário de novo.",
+      },
       espacoLetras: "Espaço entre letras",
       espacoNormal: "Espaço normal",
       referencia: {

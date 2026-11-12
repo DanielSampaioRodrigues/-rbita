@@ -131,7 +131,7 @@ export async function gerarPdf(paginas: PaginaMedida[], meta: { titulo: string; 
             : `M${it.x} ${it.y}H${it.x + it.w}V${it.y + it.h}H${it.x}Z`;
           page.drawSvgPath(d, { x: 0, y: H, scale: PT, color: cor(it.cor), opacity: it.cor.a, borderWidth: 0 });
         } else if (it.tipo === "linha") {
-          page.drawLine({ start: { x: it.x1 * PT, y: H - it.y1 * PT }, end: { x: it.x2 * PT, y: H - it.y2 * PT }, thickness: it.largura * PT, color: cor(it.cor), opacity: it.cor.a, lineCap: it.ponta === "round" ? LineCapStyle.Round : LineCapStyle.Butt });
+          page.drawLine({ start: { x: it.x1 * PT, y: H - it.y1 * PT }, end: { x: it.x2 * PT, y: H - it.y2 * PT }, thickness: it.largura * PT, color: cor(it.cor), opacity: it.cor.a, lineCap: it.ponta === "round" ? LineCapStyle.Round : LineCapStyle.Butt, ...(it.tracejado ? { dashArray: it.tracejado.map((v) => v * PT), dashPhase: 0 } : {}) });
         } else if (it.tipo === "caminho") {
           const K = compor(compor(P, it.matriz), F);
           comMatriz(K, () => page.drawSvgPath(it.d, {

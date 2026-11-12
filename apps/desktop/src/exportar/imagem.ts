@@ -42,7 +42,9 @@ export async function gerarPng(pag: PaginaMedida, escala = 2): Promise<Blob> {
       ctx.fill();
     } else if (it.tipo === "linha") {
       ctx.strokeStyle = css(it.cor); ctx.lineWidth = it.largura; ctx.lineCap = it.ponta === "round" ? "round" : "butt";
+      ctx.setLineDash(it.tracejado ?? []);
       ctx.beginPath(); ctx.moveTo(it.x1, it.y1); ctx.lineTo(it.x2, it.y2); ctx.stroke();
+      ctx.setLineDash([]);
     } else if (it.tipo === "caminho") {
       ctx.transform(...it.matriz);
       const p = new Path2D(it.d);

@@ -28,7 +28,7 @@ async function medidaDaImagem(src: string): Promise<{ w: number; h: number } | n
 
 export async function gerarDocx(json: JSONContent, config: ConfigDocumento, estilos: EstiloProprio[], titulo: string): Promise<Blob> {
   const d = await import("docx");
-  const { AlignmentType, BorderStyle, Document, ExternalHyperlink, Footer, Header, HeadingLevel, ImageRun, LevelFormat, Packer, PageNumber, Paragraph, ShadingType, Table, TableCell, TableRow, TextRun, WidthType } = d;
+  const { AlignmentType, BorderStyle, Document, ExternalHyperlink, Footer, Header, HeadingLevel, ImageRun, LevelFormat, Packer, PageNumber, Paragraph, ShadingType, Table, TabStopType, TableCell, TableRow, TextRun, WidthType } = d;
   type Filho = InstanceType<typeof TextRun> | InstanceType<typeof ExternalHyperlink> | InstanceType<typeof ImageRun>;
   type Bloco = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
 
@@ -144,6 +144,18 @@ export async function gerarDocx(json: JSONContent, config: ConfigDocumento, esti
           }))),
         })));
         if (linhas.length) saida.push(new Table({ rows: linhas, width: { size: 100, type: WidthType.PERCENTAGE } }));
+        saida.push(new Paragraph({ children: [] }));
+      } else if (n.type === "sumario") {
+        // Sumário: título no meio e cada título com pontos até o número da página (tabulação do Word).
+        const itens = (n.attrs?.itens as { nivel: number; texto: string; pagina: number }[] | undefined) ?? [];
+        saida.push(new Paragraph({ alignment: AlignmentType.CENTER, indent: { firstLine: 0 }, spacing: { after: 240 }, children: [new TextRun({ text: "SUMÁRIO", bold: true })] }));
+        for (const i of itens) {
+          saida.push(new Paragraph({
+            indent: { left: Math.round((i.nivel - 1) * 1.25 * CM), firstLine: 0 }, alignment: AlignmentType.LEFT,
+            tabStops: [{ type: TabStopType.RIGHT, position: larguraUtil, leader: "dot" }],
+            children: [new TextRun({ text: i.texto, bold: i.nivel === 1 || undefined, italics: i.nivel === 3 || undefined }), new TextRun({ text: i.pagina ? `\t${i.pagina}` : "" })],
+          }));
+        }
         saida.push(new Paragraph({ children: [] }));
       } else if (n.type === "horizontalRule") {
         saida.push(new Paragraph({ children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "9CA3AF", space: 1 } } }));

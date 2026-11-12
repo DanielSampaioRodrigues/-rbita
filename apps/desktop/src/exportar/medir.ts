@@ -14,7 +14,7 @@ export type Matriz = [number, number, number, number, number, number];
 export type ItemDesenho =
   | { tipo: "texto"; x: number; y: number; largura: number; texto: string; familia: string; peso: number; italico: boolean; tamanho: number; cor: Cor; versalete?: boolean; espacamento?: number }
   | { tipo: "retangulo"; x: number; y: number; w: number; h: number; cor: Cor; raio?: number }
-  | { tipo: "linha"; x1: number; y1: number; x2: number; y2: number; cor: Cor; largura: number; ponta?: "round" | "butt" }
+  | { tipo: "linha"; x1: number; y1: number; x2: number; y2: number; cor: Cor; largura: number; ponta?: "round" | "butt"; tracejado?: number[] }
   | { tipo: "caminho"; d: string; matriz: Matriz; preencher?: Cor; contorno?: Cor; larguraContorno?: number; parImpar?: boolean; ponta?: "round" | "butt" | "square" }
   /** Imagem: a matriz leva o quadrado 0..1 (y para baixo) até a página. */
   | { tipo: "imagem"; src: string; matriz: Matriz; opacidade: number }
@@ -163,7 +163,10 @@ export function medirPaginas(raiz: Element, regioes: Regiao[], escala: number, l
         const meio = junta ? 0 : lw / escala / 2;
         const dx = lado === "Left" ? meio : lado === "Right" ? -meio : 0;
         const dy = lado === "Top" ? meio : lado === "Bottom" ? -meio : 0;
-        itens.push({ tipo: "linha", x1: x1 + dx, y1: y1 + dy, x2: x2 + dx, y2: y2 + dy, cor, largura: lw / escala, ponta: "butt" });
+        // Pontilhada (os pontos do sumário) e tracejada saem como na tela.
+        const l = lw / escala;
+        const tracejado = estilo === "dotted" ? [0.01, l * 2.2] : estilo === "dashed" ? [l * 3, l * 2] : undefined;
+        itens.push({ tipo: "linha", x1: x1 + dx, y1: y1 + dy, x2: x2 + dx, y2: y2 + dy, cor, largura: l, ponta: estilo === "dotted" ? "round" : "butt", ...(tracejado ? { tracejado } : {}) });
       }
     }
   };

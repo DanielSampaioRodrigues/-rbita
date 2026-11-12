@@ -3,6 +3,7 @@
 // limpar a formatação, subscrito e sobrescrito. Quem trata o atalho aqui "segura" a
 // tecla, e o atalho do app (Ctrl+2 = Ideias, Ctrl+Shift+L = claro/escuro) não dispara.
 import { Extension, type Editor } from "@tiptap/core";
+import { Selection, TextSelection } from "@tiptap/pm/state";
 import { lerPt } from "./estilos";
 
 /** Os tamanhos da lista do Word (o "A+" e o "A−" andam por eles). */
@@ -25,11 +26,25 @@ function entrelinha(editor: Editor, valor: string): boolean {
 /** O atalho é do editor mesmo quando não muda nada (senão o atalho do app dispararia). */
 const sempre = (f: () => unknown) => () => { f(); return true; };
 
+function irPara(editor: Editor, onde: "inicio" | "fim", estender: boolean): boolean {
+  const { state, view } = editor;
+  const alvo = onde === "inicio" ? Selection.atStart(state.doc) : Selection.atEnd(state.doc);
+  const sel = estender ? TextSelection.create(state.doc, state.selection.anchor, alvo.head) : alvo;
+  view.dispatch(state.tr.setSelection(sel).scrollIntoView());
+  return true;
+}
+
 export const AtalhosWord = Extension.create({
   name: "atalhosWord",
   addKeyboardShortcuts() {
     const e = this.editor;
     return {
+      // Começo e fim do texto. No documento com páginas, o navegador levava o cursor para o
+      // cabeçalho da página (que não é texto) e o que se digitava ia para o fim.
+      "Mod-Home": () => irPara(e, "inicio", false),
+      "Mod-End": () => irPara(e, "fim", false),
+      "Mod-Shift-Home": () => irPara(e, "inicio", true),
+      "Mod-Shift-End": () => irPara(e, "fim", true),
       // Alinhamento (Word: Ctrl+E centraliza, Ctrl+L esquerda, Ctrl+R direita, Ctrl+J justifica).
       "Mod-e": sempre(() => e.chain().focus().setTextAlign("center").run()),
       "Mod-l": sempre(() => e.chain().focus().setTextAlign("left").run()),

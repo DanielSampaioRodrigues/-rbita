@@ -95,6 +95,7 @@ export const ATALHOS_EDITOR: { teclas: string[][]; descricao: string }[] = [
   { teclas: [["Ctrl", "Espaço"]], descricao: "Limpar a formatação do trecho" },
   { teclas: [["Ctrl", "="], ["Ctrl", "Shift", "+"]], descricao: "Subscrito e sobrescrito" },
   { teclas: [["Shift", "F3"]], descricao: "Minúsculas, Iniciais e MAIÚSCULAS" },
+  { teclas: [["Ctrl", "Home"], ["Ctrl", "End"]], descricao: "Começo e fim do texto (com Shift: seleciona até lá)" },
   { teclas: [["Ctrl", "Alt", "1"], ["Ctrl", "Alt", "2"], ["Ctrl", "Alt", "3"]], descricao: "Título 1, 2 e 3" },
   { teclas: [["Ctrl", "Shift", "8"]], descricao: "Lista com marcadores" },
   { teclas: [["Ctrl", "Shift", "7"]], descricao: "Lista numerada" },

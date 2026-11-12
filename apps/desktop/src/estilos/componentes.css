@@ -2131,6 +2131,17 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .fontes-livros { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .fontes-livros .botao { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; }
 
+/* Sumário automático (documento de texto): título centralizado e pontos até o número da página (ABNT). */
+.doc-conteudo .sumario, .caderno-caixa-area .sumario { margin: 0 0 1.5em; cursor: default; }
+.sumario .sumario-titulo { text-align: center; text-indent: 0; font-weight: 700; text-transform: uppercase; margin: 0 0 1em; }
+.sumario .sumario-item { display: flex; align-items: baseline; gap: 0.35em; text-indent: 0; text-align: left; margin: 0 0 0.3em; }
+.sumario .sumario-item.nivel-1 { font-weight: 700; }
+.sumario .sumario-item.nivel-2 { padding-left: 1.25em; }
+.sumario .sumario-item.nivel-3 { padding-left: 2.5em; font-style: italic; }
+.sumario .sumario-pontos { flex: 1; min-width: 1em; border-bottom: 1.5px dotted currentColor; transform: translateY(-0.25em); opacity: 0.7; }
+.sumario .sumario-pagina { min-width: 1.2em; text-align: right; }
+.ProseMirror .sumario.ProseMirror-selectednode { outline: 2px solid var(--cor-foco); outline-offset: 4px; border-radius: 4px; }
+
 /* Folha própria: página de PDF ou imagem importada como fundo (não apaga, não se move). */
 .caderno-folha-propria { overflow: hidden; }
 .caderno-folha-propria img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; user-select: none; -webkit-user-drag: none; }

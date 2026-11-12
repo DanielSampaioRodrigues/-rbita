@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 import { reduzirImagem } from "../../fundo";
+import { useRecado } from "../../app/Recado";
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, ChevronDown, Highlighter, ImagePlus, Italic, Link2, List, ListChecks, ListOrdered,
   Minus, Plus, Quote, Redo2, Search, Strikethrough, Table, Underline, Undo2, X,
@@ -19,6 +20,7 @@ import { JanelaEstilo, JanelaMeusEstilos } from "./JanelaEstilos";
 import { JanelaReferencia } from "./JanelaReferencia";
 import { aplicarEstiloLetra, aplicarMeuEstilo, ESTILO_VAZIO, estiloDaSelecao, estiloDoParagrafo, salvarEstilo, tirarEstiloLetra, useMeusEstilos, type EstiloProprio } from "./meusEstilos";
 import { SeletorFonte } from "./SeletorFonte";
+import { porOuAtualizarSumario } from "./sumario";
 import { ligarMenuFlutuante, useMenuFlutuante, useMenuFlutuanteLigado } from "./menuFlutuante";
 
 const t = textos.caderno.editor;
@@ -81,6 +83,7 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
   /** Botões a mais no fim da aba Início (ditado, fundo da nota, apagar, pronto...). */
   extra?: React.ReactNode;
 }) {
+  const recado = useRecado();
   const [aba, setAba] = useState<Aba>("inicio");
   const [link, setLink] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
@@ -393,6 +396,10 @@ export function FitaTexto({ editor, compacta, config, aoConfig, tamanhoCss = (n)
               </MenuTrigger>
               <button type="button" className="fita-botao largo" onClick={() => c().insertContent(new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })).run()}><Plus size="1.05em" aria-hidden="true" /> {t.data}</button>
               <button type="button" className="fita-botao largo" onClick={() => setReferencia(true)}><Quote size="1.05em" aria-hidden="true" /> {t.referencia.botao}</button>
+              <button type="button" className="fita-botao largo" title={t.sumario.ajuda} onClick={() => {
+                const tinha = editor.state.doc.content.size > 0 && JSON.stringify(editor.getJSON()).includes('"type":"sumario"');
+                void porOuAtualizarSumario(editor).then((n) => recado(n ? (tinha ? t.sumario.atualizado(n) : t.sumario.posto(n)) : t.sumario.semTitulos));
+              }}><List size="1.05em" aria-hidden="true" /> {t.sumario.botao}</button>
             </span>
           </>
         )}
