@@ -1,113 +1,66 @@
 # O que falta implementar
 
-25/10/2026 · versão 0.29.2. Lista feita comparando `docs/especificacao.md` com o que já existe. Riscar conforme for feito.
+12/11/2026 · versão 0.51.1. **Conferido no código** (não só nas anotações): cada item abaixo foi procurado nos arquivos do app. A lista anterior (25/10, versão 0.29.2) tinha ficado desatualizada e levou a erro: dizia que faltavam coisas que já existiam. Ao terminar um item, riscar aqui no mesmo commit.
 
-## 1. Pendências da Onda 1 (o que está pela metade)
+O histórico do que já foi feito está na especificação (`docs/especificacao.md`) e nas notas de cada versão (`apps/desktop/notas-da-versao.md`).
 
-- [x] **Atualização dentro do app**: procurar, ver o que mudou, instalar ou adiar (0.20.0). A 0.20.0 é instalada à mão uma última vez.
-- [x] **Etiquetas e ligações em projetos e tarefas** (0.19.0).
-- [x] **Anexos**: imagens, arquivos e links em ideias, projetos e tarefas, dentro do cofre (0.19.0).
-- [x] **Rotinas com imagens** (0.19.0).
-- [x] **Quadro de ideias com arrastar** entre colunas, também pelo teclado (0.19.0).
-- [x] **Ícones do tema**: traço e pontas ajustáveis (0.19.0). Desenhar ícones próprios fica para a galeria da comunidade.
-- [x] **Conversa com a IA**: pedir mudanças na lista separada pela captura (0.19.0).
-- [x] **Auditoria automática de acessibilidade** (axe-core, WCAG 2.2 AA): sem problemas nos temas claro e escuro (0.19.0).
-- [x] **Primeira configuração leve** (etapa A, 0.21.0): sem inventar senha; Windows Hello, PIN ou abrir direto, e as 6 palavras como recuperação. Senha opcional.
-- [x] **Guardar a recuperação na conta Google** (etapa B, 0.22.0).
-- [ ] **Conta Microsoft (OneDrive) no Windows**: o código está pronto; falta registrar o app na Microsoft. Conta pessoal não registra sem diretório: tentar o Azure for Students pelo pacote de estudante do GitHub, ou uma conta do Azure. Depois, guardar o ID em `ORBITA_MICROSOFT_CLIENT_ID` nos segredos do GitHub (passo a passo em `docs/configurar-contas.md`, parte 3).
-- [ ] **Avaliar Dropbox e Nextcloud/WebDAV** como contas extras para a recuperação (tabela na especificação).
-- [ ] **Testes de Dan no Windows** do que foi feito nesta rodada: ligar a conta Google (0.22.0) e ver a cópia em Ajustes; instalar do zero num computador ou usuário novo do Windows para ver a primeira configuração leve e o "trazer meus dados da minha conta"; PIN errado 5 vezes abrindo com as 6 palavras.
-- [ ] **Teste com leitor de tela de verdade** (NVDA), de preferência com quem usa. Só dá para fazer no Windows. Primeira rodada de Dan (0.29.1): tudo leu, menos as opções de energia (corrigido na 0.29.2, falta reconferir). Falta a rodada com alguém que usa leitor de tela no dia a dia.
-- [ ] **Portão da Onda 1**: Dan usar no dia a dia por algumas semanas e aprovar (lista em `docs/revisao-onda-1.md`).
+## 1. Caderno e documento
 
-## 2. Onda 2: vida prática (Windows)
+- [ ] **Quadro infinito**: o modo aparece ao criar um caderno, mas abre só o aviso "chega na próxima etapa" (`Caderno.tsx`, texto `infinitoEmBreve`). Rolagem e zoom livres, com as mesmas ferramentas.
+- [ ] **Importar PDF para anotar no caderno** (slides da aula, apostila): cada página do PDF vira uma página do caderno, com a folha por baixo. Hoje o caderno só exporta PDF; anotar PDF só dá na Leitura.
+- [ ] **Arrastar para reordenar as páginas** na visão das páginas e no painel lateral (hoje só os botões de subir e descer).
+- [ ] **Sumário automático** no documento de texto (a partir dos títulos).
+- [ ] **Ensinar a minha letra** ao corretor da escrita à mão.
+- [ ] **PDF digitalizado nas Fontes** lido pela IA página por página (hoje fica marcado como "sem texto").
+- [ ] **IA preencher os campos da referência** a partir de um texto colado.
+- [ ] Seletor do Google Drive dentro do Órbita (Google Picker); hoje abre pelo seletor de arquivos do sistema.
 
-Plano em etapas em `docs/plano-onda-2.md`.
+## 2. Estudos
 
-- [ ] **Saúde** (começado na 0.30.0):
-  - [x] Remédios com confirmação de dose, controle de estoque, aviso de receita vencendo e lembrete no horário (pela bandeja). Falta teste de Dan no Windows.
-  - [x] Consultas e exames: por ora pela Agenda (um compromisso já avisa antes). Falta uma marcação própria de "consulta/exame" e o "resumo para a consulta".
-  - [x] Registro curto de sono, sintomas e sobrecarga sensorial (0.31.0).
-  - [x] Plano de crise acessível em 1 clique e por atalho (Ctrl+Shift+C) (0.31.0).
-  - [x] Resumo para levar à consulta: junta remédios e registros do período, para copiar e colar (0.32.0). As perguntas entram com o módulo de Cuidado psicológico. Export direto em PDF/arquivo fica para a etapa de exportação (17).
-- [ ] **Cuidado — reescrita como "meus profissionais de saúde"** (visão acordada 26/10/2026; a 0.33.0 entregou só três listas numa tela, que Dan achou raso):
-  - [x] Base: "o que levar", "perguntas" e "o que ficou" numa tela só (0.33.0).
-  - [x] **Lista de profissionais** (não só psi: neuro, nutri, fisio...), com abas, nome, especialidade e "sobre" (na branch, ainda não publicado). Fronteira: Saúde = coisas, Cuidado = pessoas. Migra os dados antigos para um profissional "Acompanhamento".
-  - [x] **Painel por profissional**: próxima consulta, "o que levar" (pautas), perguntas, diário de sessões com data e texto rico; remédios atuais da Saúde aparecem no painel (na branch). Falta teste de Dan no Windows.
-  - [x] **Texto rico** (CampoRico) no "sobre" e nas sessões (na branch). Pautas/perguntas seguem como captura rápida (texto simples).
-  - [ ] Histórico de consultas ligado à Agenda (lembrete) e linha do tempo da evolução.
-- [x] ~~Trava extra opcional para saúde e cuidado psicológico~~ — **descartada** (decisão de Dan, 26/10/2026): atrito desnecessário; o cofre já protege tudo.
-- [ ] **Dinheiro** (0.35.0; aprofundado na 0.40.0):
-  - [x] Gastos, contas recorrentes, lista de espera, metas (0.35.0).
-  - [x] Grupos de gasto personalizáveis com cor; tabela por mês (3/6/12 meses); gráficos de pizza (por grupo) e barras (por mês) (0.40.0). Falta teste de Dan no Windows.
-  - [x] Gráfico de linha (evolução); filtro por grupo e por "interesse especial" na visão (na branch, ainda não publicado). Falta teste de Dan no Windows.
-  - [ ] Importar extrato do banco (OFX ou CSV) — parsing próprio, numa próxima versão.
-  - [ ] Avaliar notificar a conta a vencer.
-- [ ] **Vida acadêmica — reescrita como "mesa de estudos"** (visão acordada 26/10/2026; a 0.34.0 entregou só o cadastro, que Dan achou raso):
-  - [x] Base: matérias, provas/trabalhos/deveres com data, "o que vem aí", notas e média (0.34.0).
-  - [x] **Grade de horário semanal** por dias, aula = bloco fixo da matéria (com cor) (na branch, ainda não publicado). Falta ligar à semana-modelo da Agenda e teste de Dan no Windows.
-  - [ ] **Matéria = etiqueta de assunto** que atravessa o app (acionável no Leitor e no Caderno). A matéria recolhe tudo do assunto. Sub-assuntos depois. (Depende do Caderno e de mais Leitor.)
-  - [ ] **Trabalhos acadêmicos como projetos** (não só TCC: IC, publicações, artigos, seminários), reusando Projetos, com passos, "onde parei" e **agendamento para trás** ("entrega sexta → comece terça").
-  - [x] **"O que vem aí"** no topo (próximas entregas/provas/deveres por data) — já existe desde a 0.34.0; aprofundar depois com contagem sentida e ligação ao modo baixa energia.
-  - [ ] **Conexões**: prova/entrega → evento na Agenda com aviso; "estudar agora" → timer de Foco por matéria; material da aula por matéria (anexos); leituras por assunto na estante.
-  - [ ] Encolher nota/média para detalhe opcional dentro da matéria.
-  - [ ] Dependências: grifos por assunto precisam do Leitor pronto; páginas por assunto precisam do Caderno.
-- [x] **Hobbies e interesses** (0.36.0): arquivo de interesses/hiperfocos com notas, imagens e links (pelos anexos), sem metas. Falta teste de Dan no Windows.
-  - [x] **Quadro livre** por hobby (na branch, ainda não publicado): cartões soltos de texto, arquivo, imagem, link e áudio gravado, arrastáveis pelo mouse e pelo teclado; posição guardada. Áudio pelo microfone (MediaRecorder) salvo no cofre via `anexar_bytes`. **Falta teste de Dan no Windows — o microfone no WebView2 e a renderização não dá para validar na nuvem.**
-  - [ ] Redimensionar cartões; conectar cartões; fundo/cor do quadro.
-- [x] **Minha organização** (novo, decidido por Dan 26/10/2026; na branch, ainda não publicado): quadros estilo Trello (colunas com cartões arrastáveis) e listas (itens com caixinha), vários ao mesmo tempo. Falta teste de Dan no Windows.
-  - [x] Renomear/excluir coluna corrigidos; editar cartão (texto, cor e prazo) num editor; reordenar dentro da coluna por botões de subir/descer (na branch, ainda não publicado). Falta teste de Dan no Windows.
-  - [ ] Evoluir: arrastar para reordenar dentro da coluna, ligação com Agenda/Projetos.
-- [ ] **Leitura** (começada na 0.37.0):
-  - [x] Estante com status (quero/lendo/lido/pausado) e diário de leitura (onde parei, impressões, datas). Falta teste de Dan no Windows.
-  - [x] Pacote `packages/leitor` (sem React/Tauri, reaproveitável no Escuta) com o leitor de EPUB (epub.js) e PDF (PDF.js): fontes (inclusive dislexia), cores de papel, tamanho e modo páginas/rolagem; lembra onde parou (0.38.0). **Falta teste de Dan no Windows — a renderização não foi validada na nuvem.** Limite de 300 MB por arquivo (reusa os anexos do cofre) (0.39.0).
-  - [x] Painel de ajustes do leitor com espaçamento entre linhas, margem e alinhamento; troca de fonte do EPUB corrigida (injeção de `@font-face` no iframe); PDF esconde os ajustes que são só do EPUB (0.41.0). Falta teste de Dan no Windows.
-  - [x] Biblioteca em prateleiras (grupos) com cor por livro e selo de status; livro muda de prateleira por um seletor (0.41.0). Falta teste de Dan no Windows.
-  - [x] Marcadores, notas e grifos (grifo de texto no EPUB), caneta/marca-texto/borracha no PDF, com painel lateral de anotações (na branch, ainda não publicado). **Falta teste de Dan no Windows.**
-  - [x] Arrastar livros entre prateleiras com o mouse e pelo teclado (dnd-kit) (na branch, ainda não publicado).
-  - [ ] No leitor: régua de leitura, leitura em voz alta, busca no livro, sumário navegável, dicionário.
-  - [ ] Grifo de texto no PDF (precisa da camada de texto no render do PDF, hoje só canvas).
-  - [ ] Fichamentos (citação, resumo, comentário, paráfrase) com ABNT; exportar Word/PDF/Markdown.
-  - [ ] Busca em todas as anotações; IA opcional para explicar/resumir. Testar o pacote dentro do Escuta.
-- [ ] **Caderno** com os dois modos completos (decisão de Dan): estante, capas e folhas personalizáveis, modo caderno no estilo Goodnotes com páginas, PDF para anotar, caneta com pressão e rejeição da palma, todas as ferramentas (lápis, pincel, marca-texto, borracha, laço, formas, texto, setas, notas adesivas, imagens) e quadro infinito. Cinco etapas no plano da Onda 2. **Motor próprio (perfect-freehand) confirmado por Dan (26/10/2026).**
-  - [x] **Etapa 12 (base e estante)** (na branch, ainda não publicado): pacote `@orbita/caderno` com o modelo de dados (cena, papel, capa); tabelas no banco (caderno, pasta, página, cena); estante com pastas, criar caderno escolhendo o modo (caderno/infinito), capas (cor e galeria pronta); abrir o caderno mostra as páginas (adicionar/apagar, tamanho A4/A5/carta) ou a prévia do quadro infinito, com aviso de que o desenho chega na etapa 13. Falta teste de Dan no Windows.
-  - [x] **Etapa 13 (folhas personalizáveis)** e **Etapa 14 (escrita à mão)** (na branch, p/ a 0.44.3): folhas (modelo, cor, espaçamento, margem, cabeçalho) por página; caneta, lápis, pincel, marca-texto e borracha com traço por pressão (perfect-freehand), desfazer/refazer por página, salvamento automático. Ajustes por ferramenta em **barras deslizantes** (tamanho, **opacidade**, estabilização, pressão), cor **RGB livre** com favoritas, **barra de ferramentas móvel** (baixo/cima/lados), **cor da barra à escolha** (qualquer RGB, com contraste dos ícones automático) e modo imersivo ao abrir o caderno. Verificado com prints no navegador; falta a caneta real no Windows.
-  - [~] **Etapa 15 (ferramentas)** em curso: **caixa de texto com formatação** (criar tocando na folha, digitar, mover, apagar; **negrito/itálico/sublinhado por trecho** via mini-editor TipTap, **fonte** (Atkinson/Lexend/Dislexia), **tamanho**, **cor** e **alinhamento**) e **formas** (reta, retângulo, elipse, seta — arrastando, com espessura e cor; a borracha também apaga formas) prontas e verificadas no navegador; convivem com o desenho. **Borracha com tamanho ajustável** (barra deslizante, com prévia). **Laço de seleção** (contorna o que quer; move, redimensiona mantendo a proporção, recolore e apaga em bloco — traços, formas, caixas de texto e imagens; um lacinho em cima de uma imagem grande já a seleciona). **Imagens** (colar com Ctrl+V ou botão de inserir; guardadas como anexo no cofre; dá para desenhar por cima, mover, redimensionar e apagar pelo laço). **Painel de IA generativa** (botão ✨ na barra): cria **imagem** ou **adesivo** (figurinha recortada) com a IA da pessoa (ChatGPT/Gemini/Grok, por chave própria), mostra prévia e só insere na página quando a pessoa confirma (reaproveita `gerarImagemIa`). **✨ revisão de texto por IA na caixa do caderno** (menu com revisar, mais claro/curto/detalhado, tópicos, tom leve/formal e "do meu jeito"; antes-e-depois, só aplica se a pessoa aceitar). **Notas adesivas** (post-it), **capas** (14 gradientes + **8 capas de arte prontas** empacotadas + imagem própria + por IA) e **régua** (guia que move/gira; desenhar perto dela sai reto). **Galeria embutida** (em `apps/desktop/public/galeria`, manifesto em `caderno/galeria.ts`): capas de arte e **adesivos prontos** (17, em grupos — bichos, plantas, céu — compostos de elementos de stock da Magnific; entram na página como figura, vão para o cofre). **Etapa 15 completa.** **Capa editável** (completa): **escrever o nome na capa** (título com fonte, cor, tamanho, negrito, alinhamento e posição por arrasto) e **pincelar à mão** sobre a capa (traços com cor e espessura, desfazer e apagar), guardado em `capaCena` (campo novo no caderno, Rust + api) e desenhado na estante. Outros a fazer: borracha por área/tipo; temas com fundo de imagem (compor no pacote `@orbita/temas`). (As 90's de stock não viram capa — tipografia é o design; ficaram de fora.)
-  - [ ] Etapa 16 (quadro infinito, importar/exportar PDF, laser). **A partir da 13 nada de desenho dá para testar com caneta na nuvem — dá para testar no navegador (mouse); ritmo de build a combinar.**
-  - [ ] Capa por imagem/SVG próprios (etapa 12 fez só cor e galeria).
-- [ ] **Exportação em formatos abertos** de todos os módulos (CSV, Markdown, JSON, ICS para a agenda).
-  - [x] Motor de exportação (funções puras testadas) + comando para gravar o arquivo; cartão "Exportar meus dados" em Ajustes: agenda em **ICS**, gastos e registros de saúde em **CSV**, e **tudo** num **JSON** (na branch, ainda não publicado). Falta teste de Dan no Windows.
-  - [x] Resumo em **Markdown** legível de todos os módulos (na branch, ainda não publicado). Falta teste de Dan no Windows.
-  - [ ] CSV dos demais módulos tabulares (contas, metas, atividades…), se fizer falta além do Markdown/JSON.
-- [ ] Remédio do modo baixa energia vindo da medicação cadastrada.
-- [ ] Portão: grupo de teste neurodivergente usa e aprova.
+- [ ] **Classroom ligado à Vida acadêmica**: hoje os prazos do Classroom vão para a agenda, mas não para as matérias.
+- [ ] **Prova e entrega da Vida acadêmica viram compromisso na Agenda**, com aviso (hoje ficam só em Estudos).
+- [ ] **"Comece na terça se entrega na sexta"**: agendamento para trás dos trabalhos.
+- [ ] **"Estudar agora"** abre o Foco com a matéria.
+- [ ] **Matéria como assunto que atravessa o app** (caderno, leitura, fontes).
 
-## 3. Onda 3: Mac e celular
+## 3. Leitura
 
-- [ ] Versões Mac, Android, iOS e iPad do mesmo código.
-- [ ] **Sincronização opcional** criptografada de ponta a ponta. Caminho mais provável: a mesma pasta do app na conta da pessoa (Drive, OneDrive, iCloud) usada desde a 0.22.0 para a recuperação, sem servidor do Órbita.
-- [ ] Ditado no Mac e no celular (hoje o microfone só grava no Windows).
-- [ ] **"Guardar na minha conta" em todas as plataformas**: Google, Microsoft e Apple (iCloud, só no Mac e no iPhone/iPad) no Mac, Android, iPhone e iPad, cada uma com seu cadastro no provedor (tabela em `docs/especificacao.md`, "Contas para guardar a recuperação").
-- [ ] IA no celular só por chave (sem IA local).
-- [ ] Apple Saúde e Health Connect (sono, frequência cardíaca, passos, ciclo), só leitura.
-- [ ] Futuro: app no relógio (captura, confirmar remédio, avisos por vibração).
+Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, sumário, marcadores, notas, grifo no EPUB, caneta no PDF.
+- [ ] **Régua de leitura** (faixa que acompanha a linha).
+- [ ] **Leitura em voz alta**.
+- [ ] **Busca no livro**.
+- [ ] **Grifo de texto no PDF** (precisa da camada de texto do PDF; hoje o PDF é só imagem na tela).
+- [ ] **Fichamento** (citação, resumo, comentário, paráfrase) em ABNT, com exportação.
 
-## 4. Onda 4: lançamento e comunidade
+## 4. Outros módulos
 
-- [ ] Distribuição gratuita, página do projeto e de doação, onde hospedar os instaladores.
-- [ ] Galeria de temas da comunidade, incluindo conjuntos de ícones (desde a 0.23.0 há três famílias prontas, efeitos e o desenho de ícones com IA, experimental).
-- [ ] **Importar coleção de ícones em SVG** (por exemplo, comprada ou baixada de um banco como o Magnific/Freepik): a pessoa escolhe os arquivos e liga cada um a um ícone do Órbita. Uso pessoal tudo bem; para publicar na galeria, conferir a licença da coleção.
-- [ ] **Logo do Órbita no login do Google** (exige a verificação de marca do Google, que leva semanas; hoje a tela de permissão aparece sem logo).
+- [ ] **Dinheiro**: importar o extrato do banco (OFX ou CSV); avisar conta a vencer.
+- [ ] **Minha organização**: ligar cartão com prazo à Agenda; compartilhar um quadro.
+- [ ] **Modo baixa energia**: mostrar o remédio a partir da medicação cadastrada na Saúde.
+- [ ] **Contas para a recuperação**: Dropbox e Nextcloud/WebDAV (avaliar).
+
+## 5. Depende de Dan (não é código)
+
+- [ ] **Parte 5 de `docs/configurar-contas.md`**: ligar a Google Classroom API e acrescentar as 3 permissões. Sem isso, "Ligar a conta Google" em Contas conectadas não funciona.
+- [ ] **Conta Microsoft (OneDrive)**: o código e o workflow estão prontos (`ORBITA_MICROSOFT_CLIENT_ID`); falta registrar o app na Microsoft (Parte 3).
+- [ ] **Testes no Windows e no iPad** da 0.51.x: IA mexendo no caderno com chave de verdade e o desfazer; Fontes com PDF grande; DOI/ISBN no Windows; Zotero do computador; Classroom; Espaço segurado para a mão; caneta do Windows virada para apagar; menu flutuante.
+- [ ] **Teste com leitor de tela** (NVDA) com quem usa no dia a dia.
+- [ ] **Portão da Onda 1**: usar no dia a dia por algumas semanas e aprovar (`docs/revisao-onda-1.md`).
+
+## 6. Lançamento (Onda 4)
+
 - [ ] Assinatura digital do instalador do Windows (tira o aviso "O Windows protegeu o computador").
-- [ ] Lojas de aplicativo ou versão web instalável no celular.
-- [ ] Decidir sobre código aberto.
+- [ ] Análise do Google para os escopos do Classroom (sem ela, até 100 pessoas) e logo na tela do Google.
+- [ ] Versões Mac, Android e iOS do mesmo código (Onda 3); hoje o iPad usa a versão de navegador.
+- [ ] Página do projeto, distribuição gratuita e doação; galeria de temas da comunidade; decidir sobre código aberto.
 
-## 5. Decisões em aberto (não são código)
+## 7. Decisões em aberto
 
-- [ ] Consultar o nome Órbita no INPI.
-- [ ] Motor de temas compartilhado com o Escuta ou separado.
-- [ ] Como o Escuta recebe o motor de leitura (dependência do GitHub ou pacote privado).
-- [ ] Qual modelo local oferecer como opção sem chave (hoje: Ollama, com a recomendação pela memória do computador).
-- [ ] Conta de desenvolvedor da Apple: individual (aparece o nome de Dan) ou de empresa (com CNPJ, aparece a marca). Decidir perto da Onda 3.
-- [x] **Levar o trabalho para a branch principal (`main`)** do `-rbita` (feito na 0.29.2: `main` e `claude/orbita-setup-planning-cfbqzz` estão iguais; sessões novas trabalham a partir do `main`).
-- [ ] O mesmo no `orbita-versoes`: as páginas públicas ainda saem da branch `claude/orbita-setup-planning-cfbqzz` de lá. Se trocar, mudar também a origem do GitHub Pages.
+- [ ] Nome Órbita no INPI (e o domínio orbita.arcano3.com.br).
+- [ ] Conta de desenvolvedor da Apple: individual ou de empresa.
+- [ ] Motor de temas compartilhado com o Escuta ou separado; como o Escuta recebe o motor de leitura.
+- [ ] As páginas públicas do `orbita-versoes` saem da branch `claude/orbita-setup-planning-cfbqzz`. Trocar exige mudar também a origem do GitHub Pages (não trocar sem combinar: ela serve as páginas exigidas pelo Google).
+
+## Onde está o código
+
+- A `main` do `-rbita` foi avançada em 12/11/2026 até a branch de trabalho (`claude/awesome-allen-kkfoij`); antes, tinha parado em 25/10. **Ao terminar uma rodada, levar o trabalho para a `main`** (com `[skip ci]` na mensagem quando a versão já estiver publicada, para não montar o instalador do Windows à toa).
