@@ -1,3 +1,44 @@
+- **Estudos ligados ao resto do Órbita**
+  - Prova, trabalho e entrega com data vão para a **Agenda**, com o aviso de sempre, e acompanham as mudanças.
+  - **"Começar quantos dias antes"**: o dia de começar aparece no cartão ("Comece em ter., 17 de nov.") e na Agenda.
+  - **"Estudar agora"** abre o Foco já com a matéria.
+  - **Trabalho vira projeto**, com passos e "onde parei".
+  - As tarefas do **Classroom** entram nos Estudos, na matéria da turma.
+  - A matéria mostra **os cadernos e as leituras dela**; toque para abrir.
+
+- **Modo baixa energia**: mostra os **remédios do dia** cadastrados na Saúde e sugere também **um estudo leve** (dever, leitura ou trabalho que está chegando).
+
+- **Dinheiro**
+  - **Importar o extrato do banco** (OFX ou CSV, inclusive a fatura do Nubank). Você vê a lista e escolhe o que entra; o que já foi importado não repete. O arquivo é lido só no aparelho.
+  - **Aviso de conta que vence logo**, no Início e em "Este mês". Conta já vencida não fica cobrando.
+
+- **Minha organização**: o cartão com data pode ir para a **Agenda**, e o quadro pode ser **enviado como texto** (WhatsApp, e-mail) ou copiado.
+
+- **Leitura**
+  - **Grifo de texto no PDF**, como no EPUB.
+  - **Fichamento em ABNT**: citação, paráfrase, resumo e comentário, com a página. "Fichar como citação" ao escolher um trecho. Sai em Word, texto ou para copiar.
+
+- **Caderno**
+  - **Quadro infinito de verdade**: uma tela grande com as mesmas ferramentas, que cresce para todos os lados, zoom de 15% a 400%, IA e biblioteca no meio do que você está vendo, e enviar como PDF ou imagem (só a parte usada).
+  - **Importar PDF ou imagens** como páginas para anotar por cima.
+  - **Arrastar para mudar a ordem das páginas**, na visão das páginas e no painel ao lado.
+  - **Sumário automático** no documento de texto, com os pontinhos até o número da página.
+  - **Referência: colar e a IA separa nos campos**, para você conferir antes de inserir.
+  - **Ensinar a minha letra**: escreva o alfabeto uma vez, e a palavra corrigida sai na sua letra (não mais numa fonte cursiva).
+  - **Minhas palavras**: ensine ao corretor as palavras que você usa ("Está certa: lembrar"); ele não marca mais como erro.
+  - **PDF digitalizado nas Fontes**: a IA lê as páginas (com a sua confirmação) e o texto entra com o número da página.
+
+- **Leitor**: **buscar no livro**, **ouvir em voz alta** com a voz do aparelho e **régua de leitura**.
+
+- **Corrigido**
+  - O aviso de dado sensível voltava cada vez que o app abria; agora aparece uma vez só, como combinado.
+  - Ctrl+Home e Ctrl+End no documento iam para o cabeçalho; agora vão ao começo e ao fim do texto.
+  - Na janela de referência, as caixas de texto não tinham borda.
+
+---
+
+<!-- Abaixo: o que veio na 0.51.1. -->
+
 - **Texto sem a caixa escura em volta**: no caderno, no quadro e no documento de texto, o texto não ganha mais aquela faixa escura com sombra. Era o ajuste "Contorno nas letras" (Aparência) entrando também no papel; agora ele vale só para o texto do app por cima de fotos e desenhos.
 
 - **Menu flutuante ao escolher texto**, como no Word: estilo, fonte, tamanho, negrito, itálico, sublinhado, cores, marca-texto, "Aa", listas, link e limpar a formatação. No computador fica em cima do trecho; no iPad, embaixo. Esc ou tocar fora fecha. Dá para desligar na aba Revisar.
