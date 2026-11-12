@@ -15,6 +15,9 @@ import { EscolherCor } from "../ideias/etiquetas";
 import { ArrowDown, ArrowUp, BookOpen, Check, GripVertical, MoreHorizontal, Pencil, Plus, Trash2 } from "../icones";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
+import { lerAssuntos, ligarAssunto } from "../academico/assuntos";
+import { EscolherMateria } from "../academico/EscolherMateria";
+import { pegarPedido } from "../app/abrirDepois";
 import { LeitorLivro } from "./Leitor";
 import { CapaLivro } from "./CapaLivro";
 import { corDaCapa, corDoTitulo } from "./capa";
@@ -63,6 +66,10 @@ export function PaginaLeitura() {
       ([ls, gs]) => {
         setLivros(ls);
         setGrupos(gs);
+        // Pedido de outra tela (a matéria nos Estudos): abre o livro direto.
+        const pedido = pegarPedido("livro");
+        const l = pedido ? ls.find((x) => x.id === pedido) : undefined;
+        if (l?.formato) ler(l);
       },
       (e) => setErro(mensagem(e)),
     );
@@ -461,6 +468,8 @@ function FormLivro({ inicial, grupos, aoFechar, aoExcluir }: { inicial: Livro; g
   const [impressoes, setImpressoes] = useState(inicial.impressoes);
   const [inicio, setInicio] = useState(inicial.inicio);
   const [fim, setFim] = useState(inicial.fim);
+  const [materiaId, setMateriaId] = useState("");
+  useEffect(() => { if (inicial.id) void lerAssuntos().then((a) => setMateriaId(a.livros[inicial.id] ?? "")); }, [inicial.id]);
   const [caminho, setCaminho] = useState<string | null>(null);
   const [nomeArquivo, setNomeArquivo] = useState("");
   const [lendoMeta, setLendoMeta] = useState(false);
@@ -498,6 +507,7 @@ function FormLivro({ inicial, grupos, aoFechar, aoExcluir }: { inicial: Livro; g
     setErro(null);
     try {
       const salvo = await api.salvarLivro({ ...inicial, titulo, autor, status, grupoId, cor, ondeParei, impressoes, inicio, fim });
+      await ligarAssunto("livros", salvo.id, materiaId).catch(() => {});
       gravarProgresso(salvo.id, status === "lido" ? 100 : progresso);
       // Se escolheu um arquivo novo, anexa ao livro e guarda o formato.
       if (caminho) {
@@ -521,6 +531,7 @@ function FormLivro({ inicial, grupos, aoFechar, aoExcluir }: { inicial: Livro; g
         <div className="livro-ficha-campos">
           <Campo rotulo={t.form.titulo} valor={titulo} aoMudar={setTitulo} autoFocus maximo={160} semDitado />
           <Campo rotulo={t.form.autor} valor={autor} aoMudar={setAutor} maximo={120} semDitado />
+          <EscolherMateria valor={materiaId} aoMudar={setMateriaId} />
         </div>
       </div>
       <div className="livro-ficha-par">

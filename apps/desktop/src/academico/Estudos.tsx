@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, Form, Menu, MenuItem, MenuTrigger, Popover, Tab, TabList, TabPanel, Tabs } from "react-aria-components";
 import { chaveDia } from "../agenda/datas";
-import { api, type Atividade, type Aula, type Materia } from "../api";
+import { api, type Atividade, type Aula, type Caderno, type Livro, type Materia } from "../api";
+import { pedirAbrir } from "../app/abrirDepois";
+import { daMateria, lerAssuntos, type Assuntos } from "./assuntos";
 import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
@@ -235,6 +237,7 @@ export function PaginaEstudos({ aoIr }: { aoIr?: (s: Secao) => void } = {}) {
             aoAdicionar={() => setEditandoMateria(novaMateria())}
             aoEditar={setEditandoMateria}
             aoExcluir={setExcluindoMateria}
+            aoAbrir={aoIr ? (tipo, id) => { pedirAbrir(tipo, id); aoIr(tipo === "caderno" ? "caderno" : "leitura"); } : undefined}
           />
         </TabPanel>
 
@@ -589,6 +592,7 @@ function AbaMaterias({
   aoAdicionar,
   aoEditar,
   aoExcluir,
+  aoAbrir,
 }: {
   materias: Materia[];
   atividades: Atividade[];
@@ -599,8 +603,17 @@ function AbaMaterias({
   aoAdicionar: () => void;
   aoEditar: (m: Materia) => void;
   aoExcluir: (m: Materia) => void;
+  /** Abre um caderno ou livro ligado à matéria (na seção dele). */
+  aoAbrir?: (tipo: "caderno" | "livro", id: string) => void;
 }) {
   const disciplina = perfil.vocabulario === "disciplina";
+  // Cadernos e livros ligados a cada matéria (matéria como assunto).
+  const mudancas = useMudancas();
+  const [ligados, setLigados] = useState<{ a: Assuntos; cadernos: Caderno[]; livros: Livro[] } | null>(null);
+  useEffect(() => {
+    Promise.all([lerAssuntos(), api.listarCadernos(), api.listarLivros()]).then(([a, cadernos, livros]) => setLigados({ a, cadernos, livros }), () => {});
+  }, [mudancas]);
+  const ta = t.assunto;
   const hoje = chaveDia(new Date());
   const totalCreditos = materias.reduce((s, m) => s + (extras.materias[m.id]?.creditos ?? 0), 0);
 
@@ -638,6 +651,34 @@ function AbaMaterias({
                     {mostraNotas && media != null && <li className="estudos-chip">{t.notas.media(numeroBonito(media))}</li>}
                   </ul>
                   {mostraNotas && media != null && perfil.notas && <p className="texto-suave pequeno">{t.notas[situacao(media, aprovacao) as "acima" | "perto" | "abaixo"]}</p>}
+                  {ligados && (() => {
+                    const d = daMateria(ligados.a, m.id, { cadernos: new Set(ligados.cadernos.map((c) => c.id)), livros: new Set(ligados.livros.map((l) => l.id)) });
+                    if (!d.cadernos.length && !d.livros.length) return null;
+                    return (
+                      <div className="materia-ligados">
+                        {d.cadernos.length > 0 && (
+                          <div className="materia-ligados-grupo">
+                            <span className="texto-suave pequeno">{ta.cadernos}</span>
+                            <ul className="materia-ligados-lista">
+                              {d.cadernos.map((id) => { const c = ligados.cadernos.find((x) => x.id === id)!; return (
+                                <li key={id}>{aoAbrir ? <Button className="botao pequeno com-icone" onPress={() => aoAbrir("caderno", id)} aria-label={ta.abrir(c.nome)}><PenLine aria-hidden="true" size="1em" /> {c.nome}</Button> : <span>{c.nome}</span>}</li>
+                              ); })}
+                            </ul>
+                          </div>
+                        )}
+                        {d.livros.length > 0 && (
+                          <div className="materia-ligados-grupo">
+                            <span className="texto-suave pequeno">{ta.leituras}</span>
+                            <ul className="materia-ligados-lista">
+                              {d.livros.map((id) => { const l = ligados.livros.find((x) => x.id === id)!; return (
+                                <li key={id}>{aoAbrir && l.formato ? <Button className="botao pequeno com-icone" onPress={() => aoAbrir("livro", id)} aria-label={ta.abrir(l.titulo)}><BookOpen aria-hidden="true" size="1em" /> {l.titulo}</Button> : <span className="estudos-chip">{l.titulo}</span>}</li>
+                              ); })}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="materia-acoes">
                   <Button className="botao-icone estudos-toque" onPress={() => aoEditar(m)} aria-label={`${t.materias.editar}: ${m.nome}`}>

@@ -9,6 +9,9 @@ import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PIN
 import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, limitesDoElemento, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
 import { crescerAte, ehInfinito, medidaInfinito, tamanhoInfinito } from "./infinito";
 import { ensinarPalavra, lerMinhaLetra } from "./minhaLetra";
+import { lerAssuntos, ligarAssunto } from "../academico/assuntos";
+import { EscolherMateria } from "../academico/EscolherMateria";
+import { pegarPedido } from "../app/abrirDepois";
 import { ICONES_FORMA, IconeAgrupar, IconeAlca, IconeLaser, IconeCadeado, IconeCadeadoAberto, IconeCursor, IconeDesagrupar, IconeEngrenagem, IconeNivelFrente, IconeNivelTras, IconeSeta, IconeTudoFrente, IconeTudoTras } from "./iconesCaderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
 import { reduzirImagem } from "../fundo";
@@ -109,7 +112,13 @@ export function PaginaCaderno() {
   const mudancas = useMudancas();
 
   useEffect(() => {
-    api.listarCadernos().then(setCadernos, (e) => setErro(mensagem(e)));
+    api.listarCadernos().then((cs) => {
+      setCadernos(cs);
+      // Pedido de outra tela (a matéria nos Estudos): abre o caderno direto.
+      const pedido = pegarPedido("caderno");
+      const c = pedido ? cs.find((x) => x.id === pedido) : undefined;
+      if (c) abrir(c);
+    }, (e) => setErro(mensagem(e)));
     api.listarPastasCaderno().then(setPastas, () => {});
   }, [mudancas]);
 
@@ -354,6 +363,8 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
   const [capa, setCapa] = useState<Capa>(inicial.capa);
   const [comCapa, setComCapa] = useState(true);
   const [pastaId, setPastaId] = useState(inicial.pastaId);
+  const [materiaId, setMateriaId] = useState("");
+  useEffect(() => { if (inicial.id) void lerAssuntos().then((a) => setMateriaId(a.cadernos[inicial.id] ?? "")); }, [inicial.id]);
   const [erro, setErro] = useState<string | null>(null);
   const editando = inicial.id !== "";
   const naPagina = capaNaPagina(inicial.capaCena);
@@ -366,6 +377,7 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
       if (!editando) {
         // A capa é a primeira página: entra antes da página que o caderno já traz.
         const cad = await api.salvarCaderno({ ...inicial, nome, modo, capa, capaCena: modo === "infinito" ? "" : modo === "documento" ? CAPA_NA_PAGINA : comCapa ? CAPA_NA_PAGINA : SEM_CAPA, pastaId });
+        if (materiaId) await ligarAssunto("cadernos", cad.id, materiaId).catch(() => {});
         if (comCapa && modo === "caderno") await criarPaginaCapa(cad, capa, nome, 0.5);
         // Documento de texto: a primeira página já é de texto.
         if (modo === "documento") {
@@ -374,6 +386,7 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
         }
       } else {
         await api.salvarCaderno({ ...inicial, nome, capa, pastaId });
+        await ligarAssunto("cadernos", inicial.id, materiaId).catch(() => {});
         // Capa já na página: troca o modelo da capa lá também.
         if (naPagina) {
           const pgs = await api.listarPaginasCaderno(inicial.id);
@@ -391,6 +404,7 @@ function FormCaderno({ inicial, pastas, ia, aoMudarIa, aoFechar }: { inicial: Ca
   return (
     <Form className="formulario" onSubmit={enviar}>
       <Campo rotulo={t.form.nome} valor={nome} aoMudar={setNome} autoFocus maximo={80} semDitado />
+      <EscolherMateria valor={materiaId} aoMudar={setMateriaId} />
       {!editando && (
         <>
           <Segmentado rotulo={t.form.modo} valor={modo} aoMudar={(v) => setModo(v as Caderno["modo"])} opcoes={[{ valor: "caderno", nome: t.modos.caderno }, { valor: "documento", nome: t.modos.documento }, { valor: "infinito", nome: t.modos.infinito }]} />

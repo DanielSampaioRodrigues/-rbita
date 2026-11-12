@@ -22,7 +22,8 @@ O histórico do que já foi feito está na especificação (`docs/especificacao.
 - [x] ~~**Prova e entrega viram compromisso na Agenda**~~ (12/11/2026).
 - [x] ~~**"Comece na terça se entrega na sexta"**~~ (12/11/2026): "Começar quantos dias antes".
 - [x] ~~**"Estudar agora"** abre o Foco com a matéria~~ (12/11/2026).
-- [ ] **Matéria como assunto que atravessa o app** (caderno, leitura, fontes).
+- [x] ~~**Matéria como assunto**: cadernos e leituras ligados à matéria~~ (12/11/2026).
+- [ ] Matéria como assunto, segunda parte: grifos e páginas soltas marcados com a matéria.
 
 ## 3. Leitura
 

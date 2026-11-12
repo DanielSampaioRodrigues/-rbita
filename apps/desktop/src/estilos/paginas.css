@@ -2095,3 +2095,9 @@
 .leitor-ficha-longa { padding-left: var(--espaco-4); font-size: 0.92em; }
 .leitor-ficha .linha-ajuste { justify-content: space-between; }
 .leitor-fichamento-exportar { display: grid; gap: var(--espaco-1); }
+
+/* Estudos: cadernos e leituras ligados à matéria */
+.materia-ligados { display: grid; gap: var(--espaco-2); margin-top: var(--espaco-2); }
+.materia-ligados-grupo { display: grid; gap: var(--espaco-1); }
+.materia-ligados-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--espaco-1); }
+.materia-ligados-lista .botao { max-width: 100%; overflow-wrap: anywhere; text-align: left; }

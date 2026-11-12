@@ -3155,6 +3155,14 @@ export const textos = {
       tudoEmDia: "Nada nos próximos 7 dias.",
       prazoPesquisa: "Prazo da pesquisa",
     },
+    assunto: {
+      rotulo: "Matéria (opcional)",
+      nenhuma: "Nenhuma",
+      ajuda: "Ligado a uma matéria, aparece nela em Estudos > Matérias.",
+      cadernos: "Cadernos",
+      leituras: "Leituras",
+      abrir: (nome: string) => `Abrir ${nome}`,
+    },
     comecarEm: (data: string, jaPassou: boolean) => (jaPassou ? `Hora de começar (desde ${data})` : `Comece em ${data}`),
     estudarAgora: "Estudar agora (abre o Foco)",
     atividade: {
