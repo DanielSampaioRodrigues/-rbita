@@ -2538,6 +2538,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
           <PainelLateral aba={painel} aoAba={setPainel} aoFechar={() => setPainel(null)} paginas={paginas} atualId={selId}
             miniatura={(p, largura) => <MiniaturaPagina pagina={p} cena={cenas[p.id]} imagemUrl={imagemUrl} largura={largura} />}
             aoIr={(id) => { setVisaoPaginas(false); requestAnimationFrame(() => irPara(id)); }}
+            aoMoverPara={(id, i) => void moverPaginaPara(id, i)}
             aoAdicionar={() => setAdicionando(true)} aoVerGrade={() => setVisaoPaginas(true)}
             ia={<PainelIa obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
               aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)}

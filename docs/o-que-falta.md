@@ -8,7 +8,7 @@ O histórico do que já foi feito está na especificação (`docs/especificacao.
 
 - [ ] **Quadro infinito**: o modo aparece ao criar um caderno, mas abre só o aviso "chega na próxima etapa" (`Caderno.tsx`, texto `infinitoEmBreve`). Rolagem e zoom livres, com as mesmas ferramentas.
 - [x] ~~**Importar PDF para anotar no caderno**~~ (12/11/2026): PDF e imagens viram páginas com o arquivo de fundo.
-- [x] ~~**Arrastar para reordenar as páginas**~~ (12/11/2026) na visão das páginas, pela alça (mouse, dedo e teclado). Falta no painel lateral.
+- [x] ~~**Arrastar para reordenar as páginas**~~ (12/11/2026) na visão das páginas e no painel lateral (mouse, caneta, dedo e teclado).
 - [x] ~~**Sumário automático**~~ (12/11/2026) no documento de texto.
 - [ ] **Ensinar a minha letra** ao corretor da escrita à mão.
 - [ ] **PDF digitalizado nas Fontes** lido pela IA página por página (hoje fica marcado como "sem texto").

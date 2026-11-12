@@ -2064,11 +2064,11 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 
 /* ---------- Painel lateral do caderno (Páginas, IA, Biblioteca) ---------- */
 .caderno-area.com-painel.painel-direita { flex-direction: row-reverse; }
-.caderno-painel { flex: none; width: 260px; display: flex; flex-direction: column; min-height: 0; background: var(--cor-superficie); border-right: 1px solid var(--cor-borda); z-index: 6; }
+.caderno-painel { flex: none; width: 280px; display: flex; flex-direction: column; min-height: 0; background: var(--cor-superficie); border-right: 1px solid var(--cor-borda); z-index: 6; }
 .caderno-area.painel-direita .caderno-painel { border-right: 0; border-left: 1px solid var(--cor-borda); }
 .caderno-painel-topo { display: flex; align-items: center; gap: 4px; padding: 6px 6px 0 8px; border-bottom: 1px solid var(--cor-borda); }
-.caderno-painel-abas { display: flex; flex: 1; min-width: 0; }
-.caderno-painel-aba { flex: 1; min-height: 40px; padding: 0 0.4rem; border: none; border-bottom: 2px solid transparent; background: none; color: var(--cor-texto-suave); font: inherit; font-size: 0.9rem; font-weight: 650; cursor: pointer; }
+.caderno-painel-abas { display: flex; flex-wrap: wrap; flex: 1; min-width: 0; }
+.caderno-painel-aba { flex: 1 0 auto; min-height: 40px; padding: 0 0.2rem; border: none; border-bottom: 2px solid transparent; background: none; color: var(--cor-texto-suave); font: inherit; font-size: 0.82rem; font-weight: 650; cursor: pointer; }
 .caderno-painel-aba.ativa { color: var(--cor-destaque); border-bottom-color: var(--cor-destaque); }
 .caderno-painel-aba:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: -3px; }
 .caderno-painel-miolo { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
@@ -2079,6 +2079,9 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-painel-pagina:hover { background: var(--cor-superficie-alternativa); }
 .caderno-painel-pagina.atual { border-color: var(--cor-destaque); }
 .caderno-painel-pagina:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
+.caderno-painel-paginas > li { touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.caderno-painel-alca { position: absolute; top: 8px; right: 8px; cursor: grab; touch-action: none; background: color-mix(in srgb, var(--cor-superficie) 85%, transparent); border-radius: 6px; }
+.caderno-painel-alca:active { cursor: grabbing; }
 .caderno-painel-numero { display: inline-flex; align-items: center; gap: 3px; font-size: 0.8rem; color: var(--cor-texto-suave); }
 .caderno-painel-pagina.atual .caderno-painel-numero { color: var(--cor-destaque); font-weight: 700; }
 .caderno-painel-acoes { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 12px; position: sticky; bottom: 0; background: var(--cor-superficie); border-top: 1px solid var(--cor-borda); margin-top: auto; }

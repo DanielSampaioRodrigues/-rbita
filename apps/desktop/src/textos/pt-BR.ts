@@ -1944,6 +1944,7 @@ export const textos = {
       marcadas: "Marcadas",
       nenhumaMarcada: "Nenhuma página marcada. Para marcar, use o marcador na barra de cima.",
       irPara: (n: number, nome: string) => (nome ? `Ir para a página ${n}: ${nome}` : `Ir para a página ${n}`),
+      arrastar: (n: number, nome: string) => (nome ? `Mudar de lugar a página ${n}: ${nome}` : `Mudar de lugar a página ${n}`),
       adicionar: "Página",
       verGrade: "Ver em grade",
       lado: "Lado do painel",
