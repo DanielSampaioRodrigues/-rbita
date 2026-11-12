@@ -198,6 +198,8 @@ Serve do ensino fundamental e médio à faculdade e à pós. O vocabulário e as
 
 *Estado atual (0.34.0): a primeira versão entregue é o cadastro — matérias, atividades e média. A visão de hub acima é a reescrita acordada com Dan (26/10/2026), ainda a construir.*
 
+*12/11/2026: as conexões com a Agenda e o Foco, o agendamento para trás ("comece em") e as tarefas do Classroom nas matérias já existem (ver a lista de mudanças, "Estudos ligado à Agenda, ao Foco e ao Classroom"). Falta a matéria como assunto que atravessa o caderno, a leitura e as fontes.*
+
 ### 8. Hobbies e interesses
 
 - Arquivo de interesses e hiperfocos, com notas, imagens e links.
@@ -560,6 +562,11 @@ docs/                especificação e registro de decisões
   - **Zotero**: pela internet (número de usuário e uma chave só de leitura do zotero.org, guardados no banco criptografado; vale no iPad e no Windows) ou **o Zotero deste computador** (Zotero 7 aberto, com "Permitir que outros aplicativos se comuniquem"; só no Windows, pelo Rust, só leitura e só o endereço local). Na janela **Referência**, "Buscar no Zotero" (título, autor ou ano) traz a referência e o citation-js formata pela norma, como as outras.
   - **Abrir arquivos do Drive**: pelo seletor de arquivos do sistema, que já mostra o Drive (no iPad, pelo app Arquivos; no Windows, pela pasta do Google Drive para computador). Um seletor do Drive dentro do Órbita (Google Picker) fica para depois.
   - A lista de endereços que o app do Windows pode chamar (CSP) passou a incluir o Classroom, o Zotero e os serviços das referências (doi.org, Crossref, DataCite, Open Library); antes, a busca por DOI e ISBN só funcionava no navegador.
+- **Estudos ligado à Agenda, ao Foco e ao Classroom** (12/11/2026; `academico/ligacoes.ts`, testado). Cumpre as "Conexões" da seção 7:
+  - **Na Agenda**: no formulário da atividade, "Pôr na Agenda (com o aviso de sempre)", ligado por padrão em prova, trabalho e entrega com data. A atividade vira um compromisso de dia inteiro ("Prova: Título", com a matéria nas notas) e acompanha as mudanças (trocar a data move o compromisso; marcar como feita ou apagar a atividade tira da Agenda).
+  - **Comece antes** (agendamento para trás): "Começar quantos dias antes" (no próprio dia, 1, 2, 3, 5, 7, 10 ou 14). Padrão: trabalho 5 dias, prova e entrega 3. Põe também "Começar: Título" na Agenda nesse dia, e o cartão mostra "Comece em ter., 17 de nov." (depois do dia, "Hora de começar", sem vermelho). As escolhas ficam guardadas no banco criptografado (`estudos.ligacoes`).
+  - **Estudar agora**: botão no cartão que abre o **Foco** com o assunto já preenchido ("Matéria: Título").
+  - **Classroom nas matérias**: na janela do Classroom, "Pôr nos Estudos" (uma tarefa) e "Pôr todas nos Estudos". A tarefa vira um trabalho na matéria com o mesmo nome da turma (ou numa matéria nova com esse nome), com a data do prazo; não duplica (fica "Está nos Estudos"). Não vai sozinha para a Agenda, para não repetir o "Pôr na agenda" do próprio Classroom.
 - **Leitor: busca, voz e régua** (12/11/2026; `packages/leitor/src/leitor.ts` e `apps/desktop/src/leitura/voz.ts`, testados). Três botões novos na barra do leitor:
   - **Buscar no livro**: painel ao lado; acha a palavra ou o trecho sem diferenciar maiúsculas e acentos ("memoria" acha "Memória"), no EPUB (capítulo por capítulo) e no PDF (página por página), até 100 resultados com o trecho em volta; tocar leva até lá e, no EPUB, deixa a palavra marcada.
   - **Ouvir a partir daqui**: lê em voz alta com a **voz do aparelho** (Windows, iPad, Android), sem mandar o texto para fora; começa onde a pessoa está e segue pelos capítulos (EPUB) ou páginas (PDF). Barra com pausar, parar, velocidade (0,75× a 1,5×), escolha da voz em português (as do Brasil primeiro) e a frase que está sendo lida. O texto vai em frases curtas (o Chrome corta falas longas).

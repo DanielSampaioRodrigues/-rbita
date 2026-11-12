@@ -17,10 +17,10 @@ O histórico do que já foi feito está na especificação (`docs/especificacao.
 
 ## 2. Estudos
 
-- [ ] **Classroom ligado à Vida acadêmica**: hoje os prazos do Classroom vão para a agenda, mas não para as matérias.
-- [ ] **Prova e entrega da Vida acadêmica viram compromisso na Agenda**, com aviso (hoje ficam só em Estudos).
-- [ ] **"Comece na terça se entrega na sexta"**: agendamento para trás dos trabalhos.
-- [ ] **"Estudar agora"** abre o Foco com a matéria.
+- [x] ~~**Classroom ligado à Vida acadêmica**~~ (12/11/2026): "Pôr nos Estudos" leva a tarefa para a matéria da turma.
+- [x] ~~**Prova e entrega viram compromisso na Agenda**~~ (12/11/2026).
+- [x] ~~**"Comece na terça se entrega na sexta"**~~ (12/11/2026): "Começar quantos dias antes".
+- [x] ~~**"Estudar agora"** abre o Foco com a matéria~~ (12/11/2026).
 - [ ] **Matéria como assunto que atravessa o app** (caderno, leitura, fontes).
 
 ## 3. Leitura

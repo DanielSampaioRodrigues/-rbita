@@ -21,6 +21,7 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Sparkles,
+  Timer,
   Trash2,
   Upload,
   type LucideIcon,
@@ -32,6 +33,9 @@ import { FormAtividade, nomeTipo, novaAtividade } from "./FormAtividade";
 import { aulasDoDia, GradeHorario } from "./Grade";
 import { mediaPonderada, mediasPorBimestre, situacao } from "./media";
 import { useExtras, type ExtrasAcademico, type PrazoPesquisa } from "./extras";
+import { diasAntes, lerLigacoes, sincronizarNaAgenda, tirarDaAgenda, type Ligacoes } from "./ligacoes";
+import { useFoco } from "../foco/Foco";
+import type { SecaoMenu as Secao } from "../preferencias";
 import { bimestreDaData, diasAte, NIVEIS, PERFIL_PERSONALIZADO_PADRAO, perfilDoNivel, tipoMostrado, TIPOS_ATIVIDADE, type Nivel, type NivelOuTodos, type PerfilNivel, type TipoAtividade } from "./nivel";
 import { Interruptor } from "../componentes/Interruptor";
 import { Segmentado } from "../componentes/Segmentado";
@@ -56,7 +60,10 @@ const lerAba = (): Aba => {
   }
 };
 
-export function PaginaEstudos() {
+export function PaginaEstudos({ aoIr }: { aoIr?: (s: Secao) => void } = {}) {
+  const foco = useFoco();
+  // Vínculos com a Agenda e o Classroom (para "Comece em…" e para não repetir).
+  const [ligacoes, setLigacoes] = useState<Ligacoes | null>(null);
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -100,8 +107,12 @@ export function PaginaEstudos() {
   const porMateria = useMemo(() => new Map(materias.map((m) => [m.id, m])), [materias]);
   const tipoDe = (a: Atividade) => tipoMostrado(a.tipo, extras.atividades[a.id]?.tipo);
 
+  useEffect(() => { void lerLigacoes().then(setLigacoes, () => setLigacoes(null)); }, [atividades]);
   const marcar = async (a: Atividade, feita: boolean) => {
     await api.marcarAtividade(a.id, feita);
+    // Feita: os compromissos dela saem da Agenda; desfeita, voltam.
+    const e = ligacoes?.agenda[a.id];
+    if (e) await sincronizarNaAgenda({ ...a, feita }, nomeTipo(tipoDe(a), perfil), porMateria.get(a.materiaId)?.nome ?? "", { agenda: true, dias: e.dias ?? 0 }).catch(() => {});
     avisarMudanca();
   };
   const excluirMateria = async () => {
@@ -123,6 +134,7 @@ export function PaginaEstudos() {
     if (!excluindoAtividade) return;
     const id = excluindoAtividade.id;
     await api.excluirAtividade(id);
+    await tirarDaAgenda(id).catch(() => {});
     mudarExtras((x) => {
       const atividadesX = { ...x.atividades };
       delete atividadesX[id];
@@ -159,10 +171,20 @@ export function PaginaEstudos() {
     pesquisa: t.abas.pesquisa,
   };
 
-  const acoesAtividade = {
+  const acoesAtividade: AcoesAtividade = {
     marcar: (a: Atividade) => void marcar(a, !a.feita),
     editar: (a: Atividade) => setEditandoAtividade({ a }),
     excluir: (a: Atividade) => setExcluindoAtividade(a),
+    comecarEm: (a: Atividade) => {
+      const d = ligacoes?.agenda[a.id]?.dias ?? 0;
+      return d > 0 && a.data && !a.feita ? diasAntes(a.data, d) : null;
+    },
+    // "Estudar agora": o Foco já abre com a matéria e a atividade como assunto.
+    estudar: aoIr ? (a: Atividade) => {
+      const m = porMateria.get(a.materiaId)?.nome;
+      foco.configurar({ modo: "foco", assunto: m ? `${m}: ${a.titulo}` : a.titulo });
+      aoIr("foco");
+    } : undefined,
   };
 
   return (
@@ -338,6 +360,9 @@ interface AcoesAtividade {
   marcar: (a: Atividade) => void;
   editar: (a: Atividade) => void;
   excluir: (a: Atividade) => void;
+  /** Dia de começar ("AAAA-MM-DD"), se a pessoa escolheu "começar antes". */
+  comecarEm: (a: Atividade) => string | null;
+  estudar?: (a: Atividade) => void;
 }
 
 function AbaSemana({
@@ -507,8 +532,14 @@ function CartaoAtividade({ a, m, tipo, perfil, hoje, acoes }: { a: Atividade; m?
         <span className="texto-suave">
           {dataLegivel(a.data)}
           {a.nota != null && ` · ${t.notaDe(numeroBonito(a.nota))}`}
+          {(() => { const c = acoes.comecarEm(a); return c ? <><br />{t.comecarEm(dataLegivel(c), c <= hoje)}</> : null; })()}
         </span>
         <span className="estudos-acoes">
+          {acoes.estudar && !a.feita && (
+            <Button className="botao-icone estudos-toque" onPress={() => acoes.estudar?.(a)} aria-label={`${t.estudarAgora}: ${a.titulo}`}>
+              <Timer aria-hidden="true" size="1.1em" />
+            </Button>
+          )}
           <Button className="botao-icone estudos-toque" onPress={() => acoes.marcar(a)} aria-label={`${a.feita ? t.desmarcarFeita : t.marcarFeita}: ${a.titulo}`}>
             {a.feita ? <RotateCcw aria-hidden="true" size="1.1em" /> : <Check aria-hidden="true" size="1.1em" />}
           </Button>

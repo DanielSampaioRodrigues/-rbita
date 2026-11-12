@@ -1646,8 +1646,8 @@
 .estudos-cartao.feito { background: var(--cor-superficie); border-left-style: dashed; }
 .estudos-cartao.feito .estudos-cartao-titulo { color: var(--cor-texto-suave); }
 .estudos-cartao-prazo { --etq: var(--cor-destaque); }
-.estudos-cartao-topo { display: flex; align-items: center; gap: var(--espaco-2); min-width: 0; }
-.estudos-cartao-tipo { flex: 1; min-width: 0; font-size: 0.85rem; font-weight: 650; overflow-wrap: anywhere; }
+.estudos-cartao-topo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espaco-2); min-width: 0; }
+.estudos-cartao-tipo { flex: 1 1 9rem; min-width: 0; font-size: 0.85rem; font-weight: 650; overflow-wrap: break-word; }
 .estudos-cartao-materia { font-weight: 400; color: var(--cor-texto-suave); }
 .estudos-cartao-titulo { margin: 0; font-size: 1.1rem; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
 .estudos-cartao-rodape { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--espaco-2); font-size: 0.9rem; }

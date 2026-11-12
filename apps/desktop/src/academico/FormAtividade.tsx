@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Button, Form } from "react-aria-components";
 import { api, type Atividade, type Materia } from "../api";
 import { Aviso, Campo } from "../componentes/Campo";
@@ -8,6 +8,7 @@ import { Segmentado } from "../componentes/Segmentado";
 import { avisarMudanca } from "../dados";
 import { textos } from "../textos/pt-BR";
 import type { ExtrasAtividade } from "./extras";
+import { DIAS_ANTES_PADRAO, lerLigacoes, OPCOES_DIAS_ANTES, sincronizarNaAgenda } from "./ligacoes";
 import { aceitaNota, bimestreDaData, perfilDoNivel, tipoMostrado, tipoNativo, TIPOS_ATIVIDADE, type PerfilNivel, type TipoAtividade } from "./nivel";
 
 const t = textos.estudos.atividade;
@@ -48,6 +49,21 @@ export function FormAtividade({
   const [nota, setNota] = useState(inicial.nota == null ? "" : String(inicial.nota));
   const [bimestre, setBimestre] = useState<string>(extras?.bimestre ? String(extras.bimestre) : "");
   const [feita, setFeita] = useState(inicial.feita);
+  // Agenda: a prova ou a entrega vira compromisso (com aviso), e o dia de começar também.
+  const comAgendaPossivel = tipo !== "leitura";
+  const [naAgenda, setNaAgenda] = useState(inicial.id === "" && tipo !== "dever" && tipo !== "leitura");
+  const [dias, setDias] = useState<number>(DIAS_ANTES_PADRAO[tipo] ?? 0);
+  const idDias = useId();
+  // Atividade nova: trocar o tipo traz a sugestão daquele tipo.
+  useEffect(() => {
+    if (inicial.id) return;
+    setDias(DIAS_ANTES_PADRAO[tipo] ?? 0);
+    setNaAgenda(tipo !== "dever" && tipo !== "leitura");
+  }, [tipo, inicial.id]);
+  useEffect(() => {
+    if (!inicial.id) return;
+    void lerLigacoes().then((l) => { const e = l.agenda[inicial.id]; if (e) { setNaAgenda(true); setDias(e.dias ?? 0); } });
+  }, [inicial.id]);
   const [erro, setErro] = useState<string | null>(null);
   const idMateria = useId();
   const idBimestre = useId();
@@ -80,6 +96,10 @@ export function FormAtividade({
         nota: aceitaNota(tipo) ? numero(nota) : null,
         feita,
       });
+      if (comAgendaPossivel) {
+        const materia = materias.find((m) => m.id === materiaId)?.nome ?? "";
+        await sincronizarNaAgenda(salva, nomeTipo(tipo, perfil), materia, { agenda: naAgenda && !!data, dias: naAgenda ? dias : 0 }).catch(() => {});
+      }
       aoSalvarExtras?.(salva.id, {
         tipo,
         bimestre: comBimestre && bimestreSugerido ? Number(bimestreSugerido) : (extras?.bimestre ?? null),
@@ -123,6 +143,20 @@ export function FormAtividade({
         <>
           <Campo rotulo={t.peso} valor={peso} aoMudar={setPeso} numerico descricao={t.pesoAjuda} semDitado />
           <Campo rotulo={t.nota} valor={nota} aoMudar={setNota} numerico descricao={t.notaAjuda} semDitado />
+        </>
+      )}
+      {comAgendaPossivel && data && (
+        <>
+          <Interruptor rotulo={t.naAgenda} ligado={naAgenda} aoMudar={setNaAgenda} />
+          {naAgenda && (
+            <div className="campo">
+              <label className="campo-rotulo" htmlFor={idDias}>{t.comecarAntes}</label>
+              <select id={idDias} className="entrada-texto sozinha" value={String(dias)} onChange={(e) => setDias(Number(e.target.value))} aria-describedby={`${idDias}-ajuda`}>
+                {OPCOES_DIAS_ANTES.map((n) => <option key={n} value={n}>{t.diasAntes(n)}</option>)}
+              </select>
+              <p id={`${idDias}-ajuda`} className="campo-ajuda">{t.comecarAjuda}</p>
+            </div>
+          )}
         </>
       )}
       <Interruptor rotulo={t.feita} ligado={feita} aoMudar={setFeita} />

@@ -8,7 +8,9 @@ import { api } from "../api";
 import { useRecado } from "../app/Recado";
 import { Aviso } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
-import { CalendarDays, Check, ExternalLink } from "../icones";
+import { BookOpen, CalendarDays, Check, ExternalLink } from "../icones";
+import { lerLigacoes, trazerDoClassroom } from "../academico/ligacoes";
+import { avisarMudanca } from "../dados";
 import { textos } from "../textos/pt-BR";
 import { listarTarefas, listarTurmas, porNaAgenda, tarefasNaAgenda, type TarefaClassroom } from "./classroom";
 import { salvarNoDrive } from "./drive";
@@ -28,6 +30,7 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
   const recado = useRecado();
   const [tarefas, setTarefas] = useState<TarefaClassroom[] | null>(null);
   const [agenda, setAgenda] = useState<Record<string, string>>({});
+  const [nosEstudos, setNosEstudos] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [entregando, setEntregando] = useState<{ tarefa: TarefaClassroom; nome: string } | null>(null);
@@ -37,6 +40,7 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
     try {
       setTarefas(await listarTarefas(await listarTurmas()));
       setAgenda(await tarefasNaAgenda());
+      setNosEstudos((await lerLigacoes()).classroom);
     } catch (e) {
       setErro(mensagem(e));
       setTarefas([]);
@@ -67,6 +71,24 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
       setErro(mensagem(e));
     }
   };
+  // Traz para os Estudos (na matéria de mesmo nome da turma, ou numa nova).
+  const paraEstudos = async (lista: TarefaClassroom[]) => {
+    setErro(null);
+    try {
+      let materias = await api.listarMaterias();
+      let novas = 0;
+      for (const x of lista) {
+        const r = await trazerDoClassroom(x, materias);
+        if (r.materiaNova) materias = await api.listarMaterias();
+        if (r.nova) novas += 1;
+      }
+      setNosEstudos((await lerLigacoes()).classroom);
+      avisarMudanca();
+      recado(t.postoEstudos(novas));
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
   const abrir = (url: string) => void api.abrirEndereco(url).catch((e) => setErro(mensagem(e)));
 
   const faltam = (tarefas ?? []).filter((x) => x.estado === "pendente");
@@ -86,6 +108,9 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
         {x.estado === "pendente" && x.prazo !== null && (agenda[x.id]
           ? <span className="texto-suave pequeno com-icone"><CalendarDays aria-hidden="true" size="0.95em" /> {t.naAgenda}</span>
           : <Button className="botao pequeno com-icone" onPress={() => void agendar(x)}><CalendarDays aria-hidden="true" size="1em" /> {t.agenda}</Button>)}
+        {x.estado === "pendente" && (nosEstudos[x.id]
+          ? <span className="texto-suave pequeno com-icone"><BookOpen aria-hidden="true" size="0.95em" /> {t.nosEstudos}</span>
+          : <Button className="botao pequeno com-icone" onPress={() => void paraEstudos([x])}><BookOpen aria-hidden="true" size="1em" /> {t.estudos}</Button>)}
         <Button className="botao pequeno com-icone" onPress={() => abrir(x.link)}><ExternalLink aria-hidden="true" size="1em" /> {t.abrir}</Button>
       </div>
     </li>
@@ -110,6 +135,7 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
           {faltam.length > 0 && (<><h3 className="classroom-grupo">{t.faltam}</h3><ul className="classroom-lista">{faltam.map(cartao)}</ul></>)}
           {feitas.length > 0 && (<><h3 className="classroom-grupo">{t.feitas}</h3><ul className="classroom-lista">{feitas.map(cartao)}</ul></>)}
           <div className="janela-acoes">
+            {faltam.some((x) => !nosEstudos[x.id]) && <Button className="botao" onPress={() => void paraEstudos(faltam.filter((x) => !nosEstudos[x.id]))}>{t.todasEstudos}</Button>}
             <Button className="botao" onPress={() => void carregar()}>{t.atualizar}</Button>
             <Button className="botao principal" onPress={aoFechar}>{t.fechar}</Button>
           </div>
