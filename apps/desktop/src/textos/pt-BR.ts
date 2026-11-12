@@ -2255,6 +2255,8 @@ export const textos = {
       },
     },
     visao: {
+      arrastar: (p: string) => `Mudar de lugar: ${p} (arraste, ou use Espaço e as setas)`,
+      arrastarInstrucoes: "Para mudar a página de lugar: Espaço para pegar, setas para levar, Espaço para soltar. Esc desiste.",
       abrir: "Ver as páginas",
       titulo: "Páginas",
       filtro: "Quais páginas mostrar",

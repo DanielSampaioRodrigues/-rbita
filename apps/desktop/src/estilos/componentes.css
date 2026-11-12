@@ -1809,6 +1809,8 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-visao-item.atual .caderno-visao-mini { border-color: var(--cor-destaque); }
 .caderno-visao-mini:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 2px; }
 .caderno-visao-marca { position: absolute; top: -2px; right: 10px; color: var(--cor-destaque); line-height: 1; }
+.caderno-visao-alca { cursor: grab; touch-action: none; flex: none; }
+.caderno-visao-alca:active { cursor: grabbing; }
 .caderno-visao-pe { display: flex; align-items: center; gap: var(--espaco-1); width: 150px; font-size: 0.85rem; }
 .caderno-visao-num { font-variant-numeric: tabular-nums; color: var(--cor-texto-suave); }
 .caderno-visao-nome { flex: 1; min-width: 0; }

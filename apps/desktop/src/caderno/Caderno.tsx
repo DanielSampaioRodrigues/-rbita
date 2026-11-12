@@ -1,5 +1,8 @@
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button, Dialog, DialogTrigger, Form, Label, Menu, MenuItem, MenuTrigger, Popover, Radio, RadioGroup } from "react-aria-components";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PINCEL, novaSemente, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type ModeloPincel, type Papel, type Ponto, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
@@ -14,7 +17,7 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, FileUp, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, PainelLateral as IconePainel, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
+import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, FileUp, GripVertical, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, PainelLateral as IconePainel, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
@@ -1814,6 +1817,18 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       setErro(mensagem(e));
     }
   };
+  /** Leva a página para a posição `para` (0 = a primeira), arrastando na visão das páginas. */
+  const moverPaginaPara = async (id: string, para: number) => {
+    const pg = paginas.find((p) => p.id === id);
+    if (!pg) return;
+    const resto = paginas.filter((p) => p.id !== id);
+    const [ordem] = ordensEntre(resto[para - 1]?.ordem, resto[para]?.ordem, 1);
+    // Mostra já na ordem nova; o banco confirma em seguida.
+    const nova = [...resto.slice(0, para), { ...pg, ordem }, ...resto.slice(para)];
+    setPaginas(nova);
+    await salvar({ ...pg, ordem });
+    await carregar();
+  };
   /** Passa a página uma posição para trás (−1) ou para a frente (+1). */
   const moverPagina = async (id: string, passo: -1 | 1) => {
     const i = paginas.findIndex((p) => p.id === id);
@@ -2541,7 +2556,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             aoIr={(id) => { setVisaoPaginas(false); requestAnimationFrame(() => irPara(id)); }}
             aoFechar={() => setVisaoPaginas(false)}
             aoSalvar={(pg) => void salvar(pg)} aoApagar={(id) => void apagar(id)} aoDuplicar={(id) => void duplicar(id)}
-            aoMover={(id, para) => void moverPagina(id, para)} aoAdicionar={() => setAdicionando(true)} />
+            aoMover={(id, para) => void moverPagina(id, para)} aoMoverPara={(id, i) => void moverPaginaPara(id, i)} aoAdicionar={() => setAdicionando(true)} />
         )}
         <div className={`caderno-rolagem${lateral && !infinito ? " lateral" : ""}${travada ? " travada" : ""}${modoPagina && !infinito ? " modo-pagina" : ""}${maoFixa || maoEspaco ? " com-mao" : ""}${arrastandoMao ? " arrastando-mao" : ""}`} ref={area} onScroll={aoRolar} hidden={visaoPaginas && !infinito}>
           {infinito ? (
@@ -2786,11 +2801,41 @@ const MiniaturaPagina = memo(function MiniaturaPagina({ pagina, cena, imagemUrl,
 
 /** Visão das páginas (como as miniaturas do Goodnotes): ir para uma página, dar
  *  nome, marcar, duplicar, mudar de lugar e apagar. Filtra as marcadas. */
-function VisaoPaginas({ paginas, cenas, imagemUrl, atualId, aoIr, aoFechar, aoSalvar, aoApagar, aoDuplicar, aoMover, aoAdicionar }: {
+/** Um cartão da visão das páginas que dá para arrastar (pela alça, com o mouse, o dedo ou o teclado). */
+function ItemArrastavel({ id, desligado, className, refAtual, rotuloAlca, children }: { id: string; desligado: boolean; className: string; refAtual?: React.Ref<HTMLLIElement>; rotuloAlca: string; children: (alca: React.ReactNode) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: desligado });
+  const juntar = (el: HTMLLIElement | null) => {
+    setNodeRef(el);
+    if (typeof refAtual === "function") refAtual(el);
+    else if (refAtual && "current" in refAtual) (refAtual as React.MutableRefObject<HTMLLIElement | null>).current = el;
+  };
+  // Sem animação ao soltar no baixo estímulo (o cartão vai direto para o lugar).
+  const estilo: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition: semMovimento() ? undefined : transition, zIndex: isDragging ? 5 : undefined, opacity: isDragging ? 0.85 : undefined };
+  const alca = desligado ? null : (
+    <button type="button" ref={setActivatorNodeRef} className="botao-icone pequeno caderno-visao-alca" aria-label={rotuloAlca} title={rotuloAlca} {...attributes} {...listeners}>
+      <GripVertical aria-hidden="true" size="1.05em" />
+    </button>
+  );
+  return <li ref={juntar} className={className} style={estilo}>{children(alca)}</li>;
+}
+
+function VisaoPaginas({ paginas, cenas, imagemUrl, atualId, aoIr, aoFechar, aoSalvar, aoApagar, aoDuplicar, aoMover, aoMoverPara, aoAdicionar }: {
   paginas: PaginaCaderno[]; cenas: Record<string, Cena>; imagemUrl: (id: string) => string | undefined; atualId: string;
   aoIr: (id: string) => void; aoFechar: () => void; aoSalvar: (p: PaginaCaderno) => void; aoApagar: (id: string) => void;
-  aoDuplicar: (id: string) => void; aoMover: (id: string, passo: -1 | 1) => void; aoAdicionar: () => void;
+  aoDuplicar: (id: string) => void; aoMover: (id: string, passo: -1 | 1) => void; aoMoverPara: (id: string, indice: number) => void; aoAdicionar: () => void;
 }) {
+  // Arrastar para mudar a ordem: mouse (depois de mexer um pouco, para o clique continuar
+  // abrindo a página), dedo (segurando um instante) e teclado (Espaço na alça, setas, Espaço).
+  const sensores = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const soltar = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const para = paginas.findIndex((p) => p.id === over.id);
+    if (para >= 0) aoMoverPara(String(active.id), para);
+  };
   const tv = t.visao;
   const [filtro, setFiltro] = useState<"todas" | "marcadas">("todas");
   const [nomeando, setNomeando] = useState<PaginaCaderno | null>(null);
@@ -2816,17 +2861,23 @@ function VisaoPaginas({ paginas, cenas, imagemUrl, atualId, aoIr, aoFechar, aoSa
         </span>
       </div>
       {lista.length === 0 ? <p className="texto-suave">{tv.nenhumaMarcada}</p> : (
+        <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={soltar}
+          accessibility={{ screenReaderInstructions: { draggable: tv.arrastarInstrucoes } }}>
+        <SortableContext items={lista.map(({ p }) => p.id)} strategy={rectSortingStrategy}>
         <ul className="caderno-visao-grade">
           {lista.map(({ p, n }) => {
             const atual = p.id === atualId;
             const rotulo = p.titulo ? `${t.paginas.numero(n)}: ${p.titulo}` : t.paginas.numero(n);
             return (
-              <li key={p.id} ref={atual ? atualRef : undefined} className={atual ? "caderno-visao-item atual" : "caderno-visao-item"}>
+              <ItemArrastavel key={p.id} id={p.id} desligado={filtro !== "todas" || paginas.length < 2} refAtual={atual ? atualRef : undefined}
+                className={atual ? "caderno-visao-item atual" : "caderno-visao-item"} rotuloAlca={tv.arrastar(rotulo)}>
+                {(alca) => (<>
                 <button type="button" className="caderno-visao-mini" onClick={() => aoIr(p.id)} aria-label={tv.ir(rotulo)} aria-current={atual ? "page" : undefined}>
                   <MiniaturaPagina pagina={p} cena={cenas[p.id]} imagemUrl={imagemUrl} largura={150} />
                   {p.marcado && <span className="caderno-visao-marca" aria-hidden="true"><Bookmark size="0.95em" /></span>}
                 </button>
                 <div className="caderno-visao-pe">
+                  {alca}
                   <span className="caderno-visao-num">{n}</span>
                   <span className="caderno-visao-nome quebra">{p.titulo || <span className="texto-suave">{tv.semNome}</span>}</span>
                   <MenuTrigger>
@@ -2850,10 +2901,13 @@ function VisaoPaginas({ paginas, cenas, imagemUrl, atualId, aoIr, aoFechar, aoSa
                     </Popover>
                   </MenuTrigger>
                 </div>
-              </li>
+              </>)}
+              </ItemArrastavel>
             );
           })}
         </ul>
+        </SortableContext>
+        </DndContext>
       )}
       <Janela titulo={tv.nomeTitulo} aberta={nomeando !== null} aoFechar={() => setNomeando(null)} pequena>
         {nomeando && (
