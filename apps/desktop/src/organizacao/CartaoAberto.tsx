@@ -8,12 +8,14 @@ import { useRecado } from "../app/Recado";
 import { Aviso } from "../componentes/Campo";
 import { CampoData } from "../componentes/CampoData";
 import { CampoRico } from "../componentes/CampoRico";
+import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Archive, CalendarDays, Copy, ImagePlus, ListChecks, MoveHorizontal, Palette, Plus, RotateCcw, Tag, Trash2, X } from "../icones";
 import { AnexosDoItem } from "../relacoes/Relacoes";
 import { textos } from "../textos/pt-BR";
 import { CORES_ORG, PALETA_ORG } from "./cores";
 import { CapaCartao, ChipEtiqueta, EscolherCor, SeloPrazo, useImagemAnexo } from "./partes";
+import { lerVinculos, sincronizarCartao } from "./agenda";
 import { completarCartao } from "./regras";
 
 const t = textos.organizacao;
@@ -52,6 +54,18 @@ function Detalhe({ inicial, acoes, aoFechar }: { inicial: CartaoOrg; acoes: Acoe
   const [erro, setErro] = useState<string | null>(null);
   const relogio = useRef<number | null>(null);
   const [mostrarData, setMostrarData] = useState(!!inicial.prazo);
+  const [naAgenda, setNaAgenda] = useState(false);
+  useEffect(() => { void lerVinculos().then((v) => setNaAgenda(inicial.id in v)); }, [inicial.id]);
+  const mudarAgenda = async (ligar: boolean) => {
+    setNaAgenda(ligar);
+    if (!(await guardarAgora())) return;
+    try {
+      await sincronizarCartao(atual.current, acoes.quadro.nome, ligar);
+      recado(ligar ? tc.pusNaAgenda : tc.tireiDaAgenda);
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
   const [painel, setPainel] = useState<"" | "etiquetas" | "capa" | "cor" | "mover" | "copiar" | "apagar">("");
   const [imagens, setImagens] = useState<Anexo[]>([]);
   const [versaoAnexos, setVersaoAnexos] = useState(0);
@@ -204,6 +218,12 @@ function Detalhe({ inicial, acoes, aoFechar }: { inicial: CartaoOrg; acoes: Acoe
                 <CampoData rotulo={tc.data} tipo="date" valor={c.prazo} aoMudar={(v) => mudar({ prazo: v, hora: v ? atual.current.hora : "" }, 400)} />
                 <CampoData rotulo={tc.hora} tipo="time" valor={c.hora} aoMudar={(v) => mudar({ hora: v }, 400)} />
               </div>
+              {c.prazo && (
+                <div className="org-det-agenda">
+                  <Interruptor rotulo={tc.naAgenda} ligado={naAgenda} aoMudar={(v) => void mudarAgenda(v)} />
+                  <p className="texto-suave pequeno">{tc.naAgendaAjuda}</p>
+                </div>
+              )}
               {c.prazo && (
                 <Button className="botao pequeno com-icone" onPress={() => (mudar({ prazo: "", hora: "" }, 0), setMostrarData(false))}>
                   <Trash2 aria-hidden="true" size="1em" /> {tc.semPrazo}

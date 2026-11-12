@@ -33,7 +33,8 @@ Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, su
 ## 4. Outros módulos
 
 - [x] ~~**Dinheiro**: importar o extrato do banco (OFX ou CSV); avisar conta a vencer~~ (12/11/2026).
-- [ ] **Minha organização**: ligar cartão com prazo à Agenda; compartilhar um quadro.
+- [x] ~~**Minha organização**: ligar cartão com prazo à Agenda; enviar um quadro (como texto)~~ (12/11/2026).
+- [ ] **Quadro compartilhado para editar a duas pessoas** (depende da sincronização com conta, Onda 3).
 - [x] ~~**Modo baixa energia**: mostrar o remédio a partir da medicação cadastrada na Saúde~~ (12/11/2026).
 - [ ] **Contas para a recuperação**: Dropbox e Nextcloud/WebDAV (avaliar).
 

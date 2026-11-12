@@ -1,16 +1,19 @@
 // "Minha organização": quadros como no Trello. Cada quadro tem colunas com cartões;
 // a forma de ver (Quadro ou Lista) é só exibição e troca a qualquer momento.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Form } from "react-aria-components";
+import { Button, Form, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from "react-aria-components";
 import { api, type CartaoOrg, type Coluna, type EtiquetaOrg, type FundoOrg, type Quadro } from "../api";
 import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
 import { estiloFundo } from "../hobbies/aparencia";
-import { Archive, ChevronLeft, ImagePlus, LayoutGrid, List, Pencil, Plus, Search, SlidersHorizontal, Tags, Trash2, X } from "../icones";
+import { Archive, ChevronLeft, ImagePlus, LayoutGrid, List, Pencil, Plus, Search, Share, SlidersHorizontal, Tags, Trash2, X } from "../icones";
+import { entregarArquivo, nomeDeArquivo } from "../exportar/entregar";
 import { avisarMudanca, useMudancas } from "../dados";
 import { textos } from "../textos/pt-BR";
+import { sincronizarCartao, tirarCartao } from "./agenda";
+import { quadroEmTexto } from "./enviar";
 import { CartaoAberto, type AcoesCartao } from "./CartaoAberto";
 import { classeCor, estiloCor } from "./cores";
 import { PainelArquivados, PainelEtiquetas, PainelFiltro, PainelFundo } from "./Paineis";
@@ -218,6 +221,7 @@ function QuadroAberto({ quadro: doBanco, aoFechar }: { quadro: Quadro; aoFechar:
     setCartoes((cs) => cs.map((x) => (x.id === c.id ? { ...x, feito } : x)));
     try {
       await api.marcarCartaoOrg(c.id, feito);
+      await sincronizarCartao({ ...c, feito }, quadro.nome).catch(() => {});
     } catch (e) {
       setErro(mensagem(e));
       await carregar();
@@ -225,6 +229,7 @@ function QuadroAberto({ quadro: doBanco, aoFechar }: { quadro: Quadro; aoFechar:
   };
   const apagar = async (c: CartaoOrg) => {
     await api.excluirCartaoOrg(c.id);
+    await tirarCartao(c.id).catch(() => {});
     await carregar();
   };
   /**
@@ -246,11 +251,16 @@ function QuadroAberto({ quadro: doBanco, aoFechar }: { quadro: Quadro; aoFechar:
   const guardarCartao = async (c: CartaoOrg) => {
     const salvo = await api.salvarCartaoOrg(c);
     setCartoes((cs) => cs.map((x) => (x.id === salvo.id ? { ...salvo, anexos: c.anexos ?? x.anexos } : x)));
+    // Se o cartão está na Agenda, o compromisso acompanha (título, data, hora, feito, arquivado).
+    await sincronizarCartao(salvo, quadro.nome).catch(() => {});
     return salvo;
   };
   const arquivarFeitos = async (cs: CartaoOrg[]) => {
     try {
-      for (const c of cs) await api.salvarCartaoOrg({ ...c, arquivado: true });
+      for (const c of cs) {
+        await api.salvarCartaoOrg({ ...c, arquivado: true });
+        await sincronizarCartao({ ...c, arquivado: true }, quadro.nome).catch(() => {});
+      }
       recado(t.lista.arquivouFeitos(cs.length));
       await carregar();
     } catch (e) {
@@ -310,6 +320,23 @@ function QuadroAberto({ quadro: doBanco, aoFechar }: { quadro: Quadro; aoFechar:
       await carregar();
     },
     aoApagar: apagar,
+  };
+
+  // ── Enviar o quadro (como texto) ──
+  const enviarQuadro = async (como: "arquivo" | "copiar") => {
+    const texto = quadroEmTexto(quadro.nome, colunas, cartoes, etiquetas, t.coluna.semNome);
+    try {
+      if (como === "copiar") {
+        await navigator.clipboard.writeText(texto);
+        recado(t.barra.copiado);
+        return;
+      }
+      const r = await entregarArquivo(nomeDeArquivo(quadro.nome, "txt"), "text/plain", new Blob([texto], { type: "text/plain;charset=utf-8" }), { nome: "Texto", extensao: "txt" });
+      if (r.como === "salvo" && r.onde) recado(t.barra.salvoEm(r.onde));
+      else if (r.como !== "cancelado") recado(t.barra.enviado);
+    } catch (e) {
+      setErro(mensagem(e));
+    }
   };
 
   // ── Colunas ──
@@ -405,6 +432,20 @@ function QuadroAberto({ quadro: doBanco, aoFechar }: { quadro: Quadro; aoFechar:
           <Button className="botao com-icone org-ferramenta" onPress={() => setPainel("arquivados")} aria-label={t.barra.arquivados}>
             <Archive aria-hidden="true" size="1em" /> <span className="org-ferramenta-nome">{t.barra.arquivados}</span>
           </Button>
+          <MenuTrigger>
+            <Button className="botao com-icone org-ferramenta" aria-label={t.barra.enviarComo}>
+              <Share aria-hidden="true" size="1em" /> <span className="org-ferramenta-nome">{t.barra.enviar}</span>
+            </Button>
+            <Popover className="menu-popover" placement="bottom end">
+              <Menu className="menu-lista" aria-label={t.barra.enviarComo} onAction={(k) => void enviarQuadro(String(k) as "arquivo" | "copiar")}>
+                <MenuSection>
+                  <Header className="menu-cabecalho org-enviar-ajuda">{t.barra.enviarAjuda}</Header>
+                  <MenuItem id="arquivo" className="menu-item">{t.barra.enviarArquivo}</MenuItem>
+                  <MenuItem id="copiar" className="menu-item">{t.barra.copiar}</MenuItem>
+                </MenuSection>
+              </Menu>
+            </Popover>
+          </MenuTrigger>
         </div>
       </div>
 

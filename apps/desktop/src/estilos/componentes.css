@@ -1164,6 +1164,7 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .org-det-secao > .botao { align-self: flex-start; }
 .org-det-secao .relacao { margin: 0; }
 .org-det-linha { display: flex; flex-wrap: wrap; gap: var(--espaco-3); }
+.org-det-agenda { display: grid; gap: 0.25rem; margin: var(--espaco-2) 0; }
 .org-det-linha .campo { flex: 1 1 10rem; }
 .org-det-lado { display: flex; flex-direction: column; gap: var(--espaco-2); }
 .org-det-lado .org-det-subtitulo:not(:first-child) { margin-top: var(--espaco-3); }
@@ -2210,3 +2211,5 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .extrato-linha.fora .extrato-texto, .extrato-linha.fora .extrato-valor { opacity: 0.6; }
 .extrato-texto { display: grid; gap: 0.1rem; min-width: 0; }
 .extrato-valor { display: grid; justify-items: end; font-variant-numeric: tabular-nums; }
+
+.org-enviar-ajuda { display: block; max-width: 18rem; font-weight: 400; white-space: normal; line-height: 1.35; }
