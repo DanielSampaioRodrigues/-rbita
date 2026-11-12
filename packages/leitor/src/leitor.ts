@@ -9,7 +9,8 @@ import * as pdfjs from "pdfjs-dist";
 // O worker do PDF.js é resolvido como URL pelo empacotador (Vite) do app.
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { temaEpub, coresDeLeitura, zoomPdf } from "./estilo";
-import type { ConfigLeitura, Formato, ItemSumario, Localizacao, ModoCaneta, SelecaoTexto, Traco } from "./tipos";
+import type { ConfigLeitura, Formato, GrifoPdf, ItemSumario, Localizacao, ModoCaneta, Retangulo, SelecaoTexto, Traco } from "./tipos";
+import { juntarRetangulos } from "./grifoPdf";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -81,6 +82,14 @@ export class Leitor {
 
   // PDF (PDF.js).
   private pdf: pdfjs.PDFDocumentProxy | null = null;
+  /** Grifos do PDF (desenhados numa camada por página). */
+  private grifosPdf: GrifoPdf[] = [];
+  /** Páginas do PDF cuja camada de texto já foi montada. */
+  private textoMontado = new Set<number>();
+  private ultimaSelecaoPdf = "";
+  private relogioSelecao: number | null = null;
+  private tamanhoObs: ResizeObserver | null = null;
+  private aoMudarSelecao = () => this.agendarSelecaoPdf(450);
   private paginaAtual = 1;
 
   constructor(container: HTMLElement) {
@@ -177,6 +186,8 @@ export class Leitor {
 
   /** Limpa a seleção de texto atual dentro do livro. */
   limparSelecao(): void {
+    this.ultimaSelecaoPdf = "";
+    if (this.formato === "pdf") { window.getSelection()?.removeAllRanges(); return; }
     try {
       for (const c of this.rendition?.getContents?.() ?? []) c?.window?.getSelection?.()?.removeAllRanges?.();
     } catch {
@@ -206,6 +217,7 @@ export class Leitor {
   private async renderPdfTodo(): Promise<void> {
     if (!this.pdf) return;
     this.container.replaceChildren();
+    this.textoMontado.clear();
     const escala = zoomPdf(this.config);
     for (let n = 1; n <= this.pdf.numPages; n++) {
       const pagina = await this.pdf.getPage(n);
@@ -227,11 +239,37 @@ export class Leitor {
       const ctx = canvas.getContext("2d");
       if (ctx) await pagina.render({ canvasContext: ctx, viewport }).promise;
       folha.appendChild(canvas);
+      // Grifos (embaixo do texto), o texto invisível que dá para escolher e a caneta (em cima).
+      const grifos = document.createElement("div");
+      grifos.className = "leitor-pdf-grifos";
+      folha.appendChild(grifos);
+      const texto = document.createElement("div");
+      texto.className = "textLayer leitor-pdf-texto";
+      folha.dataset.largura = String(pagina.getViewport({ scale: 1 }).width);
+      folha.appendChild(texto);
       folha.appendChild(this.criarCamadaCaneta(n, viewport.width, viewport.height));
       this.container.appendChild(folha);
     }
     this.aplicarModoCaneta();
     this.redesenharTracos();
+    this.redesenharGrifosPdf();
+    this.ajustarEscalaTexto();
+    if (!this.tamanhoObs) {
+      this.tamanhoObs = new ResizeObserver(() => this.ajustarEscalaTexto());
+      this.tamanhoObs.observe(this.container);
+      // Escolher texto no PDF (mouse, dedo ou teclado) vira um grifo, como no EPUB.
+      document.addEventListener("selectionchange", this.aoMudarSelecao);
+      this.container.addEventListener("pointerup", () => this.agendarSelecaoPdf(60));
+      this.container.addEventListener("keyup", () => this.agendarSelecaoPdf(60));
+    }
+    // A camada de texto de cada página só é montada quando ela chega perto da tela.
+    const obsTexto = new IntersectionObserver(
+      (entradas) => {
+        for (const e of entradas) if (e.isIntersecting) void this.montarTextoPdf(Number((e.target as HTMLElement).dataset.pagina) || 1, e.target as HTMLElement);
+      },
+      { root: this.container, rootMargin: "600px 0px" },
+    );
+    this.container.querySelectorAll(".leitor-pdf-folha").forEach((c) => obsTexto.observe(c));
     // Observa qual página está visível, para guardar "onde parei".
     const obs = new IntersectionObserver(
       (entradas) => {
@@ -246,6 +284,96 @@ export class Leitor {
       { root: this.container, threshold: 0.5 },
     );
     this.container.querySelectorAll(".leitor-pdf-folha").forEach((c) => obs.observe(c));
+  }
+
+  /** O texto da página (invisível, por cima da imagem), para escolher e grifar. */
+  private async montarTextoPdf(n: number, folha: HTMLElement): Promise<void> {
+    if (!this.pdf || this.textoMontado.has(n)) return;
+    this.textoMontado.add(n);
+    const camada = folha.querySelector<HTMLElement>(".leitor-pdf-texto");
+    if (!camada) return;
+    try {
+      const pagina = await this.pdf.getPage(n);
+      const tl = new pdfjs.TextLayer({ textContentSource: pagina.streamTextContent(), container: camada, viewport: pagina.getViewport({ scale: 1 }) });
+      await tl.render();
+    } catch {
+      // PDF sem texto (digitalizado): dá para ler e usar a caneta, mas não escolher texto.
+    }
+  }
+
+  /** O texto acompanha o tamanho em que a página aparece na tela. */
+  private ajustarEscalaTexto(): void {
+    this.container.querySelectorAll<HTMLElement>(".leitor-pdf-folha").forEach((f) => {
+      const largura = Number(f.dataset.largura) || 0;
+      if (largura && f.clientWidth) f.style.setProperty("--scale-factor", String(f.clientWidth / largura));
+    });
+  }
+
+  private agendarSelecaoPdf(ms: number): void {
+    if (this.formato !== "pdf") return;
+    if (this.relogioSelecao) window.clearTimeout(this.relogioSelecao);
+    this.relogioSelecao = window.setTimeout(() => this.lerSelecaoPdf(), ms);
+  }
+
+  /** Lê a seleção dentro do PDF e avisa (página, texto e retângulos relativos à página). */
+  private lerSelecaoPdf(): void {
+    if (this.modoCaneta !== "ler") return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { this.ultimaSelecaoPdf = ""; return; }
+    const range = sel.getRangeAt(0);
+    const inicio = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+    const folha = inicio?.closest?.(".leitor-pdf-folha") as HTMLElement | null;
+    if (!folha || !this.container.contains(folha) || !inicio?.closest(".leitor-pdf-texto")) return;
+    const caixa = folha.getBoundingClientRect();
+    if (!caixa.width || !caixa.height) return;
+    const brutos: Retangulo[] = [];
+    for (const r of Array.from(range.getClientRects())) {
+      const x1 = Math.max(r.left, caixa.left), x2 = Math.min(r.right, caixa.right);
+      const y1 = Math.max(r.top, caixa.top), y2 = Math.min(r.bottom, caixa.bottom);
+      if (x2 <= x1 || y2 <= y1) continue;
+      brutos.push({ x: (x1 - caixa.left) / caixa.width, y: (y1 - caixa.top) / caixa.height, w: (x2 - x1) / caixa.width, h: (y2 - y1) / caixa.height });
+    }
+    const retangulos = juntarRetangulos(brutos);
+    const texto = sel.toString().replace(/\s+/g, " ").trim();
+    const pagina = Number(folha.dataset.pagina) || 1;
+    if (!texto || !retangulos.length) return;
+    const chave = `${pagina}|${texto}|${retangulos.length}`;
+    if (chave === this.ultimaSelecaoPdf) return;
+    this.ultimaSelecaoPdf = chave;
+    this.aoSelecionar({ cfiRange: "", texto, pdf: { pagina, retangulos } });
+  }
+
+  /** Desenha os grifos guardados do PDF (troca a lista inteira). */
+  desenharGrifosPdf(lista: GrifoPdf[]): void {
+    this.grifosPdf = [...lista];
+    this.redesenharGrifosPdf();
+  }
+
+  /** Acrescenta um grifo ao PDF. */
+  grifarPdf(g: GrifoPdf): void {
+    this.grifosPdf = [...this.grifosPdf.filter((x) => x.id !== g.id), g];
+    this.redesenharGrifosPdf();
+  }
+
+  /** Tira um grifo do PDF. */
+  removerGrifoPdf(id: string): void {
+    this.grifosPdf = this.grifosPdf.filter((x) => x.id !== id);
+    this.redesenharGrifosPdf();
+  }
+
+  private redesenharGrifosPdf(): void {
+    this.container.querySelectorAll<HTMLElement>(".leitor-pdf-folha").forEach((folha) => {
+      const camada = folha.querySelector<HTMLElement>(".leitor-pdf-grifos");
+      if (!camada) return;
+      const pagina = Number(folha.dataset.pagina) || 1;
+      camada.replaceChildren(...this.grifosPdf.filter((g) => g.pagina === pagina).flatMap((g) => g.retangulos.map((r) => {
+        const d = document.createElement("div");
+        d.className = "leitor-pdf-grifo";
+        d.dataset.id = g.id;
+        Object.assign(d.style, { left: `${r.x * 100}%`, top: `${r.y * 100}%`, width: `${r.w * 100}%`, height: `${r.h * 100}%`, background: g.cor });
+        return d;
+      })));
+    });
   }
 
   /** A camada SVG onde a caneta desenha, por cima de uma página do PDF. */
@@ -577,6 +705,10 @@ export class Leitor {
   }
 
   destruir(): void {
+    document.removeEventListener("selectionchange", this.aoMudarSelecao);
+    this.tamanhoObs?.disconnect();
+    this.tamanhoObs = null;
+    if (this.relogioSelecao) window.clearTimeout(this.relogioSelecao);
     try {
       this.rendition?.destroy?.();
       this.book?.destroy?.();

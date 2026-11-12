@@ -74,8 +74,27 @@ export interface Traco {
   pontos: { x: number; y: number }[];
 }
 
-/** Um trecho selecionado no EPUB, para virar grifo. */
+/** Retângulo numa página do PDF, relativo à página (0 a 1). */
+export interface Retangulo {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Um trecho selecionado (EPUB: intervalo de CFI; PDF: página e retângulos), para virar grifo. */
 export interface SelecaoTexto {
   cfiRange: string;
   texto: string;
+  /** Só no PDF. */
+  pdf?: { pagina: number; retangulos: Retangulo[] };
+}
+
+/** Um grifo no PDF, para desenhar. */
+export interface GrifoPdf {
+  id: string;
+  pagina: number;
+  retangulos: Retangulo[];
+  /** Cor em hex. */
+  cor: string;
 }

@@ -7,7 +7,8 @@
 //!
 //! - marcador: um ponto salvo (CFI no EPUB, página no PDF) com rótulo opcional.
 //! - nota: um ponto com um texto.
-//! - grifo: um trecho do EPUB (intervalo de CFI) com cor e, às vezes, uma nota.
+//! - grifo: um trecho do EPUB (intervalo de CFI) ou do PDF (página e retângulos, guardados
+//!   em pares no campo dos pontos), com cor e, às vezes, uma nota.
 //! - traco: um rabisco da caneta numa página do PDF (pontos relativos 0..1).
 
 use rusqlite::{params, Connection};

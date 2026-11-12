@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Form } from "react-aria-components";
-import { Leitor, CONFIG_PADRAO, CORES_ANOTACAO, type ConfigLeitura, type CorFundo, type Localizacao, type ModoCaneta, type ResultadoBusca, type Traco } from "@orbita/leitor";
+import { Leitor, CONFIG_PADRAO, CORES_ANOTACAO, pontosParaRetangulos, retangulosParaPontos, type ConfigLeitura, type CorFundo, type GrifoPdf, type Localizacao, type ModoCaneta, type ResultadoBusca, type SelecaoTexto, type Traco } from "@orbita/leitor";
 import atkinsonUrl from "@fontsource-variable/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-wght-normal.woff2?url";
 import lexendUrl from "@fontsource-variable/lexend/files/lexend-latin-wght-normal.woff2?url";
 import dyslexicUrl from "../fontes/opendyslexic/OpenDyslexic-Regular.woff2?url";
@@ -45,6 +45,12 @@ const tracosDoLivro = (lista: Anotacao[]): Traco[] =>
     .filter((a) => a.tipo === "traco")
     .map((a) => ({ id: a.id, pagina: a.pdfPagina, cor: corHex(a.cor), espessura: a.espessura, pontos: a.pontos }));
 
+/** Grifos do PDF: os retângulos ficam no campo dos pontos, em pares. */
+const grifosPdfDoLivro = (lista: Anotacao[]): GrifoPdf[] =>
+  lista
+    .filter((a) => a.tipo === "grifo" && a.pdfPagina > 0 && a.pontos.length >= 2)
+    .map((a) => ({ id: a.id, pagina: a.pdfPagina, retangulos: pontosParaRetangulos(a.pontos), cor: corHex(a.cor) }));
+
 // Ajustes do leitor e posição em cada livro ficam no cofre (antes, no localStorage; migram sozinhos).
 const validarConfig = (bruto: unknown): ConfigLeitura => ({ ...CONFIG_PADRAO, ...(typeof bruto === "object" && bruto ? (bruto as Partial<ConfigLeitura>) : {}) });
 const validarPos = (bruto: unknown): Localizacao | undefined => (typeof bruto === "object" && bruto ? (bruto as Localizacao) : undefined);
@@ -78,7 +84,7 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
   const [mostrarAjustes, setMostrarAjustes] = useState(false);
   const [mostrarAnotacoes, setMostrarAnotacoes] = useState(false);
   const [anotacoes, setAnotacoes] = useState<Anotacao[]>([]);
-  const [selecao, setSelecao] = useState<{ cfiRange: string; texto: string } | null>(null);
+  const [selecao, setSelecao] = useState<SelecaoTexto | null>(null);
   const [notaAberta, setNotaAberta] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -162,7 +168,7 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
       if (posTimer.current) clearTimeout(posTimer.current);
       posTimer.current = setTimeout(gravarPos, 800);
     });
-    // Selecionar texto no EPUB abre o painel de grifar.
+    // Selecionar texto (no EPUB e no PDF com texto) abre o painel de grifar.
     leitor.aoSelecionarTexto((s) => {
       if (vivo) setSelecao(s);
     });
@@ -208,6 +214,7 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
         setAnotacoes(lista);
         if (livro.formato === "pdf") {
           leitor.desenharTracos(tracosDoLivro(lista));
+          leitor.desenharGrifosPdf(grifosPdfDoLivro(lista));
         } else {
           leitor.aplicarGrifos(lista.filter((a) => a.tipo === "grifo").map((a) => ({ cfiRange: a.epubCfiRange, cor: corHex(a.cor) })));
         }
@@ -279,6 +286,18 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
 
   const confirmarGrifo = async (cor: CorEtiqueta, nota: string) => {
     if (!selecao) return;
+    if (selecao.pdf) {
+      const { pagina, retangulos } = selecao.pdf;
+      const salvo = await api.salvarAnotacao({
+        id: "", livroId: livro.id, tipo: "grifo", epubCfi: "", epubCfiRange: "",
+        pdfPagina: pagina, cor, texto: nota, trecho: selecao.texto, pontos: retangulosParaPontos(retangulos), espessura: 0, criadoEm: 0,
+      });
+      motor.current?.grifarPdf({ id: salvo.id, pagina, retangulos, cor: corHex(cor) });
+      motor.current?.limparSelecao();
+      setSelecao(null);
+      recarregar();
+      return;
+    }
     await api.salvarAnotacao({
       id: "", livroId: livro.id, tipo: "grifo", epubCfi: "", epubCfiRange: selecao.cfiRange,
       pdfPagina: 0, cor, texto: nota, trecho: selecao.texto, pontos: [], espessura: 0, criadoEm: 0,
@@ -297,7 +316,10 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
 
   const apagarAnotacao = async (a: Anotacao) => {
     await api.excluirAnotacao(a.id);
-    if (a.tipo === "grifo") motor.current?.removerGrifo(a.epubCfiRange);
+    if (a.tipo === "grifo") {
+      if (a.pdfPagina > 0) motor.current?.removerGrifoPdf(a.id);
+      else motor.current?.removerGrifo(a.epubCfiRange);
+    }
     const lista = await api.listarAnotacoes(livro.id);
     setAnotacoes(lista);
     if (ehPdf) motor.current?.desenharTracos(tracosDoLivro(lista));

@@ -1,5 +1,6 @@
 export { Leitor, lerMetadados, normalizar, trechoEmVolta, type ResultadoBusca } from "./leitor";
 export { CORES_FUNDO, coresDeLeitura, estiloDoCorpo, temaEpub, zoomPdf } from "./estilo";
 export { CONFIG_PADRAO, CORES_ANOTACAO } from "./tipos";
-export type { ConfigLeitura, CorFundo, Alinhamento, Modo, Formato, Localizacao, ItemSumario, ModoCaneta, Traco, SelecaoTexto } from "./tipos";
+export type { ConfigLeitura, CorFundo, Alinhamento, Modo, Formato, Localizacao, ItemSumario, ModoCaneta, Traco, SelecaoTexto, Retangulo, GrifoPdf } from "./tipos";
+export { juntarRetangulos, pontosParaRetangulos, retangulosParaPontos } from "./grifoPdf";
 export { abrirPdf, desenharPaginaPdf, extrairTextoEpub, extrairTextoPdf } from "./extrair";
