@@ -6,7 +6,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, Dialog, DialogTrigger, Form, Label, Menu, MenuItem, MenuTrigger, Popover, Radio, RadioGroup } from "react-aria-components";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PINCEL, novaSemente, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type ModeloPincel, type Papel, type Ponto, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
-import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
+import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, limitesDoElemento, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
+import { crescerAte, ehInfinito, medidaInfinito, tamanhoInfinito } from "./infinito";
 import { ICONES_FORMA, IconeAgrupar, IconeAlca, IconeLaser, IconeCadeado, IconeCadeadoAberto, IconeCursor, IconeDesagrupar, IconeEngrenagem, IconeNivelFrente, IconeNivelTras, IconeSeta, IconeTudoFrente, IconeTudoTras } from "./iconesCaderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
 import { reduzirImagem } from "../fundo";
@@ -542,6 +543,7 @@ function folhaDe(pagina: PaginaCaderno): Papel {
 /** Limites do tamanho personalizado, em px de referência (96 dpi). */
 const CUSTOM_MIN = 300, CUSTOM_MAX_LARG = 1360, CUSTOM_MAX_ALT = 1900;
 function medidaDe(tamanho: string) {
+  if (ehInfinito(tamanho)) return medidaInfinito(tamanho);
   if (tamanho.startsWith("custom:")) {
     const m = /^custom:(\d+)x(\d+)$/.exec(tamanho);
     if (m) return {
@@ -574,6 +576,8 @@ function gravarPref(chave: string, valor: string) {
 }
 /** Limites do zoom das páginas (pinça com dois dedos ou Ctrl + roda). */
 const ZOOM_MIN = 0.5, ZOOM_MAX = 4;
+/** No quadro infinito dá para afastar mais, para ver o quadro inteiro. */
+const ZOOM_MIN_INFINITO = 0.15;
 const limitarZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
 
 function lerCorBarra(): string {
@@ -841,7 +845,9 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   const [acrescentar, setAcrescentar] = useState(false);
   // Configurações do caderno (engrenagem).
   const [configAberta, setConfigAberta] = useState(false);
-  const [lateral, setLateral] = useState(() => lerPref("caderno-rolagem") === "lateral");
+  const [lateralPref, setLateral] = useState(() => lerPref("caderno-rolagem") === "lateral");
+  // No quadro infinito não há páginas para virar: rola livre para os dois lados.
+  const lateral = lateralPref && caderno.modo !== "infinito";
   const mudarLateral = (v: boolean) => { setLateral(v); gravarPref("caderno-rolagem", v ? "lateral" : "vertical"); };
   const [unidadeRegua, setUnidadeRegua] = useState<UnidadeRegua>(() => (lerPref("caderno-regua-unidade") === "mm" ? "mm" : "cm"));
   const mudarUnidadeRegua = (u: UnidadeRegua) => { setUnidadeRegua(u); gravarPref("caderno-regua-unidade", u); };
@@ -1313,10 +1319,12 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   // centrado no ponto do gesto, sem animação. O ponto sob os dedos fica parado.
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
+  const infinitoRef = useRef(infinito);
+  infinitoRef.current = infinito;
   const ancoraZoom = useRef<{ cx: number; cy: number; px: number; py: number; fator: number } | null>(null);
   const aplicarZoom = (novo: number, px: number, py: number) => {
     const el = area.current;
-    const z0 = zoomRef.current, z1 = limitarZoom(novo);
+    const z0 = zoomRef.current, z1 = infinitoRef.current ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN_INFINITO, novo)) : limitarZoom(novo);
     if (!el || Math.abs(z1 - z0) < 0.001) return;
     ancoraZoom.current = { cx: el.scrollLeft + px, cy: el.scrollTop + py, px, py, fator: z1 / z0 };
     zoomRef.current = z1;
@@ -1414,7 +1422,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
 
   useEffect(() => {
     const el = area.current;
-    if (!el || infinito) return;
+    if (!el) return;
     const det = criarDetectorDeToques();
     // Toques que nunca rolam nem dão zoom: a mão apoiada (área de contato grande)
     // e, com "só caneta", qualquer toque enquanto a caneta encosta e logo depois.
@@ -1586,13 +1594,52 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   }, [infinito]);
   // "Página inteira" (ou rolagem lateral): cada página ocupa a área toda; no zoom
   // 100%, soltar a rolagem vira a página. "Largura toda": rola livre.
-  const modoPagina = lateral || (encaixe === "pagina" && !documento);
+  const modoPagina = !infinito && (lateral || (encaixe === "pagina" && !documento));
   const paginando = modoPagina && Math.abs(zoom - 1) < 0.02;
   paginandoRef.current = paginando;
-  const larguraNaTela = (pg: PaginaCaderno) => (larguraArea && alturaArea
+  const larguraNaTela = (pg: PaginaCaderno) => (infinito ? medidaDe(pg.tamanho).largura * zoom : larguraArea && alturaArea
     ? larguraDaPagina({ largura: larguraArea, altura: alturaArea }, medidaDe(pg.tamanho), lateral ? "pagina" : encaixe, lateral) * zoom
     : 0);
   const blocoNaTela = modoPagina && larguraArea && alturaArea ? { largura: larguraArea * zoom, altura: alturaArea * zoom } : null;
+
+  // ---------- Quadro infinito ----------
+  /** O fim (direita e baixo) e o centro do conteúdo do quadro, em unidades do quadro. */
+  const contornoDoQuadro = (pid: string) => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const el of cenasRef.current[pid]?.elementos ?? []) {
+      const l = limitesDoElemento(el, MEDIDA);
+      if (!l) continue;
+      x0 = Math.min(x0, l.x); y0 = Math.min(y0, l.y); x1 = Math.max(x1, l.x + l.largura); y1 = Math.max(y1, l.y + l.altura);
+    }
+    return x0 === Infinity ? null : { fim: { x: x1, y: y1 }, centro: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 } };
+  };
+  // Cresce para a direita e para baixo quando o desenho chega perto da borda (sem mexer no que já está lá).
+  useEffect(() => {
+    if (!infinito) return;
+    const p = paginas[0];
+    if (!p || !cenas[p.id]) return;
+    const novo = crescerAte(contornoDoQuadro(p.id)?.fim ?? null, medidaDe(p.tamanho));
+    if (!novo) return;
+    const pg = { ...p, tamanho: tamanhoInfinito(novo.largura, novo.altura) };
+    setPaginas((ps) => ps.map((x) => (x.id === p.id ? pg : x)));
+    void api.salvarPaginaCaderno(pg).catch((e) => setErro(mensagem(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infinito, cenas, paginas]);
+  // Ao abrir, a tela começa no meio do que já foi feito (ou no meio do quadro, se vazio).
+  const quadroCentrado = useRef(false);
+  useLayoutEffect(() => {
+    if (!infinito || quadroCentrado.current || !larguraArea) return;
+    const p = paginas[0], el = area.current;
+    if (!p || !el || !cenas[p.id]) return;
+    const bloco = el.querySelector<HTMLElement>(`#pg-${p.id}`);
+    if (!bloco) return;
+    quadroCentrado.current = true;
+    const m = medidaDe(p.tamanho);
+    const c = contornoDoQuadro(p.id)?.centro ?? { x: m.largura / 2, y: m.altura / 2 };
+    const esc = larguraNaTela(p) / m.largura;
+    el.scrollLeft = bloco.offsetLeft + c.x * esc - el.clientWidth / 2;
+    el.scrollTop = bloco.offsetTop + c.y * esc - el.clientHeight / 2;
+  });
   // Ao mudar o tamanho da área, a rotação do iPad ou o modo, volta a encaixar na página atual.
   const selIdRef = useRef(selId);
   selIdRef.current = selId;
@@ -1914,7 +1961,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   };
   useEffect(() => {
     const el = area.current;
-    if (!el || infinito) return;
+    if (!el) return;
     const conta = (ev: TouchEvent) => { dedosNaTela.current = ev.touches.length; };
     const solta = (ev: TouchEvent) => { dedosNaTela.current = ev.touches.length; };
     el.addEventListener("touchstart", conta, { passive: true });
@@ -2014,7 +2061,6 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     else if (a.tipo === "ultima" && paginas.length) irPara(paginas[paginas.length - 1].id, true);
   };
   useEffect(() => {
-    if (infinito) return;
     const ouvir = (e: KeyboardEvent) => tecladoRef.current(e);
     // Na captura: o caderno decide antes dos atalhos do app (Ctrl + e Ctrl − são o zoom aqui, não a letra do app).
     window.addEventListener("keydown", ouvir, true);
@@ -2490,7 +2536,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
           {infinito ? <LayoutGrid aria-hidden="true" size="1em" /> : documento ? <FileText aria-hidden="true" size="1em" /> : <PenLine aria-hidden="true" size="1em" />} {caderno.nome}
         </strong>
         <span className="linha-ajuste">
-          {!infinito && zoom !== 1 && (
+          {zoom !== 1 && (
             <Button className="botao pequeno caderno-zoom" onPress={voltarZoom} aria-label={t.zoom.voltar(Math.round(zoom * 100))}>{Math.round(zoom * 100)}%</Button>
           )}
           {!infinito && paginas.length > 0 && (
@@ -2560,9 +2606,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             aoMover={(id, para) => void moverPagina(id, para)} aoMoverPara={(id, i) => void moverPaginaPara(id, i)} aoAdicionar={() => setAdicionando(true)} />
         )}
         <div className={`caderno-rolagem${lateral && !infinito ? " lateral" : ""}${travada ? " travada" : ""}${modoPagina && !infinito ? " modo-pagina" : ""}${maoFixa || maoEspaco ? " com-mao" : ""}${arrastandoMao ? " arrastando-mao" : ""}`} ref={area} onScroll={aoRolar} hidden={visaoPaginas && !infinito}>
-          {infinito ? (
-            <div className="caderno-aviso-breve"><LayoutGrid aria-hidden="true" size="1.1em" /> {t.infinitoEmBreve}</div>
-          ) : (
+          {(
             <>
               {paginas.map((p, i) => (
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId}
@@ -2602,7 +2646,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
                   aoSelecionarTexto={setEditandoTexto}
                   />
               ))}
-              {paginas.length > 0 && (
+              {paginas.length > 0 && !infinito && (
                 <div className="caderno-puxar" ref={puxarRef} aria-hidden="true"
                   style={(() => {
                     const ult = paginas[paginas.length - 1];
@@ -2624,7 +2668,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
         </div>
       </div>
 
-      {!infinito && !telaLimpa && (
+      {!telaLimpa && (
         <BarraFerramentas
           ferramenta={ferramenta} aoFerramenta={(f) => { escolherFerramenta(f); setPainelFerr(true); }} aoAjustar={setAjustando}
           painelAberto={painelFerr || !!editandoTexto} aoPainel={setPainelFerr}

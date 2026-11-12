@@ -1453,7 +1453,7 @@ export const textos = {
   },
   caderno: {
     titulo: "Caderno",
-    intro: "Sua estante de cadernos. Cada um é um espaço seu: caderno (páginas para escrever e desenhar à mão, com a capa como primeira página), documento de texto (páginas para digitar, como no Pages ou no Word, também com caneta por cima) ou quadro infinito (sem bordas; chega num próximo passo).",
+    intro: "Sua estante de cadernos. Cada um é um espaço seu: caderno (páginas para escrever e desenhar à mão, com a capa como primeira página), documento de texto (páginas para digitar, como no Pages ou no Word, também com caneta por cima) ou quadro infinito (um espaço grande, que cresce conforme você usa).",
     novo: "Novo caderno",
     novaPasta: "Nova pasta",
     semPasta: "Fora de pasta",
@@ -1469,7 +1469,7 @@ export const textos = {
     modos: { caderno: "Caderno", infinito: "Quadro infinito", documento: "Documento de texto" },
     modoAjuda: {
       caderno: "Páginas de tamanho fixo (A4, A5, carta), viradas uma a uma. Bom para escrever e estudar.",
-      infinito: "Um espaço sem bordas, que cresce para todos os lados. Bom para mapas e ideias soltas.",
+      infinito: "Um espaço grande, sem páginas, com as mesmas ferramentas. Começa no meio e cresce para a direita e para baixo conforme você usa. Bom para mapas e ideias soltas.",
       documento: "Páginas para digitar, como no Pages ou no Word: títulos, fontes, cores, listas e tabelas. Dá para escrever e desenhar à mão por cima, e misturar com páginas à mão.",
     },
     form: {
@@ -2317,7 +2317,6 @@ export const textos = {
     },
     posicao: (n: number, total: number) => `${n} de ${total}`,
     posicaoRotulo: (n: number, total: number) => `Página ${n} de ${total}`,
-    infinitoEmBreve: "O quadro infinito — com rolagem e zoom livres e as mesmas ferramentas — chega na próxima etapa. Por enquanto, use o modo caderno para escrever e desenhar.",
   },
   leitura: {
     titulo: "Leitura",
