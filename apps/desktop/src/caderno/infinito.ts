@@ -50,3 +50,13 @@ export function areaParaExportar(conteudo: { x0: number; y0: number; x1: number;
 export function escalaDaImagem(w: number, h: number): number {
   return Math.max(0.5, Math.min(2, Math.sqrt(16_000_000 / Math.max(1, w * h))));
 }
+
+/**
+ * Quanto empurrar o conteúdo para a direita e para baixo quando ele chega perto da borda
+ * da esquerda ou de cima (o quadro cresce para esses lados assim). Zero se não precisa.
+ */
+export function deslocamentoPara(inicio: { x: number; y: number } | null): { dx: number; dy: number } {
+  if (!inicio) return { dx: 0, dy: 0 };
+  const quanto = (v: number) => (v < MARGEM_CRESCER ? Math.ceil((MARGEM_CRESCER - v) / PASSO) * PASSO + PASSO : 0);
+  return { dx: quanto(inicio.x), dy: quanto(inicio.y) };
+}

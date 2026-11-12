@@ -7,7 +7,7 @@ import { Button, Dialog, DialogTrigger, Form, Label, Menu, MenuItem, MenuTrigger
 import { EditorContent, useEditor } from "@tiptap/react";
 import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PINCEL, novaSemente, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type ModeloPincel, type Papel, type Ponto, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, limitesDoElemento, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
-import { areaParaExportar, crescerAte, ehInfinito, escalaDaImagem, medidaInfinito, tamanhoInfinito } from "./infinito";
+import { areaParaExportar, crescerAte, deslocamentoPara, ehInfinito, escalaDaImagem, medidaInfinito, tamanhoInfinito } from "./infinito";
 import { ensinarPalavra, lerMinhaLetra } from "./minhaLetra";
 import { lerAssuntos, ligarAssunto } from "../academico/assuntos";
 import { EscolherMateria } from "../academico/EscolherMateria";
@@ -1628,18 +1628,43 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     }
     return x0 === Infinity ? null : { caixa: { x0, y0, x1, y1 }, fim: { x: x1, y: y1 }, centro: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 } };
   };
-  // Cresce para a direita e para baixo quando o desenho chega perto da borda (sem mexer no que já está lá).
+  // Cresce para a direita e para baixo quando o desenho chega perto da borda (sem mexer no
+  // que já está lá). Para a esquerda e para cima, o conteúdo é empurrado para dentro (também
+  // no histórico, para o desfazer continuar certo) e a tela acompanha, sem pular.
+  const ajusteRolagem = useRef<{ dx: number; dy: number } | null>(null);
   useEffect(() => {
     if (!infinito) return;
     const p = paginas[0];
     if (!p || !cenas[p.id]) return;
-    const novo = crescerAte(contornoDoQuadro(p.id)?.fim ?? null, medidaDe(p.tamanho));
+    const cont = contornoDoQuadro(p.id);
+    const { dx, dy } = deslocamentoPara(cont ? { x: cont.caixa.x0, y: cont.caixa.y0 } : null);
+    let medida = medidaDe(p.tamanho);
+    if (dx || dy) {
+      const mover = (c: Cena): Cena => ({ ...c, elementos: c.elementos.map((e) => transladar(e, dx, dy)) });
+      const nova = mover(cenas[p.id]);
+      setCenas((m) => ({ ...m, [p.id]: nova }));
+      setHistoria((h) => (h[p.id] ? { ...h, [p.id]: { ...h[p.id], pilha: h[p.id].pilha.map(mover) } } : h));
+      agendarSalvarCena(p.id, nova);
+      setCorrecao((c) => (c?.pid === p.id ? null : c));
+      medida = { largura: medida.largura + dx, altura: medida.altura + dy };
+      ajusteRolagem.current = { dx: dx * zoom, dy: dy * zoom };
+    }
+    const fim = cont ? { x: cont.fim.x + dx, y: cont.fim.y + dy } : null;
+    const novo = crescerAte(fim, medida) ?? (dx || dy ? medida : null);
     if (!novo) return;
     const pg = { ...p, tamanho: tamanhoInfinito(novo.largura, novo.altura) };
     setPaginas((ps) => ps.map((x) => (x.id === p.id ? pg : x)));
     void api.salvarPaginaCaderno(pg).catch((e) => setErro(mensagem(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infinito, cenas, paginas]);
+  // Depois de empurrar o conteúdo, a tela anda o mesmo tanto: o que estava à vista continua no lugar.
+  useLayoutEffect(() => {
+    const a = ajusteRolagem.current, el = area.current;
+    if (!a || !el) return;
+    ajusteRolagem.current = null;
+    el.scrollLeft += a.dx;
+    el.scrollTop += a.dy;
+  }, [paginas]);
   // Ao abrir, a tela começa no meio do que já foi feito (ou no meio do quadro, se vazio).
   const quadroCentrado = useRef(false);
   useLayoutEffect(() => {

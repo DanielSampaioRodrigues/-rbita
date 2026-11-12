@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { recortarPagina } from "../exportar/medir";
-import { areaParaExportar, crescerAte, ehInfinito, escalaDaImagem, INFINITO_INICIAL, medidaInfinito, tamanhoInfinito } from "./infinito";
+import { areaParaExportar, crescerAte, deslocamentoPara, ehInfinito, escalaDaImagem, INFINITO_INICIAL, medidaInfinito, tamanhoInfinito } from "./infinito";
 
 describe("quadro infinito", () => {
   it("lê o tamanho guardado", () => {
@@ -45,5 +45,17 @@ describe("exportar o quadro infinito", () => {
     expect(pag.itens[0]).toMatchObject({ x: 160, y: 160 });
     expect(pag.itens[1]).toMatchObject({ x1: 60, y1: 60, x2: 160, y2: 110 });
     expect((pag.itens[2] as { matriz: number[] }).matriz).toEqual([1, 0, 0, 1, 110, 80]);
+  });
+});
+
+describe("crescer para a esquerda e para cima", () => {
+  it("empurra o conteúdo quando chega perto da borda, em passos inteiros", () => {
+    expect(deslocamentoPara(null)).toEqual({ dx: 0, dy: 0 });
+    expect(deslocamentoPara({ x: 2000, y: 1500 })).toEqual({ dx: 0, dy: 0 });
+    const d = deslocamentoPara({ x: 100, y: 1500 });
+    expect(d.dy).toBe(0);
+    expect(d.dx % 1200).toBe(0);
+    expect(100 + d.dx).toBeGreaterThan(700);
+    expect(deslocamentoPara({ x: 900, y: -50 }).dy).toBeGreaterThan(750);
   });
 });

@@ -7,7 +7,7 @@ O histórico do que já foi feito está na especificação (`docs/especificacao.
 ## 1. Caderno e documento
 
 - [x] ~~**Quadro infinito**~~ (12/11/2026): tela grande com as mesmas ferramentas, abre no meio, cresce para a direita e para baixo, zoom de 15% a 400%.
-- [ ] Quadro infinito, segunda parte: crescer para a esquerda e para cima; painel da IA. (Enviar como PDF ou imagem já foi feito em 12/11.)
+- [ ] Quadro infinito: painel da IA dentro dele. (Enviar como PDF ou imagem e crescer para todos os lados já foram feitos em 12/11.)
 - [x] ~~**Importar PDF para anotar no caderno**~~ (12/11/2026): PDF e imagens viram páginas com o arquivo de fundo.
 - [x] ~~**Arrastar para reordenar as páginas**~~ (12/11/2026) na visão das páginas e no painel lateral (mouse, caneta, dedo e teclado).
 - [x] ~~**Sumário automático**~~ (12/11/2026) no documento de texto.
