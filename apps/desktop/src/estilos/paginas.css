@@ -2081,3 +2081,17 @@
 .textLayer br::selection { background: transparent; }
 .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; cursor: default; user-select: none; }
 .textLayer.selecting .endOfContent { top: 0; }
+
+/* Leitor: fichamento */
+.leitor-fichamento { display: flex; flex-direction: column; gap: var(--espaco-3); }
+.leitor-fichamento-ref summary { cursor: pointer; font-weight: 650; min-height: 2.5rem; display: flex; align-items: center; }
+.leitor-fichamento-ref[open] { display: grid; gap: var(--espaco-2); }
+.leitor-fichamento-form { display: grid; gap: var(--espaco-2); padding-bottom: var(--espaco-3); border-bottom: 1px solid var(--cor-borda-suave); }
+.leitor-fichamento-form .segmentado { flex-wrap: wrap; }
+.leitor-fichas { display: grid; gap: var(--espaco-2); }
+.leitor-ficha { display: grid; gap: 0.25rem; padding: var(--espaco-2); border: 1px solid var(--cor-borda-suave); border-radius: var(--canto); }
+.leitor-ficha.editando { border-color: var(--cor-destaque); }
+.leitor-ficha p { margin: 0; }
+.leitor-ficha-longa { padding-left: var(--espaco-4); font-size: 0.92em; }
+.leitor-ficha .linha-ajuste { justify-content: space-between; }
+.leitor-fichamento-exportar { display: grid; gap: var(--espaco-1); }

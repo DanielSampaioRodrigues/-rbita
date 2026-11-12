@@ -10,7 +10,8 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
 import { EscolherCor } from "../ideias/etiquetas";
-import { Bookmark, ChevronLeft, ChevronRight, Highlighter, List, Pause, PenLine, Play, Ruler, Search, SlidersHorizontal, StickyNote, Trash2, X } from "../icones";
+import { Bookmark, ChevronLeft, ChevronRight, FileText, Highlighter, List, Pause, PenLine, Play, Ruler, Search, SlidersHorizontal, StickyNote, Trash2, X } from "../icones";
+import { PainelFichamento, type RascunhoFicha } from "./Fichamento";
 import { dividirEmFrases, vozesEmPortugues } from "./voz";
 import { textos } from "../textos/pt-BR";
 
@@ -83,6 +84,8 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
   const [carregando, setCarregando] = useState(true);
   const [mostrarAjustes, setMostrarAjustes] = useState(false);
   const [mostrarAnotacoes, setMostrarAnotacoes] = useState(false);
+  const [fichando, setFichando] = useState(false);
+  const [rascunho, setRascunho] = useState<RascunhoFicha | null>(null);
   const [anotacoes, setAnotacoes] = useState<Anotacao[]>([]);
   const [selecao, setSelecao] = useState<SelecaoTexto | null>(null);
   const [notaAberta, setNotaAberta] = useState(false);
@@ -308,6 +311,13 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
     recarregar();
   };
 
+  /** Começa uma ficha de citação com o trecho (de uma seleção ou de um grifo). */
+  const ficharTrecho = (texto: string, pdfPagina: number, epubCfi: string) => {
+    setRascunho({ ficha: "citacao", texto, pagina: pdfPagina ? String(pdfPagina) : "", pdfPagina, epubCfi });
+    setMostrarAnotacoes(false);
+    setFichando(true);
+  };
+
   const irPara = (a: Anotacao) => {
     const destino = ehPdf ? String(a.pdfPagina) : a.epubCfiRange || a.epubCfi;
     void motor.current?.irPara(destino);
@@ -337,6 +347,7 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
           <Button className="botao-icone" onPress={() => setNotaAberta(true)} aria-label={t.notaAqui}><StickyNote aria-hidden="true" size="1.2em" /></Button>
           <Button className={mostrarAnotacoes ? "botao-icone principal" : "botao-icone"} onPress={() => setMostrarAnotacoes((v) => !v)} aria-label={t.verAnotacoes} aria-pressed={mostrarAnotacoes}><List aria-hidden="true" size="1.2em" /></Button>
           <Button className={buscando ? "botao-icone principal" : "botao-icone"} onPress={() => setBuscando((v) => !v)} aria-label={t.busca.abrir} aria-pressed={buscando}><Search aria-hidden="true" size="1.2em" /></Button>
+          <Button className={fichando ? "botao-icone principal" : "botao-icone"} onPress={() => { setRascunho(null); setFichando((v) => !v); setMostrarAnotacoes(false); }} aria-label={t.fichamento.abrir} aria-pressed={fichando}><FileText aria-hidden="true" size="1.2em" /></Button>
           <Button className={voz ? "botao-icone principal" : "botao-icone"} onPress={() => (voz ? pararVoz() : void ouvir())} aria-label={voz ? t.voz.parar : t.voz.ouvir} aria-pressed={!!voz}><Play aria-hidden="true" size="1.2em" /></Button>
           <Button className={regua ? "botao-icone principal" : "botao-icone"} onPress={() => mudarRegua(!regua)} aria-label={t.regua.alternar} aria-pressed={regua}><Ruler aria-hidden="true" size="1.2em" /></Button>
           <Button className="botao-icone" onPress={() => mudarConfig({ tamanho: Math.max(60, config.tamanho - 10) })} aria-label={t.menor}>A−</Button>
@@ -483,11 +494,19 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
       {buscando && motor.current && <PainelBusca motor={motor.current} ehPdf={ehPdf} aoFechar={() => setBuscando(false)} />}
 
       {mostrarAnotacoes && (
-        <PainelAnotacoes anotacoes={anotacoes} ehPdf={ehPdf} aoIr={irPara} aoApagar={(a) => void apagarAnotacao(a)} aoFechar={() => setMostrarAnotacoes(false)} />
+        <PainelAnotacoes anotacoes={anotacoes.filter((a) => a.tipo !== "ficha")} ehPdf={ehPdf} aoIr={irPara} aoApagar={(a) => void apagarAnotacao(a)} aoFechar={() => setMostrarAnotacoes(false)}
+          aoFichar={(a) => ficharTrecho(a.trecho, a.pdfPagina, a.epubCfiRange)} />
+      )}
+
+      {fichando && (
+        <PainelFichamento livro={livro} fichas={anotacoes.filter((a) => a.tipo === "ficha")} rascunho={rascunho}
+          local={() => { const l = motor.current?.localizacaoAtual() ?? {}; return { pdfPagina: l.pdfPagina ?? 0, epubCfi: l.epubCfi ?? "" }; }}
+          aoMudou={() => void recarregar()} aoIr={irPara} aoFechar={() => { setFichando(false); setRascunho(null); }} />
       )}
 
       {selecao && (
-        <FormGrifo texto={selecao.texto} aoConfirmar={(cor, nota) => void confirmarGrifo(cor, nota)} aoCancelar={() => { motor.current?.limparSelecao(); setSelecao(null); }} />
+        <FormGrifo texto={selecao.texto} aoConfirmar={(cor, nota) => void confirmarGrifo(cor, nota)} aoCancelar={() => { motor.current?.limparSelecao(); setSelecao(null); }}
+          aoFichar={() => { ficharTrecho(selecao.texto, selecao.pdf?.pagina ?? 0, selecao.cfiRange); motor.current?.limparSelecao(); setSelecao(null); }} />
       )}
 
       <Janela titulo={t.nota.titulo} aberta={notaAberta} aoFechar={() => setNotaAberta(false)}>
@@ -502,14 +521,15 @@ function nomeDaCor(hex: string): string {
   return achado ? achado[0] : "mar";
 }
 
-const ICONE_TIPO = { marcador: Bookmark, nota: StickyNote, grifo: Highlighter, traco: PenLine } as const;
+const ICONE_TIPO = { marcador: Bookmark, nota: StickyNote, grifo: Highlighter, traco: PenLine, ficha: FileText } as const;
 
-function PainelAnotacoes({ anotacoes, ehPdf, aoIr, aoApagar, aoFechar }: {
+function PainelAnotacoes({ anotacoes, ehPdf, aoIr, aoApagar, aoFechar, aoFichar }: {
   anotacoes: Anotacao[];
   ehPdf: boolean;
   aoIr: (a: Anotacao) => void;
   aoApagar: (a: Anotacao) => void;
   aoFechar: () => void;
+  aoFichar: (a: Anotacao) => void;
 }) {
   const fmt = useMemo(() => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }), []);
   const rotulo = (a: Anotacao) => {
@@ -522,7 +542,7 @@ function PainelAnotacoes({ anotacoes, ehPdf, aoIr, aoApagar, aoFechar }: {
     <aside className="leitor-painel" aria-label={t.anotacoes}>
       <div className="leitor-painel-topo">
         <strong>{t.anotacoes}</strong>
-        <Button className="botao-icone" onPress={aoFechar} aria-label={t.fechar}><X aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={aoFechar} aria-label={t.fecharPainel}><X aria-hidden="true" size="1.1em" /></Button>
       </div>
       {anotacoes.length === 0 ? (
         <p className="texto-suave">{t.semAnotacoes}</p>
@@ -541,6 +561,7 @@ function PainelAnotacoes({ anotacoes, ehPdf, aoIr, aoApagar, aoFechar }: {
                 {a.trecho && a.texto && <p className="campo-ajuda quebra">{a.texto}</p>}
                 <span className="linha-ajuste">
                   <Button className="botao pequeno" onPress={() => aoIr(a)}>{t.irPara}</Button>
+                  {a.tipo === "grifo" && a.trecho && <Button className="botao pequeno com-icone" onPress={() => aoFichar(a)}><FileText aria-hidden="true" size="1em" /> {t.fichar}</Button>}
                   <Button className="botao-icone" onPress={() => aoApagar(a)} aria-label={`${t.apagar}: ${t.tipos[a.tipo]}`}><Trash2 aria-hidden="true" size="1.05em" /></Button>
                 </span>
               </li>
@@ -552,7 +573,7 @@ function PainelAnotacoes({ anotacoes, ehPdf, aoIr, aoApagar, aoFechar }: {
   );
 }
 
-function FormGrifo({ texto, aoConfirmar, aoCancelar }: { texto: string; aoConfirmar: (cor: CorEtiqueta, nota: string) => void; aoCancelar: () => void }) {
+function FormGrifo({ texto, aoConfirmar, aoCancelar, aoFichar }: { texto: string; aoConfirmar: (cor: CorEtiqueta, nota: string) => void; aoCancelar: () => void; aoFichar: () => void }) {
   const [cor, setCor] = useState<CorEtiqueta>("areia");
   const [nota, setNota] = useState("");
   return (
@@ -562,6 +583,7 @@ function FormGrifo({ texto, aoConfirmar, aoCancelar }: { texto: string; aoConfir
       <Campo rotulo={t.grifo.comNota} valor={nota} aoMudar={setNota} multilinha />
       <div className="janela-acoes">
         <Button className="botao" onPress={aoCancelar}>{textos.comum.cancelar}</Button>
+        {texto && <Button className="botao com-icone" onPress={aoFichar}><FileText aria-hidden="true" size="1.05em" /> {t.ficharTrecho}</Button>}
         <Button className="botao principal" onPress={() => aoConfirmar(cor, nota)}><Highlighter aria-hidden="true" size="1.1em" /> {t.grifo.confirmar}</Button>
       </div>
     </div>
@@ -600,7 +622,7 @@ function PainelBusca({ motor, ehPdf, aoFechar }: { motor: Leitor; ehPdf: boolean
     <aside className="leitor-painel leitor-busca" aria-label={tb.titulo}>
       <div className="leitor-painel-topo">
         <h2>{tb.titulo}</h2>
-        <Button className="botao-icone" onPress={aoFechar} aria-label={t.fechar}><X aria-hidden="true" size="1.1em" /></Button>
+        <Button className="botao-icone" onPress={aoFechar} aria-label={t.fecharPainel}><X aria-hidden="true" size="1.1em" /></Button>
       </div>
       <Form className="leitor-busca-form" onSubmit={(e) => { e.preventDefault(); void procurar(); }}>
         <input className="entrada-texto" autoFocus value={termo} onChange={(e) => setTermo(e.target.value)} placeholder={tb.dica} aria-label={tb.campo} />

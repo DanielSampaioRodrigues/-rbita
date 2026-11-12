@@ -17,7 +17,9 @@ use serde::{Deserialize, Serialize};
 use super::{agora_ms, novo_id};
 use crate::erro::Erro;
 
-const SUBTIPOS: [&str; 4] = ["marcador", "nota", "grifo", "traco"];
+const SUBTIPOS: [&str; 5] = ["marcador", "nota", "grifo", "traco", "ficha"];
+/// Tipos de ficha do fichamento (a ficha vazia vira comentário).
+const FICHAS: [&str; 4] = ["citacao", "parafrase", "resumo", "comentario"];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +35,7 @@ pub struct Anotacao {
     pub id: String,
     /// Id do livro a que pertence.
     pub livro_id: String,
-    /// "marcador", "nota", "grifo" ou "traco".
+    /// "marcador", "nota", "grifo", "traco" ou "ficha".
     pub tipo: String,
     /// EPUB: ponto (marcador/nota) — um CFI.
     #[serde(default)]
@@ -59,6 +61,12 @@ pub struct Anotacao {
     /// Espessura do traço, relativa à largura da página.
     #[serde(default)]
     pub espessura: f64,
+    /// Ficha do fichamento: "citacao", "parafrase", "resumo" ou "comentario".
+    #[serde(default)]
+    pub ficha: String,
+    /// Página citada, como a pessoa escreve ("23", "23-25"); vale no EPUB, que não tem página.
+    #[serde(default)]
+    pub pagina_ref: String,
     #[serde(default)]
     pub criado_em: i64,
 }
@@ -80,6 +88,10 @@ struct Dados {
     pontos: Vec<Ponto>,
     #[serde(default)]
     espessura: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    ficha: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pagina_ref: String,
 }
 
 pub fn listar(conn: &Connection, livro_id: &str) -> Result<Vec<Anotacao>, Erro> {
@@ -103,6 +115,8 @@ pub fn listar(conn: &Connection, livro_id: &str) -> Result<Vec<Anotacao>, Erro> 
                 trecho: d.trecho,
                 pontos: d.pontos,
                 espessura: d.espessura,
+                ficha: d.ficha,
+                pagina_ref: d.pagina_ref,
                 criado_em: r.get(4)?,
             })
         })?
@@ -119,6 +133,14 @@ pub fn salvar(conn: &Connection, mut a: Anotacao) -> Result<Anotacao, Erro> {
     }
     a.texto = a.texto.trim().to_string();
     a.trecho = a.trecho.trim().to_string();
+    a.pagina_ref = a.pagina_ref.trim().chars().take(20).collect();
+    if a.tipo == "ficha" {
+        if !FICHAS.contains(&a.ficha.as_str()) {
+            a.ficha = "comentario".into();
+        }
+    } else {
+        a.ficha.clear();
+    }
     let dados = serde_json::to_string(&Dados {
         epub_cfi: a.epub_cfi.clone(),
         epub_cfi_range: a.epub_cfi_range.clone(),
@@ -127,6 +149,8 @@ pub fn salvar(conn: &Connection, mut a: Anotacao) -> Result<Anotacao, Erro> {
         trecho: a.trecho.clone(),
         pontos: a.pontos.clone(),
         espessura: a.espessura,
+        ficha: a.ficha.clone(),
+        pagina_ref: a.pagina_ref.clone(),
     })
     .map_err(|e| Erro::Interno(e.to_string()))?;
     let agora = agora_ms();
@@ -184,8 +208,24 @@ mod testes {
             trecho: String::new(),
             pontos: vec![],
             espessura: 0.0,
+            ficha: String::new(),
+            pagina_ref: String::new(),
             criado_em: 0,
         }
+    }
+
+    #[test]
+    fn ficha_guarda_tipo_e_pagina_e_corrige_tipo_desconhecido() {
+        let (_p, conn) = banco();
+        let f = salvar(&conn, Anotacao { tipo: "ficha".into(), ficha: "citacao".into(), pagina_ref: " 23-25 ".into(), texto: "Trecho".into(), ..marcador("livro-a", "") }).unwrap();
+        let outra = salvar(&conn, Anotacao { tipo: "ficha".into(), ficha: "xpto".into(), ..marcador("livro-a", "") }).unwrap();
+        let nota = salvar(&conn, Anotacao { tipo: "nota".into(), ficha: "resumo".into(), ..marcador("livro-a", "") }).unwrap();
+        let lista = listar(&conn, "livro-a").unwrap();
+        let achar = |id: &str| lista.iter().find(|a| a.id == id).unwrap().clone();
+        assert_eq!(achar(&f.id).ficha, "citacao");
+        assert_eq!(achar(&f.id).pagina_ref, "23-25");
+        assert_eq!(achar(&outra.id).ficha, "comentario");
+        assert_eq!(achar(&nota.id).ficha, "");
     }
 
     #[test]

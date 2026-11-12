@@ -427,7 +427,9 @@ export interface Ponto {
 }
 
 /** Tipo de anotação de leitura. */
-export type TipoAnotacao = "marcador" | "nota" | "grifo" | "traco";
+export type TipoAnotacao = "marcador" | "nota" | "grifo" | "traco" | "ficha";
+/** Tipos de ficha do fichamento. */
+export type TipoFicha = "citacao" | "parafrase" | "resumo" | "comentario";
 
 /** Anotação de leitura: marcador, nota, grifo (EPUB) ou traço da caneta (PDF). */
 export interface Anotacao {
@@ -450,6 +452,10 @@ export interface Anotacao {
   pontos: Ponto[];
   /** Espessura do traço, relativa à largura da página. */
   espessura: number;
+  /** Ficha do fichamento (só no tipo "ficha"). */
+  ficha?: TipoFicha | "";
+  /** Página citada, como a pessoa escreve ("23", "23-25"). */
+  paginaRef?: string;
   criadoEm: number;
 }
 
@@ -2581,7 +2587,7 @@ function simularLeitura() {
   guardarLista("leitura.livros", livros);
   guardarLista("leitura.grupos", gruposLivro);
   guardarLista("leitura.anotacoes", anotacoes);
-  const SUBTIPOS = ["marcador", "nota", "grifo", "traco"];
+  const SUBTIPOS = ["marcador", "nota", "grifo", "traco", "ficha"];
   const ordem: Record<string, number> = { lendo: 0, quero: 1, pausado: 2, lido: 3 };
   const STATUS = ["quero", "lendo", "lido", "pausado"];
   return {
@@ -2639,7 +2645,8 @@ function simularLeitura() {
     salvarAnotacao: async (a: Anotacao) => {
       if (!a.livroId.trim()) throw new ErroOrbita("interno", "A anotação precisa de um livro.");
       if (!SUBTIPOS.includes(a.tipo)) throw new ErroOrbita("interno", "Tipo de anotação desconhecido.");
-      const limpo: Anotacao = { ...a, texto: a.texto.trim(), trecho: a.trecho.trim() };
+      const ficha = a.tipo === "ficha" ? (["citacao", "parafrase", "resumo", "comentario"].includes(a.ficha ?? "") ? a.ficha : "comentario") : "";
+      const limpo: Anotacao = { ...a, texto: a.texto.trim(), trecho: a.trecho.trim(), ficha, paginaRef: (a.paginaRef ?? "").trim().slice(0, 20) };
       if (a.id) {
         const i = anotacoes.findIndex((x) => x.id === a.id);
         if (i < 0) throw new ErroOrbita("nao_encontrado", "Anotação não encontrada.");
