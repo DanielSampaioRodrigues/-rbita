@@ -9,6 +9,7 @@ import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PIN
 import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, limitesDoElemento, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
 import { areaParaExportar, crescerAte, deslocamentoPara, ehInfinito, escalaDaImagem, medidaInfinito, tamanhoInfinito } from "./infinito";
 import { ensinarPalavra, lerMinhaLetra } from "./minhaLetra";
+import { comporPalavra, encaixar, lerAlfabeto, podeEscrever } from "./alfabeto";
 import { lerAssuntos, ligarAssunto } from "../academico/assuntos";
 import { EscolherMateria } from "../academico/EscolherMateria";
 import { pegarPedido } from "../app/abrirDepois";
@@ -2370,9 +2371,24 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     setCorrecao({ pid: sel.id, marcas });
     recado(marcas.length ? t.correcao.achou(marcas.length) : t.correcao.nada);
   };
-  const corrigirPalavra = (m: MarcaEscrita, palavra: string) => {
+  const corrigirPalavra = async (m: MarcaEscrita, palavra: string) => {
     if (!correcao) return;
     const pid = correcao.pid;
+    // Com a letra da pessoa ensinada (todas as letras da palavra), a palavra sai na letra dela.
+    const alfa = await lerAlfabeto().catch(() => ({}));
+    if (podeEscrever(palavra, alfa)) {
+      const originais = (cenas[pid]?.elementos ?? []).filter((e): e is Traco => m.ids.includes(e.id) && e.tipo === "traco");
+      const espessura = originais.length ? originais.reduce((s, e) => s + e.espessura, 0) / originais.length : 2;
+      const ferramenta = originais[0]?.ferramenta ?? "caneta";
+      const novos: Traco[] = encaixar(comporPalavra(palavra, alfa), { x: m.x, y: m.y, h: m.h }).map((pts) => ({
+        tipo: "traco", id: crypto.randomUUID(), ferramenta, cor: m.cor, espessura, pontos: pts.map((p) => ({ x: p.x, y: p.y, p: p.p })),
+      }));
+      if (novos.length) {
+        mudarCena(pid, { elementos: [...(cenas[pid]?.elementos ?? []).filter((e) => !m.ids.includes(e.id)), ...novos] });
+        setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n) } : c));
+        return;
+      }
+    }
     // A letra cursiva (Caveat) tem o "miolo" baixo: um tamanho um pouco maior que a altura da palavra escrita.
     const tamanho = Math.max(14, Math.round(m.h * 1.35));
     const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -2681,7 +2697,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId}
                   sobre={correcao?.pid === p.id && marcasVivas.length ? (esc) => (
                     <CamadaCorrecao marcas={marcasVivas} escala={esc} largura={medidaDe(p.tamanho).largura} altura={medidaDe(p.tamanho).altura}
-                      aoEscolher={corrigirPalavra} aoIgnorar={(m) => setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n) } : c))}
+                      aoEscolher={(m, palavra) => void corrigirPalavra(m, palavra)} aoIgnorar={(m) => setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n) } : c))}
                       aoLembrar={(m) => {
                         setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n && x.lido.toLocaleLowerCase("pt-BR") !== m.lido.toLocaleLowerCase("pt-BR")) } : c));
                         void ensinarPalavra(m.lido).then(() => recado(t.correcao.lembrada(m.lido)), (e) => setErro(mensagem(e)));

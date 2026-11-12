@@ -11,7 +11,7 @@ O histórico do que já foi feito está na especificação (`docs/especificacao.
 - [x] ~~**Importar PDF para anotar no caderno**~~ (12/11/2026): PDF e imagens viram páginas com o arquivo de fundo.
 - [x] ~~**Arrastar para reordenar as páginas**~~ (12/11/2026) na visão das páginas e no painel lateral (mouse, caneta, dedo e teclado).
 - [x] ~~**Sumário automático**~~ (12/11/2026) no documento de texto.
-- [x] ~~**Ensinar a minha letra** ao corretor da escrita à mão~~ (12/11/2026): lista de palavras certas que vai à IA e nunca é marcada.
+- [x] ~~**Ensinar a minha letra** ao corretor da escrita à mão~~ (12/11/2026): escrever o alfabeto uma vez; a palavra corrigida sai na letra da pessoa. Também "Minhas palavras": lista de palavras certas que vai à IA e nunca é marcada.
 - [x] ~~**PDF digitalizado nas Fontes** lido pela IA página por página~~ (12/11/2026).
 - [x] ~~**IA preencher os campos da referência** a partir de um texto colado~~ (12/11/2026).
 - [ ] Seletor do Google Drive dentro do Órbita (Google Picker); hoje abre pelo seletor de arquivos do sistema.

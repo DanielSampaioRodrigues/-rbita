@@ -19,6 +19,8 @@ import { Copy, ImagePlus, Sparkles, X } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { guardarNaBiblioteca } from "./biblioteca";
 import { gravarMinhaLetra, lerMinhaLetra } from "./minhaLetra";
+import { CARACTERES, lerAlfabeto } from "./alfabeto";
+import { EnsinarLetra } from "./EnsinarLetra";
 
 const t = textos.caderno.ia;
 
@@ -170,6 +172,7 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
       </div>
 
       {aoConferirEscrita && <MinhaLetra />}
+      {aoConferirEscrita && <BotaoEnsinarLetra />}
 
       <form className="painel-ia-livre" onSubmit={(e) => { e.preventDefault(); void enviar(pedido, pedido); }}>
         <label className="campo-rotulo" htmlFor="painel-ia-pedido">{t.livre}</label>
@@ -278,5 +281,19 @@ function MinhaLetra() {
       <p className="campo-ajuda">{tc.minhaLetraAjuda}</p>
       <Button className="botao pequeno" onPress={() => void guardar()}>{tc.minhaLetraSalvar}</Button>
     </details>
+  );
+}
+
+/** "Ensinar a minha letra": abre a janela de escrever o alfabeto (mostra quantas já foram). */
+function BotaoEnsinarLetra() {
+  const tc = textos.caderno.correcao;
+  const [aberta, setAberta] = useState(false);
+  const [feitas, setFeitas] = useState(0);
+  useEffect(() => { void lerAlfabeto().then((a) => setFeitas(Object.keys(a).length)); }, []);
+  return (
+    <>
+      <Button className="botao pequeno" onPress={() => setAberta(true)}>{tc.ensinarLetra(feitas, CARACTERES.length)}</Button>
+      <EnsinarLetra aberta={aberta} aoFechar={() => setAberta(false)} aoMudar={(a) => setFeitas(Object.keys(a).length)} />
+    </>
   );
 }

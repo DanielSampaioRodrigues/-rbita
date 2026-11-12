@@ -2223,3 +2223,21 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 /* Painel da IA do caderno: a lista "minha letra" do corretor */
 .painel-ia-letra { display: grid; gap: var(--espaco-2); }
 .painel-ia-letra summary { cursor: pointer; font-weight: 650; padding: 0.4rem 0; }
+
+/* Ensinar a minha letra */
+.ensinar-letra { display: grid; gap: var(--espaco-3); justify-items: center; }
+.ensinar-letra > p { justify-self: stretch; margin: 0; }
+.ensinar-letra-alvo { font-size: 1.1rem; }
+.ensinar-letra-alvo strong { font-size: 1.6rem; }
+.ensinar-letra-caixa { width: min(78vw, 340px); aspect-ratio: 1; background: var(--cor-superficie); border: 1px solid var(--cor-borda-controle); border-radius: var(--canto); touch-action: none; cursor: crosshair; }
+.ensinar-letra-caixa .guia { stroke: var(--cor-borda); stroke-width: 0.4; }
+.ensinar-letra-caixa .guia.fraca { stroke-dasharray: 1.5 2; opacity: 0.6; }
+.ensinar-letra-caixa .guia.meio { stroke-dasharray: 3 2; }
+.ensinar-letra-caixa .guia.base { stroke: var(--cor-texto-suave); stroke-width: 0.6; }
+.ensinar-letra-caixa .traco { fill: none; stroke: var(--cor-texto); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.ensinar-letra-botoes { justify-content: center; flex-wrap: wrap; }
+.ensinar-letra-mapa { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; max-width: 30rem; }
+.ensinar-letra-chip { min-width: 2.1rem; min-height: 2.1rem; border: 1px solid var(--cor-borda-suave); border-radius: 6px; background: none; color: var(--cor-texto-suave); font: inherit; cursor: pointer; }
+.ensinar-letra-chip.feita { color: var(--cor-texto); background: var(--cor-superficie-alternativa); border-color: var(--cor-borda); font-weight: 650; }
+.ensinar-letra-chip.atual { outline: 2px solid var(--cor-destaque); outline-offset: 1px; }
+.ensinar-letra-chip:focus-visible { outline: 3px solid var(--cor-foco); outline-offset: 2px; }

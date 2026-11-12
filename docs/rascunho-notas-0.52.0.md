@@ -30,7 +30,8 @@ Ainda **não publicado**. Quando Dan pedir para publicar: subir o número em `pa
   - **Arrastar para mudar a ordem das páginas**, na visão das páginas e no painel ao lado.
   - **Sumário automático** no documento de texto, com os pontinhos até o número da página.
   - **Referência: colar e a IA separa nos campos**, para você conferir antes de inserir.
-  - **"Minha letra"**: ensine ao corretor as palavras que você usa ("Está certa: lembrar"); ele não marca mais como erro.
+  - **Ensinar a minha letra**: escreva o alfabeto uma vez, e a palavra corrigida sai na sua letra (não mais numa fonte cursiva).
+  - **Minhas palavras**: ensine ao corretor as palavras que você usa ("Está certa: lembrar"); ele não marca mais como erro.
   - **PDF digitalizado nas Fontes**: a IA lê as páginas (com a sua confirmação) e o texto entra com o número da página.
 
 - **Leitor**: **buscar no livro**, **ouvir em voz alta** com a voz do aparelho e **régua de leitura**.
