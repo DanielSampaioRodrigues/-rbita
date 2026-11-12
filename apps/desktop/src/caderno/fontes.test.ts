@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amostrar, buscar, citacoesEmBotoes, dividir, emPedacos, etiqueta, lerCitacoes, montarTrechos, palavras, tipoDoArquivo, type Trecho } from "./fontes";
+import { amostrar, buscar, citacoesEmBotoes, dividir, emPedacos, etiqueta, lerCitacoes, montarTrechos, paginasDaTranscricao, palavras, pedidoTranscreverPaginas, tipoDoArquivo, type Trecho } from "./fontes";
 
 describe("fontes do caderno", () => {
   it("divide em trechos sem cortar no meio da palavra e guarda a página", () => {
@@ -58,5 +58,25 @@ describe("fontes do caderno", () => {
     expect(tipoDoArquivo("planilha.xlsx", "")).toBeNull();
     const t: Trecho[] = Array.from({ length: 10 }, () => ({ t: "y".repeat(100) }));
     expect(emPedacos(t, 300).length).toBe(5);
+  });
+});
+
+
+describe("PDF digitalizado lido pela IA", () => {
+  it("o pedido diz as páginas e a marca", () => {
+    const p = pedidoTranscreverPaginas([5, 6]);
+    expect(p).toContain("páginas 5, 6");
+    expect(p).toContain("=== Página N ===");
+  });
+  it("separa pelas marcas e guarda a página de cada parte", () => {
+    const t = "=== Página 5 ===\nPrimeiro texto.\n\n=== Página 6 ===\n\n=== página 7 ===\nTerceiro.";
+    expect(paginasDaTranscricao(t, [5, 6, 7])).toEqual([{ p: 5, texto: "Primeiro texto." }, { p: 7, texto: "Terceiro." }]);
+  });
+  it("sem marca, tudo fica na primeira página do lote", () => {
+    expect(paginasDaTranscricao("Só texto.", [9, 10])).toEqual([{ p: 9, texto: "Só texto." }]);
+    expect(paginasDaTranscricao("  ", [9])).toEqual([]);
+  });
+  it("número estranho na marca vai para a posição no lote", () => {
+    expect(paginasDaTranscricao("=== Página 1 ===\nA\n=== Página 2 ===\nB", [11, 12])).toEqual([{ p: 11, texto: "A" }, { p: 12, texto: "B" }]);
   });
 });

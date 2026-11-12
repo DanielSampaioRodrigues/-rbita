@@ -13,10 +13,11 @@ import { marcarAvisado, precisaAvisar } from "../ia/avisoSensivel";
 import { pareceSensivel } from "../ia/sensivel";
 import { ChevronLeft, ChevronRight, Copy, FilePlus, FileText, Sparkles, X } from "../icones";
 import { textos } from "../textos/pt-BR";
+import { abrirPdf } from "@orbita/leitor";
 import { htmlDaIa } from "./PainelIa";
 import {
   amostrar, apagarTrechos, buscar, citacoesEmBotoes, deBase64, dividir, gravarFontes, gravarTrechos, lerCitacoes, lerFontes, lerTrechos, montarTrechos,
-  novoIdFonte, paraBase64, textoDoArquivo, tipoDoArquivo, type Achado, type FonteCaderno, type Trecho,
+  MAXIMO_PAGINAS_IA, novoIdFonte, PAGINAS_POR_PEDIDO, paginasDaTranscricao, paraBase64, pedidoTranscreverPaginas, textoDoArquivo, tipoDoArquivo, type Achado, type FonteCaderno, type Trecho,
 } from "./fontes";
 
 const t = textos.caderno.fontes;
@@ -140,6 +141,41 @@ export function PainelFontes({ cadernoId, aoPorEmPaginaNova, aoMapaMental }: {
       setLendo(null);
     }
   };
+  // PDF digitalizado: cada página vira imagem e vai à IA (de poucas em poucas) para
+  // transcrever; o texto entra na fonte com a página de cada trecho. Só com a confirmação.
+  const [lerPdf, setLerPdf] = useState<{ f: FonteCaderno; total: number } | null>(null);
+  const perguntarPdf = async (f: FonteCaderno) => {
+    if (!f.anexoId || !provedor) return;
+    setLerPdf({ f, total: Math.min(f.partes || MAXIMO_PAGINAS_IA, MAXIMO_PAGINAS_IA) });
+  };
+  const lerPdfDigitalizado = async (f: FonteCaderno) => {
+    setLerPdf(null);
+    if (!f.anexoId || !provedor) return;
+    setErro(null);
+    setLendo(t.lendoPaginas(0, 0));
+    let pdf: Awaited<ReturnType<typeof abrirPdf>> | null = null;
+    try {
+      pdf = await abrirPdf(await lerBytesDoAnexo(f.anexoId));
+      const total = Math.min(pdf.total, MAXIMO_PAGINAS_IA);
+      const trechos: Trecho[] = [];
+      for (let ini = 1; ini <= total; ini += PAGINAS_POR_PEDIDO) {
+        const nums = Array.from({ length: Math.min(PAGINAS_POR_PEDIDO, total - ini + 1) }, (_, k) => ini + k);
+        setLendo(t.lendoPaginas(nums[nums.length - 1], total));
+        const imagens: string[] = [];
+        for (const n of nums) imagens.push((await pdf.desenhar(n, 1400)).canvas.toDataURL("image/jpeg", 0.8));
+        const r = await api.iaCaderno(pedidoTranscreverPaginas(nums), "", imagens, false);
+        for (const pg of paginasDaTranscricao(textoPuro(htmlDaIa(r.html)), nums)) trechos.push(...dividir(pg.texto, { p: pg.p }));
+      }
+      const pedacos = await gravarTrechos(f.id, trechos);
+      await salvarLista(fontesRef.current.map((x) => (x.id === f.id ? { ...x, semTexto: !trechos.length, pedacos, caracteres: trechos.reduce((s, y) => s + y.t.length, 0) } : x)));
+      recado(trechos.length ? t.pdfLido(f.nome) : t.pdfSemTexto);
+    } catch (e) {
+      setErro(mensagem(e));
+    } finally {
+      pdf?.fechar();
+      setLendo(null);
+    }
+  };
   const tirar = async (f: FonteCaderno) => {
     setTirando(null);
     await apagarTrechos(f);
@@ -219,6 +255,7 @@ export function PainelFontes({ cadernoId, aoPorEmPaginaNova, aoMapaMental }: {
                 <span className="texto-suave pequeno">{[t.tipo[f.tipo], t.partes(f.tipo, f.partes)].filter(Boolean).join(" · ")}</span>
                 {f.semTexto && <span className="texto-suave pequeno">{f.tipo === "imagem" ? t.semTextoFoto : f.tipo === "pdf" ? t.semTextoPdf : t.semTextoOutro}</span>}
                 {f.semTexto && f.tipo === "imagem" && provedor && <Button className="botao pequeno" isDisabled={!!lendo} onPress={() => void lerFoto(f)}>{t.lerFoto}</Button>}
+                {f.semTexto && f.tipo === "pdf" && f.anexoId && provedor && <Button className="botao pequeno" isDisabled={!!lendo} onPress={() => void perguntarPdf(f)}>{t.lerPdf}</Button>}
               </div>
               <Button className="botao-icone" aria-label={t.tirar(f.nome)} onPress={() => setTirando(f)}><X aria-hidden="true" size="0.95em" /></Button>
             </li>
@@ -297,6 +334,8 @@ export function PainelFontes({ cadernoId, aoPorEmPaginaNova, aoMapaMental }: {
           <div className="janela-acoes"><Button className="botao" onPress={() => setLivros(null)}>{t.fechar}</Button></div>
         </Janela>
       )}
+      <Confirmar titulo={t.lerPdfTitulo} texto={lerPdf ? t.lerPdfTexto(lerPdf.f.nome, lerPdf.total, provedor?.nome ?? "") : ""} confirmar={t.lerPdfSim} aberta={lerPdf !== null}
+        aoCancelar={() => setLerPdf(null)} aoConfirmar={() => { if (lerPdf) void lerPdfDigitalizado(lerPdf.f); }} />
       <Confirmar titulo={t.tirarTitulo} texto={tirando ? t.tirarTexto(tirando.nome) : ""} confirmar={t.tirarSim} aberta={tirando !== null}
         aoCancelar={() => setTirando(null)} aoConfirmar={() => { if (tirando) void tirar(tirando); }} />
       {ver && fontes[ver.fonte] && <VerFonte fonte={fontes[ver.fonte]} n={ver.fonte} alvo={ver} achados={resposta?.achados ?? []} aoFechar={() => setVer(null)} />}

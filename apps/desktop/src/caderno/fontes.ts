@@ -258,3 +258,26 @@ export function deBase64(b64: string): ArrayBuffer {
   for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
   return u.buffer;
 }
+
+/** PDF digitalizado: quantas páginas a IA lê de uma vez e no máximo. */
+export const PAGINAS_POR_PEDIDO = 4;
+export const MAXIMO_PAGINAS_IA = 80;
+
+/** O pedido para a IA transcrever páginas de um PDF digitalizado (com marca de página). */
+export function pedidoTranscreverPaginas(numeros: number[]): string {
+  return `As imagens são as páginas ${numeros.join(", ")} de um PDF digitalizado (na ordem). Transcreva fielmente todo o texto impresso de cada uma, na ordem em que aparece, sem resumir, sem corrigir e sem comentar. Antes do texto de cada página, ponha uma linha só com "=== Página N ===" (N é o número da página dado acima). Página sem texto: só a linha da marca. Tabelas e listas viram texto simples.`;
+}
+
+/** Separa a transcrição pelas marcas "=== Página N ===". Sem marcas, tudo fica na primeira página do lote. */
+export function paginasDaTranscricao(texto: string, numeros: number[]): { p: number; texto: string }[] {
+  const partes = texto.split(/^[ \t]*=+\s*P[áa]gina\s+(\d+)\s*=+[ \t]*$/gim);
+  if (partes.length === 1) return texto.trim() ? [{ p: numeros[0] ?? 1, texto: texto.trim() }] : [];
+  const out: { p: number; texto: string }[] = [];
+  if (partes[0].trim()) out.push({ p: numeros[0] ?? 1, texto: partes[0].trim() });
+  for (let i = 1; i + 1 < partes.length; i += 2) {
+    const p = Number(partes[i]);
+    const t = partes[i + 1].trim();
+    if (t) out.push({ p: numeros.includes(p) ? p : numeros[Math.min(numeros.length - 1, (i - 1) / 2)] ?? p, texto: t });
+  }
+  return out;
+}
