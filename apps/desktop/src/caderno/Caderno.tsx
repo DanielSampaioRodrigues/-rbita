@@ -7,7 +7,7 @@ import { Button, Dialog, DialogTrigger, Form, Label, Menu, MenuItem, MenuTrigger
 import { EditorContent, useEditor } from "@tiptap/react";
 import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PINCEL, novaSemente, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type ModeloPincel, type Papel, type Ponto, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, limitesDoElemento, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
-import { crescerAte, ehInfinito, medidaInfinito, tamanhoInfinito } from "./infinito";
+import { areaParaExportar, crescerAte, ehInfinito, escalaDaImagem, medidaInfinito, tamanhoInfinito } from "./infinito";
 import { ensinarPalavra, lerMinhaLetra } from "./minhaLetra";
 import { lerAssuntos, ligarAssunto } from "../academico/assuntos";
 import { EscolherMateria } from "../academico/EscolherMateria";
@@ -1626,7 +1626,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       if (!l) continue;
       x0 = Math.min(x0, l.x); y0 = Math.min(y0, l.y); x1 = Math.max(x1, l.x + l.largura); y1 = Math.max(y1, l.y + l.altura);
     }
-    return x0 === Infinity ? null : { fim: { x: x1, y: y1 }, centro: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 } };
+    return x0 === Infinity ? null : { caixa: { x0, y0, x1, y1 }, fim: { x: x1, y: y1 }, centro: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 } };
   };
   // Cresce para a direita e para baixo quando o desenho chega perto da borda (sem mexer no que já está lá).
   useEffect(() => {
@@ -2517,11 +2517,16 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     const faltaImagem = alvo.some((p) => (cenas[p.id]?.elementos ?? []).some((e) => e.tipo === "imagem" && !imagemUrl(e.anexoId))
       || (folhaDe(p).modelo === "proprio" && !!folhaDe(p).anexoId && !imagemUrl(folhaDe(p).anexoId)));
     if (alvo.some((p) => !cenas[p.id]) || faltaImagem) { recado(te.carregando); return null; }
-    const medidas = await medirParaExportar(alvo.map((p) => p.id));
-    const sufixo = id === "cadernoPdf" ? "" : ` - ${t.posicao(indiceSel + 1, paginas.length)}`;
+    let medidas = await medirParaExportar(alvo.map((p) => p.id));
+    // Quadro infinito: só a área com conteúdo (com folga), não o quadro inteiro.
+    if (infinito && alvo[0]) {
+      const { recortarPagina } = await import("../exportar/medir");
+      medidas = [recortarPagina(medidas[0], areaParaExportar(contornoDoQuadro(alvo[0].id)?.caixa ?? null, medidaDe(alvo[0].tamanho)))];
+    }
+    const sufixo = id === "cadernoPdf" || infinito ? "" : ` - ${t.posicao(indiceSel + 1, paginas.length)}`;
     if (id === "paginaPng") {
       const { gerarPng } = await import("../exportar/imagem");
-      const png = await gerarPng(medidas[0], 2);
+      const png = await gerarPng(medidas[0], infinito ? escalaDaImagem(medidas[0].largura, medidas[0].altura) : 2);
       return { nome: nomeDeArquivo(`${caderno.nome}${sufixo}`, "png"), tipo: "image/png", dados: png, filtro: { nome: "PNG", extensao: "png" } };
     }
     const { gerarPdf } = await import("../exportar/pdf");
@@ -2569,6 +2574,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
           {!infinito && <Button className="botao-icone" onPress={() => setAdicionando(true)} aria-label={t.adicionar.abrir}><FilePlus aria-hidden="true" size="1.1em" /></Button>}
           {!infinito && <Button className={painel === "ia" ? "botao-icone ativo" : "botao-icone"} onPress={() => setPainel(painel === "ia" ? null : "ia")} aria-label={t.painel.abrirIa} aria-pressed={painel === "ia"}><Sparkles aria-hidden="true" size="1.1em" /></Button>}
           {!infinito && paginas.length > 0 && <MenuEnviar opcoes={[{ id: "cadernoPdf", nome: te.cadernoPdf }, { id: "paginaPdf", nome: te.paginaPdf }, { id: "paginaPng", nome: te.paginaPng }]} aoEscolher={exportarCaderno} google={{ pdf: "cadernoPdf" }} />}
+          {infinito && paginas.length > 0 && <MenuEnviar opcoes={[{ id: "paginaPdf", nome: te.quadroPdf }, { id: "paginaPng", nome: te.quadroPng }]} aoEscolher={exportarCaderno} google={{ pdf: "paginaPdf" }} />}
           <Button className="botao-icone" onPress={() => setEditor(true)} aria-label={t.folha.abrir}><SlidersHorizontal aria-hidden="true" size="1.1em" /></Button>
           <Button className="botao-icone" onPress={() => setConfigAberta(true)} aria-label={t.config.abrir}><IconeEngrenagem aria-hidden="true" size="1.1em" /></Button>
         </span>

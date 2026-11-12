@@ -1978,6 +1978,8 @@ export const textos = {
       cadernoPdf: "PDF do caderno inteiro",
       paginaPdf: "PDF desta página",
       paginaPng: "Imagem desta página (PNG)",
+      quadroPdf: "PDF do quadro (só a parte usada)",
+      quadroPng: "Imagem do quadro (PNG, só a parte usada)",
       preparando: "Preparando o arquivo…",
       compartilhado: "Pronto.",
       salvo: (c: string) => `Salvo em ${c}`,

@@ -453,3 +453,21 @@ export function caminhoDeElemento(el: Element): string | null {
   }
   return null;
 }
+
+/**
+ * Recorta a página medida: fica só o retângulo `caixa` (em unidades da página), que
+ * vira a página inteira. Usado no quadro infinito, para exportar só a área com conteúdo.
+ */
+export function recortarPagina(pag: PaginaMedida, caixa: { x: number; y: number; w: number; h: number }): PaginaMedida {
+  const dx = -caixa.x, dy = -caixa.y;
+  const T: Matriz = [1, 0, 0, 1, dx, dy];
+  const itens = pag.itens.map((it): ItemDesenho => {
+    switch (it.tipo) {
+      case "linha": return { ...it, x1: it.x1 + dx, y1: it.y1 + dy, x2: it.x2 + dx, y2: it.y2 + dy };
+      case "caminho": return { ...it, matriz: compor(T, it.matriz) };
+      case "imagem": return { ...it, matriz: compor(T, it.matriz) };
+      default: return { ...it, x: it.x + dx, y: it.y + dy };
+    }
+  });
+  return { largura: caixa.w, altura: caixa.h, itens };
+}

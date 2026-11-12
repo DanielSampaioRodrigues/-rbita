@@ -34,3 +34,19 @@ export function crescerAte(fim: { x: number; y: number } | null, medida: { largu
   if (fim.y > altura - MARGEM_CRESCER) altura = Math.min(MAXIMO, Math.ceil((fim.y + MARGEM_CRESCER) / PASSO) * PASSO + PASSO);
   return largura !== medida.largura || altura !== medida.altura ? { largura, altura } : null;
 }
+
+/** A área a exportar: o conteúdo com folga, dentro do quadro, com um tamanho mínimo. */
+export function areaParaExportar(conteudo: { x0: number; y0: number; x1: number; y1: number } | null, medida: { largura: number; altura: number }, folga = 60): { x: number; y: number; w: number; h: number } {
+  if (!conteudo) return { x: 0, y: 0, w: Math.min(medida.largura, 1200), h: Math.min(medida.altura, 900) };
+  const MIN_L = 600, MIN_A = 400;
+  let x0 = conteudo.x0 - folga, x1 = conteudo.x1 + folga, y0 = conteudo.y0 - folga, y1 = conteudo.y1 + folga;
+  if (x1 - x0 < MIN_L) { const c = (x0 + x1) / 2; x0 = c - MIN_L / 2; x1 = c + MIN_L / 2; }
+  if (y1 - y0 < MIN_A) { const c = (y0 + y1) / 2; y0 = c - MIN_A / 2; y1 = c + MIN_A / 2; }
+  x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(medida.largura, x1); y1 = Math.min(medida.altura, y1);
+  return { x: Math.round(x0), y: Math.round(y0), w: Math.round(x1 - x0), h: Math.round(y1 - y0) };
+}
+
+/** Escala da imagem PNG: até 2×, sem passar de ~16 milhões de pontos (limite do Safari no iPad). */
+export function escalaDaImagem(w: number, h: number): number {
+  return Math.max(0.5, Math.min(2, Math.sqrt(16_000_000 / Math.max(1, w * h))));
+}
