@@ -2196,3 +2196,17 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 :root[data-baixo-estimulo="true"] .caderno-correcao-menu { box-shadow: none; }
 .fita-letra-icone { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; font-family: Georgia, serif; font-style: italic; }
 .fita-letra-amostra { font-size: 1rem; color: inherit; }
+
+/* Dinheiro: importar o extrato do banco */
+.extrato { display: grid; gap: var(--espaco-3); }
+.extrato-dicas { margin: 0; padding-left: 1.2rem; display: grid; gap: var(--espaco-1); }
+.extrato-resumo { margin: 0; }
+.extrato-opcoes { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--espaco-3) var(--espaco-4); }
+.extrato-campo { display: grid; gap: var(--espaco-1); }
+.extrato-marcar { display: flex; flex-wrap: wrap; gap: var(--espaco-2); }
+.extrato-lista { list-style: none; margin: 0; max-height: min(50vh, 28rem); overflow-y: auto; border: 1px solid var(--cor-borda-suave); border-radius: var(--canto); padding: 0 var(--espaco-3); }
+.extrato-linha { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--espaco-3); min-height: 2.75rem; padding: var(--espaco-2) 0; }
+.extrato-linha + .extrato-linha { border-top: 1px solid var(--cor-borda-suave); }
+.extrato-linha.fora .extrato-texto, .extrato-linha.fora .extrato-valor { opacity: 0.6; }
+.extrato-texto { display: grid; gap: 0.1rem; min-width: 0; }
+.extrato-valor { display: grid; justify-items: end; font-variant-numeric: tabular-nums; }

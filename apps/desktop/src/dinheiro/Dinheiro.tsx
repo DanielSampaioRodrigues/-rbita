@@ -13,6 +13,7 @@ import { textos } from "../textos/pt-BR";
 import { Entender } from "./Entender";
 import { EsteMes } from "./EsteMes";
 import { FormEntrada, FormGasto } from "./FormGasto";
+import { ImportarExtrato } from "./ImportarExtrato";
 import { Planejar } from "./Planejar";
 import { chaveMes } from "./visao";
 
@@ -27,7 +28,7 @@ export function PaginaDinheiro() {
   const [contas, setContas] = useState<Conta[]>([]);
   const [desejos, setDesejos] = useState<Desejo[]>([]);
   const [metas, setMetas] = useState<Meta[]>([]);
-  const [registrando, setRegistrando] = useState<"gasto" | "entrada" | null>(null);
+  const [registrando, setRegistrando] = useState<"gasto" | "entrada" | "extrato" | null>(null);
   const [pagando, setPagando] = useState<Conta | undefined>(undefined);
   const [erro, setErro] = useState<string | null>(null);
   const mudancas = useMudancas();
@@ -77,6 +78,7 @@ export function PaginaDinheiro() {
           aoRegistrarGasto={() => { setPagando(undefined); setRegistrando("gasto"); }}
           aoPagarConta={(c) => { setPagando(c); setRegistrando("gasto"); }}
           aoRegistrarEntrada={() => setRegistrando("entrada")}
+          aoImportar={() => setRegistrando("extrato")}
           aoVerContas={() => setAba("planejar")}
         />
       )}
@@ -87,6 +89,9 @@ export function PaginaDinheiro() {
 
       <Janela titulo={t.gasto.titulo} aberta={registrando === "gasto"} aoFechar={() => setRegistrando(null)}>
         {registrando === "gasto" && <FormGasto grupos={grupos} contas={contas} pagando={pagando} aoFechar={() => setRegistrando(null)} />}
+      </Janela>
+      <Janela titulo={t.extrato.titulo} aberta={registrando === "extrato"} aoFechar={() => setRegistrando(null)}>
+        {registrando === "extrato" && <ImportarExtrato grupos={grupos} gastos={gastos} entradas={entradas} aoFechar={() => setRegistrando(null)} />}
       </Janela>
       <Janela titulo={t.entrada.titulo} aberta={registrando === "entrada"} aoFechar={() => setRegistrando(null)}>
         {registrando === "entrada" && <FormEntrada aoFechar={() => setRegistrando(null)} />}

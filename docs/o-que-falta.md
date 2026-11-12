@@ -32,7 +32,7 @@ Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, su
 
 ## 4. Outros módulos
 
-- [ ] **Dinheiro**: importar o extrato do banco (OFX ou CSV); avisar conta a vencer.
+- [x] ~~**Dinheiro**: importar o extrato do banco (OFX ou CSV); avisar conta a vencer~~ (12/11/2026).
 - [ ] **Minha organização**: ligar cartão com prazo à Agenda; compartilhar um quadro.
 - [x] ~~**Modo baixa energia**: mostrar o remédio a partir da medicação cadastrada na Saúde~~ (12/11/2026).
 - [ ] **Contas para a recuperação**: Dropbox e Nextcloud/WebDAV (avaliar).

@@ -6,7 +6,7 @@ import { Button } from "react-aria-components";
 import { api, type Conta, type Entrada, type Gasto, type Grupo } from "../api";
 import { Confirmar } from "../componentes/Janela";
 import { avisarMudanca } from "../dados";
-import { Check, ChevronLeft, ChevronRight, Plus, Sparkles, Trash2 } from "../icones";
+import { Check, ChevronLeft, ChevronRight, FileUp, Plus, Sparkles, Trash2 } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { formatarMoeda } from "./moeda";
 import { chaveDia, chaveMes, contasAVencer, contasDoMes, contasPagasNoMes, gastosPorDia, mesVizinho, resumoDoMes } from "./visao";
@@ -45,12 +45,14 @@ interface Props {
   mesMinimo: string;
   aoRegistrarGasto: () => void;
   aoRegistrarEntrada: () => void;
+  /** Abre a importação do extrato do banco. */
+  aoImportar?: () => void;
   aoVerContas: () => void;
   /** Abre o registro de gasto já preenchido com a conta fixa. */
   aoPagarConta: (conta: Conta) => void;
 }
 
-export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistrarGasto, aoRegistrarEntrada, aoVerContas, aoPagarConta }: Props) {
+export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistrarGasto, aoRegistrarEntrada, aoImportar, aoVerContas, aoPagarConta }: Props) {
   const mesAtual = chaveMes(Date.now());
   const [mes, setMes] = useState(mesAtual);
   const [apagandoGasto, setApagandoGasto] = useState<Gasto | null>(null);
@@ -120,6 +122,11 @@ export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistr
         <Button className="botao dinheiro-registrar-entrada" onPress={aoRegistrarEntrada}>
           <Plus aria-hidden="true" size="1.1em" /> {t.mes.registrarEntrada}
         </Button>
+        {aoImportar && (
+          <Button className="botao dinheiro-registrar-entrada" onPress={aoImportar}>
+            <FileUp aria-hidden="true" size="1.1em" /> {t.extrato.botao}
+          </Button>
+        )}
       </div>
 
       {aVencer.length > 0 && (
