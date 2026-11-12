@@ -14,3 +14,4 @@ As decisões que mudam o produto também entram em `docs/especificacao.md`.
 - [0009 · Atualização dentro do app](0009-atualizacao.md)
 - [0010 · Recuperação guardada na conta Google ou Microsoft](0010-conta-na-nuvem.md)
 - [0013 · IA na versão de navegador](0013-ia-no-navegador.md)
+- [0014 · Dropbox e Nextcloud/WebDAV para a recuperação (avaliação, esperando Dan)](0014-dropbox-webdav.md)

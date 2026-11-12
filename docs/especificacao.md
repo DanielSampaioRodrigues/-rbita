@@ -339,8 +339,8 @@ Decisão de Dan (25/10/2026): a opção "Guardar na minha conta" precisa existir
 | Google (Drive) | Feito (0.22.0) | Onda 3 | Onda 3 | Onda 3 | Cadastro feito no Google Cloud (cliente "App para computador"). Mac usa o mesmo tipo; Android e iOS pedem clientes próprios. |
 | Microsoft (OneDrive) | **Pendente** | Onda 3 | Onda 3 | Onda 3 | Código pronto desde a 0.22.0. Falta o registro do app: conta pessoal não registra sem diretório; tentar pelo Azure for Students (pacote de estudante do GitHub) ou conta do Azure. |
 | Apple (iCloud) | Não dá (a Apple não oferece iCloud a programas de Windows) | Onda 3 | Não dá | Onda 3 | Exige conta de desenvolvedor da Apple (cerca de US$ 99 por ano) e CloudKit. No Windows e no Android, quem usa Apple escolhe outra conta ou a pasta do iCloud Drive para Windows. |
-| Dropbox | A avaliar | A avaliar | A avaliar | A avaliar | Tem pasta do app, como Google e Microsoft. Cadastro gratuito. |
-| Nextcloud ou WebDAV | A avaliar | A avaliar | A avaliar | A avaliar | Para quem tem servidor próprio. Sem cadastro: a pessoa informa o endereço. |
+| Dropbox | Proposto | Onda 3 | Onda 3 | Proposto (navegador) | Avaliado em 12/11/2026 (decisão 0014, proposta): pasta do app, PKCE, cadastro gratuito; a API aceita o navegador, então vale também no iPad. Esperando Dan decidir. |
+| Nextcloud ou WebDAV | Proposto (avançado) | Onda 3 | Não dá no navegador | Não dá no navegador | Avaliado em 12/11/2026 (decisão 0014, proposta): endereço e senha de app, sem cadastro. No navegador, o servidor bloqueia (CORS) se não for configurado; só no Windows e no Mac. Esperando Dan decidir se vale. |
 | Proton Drive | Esperar | Esperar | Esperar | Esperar | Ainda sem acesso aberto para apps de fora. Rever quando houver. |
 
 Regras para todas: só a pasta do app (nunca o resto da conta), login no navegador ou no sistema com PKCE, nada passa por servidor do Órbita, o limite honesto aparece na tela e as 6 palavras continuam como alternativa sem conta. Na Onda 3, a mesma base vira a sincronização entre aparelhos.

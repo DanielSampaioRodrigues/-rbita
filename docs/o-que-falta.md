@@ -38,7 +38,7 @@ Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, su
 - [x] ~~**Minha organização**: ligar cartão com prazo à Agenda; enviar um quadro (como texto)~~ (12/11/2026).
 - [ ] **Quadro compartilhado para editar a duas pessoas** (depende da sincronização com conta, Onda 3).
 - [x] ~~**Modo baixa energia**: mostrar o remédio a partir da medicação cadastrada na Saúde~~ (12/11/2026).
-- [ ] **Contas para a recuperação**: Dropbox e Nextcloud/WebDAV (avaliar).
+- [ ] **Contas para a recuperação**: Dropbox e Nextcloud/WebDAV. Avaliado em 12/11/2026 (`docs/decisoes/0014-dropbox-webdav.md`): recomendo Dropbox (vale também no iPad) e WebDAV só no Windows, como opção avançada. **Esperando Dan decidir.**
 
 ## 5. Depende de Dan (não é código)
 
