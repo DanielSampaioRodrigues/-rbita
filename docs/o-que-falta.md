@@ -45,6 +45,12 @@ Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, su
 - [ ] **Parte 5 de `docs/configurar-contas.md`**: ligar a Google Classroom API e acrescentar as 3 permissões. Sem isso, "Ligar a conta Google" em Contas conectadas não funciona.
 - [ ] **Conta Microsoft (OneDrive)**: o código e o workflow estão prontos (`ORBITA_MICROSOFT_CLIENT_ID`); falta registrar o app na Microsoft (Parte 3).
 - [ ] **Testes no Windows e no iPad** da 0.51.x: IA mexendo no caderno com chave de verdade e o desfazer; Fontes com PDF grande; DOI/ISBN no Windows; Zotero do computador; Classroom; Espaço segurado para a mão; caneta do Windows virada para apagar; menu flutuante.
+- [ ] **Testes da 0.52.0 (quando publicar)**, que aqui só deu para simular:
+  - **Com a chave de IA de verdade**: "Preencher com a IA" na referência; "Ler as páginas com a IA" num PDF digitalizado nas Fontes; corretor com "Minhas palavras".
+  - **Extrato do seu banco** (OFX ou CSV): conferir se as colunas e os sinais vêm certos.
+  - **No iPad**: escolher texto no PDF com o dedo para grifar; quadro infinito com pinça, dois dedos e a caneta; "Ensinar a minha letra" com o Apple Pencil e a troca da palavra no corretor.
+  - **No Word**: abrir o fichamento exportado (citação longa com recuo de 4 cm).
+  - **Estudos**: trabalho na Agenda e "Comece em"; "Virar projeto"; matéria com caderno e livro ligados.
 - [ ] **Teste com leitor de tela** (NVDA) com quem usa no dia a dia.
 - [ ] **Portão da Onda 1**: usar no dia a dia por algumas semanas e aprovar (`docs/revisao-onda-1.md`).
 
