@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Conta, Entrada, Gasto, Grupo } from "../api";
-import { chaveDia, chaveMes, contasDoMes,
+import { chaveDia, chaveMes, contasAVencer, contasDoMes,
   contasPagasNoMes, diaParaMomento, entradasPorMes, fatiasPizza, filtrar, gastosPorDia, mesesRecentes, mesVizinho, pontosLinha, resumoDoMes, tabelaPorMes } from "./visao";
 
 const gasto = (centavos: number, grupoId: string, ano: number, mes1: number, interesse = false): Gasto => ({
@@ -148,5 +148,38 @@ describe("dinheiro: este mês (puro)", () => {
     expect(diaParaMomento("")).toBeNull();
     expect(mesVizinho("2026-01", -1)).toBe("2025-12");
     expect(mesVizinho("2026-12", 1)).toBe("2027-01");
+  });
+});
+
+describe("contas a vencer", () => {
+  const conta = (id: string, dia: number, aviso = 3, criado = new Date(2026, 0, 1).getTime()) =>
+    ({ id, nome: id, centavos: 1000, diaVencimento: dia, avisoDias: aviso, grupoId: "", criadoEm: criado });
+  const pago = (contaId: string, quando: Date) =>
+    ({ id: "g" + contaId, centavos: 1000, grupoId: "", categoria: "", interesse: false, descricao: "", momento: quando.getTime(), contaId });
+  const hoje = new Date(2026, 10, 12, 15, 30); // 12/11/2026, à tarde
+
+  it("avisa dentro do prazo do aviso, e não antes", () => {
+    const r = contasAVencer([conta("luz", 14), conta("agua", 20)], [], hoje);
+    expect(r.map((x) => [x.conta.id, x.dias, x.vence])).toEqual([["luz", 2, "2026-11-14"]]);
+  });
+  it("vence hoje conta; já vencida não aparece", () => {
+    const r = contasAVencer([conta("hoje", 12), conta("ontem", 11)], [], hoje);
+    expect(r.map((x) => [x.conta.id, x.dias])).toEqual([["hoje", 0]]);
+  });
+  it("paga no mês não aparece", () => {
+    expect(contasAVencer([conta("luz", 14)], [pago("luz", new Date(2026, 10, 5))], hoje)).toEqual([]);
+    // pagamento do mês passado não conta
+    expect(contasAVencer([conta("luz", 14)], [pago("luz", new Date(2026, 9, 14))], hoje)).toHaveLength(1);
+  });
+  it("no fim do mês, olha o vencimento do mês seguinte", () => {
+    const r = contasAVencer([conta("aluguel", 2, 5)], [], new Date(2026, 10, 29));
+    expect(r.map((x) => [x.vence, x.dias])).toEqual([["2026-12-02", 3]]);
+  });
+  it("dia 31 em mês de 30 dias vence no último dia", () => {
+    const r = contasAVencer([conta("cartao", 31, 2)], [], new Date(2026, 10, 29));
+    expect(r.map((x) => [x.vence, x.dias])).toEqual([["2026-11-30", 1]]);
+  });
+  it("conta criada depois do mês do vencimento não cobra aquele mês", () => {
+    expect(contasAVencer([conta("nova", 14, 3, new Date(2026, 11, 1).getTime())], [], hoje)).toEqual([]);
   });
 });

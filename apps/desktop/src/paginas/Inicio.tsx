@@ -7,6 +7,9 @@ import { Button } from "react-aria-components";
 import { LinhaOcorrencia } from "../agenda/Agenda";
 import { expandir, inicioDoDia, somarDias, type Ocorrencia } from "../agenda/datas";
 import { api, type Projeto } from "../api";
+import { diaCurto } from "../dinheiro/EsteMes";
+import { formatarMoeda } from "../dinheiro/moeda";
+import { contasAVencer, type ContaAVencer } from "../dinheiro/visao";
 import { useMudancas } from "../dados";
 import { RegistroRapido } from "../energia/Energia";
 import { usePreferencias } from "../estado";
@@ -38,6 +41,7 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
   const [ativos, setAtivos] = useState<Projeto[]>([]);
   const [ideias, setIdeias] = useState(0);
   const [hoje, setHoje] = useState<Ocorrencia[]>([]);
+  const [aVencer, setAVencer] = useState<ContaAVencer[]>([]);
   // O mesmo modo organizar vale para o menu lateral (fica na Moldura).
   const { organizando, setOrganizando } = useOrganizar();
   const mudancas = useMudancas();
@@ -50,7 +54,14 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
     const de = inicioDoDia(new Date());
     const ate = somarDias(de, 1);
     api.listarEventos(de.getTime(), ate.getTime()).then((es) => setHoje(expandir(es, de, ate)), () => {});
-  }, [mudancas]);
+    // Contas fixas no prazo do aviso (só se o Dinheiro não estiver escondido do menu).
+    if (prefs.menu.ocultos.includes("dinheiro")) setAVencer([]);
+    else {
+      const desde = new Date(de.getFullYear(), de.getMonth(), 1).getTime();
+      Promise.all([api.listarContas(), api.listarGastos(desde, somarDias(de, 40).getTime())])
+        .then(([cs, gs]) => setAVencer(contasAVencer(cs, gs, new Date())), () => {});
+    }
+  }, [mudancas, prefs.menu.ocultos]);
 
   // Atalhos para os módulos que não têm bloco próprio: um toque e a pessoa já está lá.
   const atalhos = Object.fromEntries(
@@ -98,8 +109,21 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
             ))}
           </ul>
         )}
+        {aVencer.length > 0 && (
+          <div className="inicio-contas">
+            <h3>{t.contasAVencer}</h3>
+            <ul className="lista-simples sem-marcador">
+              {aVencer.map(({ conta: c, dias: n, vence }) => (
+                <li key={c.id}>
+                  <strong>{c.nome}</strong> <span className="texto-suave">· {textos.dinheiro.contas.faltamDias(n).toLocaleLowerCase("pt-BR")} ({diaCurto(vence)}) · {formatarMoeda(c.centavos)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="links">
           <Button className="link" onPress={() => aoIr("agenda")}>{t.verAgenda}</Button>
+          {aVencer.length > 0 && <Button className="link" onPress={() => aoIr("dinheiro")}>{t.verDinheiro}</Button>}
         </div>
       </section>
     ),

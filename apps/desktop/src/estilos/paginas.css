@@ -2064,3 +2064,8 @@
 .leitor-regua-sombra { flex: none; background: rgba(0, 0, 0, 0.32); }
 .leitor-regua-sombra.resto { flex: 1; }
 .leitor-regua-faixa { flex: none; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cor-destaque) 70%, transparent); }
+
+/* Início: contas que vencem logo (dentro do bloco Hoje) */
+.inicio-contas { margin-top: var(--espaco-3); }
+.inicio-contas h3 { font-size: 0.95rem; margin: 0 0 var(--espaco-1); }
+.inicio-contas li { padding: 0.15rem 0; }

@@ -9,12 +9,18 @@ import { avisarMudanca } from "../dados";
 import { Check, ChevronLeft, ChevronRight, Plus, Sparkles, Trash2 } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { formatarMoeda } from "./moeda";
-import { chaveDia, chaveMes, contasDoMes, contasPagasNoMes, gastosPorDia, mesVizinho, resumoDoMes } from "./visao";
+import { chaveDia, chaveMes, contasAVencer, contasDoMes, contasPagasNoMes, gastosPorDia, mesVizinho, resumoDoMes } from "./visao";
 
 const t = textos.dinheiro;
 const fmtMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const fmtDia = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 const maiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const fmtDiaCurto = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short" });
+/** "sáb., 14 de nov." a partir de "AAAA-MM-DD". */
+export function diaCurto(dia: string): string {
+  const [a, m, d] = dia.split("-").map(Number);
+  return fmtDiaCurto.format(new Date(a, m - 1, d));
+}
 
 function nomeDoMes(mes: string): string {
   const [a, m] = mes.split("-").map(Number);
@@ -56,6 +62,7 @@ export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistr
   const entradasDoMes = useMemo(() => entradas.filter((e) => chaveMes(e.momento) === mes).sort((a, b) => b.momento - a.momento), [entradas, mes]);
   const contasMes = useMemo(() => contasDoMes(contas, mes), [contas, mes]);
   const pagas = useMemo(() => contasPagasNoMes(gastos, mes), [gastos, mes]);
+  const aVencer = useMemo(() => (mes === mesAtual ? contasAVencer(contas, gastos, new Date()) : []), [contas, gastos, mes, mesAtual]);
   const faltou = resumo.sobra < 0;
 
   const nomeGasto = (g: Gasto) => g.descricao || porGrupo.get(g.grupoId)?.nome || g.categoria || t.gasto.semDescricao;
@@ -114,6 +121,30 @@ export function EsteMes({ gastos, entradas, contas, grupos, mesMinimo, aoRegistr
           <Plus aria-hidden="true" size="1.1em" /> {t.mes.registrarEntrada}
         </Button>
       </div>
+
+      {aVencer.length > 0 && (
+        <section className="cartao" aria-labelledby="dinheiro-a-vencer">
+          <h2 id="dinheiro-a-vencer">{t.mes.aVencerTitulo}</h2>
+          <p className="texto-suave dinheiro-nota-contas">{t.mes.aVencerAjuda}</p>
+          <ul className="dinheiro-lista">
+            {aVencer.map(({ conta: c, dias: n, vence }) => (
+              <li key={c.id} className="dinheiro-linha">
+                <span className={`etiqueta-cor grande cor-${porGrupo.get(c.grupoId)?.cor ?? "cinza"}`} aria-hidden="true" />
+                <span className="dinheiro-linha-texto">
+                  <span>{c.nome}</span>
+                  <span className="dinheiro-linha-detalhe">{t.contas.faltamDias(n)} · {diaCurto(vence)}</span>
+                </span>
+                <span className="dinheiro-linha-valor">{formatarMoeda(c.centavos)}</span>
+                {vence.startsWith(mesAtual) ? (
+                  <Button className="botao dinheiro-botao-leve" onPress={() => aoPagarConta(c)} aria-label={t.mes.registrarPagamentoDe(c.nome)}>
+                    {t.mes.registrarPagamento}
+                  </Button>
+                ) : <span aria-hidden="true" />}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="cartao" aria-labelledby="dinheiro-gastos-mes">
         <h2 id="dinheiro-gastos-mes">{t.mes.gastosTitulo}</h2>

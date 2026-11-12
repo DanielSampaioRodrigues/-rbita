@@ -269,3 +269,39 @@ export function gastosPorDia(gastos: Gasto[], mes: string): DiaDeGastos[] {
   for (const d of lista) d.gastos.sort((a, b) => b.momento - a.momento);
   return lista;
 }
+
+export interface ContaAVencer {
+  conta: Conta;
+  /** Dia do vencimento ("AAAA-MM-DD"). */
+  vence: string;
+  /** Dias até vencer (0 = hoje). */
+  dias: number;
+}
+
+/**
+ * As contas fixas que já entraram no prazo do aviso ("avisar N dias antes") e ainda
+ * não têm pagamento registrado no mês do vencimento. Olha o vencimento deste mês e o
+ * do mês seguinte (no fim do mês, a conta do dia 2 já pode estar no prazo). Conta que
+ * já venceu não aparece aqui: não fica cobrando (princípio "sem culpa").
+ * Dia 31 num mês de 30 dias vence no último dia.
+ */
+export function contasAVencer(contas: Conta[], gastos: Gasto[], hoje: Date): ContaAVencer[] {
+  const h = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const lista: ContaAVencer[] = [];
+  for (const conta of contas) {
+    for (const passo of [0, 1]) {
+      const ano = h.getFullYear();
+      const mes = h.getMonth() + passo;
+      const ultimo = new Date(ano, mes + 1, 0).getDate();
+      const venc = new Date(ano, mes, Math.min(Math.max(1, conta.diaVencimento), ultimo));
+      const dias = Math.round((venc.getTime() - h.getTime()) / 86_400_000);
+      if (dias < 0 || dias > Math.max(0, conta.avisoDias)) continue;
+      const chave = chaveMes(venc.getTime());
+      if (chaveMes(conta.criadoEm) > chave) continue;
+      if (contasPagasNoMes(gastos, chave).has(conta.id)) continue;
+      lista.push({ conta, vence: chaveDia(venc.getTime()), dias });
+      break;
+    }
+  }
+  return lista.sort((a, b) => a.dias - b.dias || a.conta.nome.localeCompare(b.conta.nome, "pt-BR"));
+}
