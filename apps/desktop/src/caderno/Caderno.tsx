@@ -2267,6 +2267,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   };
   const temDesenhoNaPagina = !!sel && (cenas[sel.id]?.elementos ?? []).some((e) => e.tipo !== "texto");
   const porEmPaginaNova = async (html: string) => {
+    // No quadro infinito não há páginas: vai para o meio do que está à vista.
+    if (infinito) { porNaPagina(html); return; }
     const base = sel ?? paginas[paginas.length - 1];
     try {
       const nova = await api.salvarPaginaCaderno({
@@ -2286,6 +2288,14 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     if (!mapa) { recado(t.ia.semMapa); return; }
     const base = sel ?? paginas[paginas.length - 1];
     const larg = 1123, alt = 794;
+    // No quadro infinito, o mapa entra no meio do que está à vista.
+    if (infinito && sel) {
+      const m = meioDaVista();
+      const els = elementosDoMapa(mapa, larg, alt).map((e) => transladar(e, Math.max(20, m.x - larg / 2), Math.max(20, m.y - alt / 2)));
+      mudarCena(sel.id, { elementos: ajustarConectores([...(cenas[sel.id]?.elementos ?? []), ...els], MEDIDA) });
+      recado(t.ia.postoMapa);
+      return;
+    }
     try {
       const nova = await api.salvarPaginaCaderno({
         id: "", cadernoId: caderno.id, ordem: ordemPara("depois", base), tamanho: `custom:${larg}x${alt}`,
@@ -2321,11 +2331,14 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     if (item.tipo === "trecho") { if (d.html) porNaPagina(d.html); return; }
     const c = d.cena ? lerCena(d.cena) : null;
     if (!c) return;
-    if (item.tipo === "objetos") {
+    if (item.tipo === "objetos" || (infinito && sel)) {
       if (!sel) return;
       const med = medidaDe(sel.tamanho);
-      const dx = Math.max(20, Math.round((med.largura - (d.largura ?? 0)) / 2));
-      const novos = copiarElementos(c.elementos, dx, 60);
+      // No quadro infinito (objetos ou página da biblioteca), entra no meio do que está à vista.
+      const meio = infinito ? meioDaVista() : null;
+      const tamItem = item.tipo === "pagina" && d.tamanho ? medidaDe(d.tamanho) : { largura: d.largura ?? 600, altura: d.altura ?? 400 };
+      const dx = meio ? Math.max(20, Math.round(meio.x - tamItem.largura / 2)) : Math.max(20, Math.round((med.largura - (d.largura ?? 0)) / 2));
+      const novos = copiarElementos(c.elementos, dx, meio ? Math.max(20, Math.round(meio.y - tamItem.altura / 2)) : 60);
       mudarCena(sel.id, { elementos: ajustarConectores([...(cenas[sel.id]?.elementos ?? []), ...novos], MEDIDA) });
       // Já fica selecionado, para mover para o lugar certo.
       setFerramenta("selecao"); setSelPid(sel.id); setSelIds(novos.map((e) => e.id));
@@ -2370,10 +2383,20 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   // As marcas só valem enquanto os traços da palavra continuam na página.
   const marcasVivas = correcao ? correcao.marcas.filter((m) => { const ids = new Set((cenas[correcao.pid]?.elementos ?? []).map((e) => e.id)); return m.ids.every((id) => ids.has(id)); }) : [];
 
+  /** No quadro infinito: o ponto do quadro no meio do que está à vista. */
+  const meioDaVista = (): { x: number; y: number } => {
+    const el = area.current, p = paginas[0];
+    const bloco = p ? el?.querySelector<HTMLElement>(`#pg-${p.id}`) : null;
+    if (!el || !bloco) return { x: 400, y: 300 };
+    return { x: (el.scrollLeft + el.clientWidth / 2 - bloco.offsetLeft) / zoom, y: (el.scrollTop + el.clientHeight / 2 - bloco.offsetTop) / zoom };
+  };
   const porNaPagina = (html: string) => {
     if (!sel) return;
     const med = medidaDe(sel.tamanho);
-    const novo: Texto = { tipo: "texto", id: crypto.randomUUID(), x: 60, y: 60, largura: Math.max(240, med.largura - 120), texto: html, cor: "#1f2937", tamanho: tamTexto };
+    const meio = infinito ? meioDaVista() : null;
+    const novo: Texto = meio
+      ? { tipo: "texto", id: crypto.randomUUID(), x: Math.max(20, meio.x - 300), y: Math.max(20, meio.y - 120), largura: 600, texto: html, cor: "#1f2937", tamanho: tamTexto }
+      : { tipo: "texto", id: crypto.randomUUID(), x: 60, y: 60, largura: Math.max(240, med.largura - 120), texto: html, cor: "#1f2937", tamanho: tamTexto };
     mudarCena(sel.id, { elementos: [...(cenas[sel.id]?.elementos ?? []), novo] });
   };
 
@@ -2597,7 +2620,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             <Button className={sel.marcado ? "botao-icone ativo" : "botao-icone"} onPress={() => void salvar({ ...sel, marcado: !sel.marcado })} aria-pressed={sel.marcado} aria-label={sel.marcado ? t.paginas.desmarcar : t.paginas.marcar}><Bookmark aria-hidden="true" size="1.1em" /></Button>
           )}
           {!infinito && <Button className="botao-icone" onPress={() => setAdicionando(true)} aria-label={t.adicionar.abrir}><FilePlus aria-hidden="true" size="1.1em" /></Button>}
-          {!infinito && <Button className={painel === "ia" ? "botao-icone ativo" : "botao-icone"} onPress={() => setPainel(painel === "ia" ? null : "ia")} aria-label={t.painel.abrirIa} aria-pressed={painel === "ia"}><Sparkles aria-hidden="true" size="1.1em" /></Button>}
+          <Button className={painel === "ia" ? "botao-icone ativo" : "botao-icone"} onPress={() => setPainel(painel === "ia" ? null : "ia")} aria-label={t.painel.abrirIa} aria-pressed={painel === "ia"}><Sparkles aria-hidden="true" size="1.1em" /></Button>
           {!infinito && paginas.length > 0 && <MenuEnviar opcoes={[{ id: "cadernoPdf", nome: te.cadernoPdf }, { id: "paginaPdf", nome: te.paginaPdf }, { id: "paginaPng", nome: te.paginaPng }]} aoEscolher={exportarCaderno} google={{ pdf: "cadernoPdf" }} />}
           {infinito && paginas.length > 0 && <MenuEnviar opcoes={[{ id: "paginaPdf", nome: te.quadroPdf }, { id: "paginaPng", nome: te.quadroPng }]} aoEscolher={exportarCaderno} google={{ pdf: "paginaPdf" }} />}
           <Button className="botao-icone" onPress={() => setEditor(true)} aria-label={t.folha.abrir}><SlidersHorizontal aria-hidden="true" size="1.1em" /></Button>
@@ -2625,8 +2648,8 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
         aoCancelar={() => setConfirmarDesfazer(false)} aoConfirmar={() => { setConfirmarDesfazer(false); void desfazerIa(); }} />
 
       <div className={`caderno-miolo pos-${posBarra}`} ref={mioloRef}>
-      <div className={painel && !infinito ? `caderno-area com-painel painel-${ladoPainel}` : "caderno-area"}>
-        {painel && !infinito && (
+      <div className={painel ? `caderno-area com-painel painel-${ladoPainel}` : "caderno-area"}>
+        {painel && (
           <PainelLateral aba={painel} aoAba={setPainel} aoFechar={() => setPainel(null)} paginas={paginas} atualId={selId}
             miniatura={(p, largura) => <MiniaturaPagina pagina={p} cena={cenas[p.id]} imagemUrl={imagemUrl} largura={largura} />}
             aoIr={(id) => { setVisaoPaginas(false); requestAnimationFrame(() => irPara(id)); }}
@@ -2635,7 +2658,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             ia={<PainelIa obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
               aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)}
               aoConferirEscrita={conferirEscrita} marcasAtivas={marcasVivas.length} aoTirarMarcas={() => setCorrecao(null)}
-              aoAgir={agirComIa} temFontes={temFontes} desfazer={reversoes[0] ? { resumo: reversoes[0].resumo, quando: reversoes[0].quando } : null} aoDesfazer={pedirDesfazerIa} />}
+              aoAgir={infinito ? undefined : agirComIa} quadro={infinito} temFontes={temFontes} desfazer={reversoes[0] ? { resumo: reversoes[0].resumo, quando: reversoes[0].quando } : null} aoDesfazer={pedirDesfazerIa} />}
             fontes={<PainelFontes cadernoId={caderno.id} aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoMapaMental={(html) => void desenharMapaMental(html)} />}
             biblioteca={<PainelBiblioteca podeGuardarSelecao={!!selPid && selIds.length > 0} aoGuardarSelecao={guardarSelecaoNaBiblioteca} aoGuardarPagina={guardarPaginaNaBiblioteca}
               aoUsar={(i, d) => void usarDaBiblioteca(i, d)}

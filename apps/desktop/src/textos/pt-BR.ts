@@ -1817,6 +1817,8 @@ export const textos = {
       proposta: "Proposta da IA",
       porNova: "Pôr numa página nova",
       porAqui: "Pôr nesta página",
+      porQuadro: "Pôr no quadro",
+      postoQuadro: "Pronto: está no quadro, no meio do que você está vendo, numa caixa de texto. Dá para mover e desfazer.",
       desenharMapa: "Desenhar como mapa mental",
       copiar: "Copiar",
       copiado: "Copiado.",

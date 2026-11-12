@@ -45,7 +45,7 @@ function quandoCurto(ms: number): string {
   return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
-export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPaginaNova, aoCriarImagem, aoMapaMental, aoConferirEscrita, marcasAtivas = 0, aoTirarMarcas, aoAgir, desfazer, aoDesfazer, temFontes = false }: {
+export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPaginaNova, aoCriarImagem, aoMapaMental, aoConferirEscrita, marcasAtivas = 0, aoTirarMarcas, aoAgir, desfazer, aoDesfazer, temFontes = false, quadro = false }: {
   /** Junta o texto (e, se pedir, a imagem da página) do alcance escolhido. */
   obterContexto: (alcance: Alcance, comImagem: boolean) => Promise<ContextoIa>;
   /** A página atual tem escrita à mão, desenho ou imagem? */
@@ -64,6 +64,8 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
   aoAgir?: (pedido: string, alcance: Alcance, imagens: string[], sensivel: boolean, usarFontes: boolean) => Promise<{ resposta: string; feitas: number }>;
   /** O caderno tem fontes com texto (aba Fontes): mostra "Usar as fontes do caderno". */
   temFontes?: boolean;
+  /** No quadro infinito: "Pôr no quadro" (no meio do que está à vista), sem página nova. */
+  quadro?: boolean;
   /** A última mudança da IA que dá para desfazer. */
   desfazer?: { resumo: string; quando: number } | null;
   aoDesfazer?: () => void;
@@ -234,8 +236,12 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
           <div className="painel-ia-previa doc-conteudo" dangerouslySetInnerHTML={{ __html: resposta.html }} />
           <div className="painel-ia-linha">
             {ehMapa && aoMapaMental && <Button className="botao pequeno principal" onPress={() => aoMapaMental(resposta.html)}>{t.desenharMapa}</Button>}
-            <Button className={ehMapa ? "botao pequeno" : "botao pequeno principal"} onPress={() => { aoPorEmPaginaNova(resposta.html); recado(t.postoNova); }}>{t.porNova}</Button>
-            <Button className="botao pequeno" onPress={() => { aoPorNaPagina(resposta.html); recado(t.postoAqui); }}>{t.porAqui}</Button>
+            {quadro ? (
+              <Button className={ehMapa ? "botao pequeno" : "botao pequeno principal"} onPress={() => { aoPorNaPagina(resposta.html); recado(t.postoQuadro); }}>{t.porQuadro}</Button>
+            ) : (<>
+              <Button className={ehMapa ? "botao pequeno" : "botao pequeno principal"} onPress={() => { aoPorEmPaginaNova(resposta.html); recado(t.postoNova); }}>{t.porNova}</Button>
+              <Button className="botao pequeno" onPress={() => { aoPorNaPagina(resposta.html); recado(t.postoAqui); }}>{t.porAqui}</Button>
+            </>)}
             <Button className="botao pequeno com-icone" onPress={() => {
               const tmp = document.createElement("div"); tmp.innerHTML = resposta.html;
               void navigator.clipboard?.writeText(tmp.innerText).then(() => recado(t.copiado), () => undefined);
