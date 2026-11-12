@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { Button, Checkbox } from "react-aria-components";
 import { LinhaOcorrencia } from "../agenda/Agenda";
 import { chaveDia, expandir, inicioDoDia, somarDias, type Ocorrencia } from "../agenda/datas";
-import { api, type Basico, type DoseDoDia, type TarefaSugerida } from "../api";
+import { api, type Atividade, type Basico, type DoseDoDia, type Materia, type TarefaSugerida } from "../api";
+import { estudosLeves } from "./estudoLeve";
 import { Marca } from "../app/Marca";
 import { Interruptor } from "../componentes/Interruptor";
 import { avisarMudanca, useMudancas } from "../dados";
@@ -32,6 +33,8 @@ export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCap
   const [basicos, setBasicos] = useState<Basico[]>([]);
   const [doses, setDoses] = useState<DoseDoDia[]>([]);
   const [tarefas, setTarefas] = useState<TarefaSugerida[]>([]);
+  const [estudos, setEstudos] = useState<Atividade[]>([]);
+  const [materias, setMaterias] = useState<Materia[]>([]);
   const [indice, setIndice] = useState(0);
   const [hoje, setHoje] = useState<Ocorrencia[]>([]);
   const mudancas = useMudancas();
@@ -42,12 +45,20 @@ export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCap
     api.basicosDoDia(dia).then(setBasicos, () => {});
     api.dosesDoDia(dia).then(setDoses, () => {});
     api.tarefasSugeridas().then(setTarefas, () => {});
+    // Estudo leve (dever, leitura, trabalho ou entrega chegando) também vale como "uma tarefa".
+    api.listarAtividades().then((as) => setEstudos(estudosLeves(as, dia)), () => {});
+    api.listarMaterias().then(setMaterias, () => {});
     const de = inicioDoDia(new Date());
     const ate = somarDias(de, 1);
     api.listarEventos(de.getTime(), ate.getTime()).then((es) => setHoje(expandir(es, de, ate)), () => {});
   }, [dia, mudancas]);
 
-  const tarefa = tarefas.length ? tarefas[indice % tarefas.length] : null;
+  // Uma lista só, revezando: tarefas de projetos primeiro, depois os estudos leves.
+  type Opcao = { tipo: "tarefa"; t: TarefaSugerida } | { tipo: "estudo"; a: Atividade };
+  const opcoes: Opcao[] = [...tarefas.map((t): Opcao => ({ tipo: "tarefa", t })), ...estudos.map((a): Opcao => ({ tipo: "estudo", a }))];
+  const opcao = opcoes.length ? opcoes[indice % opcoes.length] : null;
+  const tarefa = opcao?.tipo === "tarefa" ? opcao.t : null;
+  const estudo = opcao?.tipo === "estudo" ? opcao.a : null;
 
   // A dose marcada aqui é a mesma da Saúde. O básico "Tomar o remédio" (que
   // aparece no Início e na Energia) acompanha: fica feito quando todas foram tomadas.
@@ -101,20 +112,32 @@ export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCap
 
         <section className="cartao">
           <h2>{t.umaTarefa}</h2>
-          {tarefa ? (
+          {opcao ? (
             <>
               <div className="tarefa-linha">
-                <Caixa
-                  marcada={false}
-                  rotulo={tarefa.titulo}
-                  aoMudar={async () => {
-                    await api.mudarEstadoTarefa(tarefa.id, "feita");
-                    avisarMudanca();
-                  }}
-                />
+                {tarefa ? (
+                  <Caixa
+                    marcada={false}
+                    rotulo={tarefa.titulo}
+                    aoMudar={async () => {
+                      await api.mudarEstadoTarefa(tarefa.id, "feita");
+                      avisarMudanca();
+                    }}
+                  />
+                ) : estudo && (
+                  <Caixa
+                    marcada={false}
+                    rotulo={estudo.titulo}
+                    aoMudar={async () => {
+                      await api.marcarAtividade(estudo.id, true);
+                      setEstudos((es) => es.filter((x) => x.id !== estudo.id));
+                      avisarMudanca();
+                    }}
+                  />
+                )}
               </div>
-              <p className="texto-suave pequeno">{t.deProjeto(tarefa.projeto)}</p>
-              {tarefas.length > 1 && (
+              <p className="texto-suave pequeno">{tarefa ? t.deProjeto(tarefa.projeto) : estudo ? t.deEstudos(materias.find((m) => m.id === estudo.materiaId)?.nome ?? "", estudo.data) : ""}</p>
+              {opcoes.length > 1 && (
                 <div className="botoes">
                   <Button className="botao" onPress={() => setIndice((i) => i + 1)}>{t.outra}</Button>
                 </div>

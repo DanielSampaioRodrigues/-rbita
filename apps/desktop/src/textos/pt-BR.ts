@@ -3323,6 +3323,7 @@ export const textos = {
     hoje: "Hoje na agenda",
     sair: "Sair do modo baixa energia",
     deProjeto: (p: string) => `Projeto: ${p}`,
+    deEstudos: (materia: string, data: string) => `Estudos${materia ? `: ${materia}` : ""}${data ? ` · para ${data.split("-").reverse().slice(0, 2).join("/")}` : ""}`,
     tomar: (remedio: string) => `Tomar ${remedio}`,
   },
   avisos: {
