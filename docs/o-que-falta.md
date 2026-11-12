@@ -34,7 +34,7 @@ Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, su
 
 - [ ] **Dinheiro**: importar o extrato do banco (OFX ou CSV); avisar conta a vencer.
 - [ ] **Minha organização**: ligar cartão com prazo à Agenda; compartilhar um quadro.
-- [ ] **Modo baixa energia**: mostrar o remédio a partir da medicação cadastrada na Saúde.
+- [x] ~~**Modo baixa energia**: mostrar o remédio a partir da medicação cadastrada na Saúde~~ (12/11/2026).
 - [ ] **Contas para a recuperação**: Dropbox e Nextcloud/WebDAV (avaliar).
 
 ## 5. Depende de Dan (não é código)

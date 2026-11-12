@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button, Checkbox } from "react-aria-components";
 import { LinhaOcorrencia } from "../agenda/Agenda";
 import { chaveDia, expandir, inicioDoDia, somarDias, type Ocorrencia } from "../agenda/datas";
-import { api, type Basico, type TarefaSugerida } from "../api";
+import { api, type Basico, type DoseDoDia, type TarefaSugerida } from "../api";
 import { Marca } from "../app/Marca";
 import { Interruptor } from "../componentes/Interruptor";
 import { avisarMudanca, useMudancas } from "../dados";
@@ -12,6 +12,7 @@ import { textos } from "../textos/pt-BR";
 import { SugestaoReposicao } from "./Contas";
 import { KitSensorial } from "./Kit";
 import { RegistroRapido } from "./Energia";
+import { acompanharBasico, basicosSemRemedio, rotuloDaDose } from "./remedios";
 
 const t = textos.baixaEnergia;
 
@@ -29,6 +30,7 @@ function Caixa({ marcada, aoMudar, rotulo }: { marcada: boolean; aoMudar: (v: bo
 /** Tela inteira só com o essencial. Sem barra lateral, sem números, sem cobrança. */
 export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCapturar: () => void }) {
   const [basicos, setBasicos] = useState<Basico[]>([]);
+  const [doses, setDoses] = useState<DoseDoDia[]>([]);
   const [tarefas, setTarefas] = useState<TarefaSugerida[]>([]);
   const [indice, setIndice] = useState(0);
   const [hoje, setHoje] = useState<Ocorrencia[]>([]);
@@ -38,6 +40,7 @@ export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCap
 
   useEffect(() => {
     api.basicosDoDia(dia).then(setBasicos, () => {});
+    api.dosesDoDia(dia).then(setDoses, () => {});
     api.tarefasSugeridas().then(setTarefas, () => {});
     const de = inicioDoDia(new Date());
     const ate = somarDias(de, 1);
@@ -45,6 +48,16 @@ export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCap
   }, [dia, mudancas]);
 
   const tarefa = tarefas.length ? tarefas[indice % tarefas.length] : null;
+
+  // A dose marcada aqui é a mesma da Saúde. O básico "Tomar o remédio" (que
+  // aparece no Início e na Energia) acompanha: fica feito quando todas foram tomadas.
+  const marcarDose = async (d: DoseDoDia, tomada: boolean) => {
+    await api.marcarDose(d.remedioId, d.horario, dia, tomada);
+    const novas = doses.map((x) => (x.remedioId === d.remedioId && x.horario === d.horario ? { ...x, tomada } : x));
+    setDoses(novas);
+    await acompanharBasico(dia, novas);
+    avisarMudanca();
+  };
 
   return (
     <div className="baixa-energia">
@@ -62,7 +75,16 @@ export function BaixaEnergia({ aoSair, aoCapturar }: { aoSair: () => void; aoCap
         <section className="cartao">
           <h2>{t.basicos}</h2>
           <ul className="tarefas">
-            {basicos.map((b) => (
+            {doses.map((d) => (
+              <li key={`${d.remedioId}|${d.horario}`} className="tarefa-linha">
+                <Caixa
+                  marcada={d.tomada}
+                  rotulo={t.tomar(rotuloDaDose(d))}
+                  aoMudar={(tomada) => void marcarDose(d, tomada)}
+                />
+              </li>
+            ))}
+            {basicosSemRemedio(basicos, doses).map((b) => (
               <li key={b.texto} className="tarefa-linha">
                 <Caixa
                   marcada={b.feito}

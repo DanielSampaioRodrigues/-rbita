@@ -4,6 +4,7 @@ import { chaveDia } from "../agenda/datas";
 import { api, type DoseDoDia } from "../api";
 import { useRecado } from "../app/Recado";
 import { avisarMudanca, useMudancas } from "../dados";
+import { acompanharBasico } from "../energia/remedios";
 import { Check } from "../icones";
 import { textos } from "../textos/pt-BR";
 
@@ -22,6 +23,7 @@ export function CartaoRemediosHoje() {
 
   const marcar = async (d: DoseDoDia, tomada: boolean) => {
     await api.marcarDose(d.remedioId, d.horario, hoje, tomada);
+    await acompanharBasico(hoje, doses.map((x) => (x.remedioId === d.remedioId && x.horario === d.horario ? { ...x, tomada } : x))).catch(() => {});
     avisarMudanca();
     recado(tomada ? t.tomadaConfirmada(d.nome) : t.tomadaDesfeita(d.nome));
   };

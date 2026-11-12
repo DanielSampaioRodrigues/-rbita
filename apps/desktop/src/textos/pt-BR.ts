@@ -3204,6 +3204,7 @@ export const textos = {
     hoje: "Hoje na agenda",
     sair: "Sair do modo baixa energia",
     deProjeto: (p: string) => `Projeto: ${p}`,
+    tomar: (remedio: string) => `Tomar ${remedio}`,
   },
   avisos: {
     titulo: "Avisos de transição",
