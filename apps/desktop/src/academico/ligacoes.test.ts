@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Atividade, Materia } from "../api";
-import { diasAntes, eventoDaAtividade, materiaDaTurma } from "./ligacoes";
+import { diasAntes, eventoDaAtividade, materiaDaTurma, tituloDoProjeto } from "./ligacoes";
 
 const a: Atividade = { id: "1", materiaId: "m", tipo: "prova", titulo: "P1", data: "2026-11-20", peso: null, nota: null, feita: false, criadoEm: 0 };
 
@@ -27,5 +27,14 @@ describe("Estudos ligados à Agenda e ao Classroom", () => {
     expect(materiaDaTurma("NEUROPSICOLOGIA · Turma A", ms)?.id).toBe("1");
     expect(materiaDaTurma("Psicologia do Desenvolvimento II", ms)?.id).toBe("2");
     expect(materiaDaTurma("Estatística", ms)).toBeNull();
+  });
+});
+
+
+describe("trabalho vira projeto", () => {
+  it("o título leva a matéria", () => {
+    const a = { id: "a", materiaId: "m", tipo: "trabalho", titulo: "Resenha", data: "2026-11-20", peso: null, nota: null, feita: false, criadoEm: 0 };
+    expect(tituloDoProjeto(a, "Psicologia")).toBe("Psicologia: Resenha");
+    expect(tituloDoProjeto(a, "")).toBe("Resenha");
   });
 });

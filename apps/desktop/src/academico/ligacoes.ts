@@ -2,7 +2,7 @@
 // sempre), o "comece antes" marca o dia de começar a estudar ou a fazer, e as tarefas
 // do Classroom entram como atividades da matéria. Os vínculos ficam no cofre de valores
 // ("estudos.ligacoes"), para atualizar em vez de repetir.
-import { api, type Atividade, type Evento, type Materia } from "../api";
+import { api, type Atividade, type Evento, type Materia, type Projeto } from "../api";
 import type { TipoAtividade } from "./nivel";
 
 /** Quantos dias antes começar, por tipo (a pessoa muda no formulário). */
@@ -34,11 +34,14 @@ export interface Ligacoes {
   agenda: Record<string, { prazo?: string; comecar?: string; dias?: number }>;
   /** tarefa do Classroom → atividade dos Estudos. */
   classroom: Record<string, string>;
+  /** trabalho ou entrega → projeto (com passos e "onde parei"). */
+  projetos: Record<string, string>;
 }
 const CHAVE = "estudos.ligacoes";
 export async function lerLigacoes(): Promise<Ligacoes> {
   const v = (await api.lerValor(CHAVE).catch(() => null)) as Partial<Ligacoes> | null;
-  return { agenda: v?.agenda && typeof v.agenda === "object" ? v.agenda : {}, classroom: v?.classroom && typeof v.classroom === "object" ? v.classroom : {} };
+  const obj = <T,>(x: unknown): Record<string, T> => (x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, T>) : {});
+  return { agenda: obj(v?.agenda), classroom: obj(v?.classroom), projetos: obj(v?.projetos) };
 }
 const gravarLigacoes = (l: Ligacoes) => api.gravarValor(CHAVE, l);
 
@@ -93,4 +96,28 @@ export async function trazerDoClassroom(tarefa: { id: string; titulo: string; tu
   l.classroom[tarefa.id] = salva.id;
   await gravarLigacoes(l);
   return { atividade: salva, nova: !existentes, materiaNova };
+}
+
+/** O título do projeto que nasce de um trabalho: "Matéria: título". */
+export const tituloDoProjeto = (a: Atividade, materia: string) => (materia ? `${materia}: ${a.titulo}` : a.titulo).slice(0, 200);
+
+/**
+ * Trabalho acadêmico vira projeto de verdade (passos, subtarefas, "onde parei", prazo).
+ * Se já houver projetos ativos demais (o limite da pessoa), o projeto nasce em espera.
+ */
+export async function virarProjeto(a: Atividade, materia: string): Promise<{ projeto: Projeto; emEspera: boolean }> {
+  const titulo = tituloDoProjeto(a, materia);
+  let emEspera = false;
+  let projeto: Projeto;
+  try {
+    projeto = await api.criarProjeto(titulo, true);
+  } catch {
+    projeto = await api.criarProjeto(titulo, false);
+    emEspera = true;
+  }
+  if (a.data) await api.definirDatasProjeto(projeto.id, null, a.data).catch(() => {});
+  const l = await lerLigacoes();
+  l.projetos[a.id] = projeto.id;
+  await gravarLigacoes(l);
+  return { projeto, emEspera };
 }

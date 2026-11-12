@@ -3169,6 +3169,10 @@ export const textos = {
     },
     comecarEm: (data: string, jaPassou: boolean) => (jaPassou ? `Hora de começar (desde ${data})` : `Comece em ${data}`),
     estudarAgora: "Estudar agora (abre o Foco)",
+    virarProjeto: "Virar projeto (passos e onde parei)",
+    abrirProjeto: "Abrir o projeto",
+    projetoCriado: "Pronto: virou projeto, com o prazo do trabalho. Divida em passos lá.",
+    projetoEmEspera: "Virou projeto, em espera: você já está no limite de projetos ativos. Dá para ativar em Projetos.",
     atividade: {
       novo: "Nova atividade",
       editar: "Editar atividade",

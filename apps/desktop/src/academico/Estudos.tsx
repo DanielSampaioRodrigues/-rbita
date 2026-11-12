@@ -14,6 +14,7 @@ import {
   Check,
   FileText,
   Flag,
+  FolderKanban,
   Laptop,
   Lightbulb,
   ListChecks,
@@ -35,7 +36,7 @@ import { FormAtividade, nomeTipo, novaAtividade } from "./FormAtividade";
 import { aulasDoDia, GradeHorario } from "./Grade";
 import { mediaPonderada, mediasPorBimestre, situacao } from "./media";
 import { useExtras, type ExtrasAcademico, type PrazoPesquisa } from "./extras";
-import { diasAntes, lerLigacoes, sincronizarNaAgenda, tirarDaAgenda, type Ligacoes } from "./ligacoes";
+import { diasAntes, lerLigacoes, sincronizarNaAgenda, tirarDaAgenda, virarProjeto, type Ligacoes } from "./ligacoes";
 import { useFoco } from "../foco/Foco";
 import type { SecaoMenu as Secao } from "../preferencias";
 import { bimestreDaData, diasAte, NIVEIS, PERFIL_PERSONALIZADO_PADRAO, perfilDoNivel, tipoMostrado, TIPOS_ATIVIDADE, type Nivel, type NivelOuTodos, type PerfilNivel, type TipoAtividade } from "./nivel";
@@ -62,8 +63,9 @@ const lerAba = (): Aba => {
   }
 };
 
-export function PaginaEstudos({ aoIr }: { aoIr?: (s: Secao) => void } = {}) {
+export function PaginaEstudos({ aoIr, aoAbrirProjeto }: { aoIr?: (s: Secao) => void; aoAbrirProjeto?: (id: string) => void } = {}) {
   const foco = useFoco();
+  const recado = useRecado();
   // Vínculos com a Agenda e o Classroom (para "Comece em…" e para não repetir).
   const [ligacoes, setLigacoes] = useState<Ligacoes | null>(null);
   const [materias, setMaterias] = useState<Materia[]>([]);
@@ -187,6 +189,18 @@ export function PaginaEstudos({ aoIr }: { aoIr?: (s: Secao) => void } = {}) {
       foco.configurar({ modo: "foco", assunto: m ? `${m}: ${a.titulo}` : a.titulo });
       aoIr("foco");
     } : undefined,
+    // Trabalho acadêmico é projeto de verdade: passos, "onde parei" e prazo, no módulo de Projetos.
+    projeto: aoAbrirProjeto ? (a: Atividade) => {
+      const ja = ligacoes?.projetos[a.id];
+      if (ja) { aoAbrirProjeto(ja); return; }
+      void virarProjeto(a, porMateria.get(a.materiaId)?.nome ?? "").then(({ projeto, emEspera }) => {
+        recado(emEspera ? t.projetoEmEspera : t.projetoCriado);
+        void lerLigacoes().then(setLigacoes, () => {});
+        avisarMudanca();
+        aoAbrirProjeto(projeto.id);
+      }, (e) => recado(e instanceof Error ? e.message : String(e)));
+    } : undefined,
+    temProjeto: (a: Atividade) => !!ligacoes?.projetos[a.id],
   };
 
   return (
@@ -366,6 +380,9 @@ interface AcoesAtividade {
   /** Dia de começar ("AAAA-MM-DD"), se a pessoa escolheu "começar antes". */
   comecarEm: (a: Atividade) => string | null;
   estudar?: (a: Atividade) => void;
+  /** Trabalho e entrega: vira projeto (ou abre o projeto, se já virou). */
+  projeto?: (a: Atividade) => void;
+  temProjeto?: (a: Atividade) => boolean;
 }
 
 function AbaSemana({
@@ -538,6 +555,11 @@ function CartaoAtividade({ a, m, tipo, perfil, hoje, acoes }: { a: Atividade; m?
           {(() => { const c = acoes.comecarEm(a); return c ? <><br />{t.comecarEm(dataLegivel(c), c <= hoje)}</> : null; })()}
         </span>
         <span className="estudos-acoes">
+          {acoes.projeto && (a.tipo === "trabalho" || a.tipo === "entrega") && (!a.feita || acoes.temProjeto?.(a)) && (
+            <Button className="botao-icone estudos-toque" onPress={() => acoes.projeto?.(a)} aria-label={`${acoes.temProjeto?.(a) ? t.abrirProjeto : t.virarProjeto}: ${a.titulo}`}>
+              <FolderKanban aria-hidden="true" size="1.1em" />
+            </Button>
+          )}
           {acoes.estudar && !a.feita && (
             <Button className="botao-icone estudos-toque" onPress={() => acoes.estudar?.(a)} aria-label={`${t.estudarAgora}: ${a.titulo}`}>
               <Timer aria-hidden="true" size="1.1em" />

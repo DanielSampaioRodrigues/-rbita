@@ -208,7 +208,7 @@ export function App() {
       );
     else if (secao === "saude") pagina = <PaginaSaude aoAbrirPlanoDeCrise={() => setPlanoCrise(true)} />;
     else if (secao === "cuidado") pagina = <PaginaCuidado />;
-    else if (secao === "estudos") pagina = <PaginaEstudos aoIr={irPara} />;
+    else if (secao === "estudos") pagina = <PaginaEstudos aoIr={irPara} aoAbrirProjeto={abrirProjeto} />;
     else if (secao === "dinheiro") pagina = <PaginaDinheiro />;
     else if (secao === "hobbies") pagina = <PaginaHobbies />;
     else if (secao === "leitura") pagina = <PaginaLeitura />;
