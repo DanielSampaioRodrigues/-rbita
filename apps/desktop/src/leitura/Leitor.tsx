@@ -116,9 +116,13 @@ export function LeitorLivro({ livro, aoFechar }: { livro: Livro; aoFechar: () =>
     speechSynthesis.addEventListener?.("voiceschanged", ler);
     return () => { speechSynthesis.removeEventListener?.("voiceschanged", ler); fala.current && (fala.current.parar = true); speechSynthesis.cancel(); };
   }, []);
+  // A leitura corre num laço que começou antes: velocidade e voz são lidas na hora de cada frase.
+  const vozAtual = useRef({ velocidade, nomeVoz, vozes });
+  vozAtual.current = { velocidade, nomeVoz, vozes };
   const falarFrase = (frase: string) => new Promise<void>((pronto) => {
     const u = new SpeechSynthesisUtterance(frase);
     u.lang = "pt-BR";
+    const { velocidade, nomeVoz, vozes } = vozAtual.current;
     u.rate = velocidade;
     const escolhida = vozes.find((v) => v.name === nomeVoz) ?? vozes[0];
     if (escolhida) u.voice = escolhida;

@@ -89,6 +89,10 @@ Data Lançamento;Histórico;Débito (R$);Crédito (R$);Saldo
       ["2026-10-04", "SALARIO", 320000],
     ]);
   });
+  it("colunas \"Valor Débito\" e \"Valor Crédito\" não viram a coluna Valor", () => {
+    const e = lerCsv("Data;Descrição;Valor Débito;Valor Crédito;Saldo\n03/10/2026;PIX;150,00;;850,00\n04/10/2026;Salário;;3.200,00;4.050,00");
+    expect(e?.linhas.map((l) => l.centavos)).toEqual([-15000, 320000]);
+  });
   it("dois lançamentos iguais no mesmo dia ficam com identificadores diferentes", () => {
     const e = lerCsv("Data;Descrição;Valor\n01/10/2026;Ônibus;-4,50\n01/10/2026;Ônibus;-4,50");
     expect(new Set(e?.linhas.map((l) => l.id)).size).toBe(2);

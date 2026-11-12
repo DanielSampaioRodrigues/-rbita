@@ -53,7 +53,9 @@ export function PainelFichamento({ livro, fichas, rascunho, local, aoMudou, aoIr
   useEffect(() => {
     void api.lerValor(chave(livro.id)).then((v) => {
       const c = (v ?? {}) as Partial<CabecalhoFichamento>;
-      setCab({ referencia: typeof c.referencia === "string" ? c.referencia : "", ano: typeof c.ano === "string" ? c.ano : "" });
+      const ano = typeof c.ano === "string" ? c.ano : "";
+      // Sem referência guardada, começa com a sugerida (a pessoa completa ou apaga).
+      setCab({ referencia: typeof c.referencia === "string" && c.referencia ? c.referencia : referenciaSugerida(livro.titulo, livro.autor, ano), ano });
       carregado.current = true;
     }, () => { carregado.current = true; });
   }, [livro.id]);
@@ -125,7 +127,7 @@ export function PainelFichamento({ livro, fichas, rascunho, local, aoMudou, aoIr
 
       <details className="leitor-fichamento-ref">
         <summary>{t.referencia}</summary>
-        <Campo rotulo={t.referencia} valor={cab.referencia || referenciaSugerida(livro.titulo, livro.autor, cab.ano)} aoMudar={(referencia) => setCab((c) => ({ ...c, referencia }))} multilinha semDitado descricao={t.referenciaAjuda} />
+        <Campo rotulo={t.referencia} valor={cab.referencia} aoMudar={(referencia) => setCab((c) => ({ ...c, referencia }))} multilinha semDitado descricao={t.referenciaAjuda} />
         <Campo rotulo={t.ano} valor={cab.ano} aoMudar={(ano) => setCab((c) => ({ ...c, ano }))} maximo={12} semDitado descricao={t.anoAjuda} />
       </details>
 

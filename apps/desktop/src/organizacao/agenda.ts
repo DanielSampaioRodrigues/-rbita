@@ -3,6 +3,7 @@
 // cartão é feito, arquivado, fica sem data ou é apagado (e volta se for desfeito).
 // Os vínculos ficam no cofre de valores ("organizacao.agenda").
 import { api, type CartaoOrg, type Evento } from "../api";
+import { emFila } from "../app/fila";
 
 const CHAVE = "organizacao.agenda";
 /** Duração do compromisso quando o cartão tem hora. */
@@ -32,13 +33,17 @@ export function eventoDoCartao(c: CartaoOrg, quadro: string): Evento | null {
  * Põe, atualiza ou tira o compromisso do cartão. `ligar` muda a escolha; sem ele, só
  * acompanha (cartão que não está ligado fica como está).
  */
-export async function sincronizarCartao(c: CartaoOrg, quadro: string, ligar?: boolean): Promise<void> {
+export function sincronizarCartao(c: CartaoOrg, quadro: string, ligar?: boolean): Promise<void> {
+  return emFila(CHAVE, () => sincronizarAgora(c, quadro, ligar));
+}
+async function sincronizarAgora(c: CartaoOrg, quadro: string, ligar?: boolean): Promise<void> {
   const v = await lerVinculos();
   const ligado = ligar ?? c.id in v;
   if (!ligado && !(c.id in v)) return;
   const antes = v[c.id] || "";
   const ev = ligado ? eventoDoCartao(c, quadro) : null;
-  if (ev) v[c.id] = (await api.salvarEvento({ ...ev, id: antes })).id;
+  // Se o compromisso guardado não existe mais (apagado na Agenda), cria outro.
+  if (ev) v[c.id] = (await api.salvarEvento({ ...ev, id: antes }).catch(() => api.salvarEvento({ ...ev, id: "" }))).id;
   else {
     if (antes) await api.excluirEvento(antes).catch(() => {});
     if (ligado) v[c.id] = ""; else delete v[c.id];
@@ -47,7 +52,10 @@ export async function sincronizarCartao(c: CartaoOrg, quadro: string, ligar?: bo
 }
 
 /** Ao apagar o cartão, tira o compromisso dele. */
-export async function tirarCartao(id: string): Promise<void> {
+export function tirarCartao(id: string): Promise<void> {
+  return emFila(CHAVE, () => tirarAgora(id));
+}
+async function tirarAgora(id: string): Promise<void> {
   const v = await lerVinculos();
   if (!(id in v)) return;
   if (v[id]) await api.excluirEvento(v[id]).catch(() => {});

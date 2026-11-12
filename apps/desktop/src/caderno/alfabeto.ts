@@ -74,7 +74,14 @@ function semPingo(tracos: PontoGlifo[][]): PontoGlifo[][] {
 
 /** Monta a palavra com as letras da pessoa (em unidades da caixa, lado a lado na mesma linha de base). */
 export function comporPalavra(palavra: string, a: Alfabeto): PontoGlifo[][] {
+  const { letras, acentos } = comporSeparado(palavra, a);
+  return [...letras, ...acentos];
+}
+
+/** A palavra montada, com as letras e os acentos separados (o tamanho se mede só pelas letras). */
+export function comporSeparado(palavra: string, a: Alfabeto): { letras: PontoGlifo[][]; acentos: PontoGlifo[][] } {
   const out: PontoGlifo[][] = [];
+  const acentos: PontoGlifo[][] = [];
   let cursor = 0;
   for (const c of Array.from(palavra)) {
     const d = decompor(c);
@@ -91,17 +98,19 @@ export function comporPalavra(palavra: string, a: Alfabeto): PontoGlifo[][] {
         const meioLetra = cursor + (cx.x1 - cx.x0) / 2;
         const ax = meioLetra - (ca.x0 + ca.x1) / 2;
         const ay = Math.min(0, cx.y0 - 0.04 - ca.y1);
-        out.push(...ac.map((t) => t.map((p) => ({ ...p, x: p.x + ax, y: p.y + ay }))));
+        acentos.push(...ac.map((t) => t.map((p) => ({ ...p, x: p.x + ax, y: p.y + ay }))));
       }
     }
     cursor += cx.x1 - cx.x0 + ESPACO;
   }
-  return out;
+  return { letras: out, acentos };
 }
 
 /** Leva a palavra montada para a caixa da palavra original (mesma altura, começando no mesmo lugar). */
-export function encaixar(tracos: PontoGlifo[][], caixa: { x: number; y: number; h: number }): PontoGlifo[][] {
-  const c = caixaDe(tracos);
+export function encaixar(tracos: PontoGlifo[][], caixa: { x: number; y: number; h: number }, medida: PontoGlifo[][] = tracos): PontoGlifo[][] {
+  // A medida (normalmente só as letras, sem os acentos) define o tamanho e o lugar;
+  // o acento fica por cima, como na escrita de verdade.
+  const c = caixaDe(medida.length ? medida : tracos);
   if (!c) return [];
   const k = caixa.h / Math.max(0.05, c.y1 - c.y0);
   return tracos.map((t) => t.map((p) => ({ x: caixa.x + (p.x - c.x0) * k, y: caixa.y + (p.y - c.y0) * k, p: p.p })));

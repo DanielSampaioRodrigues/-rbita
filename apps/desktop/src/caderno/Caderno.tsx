@@ -9,7 +9,7 @@ import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PIN
 import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, limitesDoElemento, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
 import { areaParaExportar, crescerAte, deslocamentoPara, ehInfinito, escalaDaImagem, medidaInfinito, tamanhoInfinito } from "./infinito";
 import { ensinarPalavra, lerMinhaLetra } from "./minhaLetra";
-import { comporPalavra, encaixar, lerAlfabeto, podeEscrever } from "./alfabeto";
+import { comporSeparado, encaixar, lerAlfabeto, podeEscrever } from "./alfabeto";
 import { lerAssuntos, ligarAssunto } from "../academico/assuntos";
 import { EscolherMateria } from "../academico/EscolherMateria";
 import { pegarPedido } from "../app/abrirDepois";
@@ -2376,11 +2376,13 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     const pid = correcao.pid;
     // Com a letra da pessoa ensinada (todas as letras da palavra), a palavra sai na letra dela.
     const alfa = await lerAlfabeto().catch(() => ({}));
+    const cenas = cenasRef.current; // depois da espera, a cena de agora (não perde traço feito nesse meio-tempo)
     if (podeEscrever(palavra, alfa)) {
       const originais = (cenas[pid]?.elementos ?? []).filter((e): e is Traco => m.ids.includes(e.id) && e.tipo === "traco");
       const espessura = originais.length ? originais.reduce((s, e) => s + e.espessura, 0) / originais.length : 2;
       const ferramenta = originais[0]?.ferramenta ?? "caneta";
-      const novos: Traco[] = encaixar(comporPalavra(palavra, alfa), { x: m.x, y: m.y, h: m.h }).map((pts) => ({
+      const { letras, acentos } = comporSeparado(palavra, alfa);
+      const novos: Traco[] = encaixar([...letras, ...acentos], { x: m.x, y: m.y, h: m.h }, letras).map((pts) => ({
         tipo: "traco", id: crypto.randomUUID(), ferramenta, cor: m.cor, espessura, pontos: pts.map((p) => ({ x: p.x, y: p.y, p: p.p })),
       }));
       if (novos.length) {

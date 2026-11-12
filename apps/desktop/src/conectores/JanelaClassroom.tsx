@@ -31,6 +31,7 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
   const [tarefas, setTarefas] = useState<TarefaClassroom[] | null>(null);
   const [agenda, setAgenda] = useState<Record<string, string>>({});
   const [nosEstudos, setNosEstudos] = useState<Record<string, string>>({});
+  const [levando, setLevando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [entregando, setEntregando] = useState<{ tarefa: TarefaClassroom; nome: string } | null>(null);
@@ -73,7 +74,9 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
   };
   // Traz para os Estudos (na matéria de mesmo nome da turma, ou numa nova).
   const paraEstudos = async (lista: TarefaClassroom[]) => {
+    if (levando) return;
     setErro(null);
+    setLevando(true);
     try {
       let materias = await api.listarMaterias();
       let novas = 0;
@@ -87,6 +90,8 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
       recado(t.postoEstudos(novas));
     } catch (e) {
       setErro(mensagem(e));
+    } finally {
+      setLevando(false);
     }
   };
   const abrir = (url: string) => void api.abrirEndereco(url).catch((e) => setErro(mensagem(e)));
@@ -110,7 +115,7 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
           : <Button className="botao pequeno com-icone" onPress={() => void agendar(x)}><CalendarDays aria-hidden="true" size="1em" /> {t.agenda}</Button>)}
         {x.estado === "pendente" && (nosEstudos[x.id]
           ? <span className="texto-suave pequeno com-icone"><BookOpen aria-hidden="true" size="0.95em" /> {t.nosEstudos}</span>
-          : <Button className="botao pequeno com-icone" onPress={() => void paraEstudos([x])}><BookOpen aria-hidden="true" size="1em" /> {t.estudos}</Button>)}
+          : <Button className="botao pequeno com-icone" isDisabled={levando} onPress={() => void paraEstudos([x])}><BookOpen aria-hidden="true" size="1em" /> {t.estudos}</Button>)}
         <Button className="botao pequeno com-icone" onPress={() => abrir(x.link)}><ExternalLink aria-hidden="true" size="1em" /> {t.abrir}</Button>
       </div>
     </li>
@@ -135,7 +140,7 @@ export function JanelaClassroom({ aberta, aoFechar, fazerArquivo }: {
           {faltam.length > 0 && (<><h3 className="classroom-grupo">{t.faltam}</h3><ul className="classroom-lista">{faltam.map(cartao)}</ul></>)}
           {feitas.length > 0 && (<><h3 className="classroom-grupo">{t.feitas}</h3><ul className="classroom-lista">{feitas.map(cartao)}</ul></>)}
           <div className="janela-acoes">
-            {faltam.some((x) => !nosEstudos[x.id]) && <Button className="botao" onPress={() => void paraEstudos(faltam.filter((x) => !nosEstudos[x.id]))}>{t.todasEstudos}</Button>}
+            {faltam.some((x) => !nosEstudos[x.id]) && <Button className="botao" isDisabled={levando} onPress={() => void paraEstudos(faltam.filter((x) => !nosEstudos[x.id]))}>{t.todasEstudos}</Button>}
             <Button className="botao" onPress={() => void carregar()}>{t.atualizar}</Button>
             <Button className="botao principal" onPress={aoFechar}>{t.fechar}</Button>
           </div>

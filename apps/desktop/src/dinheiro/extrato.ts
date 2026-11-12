@@ -132,9 +132,9 @@ const COLUNAS = {
   id: ["identificador", "id", "codigo", "documento", "n documento"],
 };
 
-function achar(cabeca: string[], nomes: string[]): number {
-  const i = cabeca.findIndex((c) => nomes.includes(c));
-  return i >= 0 ? i : cabeca.findIndex((c) => nomes.some((n) => n.length > 3 && c.startsWith(n)));
+function achar(cabeca: string[], nomes: string[], fora: number[] = []): number {
+  const i = cabeca.findIndex((c, k) => !fora.includes(k) && nomes.includes(c));
+  return i >= 0 ? i : cabeca.findIndex((c, k) => !fora.includes(k) && nomes.some((n) => n.length > 3 && c.startsWith(n)));
 }
 
 /**
@@ -150,8 +150,9 @@ export function lerCsv(texto: string): Extrato | null {
     const sep = [";", ",", "\t"].sort((a, b) => bruta.split(b).length - bruta.split(a).length)[0];
     const cabeca = dividir(bruta, sep).map(normal);
     const iData = achar(cabeca, COLUNAS.data);
-    const iValor = achar(cabeca, COLUNAS.valor);
+    // Débito e crédito primeiro: "Valor Débito" não pode ser lido como a coluna "Valor".
     const iDeb = achar(cabeca, COLUNAS.debito), iCred = achar(cabeca, COLUNAS.credito);
+    const iValor = achar(cabeca, COLUNAS.valor, [iDeb, iCred].filter((k) => k >= 0));
     if (iData < 0 || (iValor < 0 && iDeb < 0 && iCred < 0)) continue;
     const iDesc = achar(cabeca, COLUNAS.descricao);
     const iId = achar(cabeca, COLUNAS.id);

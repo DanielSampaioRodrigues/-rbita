@@ -269,7 +269,11 @@ function MinhaLetra() {
   const carregar = () => void lerMinhaLetra().then((l) => { setLista(l); setTexto(l.join("\n")); }, () => setLista([]));
   useEffect(carregar, []);
   const guardar = async () => {
-    const l = await gravarMinhaLetra([texto]);
+    // Junta com o que foi ensinado enquanto a caixa estava aberta ("Está certa: lembrar"), sem perder nada
+    // (o que a pessoa tirou da caixa e que já estava antes sai mesmo).
+    const antes = new Set(lista ?? []);
+    const novasDeFora = (await lerMinhaLetra()).filter((p) => !antes.has(p));
+    const l = await gravarMinhaLetra([texto, ...novasDeFora]);
     setLista(l); setTexto(l.join("\n"));
     recado(tc.minhaLetraSalva);
   };

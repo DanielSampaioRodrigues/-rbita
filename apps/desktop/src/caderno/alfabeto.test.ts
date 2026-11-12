@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comporPalavra, decompor, encaixar, podeEscrever, type Alfabeto } from "./alfabeto";
+import { comporPalavra, comporSeparado, decompor, encaixar, podeEscrever, type Alfabeto } from "./alfabeto";
 
 // Letras de mentira: um traço vertical da linha do meio até a base, com a largura dada.
 const letra = (largura: number) => ({ tracos: [[{ x: 0.2, y: 0.42, p: 0.5 }, { x: 0.2 + largura, y: 0.72, p: 0.5 }]] });
@@ -43,5 +43,13 @@ describe("a minha letra", () => {
     expect(Math.min(...xs)).toBeCloseTo(100);
     expect(Math.min(...ys)).toBeCloseTo(50);
     expect(Math.max(...ys)).toBeCloseTo(80);
+  });
+  it("com acento, o tamanho vem só das letras (o acento fica acima da caixa)", () => {
+    const { letras, acentos } = comporSeparado("ás", alfa);
+    const e = encaixar([...letras, ...acentos], { x: 0, y: 100, h: 30 }, letras);
+    const ys = e.slice(0, letras.length).flat().map((p) => p.y);
+    expect(Math.min(...ys)).toBeCloseTo(100);
+    expect(Math.max(...ys)).toBeCloseTo(130);
+    expect(Math.min(...e.slice(letras.length).flat().map((p) => p.y))).toBeLessThan(100);
   });
 });

@@ -3,6 +3,7 @@
 // do Classroom entram como atividades da matéria. Os vínculos ficam no cofre de valores
 // ("estudos.ligacoes"), para atualizar em vez de repetir.
 import { api, type Atividade, type Evento, type Materia, type Projeto } from "../api";
+import { emFila } from "../app/fila";
 import type { TipoAtividade } from "./nivel";
 
 /** Quantos dias antes começar, por tipo (a pessoa muda no formulário). */
@@ -46,7 +47,10 @@ export async function lerLigacoes(): Promise<Ligacoes> {
 const gravarLigacoes = (l: Ligacoes) => api.gravarValor(CHAVE, l);
 
 /** Põe, atualiza ou tira os compromissos de uma atividade na Agenda. */
-export async function sincronizarNaAgenda(a: Atividade, nomeTipo: string, materia: string, opcoes: { agenda: boolean; dias: number }): Promise<void> {
+export function sincronizarNaAgenda(a: Atividade, nomeTipo: string, materia: string, opcoes: { agenda: boolean; dias: number }): Promise<void> {
+  return emFila("estudos.ligacoes", () => sincronizarNaAgendaAgora(a, nomeTipo, materia, opcoes));
+}
+async function sincronizarNaAgendaAgora(a: Atividade, nomeTipo: string, materia: string, opcoes: { agenda: boolean; dias: number }): Promise<void> {
   const l = await lerLigacoes();
   const antes = l.agenda[a.id] ?? {};
   const agora: { prazo?: string; comecar?: string; dias?: number } = { dias: opcoes.dias };
@@ -62,7 +66,10 @@ export async function sincronizarNaAgenda(a: Atividade, nomeTipo: string, materi
 }
 
 /** Ao apagar a atividade, tira os compromissos dela. */
-export async function tirarDaAgenda(atividadeId: string): Promise<void> {
+export function tirarDaAgenda(atividadeId: string): Promise<void> {
+  return emFila("estudos.ligacoes", () => tirarDaAgendaAgora(atividadeId));
+}
+async function tirarDaAgendaAgora(atividadeId: string): Promise<void> {
   const l = await lerLigacoes();
   const antes = l.agenda[atividadeId];
   if (!antes) return;
@@ -79,7 +86,12 @@ export function materiaDaTurma(turma: string, materias: Materia[]): Materia | nu
 }
 
 /** Traz uma tarefa do Classroom para os Estudos (uma vez; depois só atualiza a data e o feito). */
-export async function trazerDoClassroom(tarefa: { id: string; titulo: string; turma: string; prazo: number | null; estado: string }, materias: Materia[]): Promise<{ atividade: Atividade; nova: boolean; materiaNova: boolean }> {
+type TarefaTurma = { id: string; titulo: string; turma: string; prazo: number | null; estado: string };
+export function trazerDoClassroom(tarefa: TarefaTurma, materias: Materia[]): Promise<{ atividade: Atividade; nova: boolean; materiaNova: boolean }> {
+  // Na fila, as matérias são lidas de novo: uma importação anterior pode ter criado a da turma.
+  return emFila("estudos.ligacoes", async () => trazerDoClassroomAgora(tarefa, await api.listarMaterias().catch(() => materias)));
+}
+async function trazerDoClassroomAgora(tarefa: TarefaTurma, materias: Materia[]): Promise<{ atividade: Atividade; nova: boolean; materiaNova: boolean }> {
   const l = await lerLigacoes();
   let materia = materiaDaTurma(tarefa.turma, materias);
   let materiaNova = false;
@@ -105,7 +117,14 @@ export const tituloDoProjeto = (a: Atividade, materia: string) => (materia ? `${
  * Trabalho acadêmico vira projeto de verdade (passos, subtarefas, "onde parei", prazo).
  * Se já houver projetos ativos demais (o limite da pessoa), o projeto nasce em espera.
  */
-export async function virarProjeto(a: Atividade, materia: string): Promise<{ projeto: Projeto; emEspera: boolean }> {
+export function virarProjeto(a: Atividade, materia: string): Promise<{ projeto: Projeto; emEspera: boolean }> {
+  return emFila("estudos.ligacoes", () => virarProjetoAgora(a, materia));
+}
+async function virarProjetoAgora(a: Atividade, materia: string): Promise<{ projeto: Projeto; emEspera: boolean }> {
+  // Dois toques seguidos não criam dois projetos.
+  const ja = (await lerLigacoes()).projetos[a.id];
+  const existente = ja ? (await api.listarProjetos().catch(() => [])).find((p) => p.id === ja) : undefined;
+  if (existente) return { projeto: existente, emEspera: existente.estado !== "ativo" };
   const titulo = tituloDoProjeto(a, materia);
   let emEspera = false;
   let projeto: Projeto;

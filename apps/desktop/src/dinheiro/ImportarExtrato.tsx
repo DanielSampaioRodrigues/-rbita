@@ -86,6 +86,9 @@ export function ImportarExtrato({ grupos, gastos, entradas, aoFechar }: { grupos
     }
     // Guarda só os identificadores registrados: os que a pessoa deixou de fora voltam a
     // aparecer (desmarcados ou não) se o mesmo extrato for importado de novo.
+    // O que já foi registrado sai da lista na hora: tentar de novo não repete.
+    setJaImportados((j) => new Set([...j, ...feitas]));
+    setMarcadas((m) => { const n = new Set(m); for (const id of feitas) n.delete(id); return n; });
     const todos = [...(await lerImportados()), ...feitas].slice(-MAXIMO_GUARDADO);
     await api.gravarValor(CHAVE, todos).catch(() => {});
     setSalvando(false);
