@@ -8,6 +8,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { caminhoDeForma, reconhecerForma, cenaVazia, desenhoDeTraco, MODELOS_PINCEL, novaSemente, elementoDentro, escalar, FERRAMENTAS, formaAtingida, fragmentosAoApagar, lerCena, limitesDe, MODELOS_PAPEL, papelDataUri, papelPadrao, rotacionar, serializarCena, TAMANHOS, TIPOS_FORMA, transladar, type AlinharTexto, type Cena, type CoresPapel, type Elemento, type Ferramenta, type Forma, type Imagem, type ModeloPapel, type ModeloPincel, type Papel, type Ponto, type Ponto2, type Texto, type TipoForma, type Traco } from "@orbita/caderno";
 import { agrupar, ajustarConectores, desagrupar, elementoNoPonto, expandirGrupos, idsNoRetangulo, imagemAtingida, limitesDoElemento, moverUmNivel, objetoNoPonto, ordenarTudo, soltarSetasMovidas, temGrupo, type MedidaTexto } from "./edicao";
 import { crescerAte, ehInfinito, medidaInfinito, tamanhoInfinito } from "./infinito";
+import { ensinarPalavra, lerMinhaLetra } from "./minhaLetra";
 import { ICONES_FORMA, IconeAgrupar, IconeAlca, IconeLaser, IconeCadeado, IconeCadeadoAberto, IconeCursor, IconeDesagrupar, IconeEngrenagem, IconeNivelFrente, IconeNivelTras, IconeSeta, IconeTudoFrente, IconeTudoTras } from "./iconesCaderno";
 import { api, CORES_ETIQUETA, type Capa, type Caderno, type EstadoIa, type PaginaCaderno, type PastaCaderno } from "../api";
 import { reduzirImagem } from "../fundo";
@@ -2312,7 +2313,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     const { gerarPng } = await import("../exportar/imagem");
     const esc = 1.5;
     const imagem = await imagemComCaixas(await gerarPng(medida, esc), palavras, esc);
-    const r = await api.conferirEscritaIa(imagem, palavras.length, sensivel);
+    const r = await api.conferirEscritaIa(imagem, palavras.length, sensivel, await lerMinhaLetra());
     const marcas = r.flatMap((c) => { const p = palavras[c.n - 1]; return p ? [{ ...p, lido: c.lido, sugestoes: c.sugestoes }] : []; });
     setCorrecao({ pid: sel.id, marcas });
     recado(marcas.length ? t.correcao.achou(marcas.length) : t.correcao.nada);
@@ -2612,7 +2613,11 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
                 <PaginaView key={p.id} id={`pg-${p.id}`} pagina={p} numero={i + 1} selecionada={p.id === selId}
                   sobre={correcao?.pid === p.id && marcasVivas.length ? (esc) => (
                     <CamadaCorrecao marcas={marcasVivas} escala={esc} largura={medidaDe(p.tamanho).largura} altura={medidaDe(p.tamanho).altura}
-                      aoEscolher={corrigirPalavra} aoIgnorar={(m) => setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n) } : c))} />
+                      aoEscolher={corrigirPalavra} aoIgnorar={(m) => setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n) } : c))}
+                      aoLembrar={(m) => {
+                        setCorrecao((c) => (c ? { ...c, marcas: c.marcas.filter((x) => x.n !== m.n && x.lido.toLocaleLowerCase("pt-BR") !== m.lido.toLocaleLowerCase("pt-BR")) } : c));
+                        void ensinarPalavra(m.lido).then(() => recado(t.correcao.lembrada(m.lido)), (e) => setErro(mensagem(e)));
+                      }} />
                   ) : undefined}
                   cena={cenas[p.id] ?? CENA_VAZIA} ferramenta={ferramenta} cor={cor} ajuste={ajustes[fTraco]} modeloPincel={modeloPincel}
                   forma={ajusteForma} editandoTexto={editandoTexto} selecionados={p.id === selPid ? selIds : vazio} imagemUrl={imagemUrl}

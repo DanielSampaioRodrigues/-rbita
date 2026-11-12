@@ -2,7 +2,8 @@
 // (vermelho suave; ainda mais suave no baixo estímulo) embaixo de cada palavra que a IA
 // achou escrita errada. Tocar na palavra abre as sugestões; escolher troca a palavra
 // escrita à mão pela certa, em letra cursiva, no mesmo lugar e na mesma cor (dá para
-// desfazer). "Ignorar" tira só a marca.
+// desfazer). "Ignorar" tira só a marca; "Está certa" também ensina a palavra ao corretor
+// (a "minha letra"), para não marcar de novo.
 import { useState } from "react";
 import { textos } from "../textos/pt-BR";
 
@@ -18,13 +19,15 @@ function ondulada(x: number, y: number, w: number): string {
   return d;
 }
 
-export function CamadaCorrecao({ marcas, escala, largura, altura, aoEscolher, aoIgnorar }: {
+export function CamadaCorrecao({ marcas, escala, largura, altura, aoEscolher, aoIgnorar, aoLembrar }: {
   marcas: MarcaEscrita[];
   escala: number;
   largura: number;
   altura: number;
   aoEscolher: (m: MarcaEscrita, palavra: string) => void;
   aoIgnorar: (m: MarcaEscrita) => void;
+  /** A palavra está certa: tira a marca e ensina ao corretor. */
+  aoLembrar?: (m: MarcaEscrita) => void;
 }) {
   const [aberta, setAberta] = useState<number | null>(null);
   const atual = marcas.find((m) => m.n === aberta);
@@ -46,6 +49,7 @@ export function CamadaCorrecao({ marcas, escala, largura, altura, aoEscolher, ao
           {atual.sugestoes.map((s) => (
             <button key={s} type="button" className="botao pequeno principal" autoFocus={s === atual.sugestoes[0]} onClick={() => { aoEscolher(atual, s); setAberta(null); }}>{s}</button>
           ))}
+          {aoLembrar && atual.lido && <button type="button" className="botao pequeno" onClick={() => { aoLembrar(atual); setAberta(null); }}>{t.estaCerta}</button>}
           <button type="button" className="botao pequeno" onClick={() => { aoIgnorar(atual); setAberta(null); }}>{t.ignorar}</button>
         </div>
       )}

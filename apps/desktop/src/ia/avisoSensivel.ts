@@ -6,7 +6,7 @@
 // Fica guardado no banco criptografado (vai junto no backup), não no navegador.
 import { api } from "../api";
 
-const CHAVE = "ia.avisoSensivel";
+const CHAVE = "ia.aviso-sensivel";
 let vistos: Promise<string[]> | null = null;
 
 const ler = () => {

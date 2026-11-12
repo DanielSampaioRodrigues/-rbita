@@ -339,6 +339,9 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
                 imagem: String,
                 quantas: usize,
                 sensivel: bool,
+                /// Palavras que a pessoa ensinou como certas ("minha letra").
+                #[serde(default)]
+                minhas: Vec<String>,
             }
             let a: A = ler_args(comando, args)?;
             if a.quantas == 0 {
@@ -354,12 +357,12 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
             let resposta = match r {
                 None => {
                     let imagens = [a.imagem.clone()];
-                    return pedir(protocolo::pedido_completar_com_imagens(&e, escrita::SISTEMA, &escrita::montar(a.quantas), &imagens), 0);
+                    return pedir(protocolo::pedido_completar_com_imagens(&e, escrita::SISTEMA, &escrita::montar(a.quantas, &a.minhas), &imagens), 0);
                 }
                 Some(r) => protocolo::ler_completar(e.provedor.tipo, &protocolo::ler_resposta(r.situacao, &r.corpo)?)?,
             };
             match escrita::ler(&resposta, a.quantas) {
-                Some(palavras) => pronto(palavras),
+                Some(palavras) => pronto(escrita::sem_as_minhas(palavras, &a.minhas)),
                 None => Err(protocolo::erro("resposta", "A IA não conseguiu conferir a escrita desta vez. Tente de novo.")),
             }
         }

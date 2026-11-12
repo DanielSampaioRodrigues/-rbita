@@ -677,8 +677,8 @@ pub async fn ia_caderno(estado: State<'_, Estado>, pedido: String, contexto: Str
 /// Corretor da escrita à mão: a imagem da página com as palavras numeradas; devolve
 /// as erradas com sugestões. Não grava nada.
 #[tauri::command]
-pub async fn conferir_escrita_ia(estado: State<'_, Estado>, imagem: String, quantas: usize, sensivel: bool) -> Result<Value, Erro> {
-    rodar_ia(&estado, "conferir_escrita_ia", json!({ "imagem": imagem, "quantas": quantas, "sensivel": sensivel })).await
+pub async fn conferir_escrita_ia(estado: State<'_, Estado>, imagem: String, quantas: usize, sensivel: bool, minhas: Option<Vec<String>>) -> Result<Value, Erro> {
+    rodar_ia(&estado, "conferir_escrita_ia", json!({ "imagem": imagem, "quantas": quantas, "sensivel": sensivel, "minhas": minhas.unwrap_or_default() })).await
 }
 
 /// IA com liberdade total no caderno: devolve um plano de mudanças; quem aplica é a tela.

@@ -17,9 +17,37 @@ Responda só com JSON, sem texto antes ou depois, neste formato:\n\
 {\"palavras\":[{\"n\":1,\"lido\":\"neuronio\",\"errada\":true,\"sugestoes\":[\"neurônio\"]}]}\n\
 Inclua só as palavras erradas.";
 
-/// A mensagem: quantas caixas há.
-pub fn montar(quantas: usize) -> String {
-    format!("A página tem {quantas} caixas numeradas (de 1 a {quantas}). Confira a ortografia de cada palavra escrita à mão e responda só com o JSON.")
+/// Quantas palavras da "minha letra" vão no pedido, no máximo.
+pub const MAXIMO_MINHAS: usize = 300;
+
+/// As palavras que a pessoa ensinou (limpas, sem repetir, até o máximo).
+pub fn limpar_minhas(minhas: &[String]) -> Vec<String> {
+    let mut vistas = std::collections::HashSet::new();
+    minhas
+        .iter()
+        .map(|p| p.trim().chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '\'').take(40).collect::<String>())
+        .filter(|p| !p.is_empty() && vistas.insert(p.to_lowercase()))
+        .take(MAXIMO_MINHAS)
+        .collect()
+}
+
+/// A mensagem: quantas caixas há e, se houver, as palavras que a pessoa ensinou.
+pub fn montar(quantas: usize, minhas: &[String]) -> String {
+    let mut m = format!("A página tem {quantas} caixas numeradas (de 1 a {quantas}). Confira a ortografia de cada palavra escrita à mão e responda só com o JSON.");
+    let minhas = limpar_minhas(minhas);
+    if !minhas.is_empty() {
+        m.push_str(&format!(
+            "\nEsta pessoa já ensinou palavras que usa e que estão certas (use para reconhecer a letra dela e não as marque como erro): {}.",
+            minhas.join(", ")
+        ));
+    }
+    m
+}
+
+/// Tira das erradas as que a pessoa já ensinou como certas (sem diferença de maiúscula).
+pub fn sem_as_minhas(palavras: Vec<PalavraConferida>, minhas: &[String]) -> Vec<PalavraConferida> {
+    let certas: std::collections::HashSet<String> = limpar_minhas(minhas).into_iter().map(|p| p.to_lowercase()).collect();
+    palavras.into_iter().filter(|p| !certas.contains(&p.lido.trim().to_lowercase())).collect()
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -77,6 +105,22 @@ pub fn ler(resposta: &str, quantas: usize) -> Option<Vec<PalavraConferida>> {
 #[cfg(test)]
 mod testes {
     use super::*;
+
+    #[test]
+    fn minha_letra_vai_no_pedido_e_tira_as_certas() {
+        let minhas = vec!["Vygotsky".to_string(), " vygotsky ".into(), "TDAH".into(), "<script>".into(), "".into()];
+        assert_eq!(limpar_minhas(&minhas), vec!["Vygotsky".to_string(), "TDAH".into(), "script".into()]);
+        let m = montar(3, &minhas);
+        assert!(m.contains("Vygotsky, TDAH, script."));
+        assert!(!montar(3, &[]).contains("ensinou"));
+        let erradas = vec![
+            PalavraConferida { n: 1, lido: "vygotsky".into(), sugestoes: vec!["Vigotski".into()] },
+            PalavraConferida { n: 2, lido: "neuronio".into(), sugestoes: vec!["neurônio".into()] },
+        ];
+        let r = sem_as_minhas(erradas, &minhas);
+        assert_eq!(r.len(), 1);
+        assert_eq!(r[0].n, 2);
+    }
 
     #[test]
     fn le_so_as_erradas_com_numero_valido() {

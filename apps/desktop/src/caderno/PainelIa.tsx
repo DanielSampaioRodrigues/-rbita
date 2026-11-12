@@ -18,6 +18,7 @@ import { pareceSensivel } from "../ia/sensivel";
 import { Copy, ImagePlus, Sparkles, X } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { guardarNaBiblioteca } from "./biblioteca";
+import { gravarMinhaLetra, lerMinhaLetra } from "./minhaLetra";
 
 const t = textos.caderno.ia;
 
@@ -166,6 +167,8 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
         ))}
       </div>
 
+      {aoConferirEscrita && <MinhaLetra />}
+
       <form className="painel-ia-livre" onSubmit={(e) => { e.preventDefault(); void enviar(pedido, pedido); }}>
         <label className="campo-rotulo" htmlFor="painel-ia-pedido">{t.livre}</label>
         <textarea id="painel-ia-pedido" className="entrada-texto" rows={3} maxLength={2000} value={pedido} placeholder={t.livreExemplo}
@@ -245,5 +248,29 @@ export function PainelIa({ obterContexto, temDesenho, aoPorNaPagina, aoPorEmPagi
         </section>
       )}
     </div>
+  );
+}
+
+/** A lista "minha letra" do corretor: ver, acrescentar e tirar palavras. */
+function MinhaLetra() {
+  const tc = textos.caderno.correcao;
+  const recado = useRecado();
+  const [lista, setLista] = useState<string[] | null>(null);
+  const [texto, setTexto] = useState("");
+  const carregar = () => void lerMinhaLetra().then((l) => { setLista(l); setTexto(l.join("\n")); }, () => setLista([]));
+  useEffect(carregar, []);
+  const guardar = async () => {
+    const l = await gravarMinhaLetra([texto]);
+    setLista(l); setTexto(l.join("\n"));
+    recado(tc.minhaLetraSalva);
+  };
+  return (
+    <details className="painel-ia-letra" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) carregar(); }}>
+      <summary>{tc.minhaLetra(lista?.length ?? 0)}</summary>
+      <label className="campo-rotulo" htmlFor="painel-ia-letra">{tc.minhaLetraCampo}</label>
+      <textarea id="painel-ia-letra" className="entrada-texto sozinha" rows={4} value={texto} onChange={(e) => setTexto(e.target.value)} />
+      <p className="campo-ajuda">{tc.minhaLetraAjuda}</p>
+      <Button className="botao pequeno" onPress={() => void guardar()}>{tc.minhaLetraSalvar}</Button>
+    </details>
   );
 }

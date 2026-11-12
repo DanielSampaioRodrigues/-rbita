@@ -1087,7 +1087,8 @@ export interface Api {
   ajustarOrganizacaoIa(texto: string, itens: string, mudanca: string, sensivel: boolean): Promise<Organizacao>;
   /** Revisa ortografia e pontuação. Não grava nada. */
   /** Corretor da escrita à mão: imagem da página com as palavras numeradas. */
-  conferirEscritaIa(imagem: string, quantas: number, sensivel: boolean): Promise<PalavraConferida[]>;
+  /** `minhas`: palavras que a pessoa ensinou como certas ("minha letra"). */
+  conferirEscritaIa(imagem: string, quantas: number, sensivel: boolean, minhas?: string[]): Promise<PalavraConferida[]>;
   /** IA do caderno: pedido livre sobre a página (texto e imagens em data: URL). */
   iaCaderno(pedido: string, contexto: string, imagens: string[], sensivel: boolean): Promise<RespostaIaCaderno>;
   /** IA com liberdade no caderno: recebe a descrição (JSON) e devolve o plano de mudanças. A tela confere e aplica. */
@@ -1403,7 +1404,7 @@ export function criarApiDeComandos(chamar: Chamar): Api {
   conectorGoogleSair: () => chamar("conector_google_sair"),
   zoteroLocal: (caminho) => chamar("zotero_local", { caminho }),
   abrirEndereco: (url) => chamar("abrir_endereco", { url }),
-  conferirEscritaIa: (imagem, quantas, sensivel) => chamar("conferir_escrita_ia", { imagem, quantas, sensivel }),
+  conferirEscritaIa: (imagem, quantas, sensivel, minhas) => chamar("conferir_escrita_ia", { imagem, quantas, sensivel, minhas: minhas ?? [] }),
   ditadoEstado: () => chamar("ditado_estado"),
   ditadoBaixar: (modelo) => chamar("ditado_baixar", { modelo }),
   ditadoCancelarDownload: () => chamar("ditado_cancelar_download"),
@@ -2996,8 +2997,9 @@ ${JSON.stringify(tema)}`;
       return `data:image/svg+xml;base64,${btoa(svg)}`;
     },
     // Simulação do corretor: a primeira palavra sempre "errada".
-    conferirEscritaIa: async (_imagem, quantas) => {
+    conferirEscritaIa: async (_imagem, quantas, _sensivel, minhas) => {
       await espera(600);
+      if (minhas?.some((m) => m.toLowerCase() === "neuronio")) return [];
       return quantas ? [{ n: 1, lido: "neuronio", sugestoes: ["neurônio", "neurônios"] }] : [];
     },
     // Simulação da IA do caderno: devolve uma proposta de exemplo com o que veio.

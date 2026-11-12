@@ -2219,3 +2219,7 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .referencia-colar { display: grid; gap: var(--espaco-2); }
 .referencia-colar summary { cursor: pointer; font-weight: 650; display: list-item; padding: 0.5rem 0; }
 .referencia-colar[open] { padding-bottom: var(--espaco-2); }
+
+/* Painel da IA do caderno: a lista "minha letra" do corretor */
+.painel-ia-letra { display: grid; gap: var(--espaco-2); }
+.painel-ia-letra summary { cursor: pointer; font-weight: 650; padding: 0.4rem 0; }
