@@ -10,6 +10,7 @@ import { Segmentado } from "../../componentes/Segmentado";
 import { textos } from "../../textos/pt-BR";
 import { autoresEmTexto, buscarReferencia, citacaoNoTexto, deCsl, formatarReferencia, lerAutores, type Norma, type Referencia, type TipoReferencia } from "./referencias";
 import { buscarNoZotero, lerConfigZotero, resumoDoItem, type ConfigZotero } from "../../conectores/zotero";
+import { referenciaPorIa } from "./referenciaIa";
 
 const t = textos.caderno.editor.referencia;
 const VAZIA: Referencia = { tipo: "book", autores: [], titulo: "", ano: "" };
@@ -20,6 +21,8 @@ export function JanelaReferencia({ editor, aberta, aoFechar, normaInicial }: { e
   const [autores, setAutores] = useState("");
   const [id, setId] = useState("");
   const [buscando, setBuscando] = useState(false);
+  const [colado, setColado] = useState("");
+  const [lendoIa, setLendoIa] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [previa, setPrevia] = useState<{ html: string; citacao: string } | null>(null);
   useEffect(() => { if (aberta) setNorma(normaInicial); }, [aberta, normaInicial]);
@@ -61,11 +64,24 @@ export function JanelaReferencia({ editor, aberta, aoFechar, normaInicial }: { e
       setBuscando(false);
     }
   };
+  // A IA só separa o texto colado nos campos; a pessoa confere antes de inserir.
+  const preencherComIa = async () => {
+    setErro(null); setLendoIa(true);
+    try {
+      const achada = await referenciaPorIa(colado);
+      if (!achada) { setErro(t.iaNaoEntendeu); return; }
+      setR({ ...achada, acesso: achada.acesso ?? r.acesso }); setAutores(autoresEmTexto(achada.autores));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLendoIa(false);
+    }
+  };
   const inserir = (html: string) => { editor.chain().focus().insertContent(html).run(); };
   const campo = (k: keyof Referencia, rotulo: string, tipo = "text") => (
     <label className="campo estilo-campo">
       <span className="campo-rotulo">{rotulo}</span>
-      <input className="entrada-texto" type={tipo} value={(r[k] as string | undefined) ?? ""} onChange={(e) => mudar({ [k]: e.target.value } as Partial<Referencia>)} />
+      <input className="entrada-texto sozinha" type={tipo} value={(r[k] as string | undefined) ?? ""} onChange={(e) => mudar({ [k]: e.target.value } as Partial<Referencia>)} />
     </label>
   );
   const fechar = () => { aoFechar(); setErro(null); };
@@ -76,17 +92,26 @@ export function JanelaReferencia({ editor, aberta, aoFechar, normaInicial }: { e
         <form className="painel-ia-linha" onSubmit={(e) => { e.preventDefault(); void buscar(); }}>
           <label className="campo estilo-campo referencia-busca">
             <span className="campo-rotulo">{t.buscar}</span>
-            <input className="entrada-texto" value={id} onChange={(e) => setId(e.target.value)} placeholder={t.buscarExemplo} />
+            <input className="entrada-texto sozinha" value={id} onChange={(e) => setId(e.target.value)} placeholder={t.buscarExemplo} />
           </label>
           <Button type="submit" className="botao" isDisabled={!id.trim() || buscando}>{buscando ? t.buscando : t.buscarBotao}</Button>
         </form>
         <p className="campo-ajuda">{t.buscarAjuda}</p>
+        <details className="referencia-colar">
+          <summary>{t.colar}</summary>
+          <label className="campo estilo-campo">
+            <span className="campo-rotulo">{t.colarCampo}</span>
+            <textarea className="entrada-texto sozinha multilinha" rows={3} value={colado} onChange={(e) => setColado(e.target.value)} placeholder={t.colarExemplo} />
+          </label>
+          <Button className="botao" isDisabled={!colado.trim() || lendoIa} onPress={() => void preencherComIa()}>{lendoIa ? t.iaLendo : t.iaPreencher}</Button>
+          <p className="campo-ajuda">{t.iaAjuda}</p>
+        </details>
         {zotero ? (
           <>
             <form className="painel-ia-linha" onSubmit={(e) => { e.preventDefault(); void buscarZ(); }}>
               <label className="campo estilo-campo referencia-busca">
                 <span className="campo-rotulo">{tz.buscar}</span>
-                <input className="entrada-texto" value={termoZ} onChange={(e) => setTermoZ(e.target.value)} placeholder={tz.buscarDica} />
+                <input className="entrada-texto sozinha" value={termoZ} onChange={(e) => setTermoZ(e.target.value)} placeholder={tz.buscarDica} />
               </label>
               <Button type="submit" className="botao" isDisabled={buscando}>{buscando ? t.buscando : t.buscarBotao}</Button>
             </form>
@@ -117,7 +142,7 @@ export function JanelaReferencia({ editor, aberta, aoFechar, normaInicial }: { e
         </div>
         <label className="campo">
           <span className="campo-rotulo">{t.autores}</span>
-          <textarea className="entrada-texto" rows={3} value={autores} onChange={(e) => setAutores(e.target.value)} placeholder={t.autoresExemplo} />
+          <textarea className="entrada-texto sozinha" rows={3} value={autores} onChange={(e) => setAutores(e.target.value)} placeholder={t.autoresExemplo} />
           <span className="campo-ajuda">{t.autoresAjuda}</span>
         </label>
         {previa && (

@@ -2084,7 +2084,7 @@
 
 /* Leitor: fichamento */
 .leitor-fichamento { display: flex; flex-direction: column; gap: var(--espaco-3); }
-.leitor-fichamento-ref summary { cursor: pointer; font-weight: 650; min-height: 2.5rem; display: flex; align-items: center; }
+.leitor-fichamento-ref summary { cursor: pointer; font-weight: 650; display: list-item; padding: 0.5rem 0; }
 .leitor-fichamento-ref[open] { display: grid; gap: var(--espaco-2); }
 .leitor-fichamento-form { display: grid; gap: var(--espaco-2); padding-bottom: var(--espaco-3); border-bottom: 1px solid var(--cor-borda-suave); }
 .leitor-fichamento-form .segmentado { flex-wrap: wrap; }

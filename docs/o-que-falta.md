@@ -13,7 +13,7 @@ O histórico do que já foi feito está na especificação (`docs/especificacao.
 - [x] ~~**Sumário automático**~~ (12/11/2026) no documento de texto.
 - [ ] **Ensinar a minha letra** ao corretor da escrita à mão.
 - [ ] **PDF digitalizado nas Fontes** lido pela IA página por página (hoje fica marcado como "sem texto").
-- [ ] **IA preencher os campos da referência** a partir de um texto colado.
+- [x] ~~**IA preencher os campos da referência** a partir de um texto colado~~ (12/11/2026).
 - [ ] Seletor do Google Drive dentro do Órbita (Google Picker); hoje abre pelo seletor de arquivos do sistema.
 
 ## 2. Estudos

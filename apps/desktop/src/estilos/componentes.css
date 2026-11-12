@@ -246,6 +246,7 @@
   background: var(--cor-superficie);
 }
 
+.entrada-texto.sozinha:focus-visible,
 .entrada-texto.sozinha[data-focused] {
   outline: 3px solid var(--cor-foco);
   outline-offset: 2px;
@@ -2213,3 +2214,8 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .extrato-valor { display: grid; justify-items: end; font-variant-numeric: tabular-nums; }
 
 .org-enviar-ajuda { display: block; max-width: 18rem; font-weight: 400; white-space: normal; line-height: 1.35; }
+
+/* Janela de referência: colar uma referência pronta */
+.referencia-colar { display: grid; gap: var(--espaco-2); }
+.referencia-colar summary { cursor: pointer; font-weight: 650; display: list-item; padding: 0.5rem 0; }
+.referencia-colar[open] { padding-bottom: var(--espaco-2); }

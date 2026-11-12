@@ -3006,6 +3006,14 @@ ${JSON.stringify(tema)}`;
       if (comErro) throw new ErroOrbita("ia", "O provedor não aceitou a chave. Confira se ela foi colada inteira.", undefined, undefined, undefined, "chave");
       if (sensivel && estado.bloquearSensivel)
         throw new ErroOrbita("ia", "Você bloqueou o envio de dados de saúde e terapia para provedores de fora do aparelho.", undefined, undefined, undefined, "sensivel_bloqueado");
+      // "Preencher com a IA" na referência: separa "SOBRENOME, Nome. Título. Cidade: Editora, ano." de um jeito simples.
+      if (/CSL-JSON/.test(pedido)) {
+        const partes = contexto.split(/\.\s+/);
+        const [family = "", given = ""] = (partes[0] ?? "").split(",").map((x) => x.trim());
+        const ano = /(\d{4})/.exec(contexto)?.[1];
+        const casa = /([^.:]+):\s*([^,]+),/.exec(contexto);
+        return { html: `<pre><code>${JSON.stringify({ type: "book", title: partes[1] ?? "", author: family ? [{ family, given }] : [], ...(ano ? { issued: { "date-parts": [[Number(ano)]] } } : {}), ...(casa ? { "publisher-place": casa[1].trim().replace(/^\d+\.\s*ed\.\s*/, ""), publisher: casa[2].trim() } : {}) }).replace(/"/g, "&quot;")}</code></pre>`, provedor: "Simulação", local: false };
+      }
       const linhas = contexto.split(/\n+/).map((l) => l.trim()).filter(Boolean).slice(0, 6);
       const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;");
       const html = /mapa mental/i.test(pedido)
