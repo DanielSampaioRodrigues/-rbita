@@ -26,9 +26,7 @@ O histórico do que já foi feito está na especificação (`docs/especificacao.
 ## 3. Leitura
 
 Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, sumário, marcadores, notas, grifo no EPUB, caneta no PDF.
-- [ ] **Régua de leitura** (faixa que acompanha a linha).
-- [ ] **Leitura em voz alta**.
-- [ ] **Busca no livro**.
+- [x] ~~**Régua de leitura**, **leitura em voz alta** e **busca no livro**~~ (12/11/2026).
 - [ ] **Grifo de texto no PDF** (precisa da camada de texto do PDF; hoje o PDF é só imagem na tela).
 - [ ] **Fichamento** (citação, resumo, comentário, paráfrase) em ABNT, com exportação.
 

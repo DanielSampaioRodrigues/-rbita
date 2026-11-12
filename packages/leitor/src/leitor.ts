@@ -39,6 +39,18 @@ export async function lerMetadados(bytes: ArrayBuffer, formato: Formato): Promis
 }
 
 type AoMudar = (loc: Localizacao) => void;
+
+/** Um achado da busca: para onde ir (CFI no EPUB, número da página no PDF) e o trecho em volta. */
+export interface ResultadoBusca { destino: string; trecho: string; onde: string }
+
+/** Minúsculas e sem acento, com o mesmo tamanho (para achar "memoria" em "Memória"). */
+export const normalizar = (t: string) => Array.from(t.toLowerCase()).map((c) => c.normalize("NFD").replace(/\p{M}/gu, "") || c).join("");
+
+/** O trecho em volta do achado, com reticências. */
+export function trechoEmVolta(texto: string, i: number, n: number, folga = 60): string {
+  const ini = Math.max(0, i - folga), fim = Math.min(texto.length, i + n + folga);
+  return `${ini > 0 ? "…" : ""}${texto.slice(ini, fim).replace(/\s+/g, " ").trim()}${fim < texto.length ? "…" : ""}`;
+}
 const SVG_NS = "http://www.w3.org/2000/svg";
 /** Traço grosso (marca-texto) fica translúcido para deixar ler por baixo; fino (caneta) fica opaco. */
 const opacidadePara = (espessura: number): number => (espessura >= 0.015 ? 0.3 : 0.9);
@@ -431,6 +443,133 @@ export class Leitor {
   async irPara(destino: string): Promise<void> {
     if (this.formato === "epub") await this.rendition?.display(destino);
     else this.irParaPaginaPdf(Number(destino) || 1);
+  }
+
+  // ---------- Busca no livro ----------
+  private marcaDaBusca: string | null = null;
+
+  /** Procura no livro (sem diferenciar maiúsculas e acentos). Até `maximo` resultados. */
+  async buscar(termo: string, maximo = 100): Promise<ResultadoBusca[]> {
+    const alvo = normalizar(termo.trim());
+    if (alvo.length < 2) return [];
+    const saida: ResultadoBusca[] = [];
+    if (this.formato === "epub" && this.book) {
+      const itens: any[] = [];
+      this.book.spine.each((s: any) => itens.push(s));
+      for (const item of itens) {
+        if (saida.length >= maximo) break;
+        try {
+          const raiz: any = await item.load(this.book.load.bind(this.book));
+          const corpo: any = raiz?.body ?? raiz?.querySelector?.("body") ?? raiz;
+          const doc: Document = corpo?.ownerDocument;
+          // Anda pelos textos do capítulo e marca cada ocorrência com o CFI dela.
+          const andar = doc.createTreeWalker(corpo, 4);
+          let no: Node | null;
+          while ((no = andar.nextNode()) && saida.length < maximo) {
+            const texto = no.textContent ?? "";
+            const base = normalizar(texto);
+            let i = base.indexOf(alvo);
+            while (i >= 0 && saida.length < maximo) {
+              const r = doc.createRange();
+              r.setStart(no, i);
+              r.setEnd(no, Math.min(texto.length, i + termo.trim().length));
+              let destino = "";
+              try { destino = item.cfiFromRange(r); } catch { destino = item.href; }
+              saida.push({ destino, trecho: trechoEmVolta(texto, i, termo.trim().length), onde: item.href });
+              i = base.indexOf(alvo, i + alvo.length);
+            }
+          }
+        } catch {
+          // Capítulo que não abre: segue para o próximo.
+        } finally {
+          item.unload?.();
+        }
+      }
+      return saida;
+    }
+    if (this.formato === "pdf" && this.pdf) {
+      for (let n = 1; n <= this.pdf.numPages && saida.length < maximo; n++) {
+        const texto = await this.textoDaPaginaPdf(n);
+        const base = normalizar(texto);
+        let i = base.indexOf(alvo);
+        while (i >= 0 && saida.length < maximo) {
+          saida.push({ destino: String(n), trecho: trechoEmVolta(texto, i, termo.trim().length), onde: `p. ${n}` });
+          i = base.indexOf(alvo, i + alvo.length);
+        }
+      }
+    }
+    return saida;
+  }
+
+  /** Vai até um resultado da busca e deixa a palavra marcada (no EPUB). */
+  async irParaResultado(r: ResultadoBusca): Promise<void> {
+    if (this.formato === "epub" && this.rendition) {
+      if (this.marcaDaBusca) { try { this.rendition.annotations.remove(this.marcaDaBusca, "highlight"); } catch { /* já saiu */ } }
+      await this.rendition.display(r.destino);
+      if (r.destino.startsWith("epubcfi(")) {
+        try { this.rendition.annotations.highlight(r.destino, {}, undefined, "leitor-busca-marca", { fill: "#f59e0b", "fill-opacity": "0.35" }); this.marcaDaBusca = r.destino; } catch { /* sem marca */ }
+      }
+    } else {
+      this.irParaPaginaPdf(Number(r.destino) || 1);
+    }
+  }
+
+  // ---------- Ler em voz alta ----------
+  private async textoDaPaginaPdf(n: number): Promise<string> {
+    if (!this.pdf) return "";
+    const pg = await this.pdf.getPage(n);
+    const c = await pg.getTextContent();
+    return (c.items as { str?: string; hasEOL?: boolean }[]).map((it) => (it.str ?? "") + (it.hasEOL ? "\n" : "")).join("").replace(/[ \t]+/g, " ").trim();
+  }
+
+  /** O texto de onde a pessoa está até o fim do capítulo (EPUB) ou da página (PDF). */
+  async textoAPartirDaqui(): Promise<string> {
+    if (this.formato === "pdf") return this.textoDaPaginaPdf(this.paginaAtual);
+    if (!this.rendition) return "";
+    const contents = this.rendition.getContents?.()?.[0];
+    const doc: Document | undefined = contents?.document;
+    if (!doc?.body) return "";
+    const cfi = this.rendition.currentLocation?.()?.start?.cfi;
+    try {
+      // A posição tem de vir da página aberta (o `book.getRange` daria um ponto numa cópia
+      // do capítulo, e o trecho sairia vazio).
+      const inicio: Range | null = cfi && typeof contents.range === "function" ? contents.range(cfi) : null;
+      if (inicio && inicio.startContainer.ownerDocument === doc) {
+        const r = doc.createRange();
+        r.setStart(inicio.startContainer, inicio.startOffset);
+        r.setEndAfter(doc.body.lastChild ?? doc.body);
+        const texto = r.toString().replace(/\s+/g, " ").trim();
+        if (texto) return texto;
+      }
+    } catch { /* sem a posição: lê o capítulo todo */ }
+    return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /** Passa para o próximo capítulo (EPUB) ou página (PDF). False no fim do livro. */
+  async avancarParaLer(): Promise<boolean> {
+    if (this.formato === "pdf") {
+      if (!this.pdf || this.paginaAtual >= this.pdf.numPages) return false;
+      this.irParaPaginaPdf(this.paginaAtual + 1);
+      return true;
+    }
+    const idx = this.rendition?.currentLocation?.()?.start?.index;
+    const prox = typeof idx === "number" ? this.book?.spine?.get(idx + 1) : null;
+    if (!prox) return false;
+    await this.rendition.display(prox.href);
+    return true;
+  }
+
+  // ---------- Régua de leitura ----------
+  /** Avisa onde está o ponteiro (y na tela), também dentro da página do EPUB (que é um iframe). */
+  aoMoverPonteiro(cb: (yNaTela: number) => void): void {
+    this.container.addEventListener("pointermove", (e) => cb(e.clientY));
+    if (this.rendition) {
+      this.rendition.on("mousemove", (e: MouseEvent, contents: any) => {
+        const quadro = contents?.document?.defaultView?.frameElement as HTMLElement | undefined;
+        const topo = quadro?.getBoundingClientRect().top ?? 0;
+        cb(topo + e.clientY);
+      });
+    }
   }
 
   aoMudarLocalizacao(cb: AoMudar): void {
