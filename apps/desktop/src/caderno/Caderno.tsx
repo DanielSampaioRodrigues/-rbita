@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -28,7 +29,7 @@ import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { CamadaDocumento, DocumentoEstatico } from "./Documento";
-import { lerAreaDeTransferencia, textoParaHtml } from "./colar";
+import { coladoDoEvento, lerAreaDeTransferencia, textoParaHtml, type Colado } from "./colar";
 import { EditarImagem, type ModoEdicao } from "./EditarImagem";
 import { carregarImagem, transformar } from "./imagemEdicao";
 import { DocumentoAberto } from "./DocumentoAberto";
@@ -609,9 +610,56 @@ function lerCorBarra(): string {
 type FerramentaUI = Ferramenta | "texto" | "nota" | "forma" | "seta" | "laco" | "selecao" | "laser";
 
 /** O que foi copiado no caderno (Ctrl+C): fica no Órbita, para colar em qualquer página. */
-let areaDeCopia: { els: Elemento[]; pid: string; colagens: number } | null = null;
-/** O que vai para a área de transferência do sistema: só uma marca (o desenho fica no Órbita). */
+let areaDeCopia: { els: Elemento[]; pid: string; colagens: number; texto?: string; tamanho?: number } | null = null;
+/** Marca na área de transferência quando só dá para mandar texto (Ctrl + C): o desenho fica no Órbita. */
 const MARCA_COPIA = "[desenho copiado no caderno do Órbita]";
+
+/**
+ * A imagem do que foi selecionado, com fundo transparente, para colar em outros apps.
+ * Uma imagem sozinha vai com os bytes dela (do jeito que está, sem fundo se não tiver).
+ */
+async function pngDosElementos(els: Elemento[], imagemUrl: (id: string) => string | undefined): Promise<Blob | null> {
+  if (els.length === 1 && els[0].tipo === "imagem" && !els[0].rot) {
+    const u = imagemUrl(els[0].anexoId);
+    if (!u) return null;
+    const b = await (await fetch(u)).blob();
+    if (b.type === "image/png") return b;
+    // O sistema só aceita PNG: converte sem mexer na transparência.
+    const img = await carregarImagem(u);
+    const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext("2d")!.drawImage(img, 0, 0);
+    return new Promise((ok) => c.toBlob(ok, "image/png"));
+  }
+  const desenhaveis = els.filter((e) => e.tipo !== "texto");
+  const lim = limitesDe(desenhaveis, MEDIDA.altura, MEDIDA.largura);
+  if (!lim || !desenhaveis.length) return null;
+  const folga = 6, k = 2;
+  const caixa = document.createElement("div");
+  const raiz = createRoot(caixa);
+  flushSync(() => raiz.render(
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox={`${lim.x - folga} ${lim.y - folga} ${lim.largura + folga * 2} ${lim.altura + folga * 2}`}
+      width={(lim.largura + folga * 2) * k} height={(lim.altura + folga * 2) * k}>
+      <DesenhoEstatico elementos={desenhaveis} imagemUrl={imagemUrl} />
+    </svg>,
+  ));
+  const svg = caixa.innerHTML;
+  raiz.unmount();
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  try {
+    const img = await carregarImagem(url);
+    const c = document.createElement("canvas"); c.width = img.naturalWidth || (lim.largura + folga * 2) * k; c.height = img.naturalHeight || (lim.altura + folga * 2) * k;
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise((ok) => c.toBlob(ok, "image/png"));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** O texto das caixas de texto selecionadas (para colar como texto em outros apps). */
+function textoDosElementos(els: Elemento[]): string {
+  const d = document.createElement("div");
+  return els.filter((e): e is Texto => e.tipo === "texto").map((e) => { d.innerHTML = e.texto; return d.innerText.trim(); }).filter(Boolean).join("\n\n");
+}
 
 /** Opções das ferramentas (barra de contexto), guardadas no aparelho. */
 interface OpcoesCaderno {
@@ -1832,12 +1880,12 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   useEffect(() => {
     const aoColar = (e: ClipboardEvent) => {
       if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable='true']")) return;
-      const it = [...(e.clipboardData?.items ?? [])].find((x) => x.type.startsWith("image/"));
-      const b = it?.getAsFile();
-      if (b) { e.preventDefault(); void inserirRef.current(b, `colado.${extDeMime(b.type)}`); return; }
+      // O que foi copiado no próprio caderno volta como desenho (não como imagem).
       if (copiaRef.current.colar(e)) return;
-      const texto = e.clipboardData?.getData("text/plain") ?? "";
-      if (texto.trim() && texto !== MARCA_COPIA) { e.preventDefault(); colarTextoRef.current(texto); }
+      // Tudo é lido agora (depois do evento o sistema apaga), e usado em seguida.
+      const pedido = coladoDoEvento(e.clipboardData);
+      e.preventDefault();
+      void pedido.then((c) => usarColadoRef.current(c));
     };
     document.addEventListener("paste", aoColar);
     return () => document.removeEventListener("paste", aoColar);
@@ -2229,9 +2277,37 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     const els = (cenas[selPid]?.elementos ?? []).filter((x) => selIds.includes(x.id));
     if (!els.length) return false;
     areaDeCopia = { els: JSON.parse(JSON.stringify(els)) as Elemento[], pid: selPid, colagens: 0 };
+    // Para os outros apps vai a imagem (fundo transparente) e o texto das caixas.
+    const texto = textoDosElementos(els);
+    areaDeCopia.texto = texto || undefined;
+    const copia = areaDeCopia;
+    const png = pngDosElementos(els, imagemUrl).then((b) => { if (b) copia.tamanho = b.size; return b; });
+    try {
+      if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+        const itens: Record<string, Promise<Blob>> = { "image/png": png.then((b) => b ?? new Blob([], { type: "image/png" })) };
+        if (texto) itens["text/plain"] = Promise.resolve(new Blob([texto], { type: "text/plain" }));
+        void navigator.clipboard.write([new ClipboardItem(itens)]).catch(() => navigator.clipboard?.writeText?.(texto || MARCA_COPIA).catch(() => {}));
+      }
+    } catch { /* sem acesso à área de transferência: o desenho continua no Órbita */ }
     if (recortar) apagarSelecao();
     return true;
   };
+  /** O que veio da área de transferência é o que copiamos aqui? (texto ou tamanho da imagem iguais). */
+  const ehNossaCopia = (c: Colado) => !!areaDeCopia && (
+    (c.tipo === "texto" && (c.texto === MARCA_COPIA || (!!areaDeCopia.texto && c.texto.trim() === areaDeCopia.texto))) ||
+    (c.tipo === "html" && !!areaDeCopia.texto && c.texto.trim() === areaDeCopia.texto) ||
+    (c.tipo === "imagem" && !!areaDeCopia.tamanho && c.blob.size === areaDeCopia.tamanho));
+  /** Põe no caderno o que veio de fora: imagem, PDF, texto com formatação ou texto. */
+  const usarColado = (c: Colado) => {
+    if (ehNossaCopia(c) && colarInterno()) return;
+    if (c.tipo === "imagem") void inserirRef.current(c.blob, `colado.${extDeMime(c.blob.type || "image/png")}`);
+    else if (c.tipo === "pdf") void importarArquivos([c.arquivo], "depois");
+    else if (c.tipo === "html") colarHtml(c.html);
+    else if (c.tipo === "texto") colarTexto(c.texto);
+    else recado(t.selecao.nadaParaColar);
+  };
+  const usarColadoRef = useRef(usarColado);
+  usarColadoRef.current = usarColado;
   /** Cola o que foi copiado no caderno, na página atual, já selecionado. */
   const colarInterno = (): boolean => {
     if (!areaDeCopia || !sel) return false;
@@ -2253,7 +2329,9 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     colar: (e) => {
       if (!areaDeCopia) return false;
       const texto = e.clipboardData?.getData("text/plain") ?? "";
-      if (texto && texto !== MARCA_COPIA) return false; // copiou outra coisa depois
+      const arquivo = [...(e.clipboardData?.items ?? [])].find((x) => x.kind === "file")?.getAsFile();
+      const nossa = texto === MARCA_COPIA || (!!texto && texto.trim() === areaDeCopia.texto) || (!texto && !!arquivo && arquivo.size === areaDeCopia.tamanho);
+      if (!nossa) return false; // copiou outra coisa depois
       if (!colarInterno()) return false;
       e.preventDefault();
       return true;
@@ -2263,15 +2341,13 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
   // não há evento de copiar, então escreve e lê a área de transferência direto.
   const copiarPorBotao = (recortar: boolean) => {
     if (!guardarCopia(recortar)) return;
-    void navigator.clipboard?.writeText?.(MARCA_COPIA).catch(() => {});
     recado(recortar ? t.selecao.recortado : t.selecao.copiado);
   };
   const colarPorBotao = async () => {
-    const c = await lerAreaDeTransferencia().catch(() => ({ tipo: "nada" as const }));
-    if (c.tipo === "imagem") { await inserirRef.current(c.blob, `colado.${extDeMime(c.blob.type)}`); return; }
-    if (c.tipo === "texto" && c.texto !== MARCA_COPIA) { colarTexto(c.texto); return; }
-    if (colarInterno()) return;
-    recado(t.selecao.nadaParaColar);
+    const c = await lerAreaDeTransferencia().catch((): Colado => ({ tipo: "nada" }));
+    // Sem nada de fora, mas com algo copiado aqui: cola o daqui.
+    if (c.tipo === "nada" && colarInterno()) return;
+    usarColado(c);
   };
   // Barra da imagem: valem para uma imagem selecionada sozinha (venha de onde vier).
   const imagemSel = (() => {
@@ -2563,8 +2639,13 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     if (!id) return;
     setFerramenta("selecao"); setSelPid(sel.id); setSelIds([id]);
   };
-  const colarTextoRef = useRef(colarTexto);
-  colarTextoRef.current = colarTexto;
+  /** Texto com formatação (de outro app), já limpo: vira uma caixa de texto selecionada. */
+  const colarHtml = (html: string) => {
+    if (!sel || !html) return;
+    const id = porNaPagina(html);
+    if (!id) return;
+    setFerramenta("selecao"); setSelPid(sel.id); setSelIds([id]);
+  };
 
   // IA com liberdade total (decisão de Dan, 04/11/2026): a IA muda o caderno direto.
   // Antes, o Órbita guarda uma cópia do que ela vai mexer (gravada junto com o caderno);
@@ -3789,13 +3870,25 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
 
   const dLaco = laco && laco.length ? `M ${laco.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(" L ")} Z` : "";
   // Botões da seleção: embaixo da caixa (ou em cima, se não couber).
+  // A barra da seleção flutua por cima de tudo (fixa na tela), para não ser cortada
+  // pela borda da folha nem ficar atrás da página seguinte. Acompanha a rolagem.
+  const [, rolou] = useState(0);
+  useEffect(() => {
+    if (!ativa || !selecionados.length) return;
+    const f = () => rolou((n) => n + 1);
+    window.addEventListener("scroll", f, true);
+    window.addEventListener("resize", f);
+    return () => { window.removeEventListener("scroll", f, true); window.removeEventListener("resize", f); };
+  }, [ativa, selecionados.length]);
   let acoes: React.CSSProperties | null = null;
-  if (ativa && lim && escala) {
-    // A barra tem uns 560 px: fica dentro da folha (ou centrada, se a folha for estreita).
-    const meia = Math.min(300, (largura * escala) / 2);
-    const meioX = Math.min(Math.max((lim.x + lim.largura / 2) * escala, meia), largura * escala - meia);
-    const embaixo = (lim.y + lim.altura) * escala + 10;
-    acoes = embaixo < altura * escala - 48 ? { left: meioX, top: embaixo } : { left: meioX, top: Math.max(4, lim.y * escala - 90) };
+  const caixaTela = ref.current?.getBoundingClientRect();
+  if (ativa && lim && escala && caixaTela) {
+    const meia = Math.min(300, window.innerWidth / 2 - 8);
+    const meioX = Math.min(Math.max(caixaTela.left + (lim.x + lim.largura / 2) * escala, meia + 8), window.innerWidth - meia - 8);
+    const embaixo = caixaTela.top + (lim.y + lim.altura) * escala + 10;
+    const emCima = caixaTela.top + lim.y * escala - (selecionados.length && sel.some((e) => e.tipo === "imagem") ? 100 : 56);
+    const top = embaixo < window.innerHeight - 120 ? embaixo : Math.max(8, emCima);
+    acoes = { position: "fixed", left: meioX, top };
   }
   const podeAgrupar = selecionados.length > 1 && new Set(sel.map((e) => e.grupo ?? e.id)).size > 1;
   const podeDesagrupar = temGrupo(elementos, selecionados);
@@ -3820,7 +3913,7 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
           </>
         )}
       </svg>
-      {acoes && (
+      {acoes && createPortal(
         <div className={area.imagem ? "caderno-sel-acoes duas-linhas" : "caderno-sel-acoes"} style={acoes} role="toolbar" aria-label={t.selecao.acoes}>
           <div className="caderno-sel-linha">
             <button type="button" className="botao-texto-pequeno" onClick={area.copiar}>{t.selecao.copiar}</button>
@@ -3846,8 +3939,7 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
               <button type="button" className="botao-texto-pequeno" title={t.imagem.trocarDica} onClick={area.imagem.trocar}>{t.imagem.trocar}</button>
             </div>
           )}
-        </div>
-      )}
+        </div>, document.body)}
       {menuColar && ativa && escala > 0 && (
         <div className="caderno-sel-acoes" role="toolbar" aria-label={t.selecao.acoes}
           style={{ left: Math.min(Math.max(menuColar[0] * escala, 60), largura * escala - 60), top: Math.max(4, menuColar[1] * escala - 52) }}>

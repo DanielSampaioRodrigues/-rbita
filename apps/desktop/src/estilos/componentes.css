@@ -2327,3 +2327,5 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-miolo:is(.pos-baixo, .pos-cima):has(> .caderno-area.com-painel) > .caderno-barra-caixa > .caderno-flutuante { max-width: calc(100vw - 2 * var(--desvio-painel) - 1.5rem); }
 .caderno-miolo:is(.pos-baixo, .pos-cima):has(> .caderno-area.painel-esquerda) > .caderno-barra-caixa > .caderno-flutuante { left: calc(50% + var(--desvio-painel)); }
 .caderno-miolo:is(.pos-baixo, .pos-cima):has(> .caderno-area.painel-direita) > .caderno-barra-caixa > .caderno-flutuante { left: calc(50% - var(--desvio-painel)); }
+.caderno-folha-bloco:has(.caderno-sel-acoes) { position: relative; z-index: 4; }
+body > .caderno-sel-acoes { z-index: 30; font-size: 1rem; }
