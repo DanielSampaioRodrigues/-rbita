@@ -1646,6 +1646,23 @@ export const textos = {
     seta: {
       ajuda: "Arraste para desenhar a seta. Comece ou termine em cima de um objeto e ela fica presa nele: ao mover o objeto, a seta acompanha.",
     },
+    imagem: {
+      inserir: "Inserir imagem",
+      ajuda: "Cole uma imagem (Ctrl + V) ou use o botão de imagem. Depois toque nela com a ferramenta Selecionar (o cursor) para mover, redimensionar ou apagar.",
+      barra: "Ações da imagem",
+      recortar: "Cortar", tirarFundo: "Tirar o fundo", girar: "Girar", espelhar: "Espelhar", trocar: "Trocar",
+      girarDica: "Girar 90° para a direita", espelharDica: "Espelhar (virar de lado)", trocarDica: "Trocar por outra imagem, no mesmo lugar e tamanho",
+      recortarTitulo: "Cortar a imagem",
+      recortarAjuda: "Arraste os cantos para escolher a parte que fica. Arraste o meio para mover.",
+      fundoTitulo: "Tirar o fundo",
+      fundoAjuda: "Apaga o fundo liso que encosta nas bordas (papel, parede, quadro branco). O xadrez mostra o que ficou transparente.",
+      fundoLimite: "Se apagar demais, diminua a força; se sobrar fundo, aumente. Foto com fundo cheio de detalhes não sai bem assim.",
+      forca: (n: number) => `Força: ${n}`,
+      previa: "Prévia sem o fundo",
+      preparando: "Preparando a prévia…",
+      aplicar: "Aplicar", cancelar: "Cancelar",
+      feito: "Imagem alterada. Ctrl + Z desfaz.",
+    },
     selecao: {
       dica: "Toque num objeto para selecionar ou arraste na área vazia para pegar vários. Duplo toque num texto abre para editar.",
       acrescentar: "Acrescentar",
@@ -1654,6 +1671,7 @@ export const textos = {
       desagrupar: "Desagrupar (Ctrl + Shift + G)",
       umNivelFrente: "Um nível para a frente (Ctrl + ])",
       umNivelTras: "Um nível para trás (Ctrl + [)",
+      acrescentarDica: "Ligado, tocar ou contornar soma à seleção (ou tira o que já estava).",
       copiar: "Copiar", recortar: "Recortar", colar: "Colar", duplicar: "Duplicar",
       copiado: "Copiado.", recortado: "Recortado.", nadaParaColar: "Não há nada para colar.",
     },
@@ -1685,10 +1703,6 @@ export const textos = {
       paraTras: "Para trás de tudo (Ctrl + Shift + [)",
       dicaCurta: "Contorne o que quer selecionar. Toque num objeto para pegar só ele.",
       girar: "Girar",
-    },
-    imagem: {
-      inserir: "Inserir imagem",
-      ajuda: "Cole uma imagem (Ctrl + V) ou use o botão de imagem. Depois toque nela com a ferramenta Selecionar (o cursor) para mover, redimensionar ou apagar.",
     },
     adesivos: {
       abrir: "Adesivos",

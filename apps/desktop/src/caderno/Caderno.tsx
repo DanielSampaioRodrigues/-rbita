@@ -23,12 +23,14 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { Interruptor } from "../componentes/Interruptor";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { Segmentado } from "../componentes/Segmentado";
-import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, FileUp, GripVertical, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, PainelLateral as IconePainel, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
+import { Bold, Bookmark, Check, ChevronDown, Eye, FilePlus, FileText, FileUp, GripVertical, MoreHorizontal, ChevronLeft, ChevronRight, Eraser, FolderOpen, FolderPlus, Highlighter, ImagePlus, Lasso, LayoutGrid, Pencil, PenLine, Plus, Redo2, Ruler, Shapes, SlidersHorizontal, PainelLateral as IconePainel, Sparkles, Trash2, Type, Undo2, Wand2, X } from "../icones";
 import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { CamadaDocumento, DocumentoEstatico } from "./Documento";
 import { lerAreaDeTransferencia, textoParaHtml } from "./colar";
+import { EditarImagem, type ModoEdicao } from "./EditarImagem";
+import { carregarImagem, transformar } from "./imagemEdicao";
 import { DocumentoAberto } from "./DocumentoAberto";
 import { useMeusEstilos } from "./editor/meusEstilos";
 import { PainelLateral, type AbaPainel } from "./PainelLateral";
@@ -2271,8 +2273,52 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     if (colarInterno()) return;
     recado(t.selecao.nadaParaColar);
   };
+  // Barra da imagem: valem para uma imagem selecionada sozinha (venha de onde vier).
+  const imagemSel = (() => {
+    if (!ehSelecao || !selPid || selIds.length !== 1) return null;
+    const el = (cenas[selPid]?.elementos ?? []).find((e) => e.id === selIds[0]);
+    return el?.tipo === "imagem" ? { pid: selPid, el } : null;
+  })();
+  const [editImg, setEditImg] = useState<{ modo: ModoEdicao; pid: string; el: Imagem } | null>(null);
+  const trocaRef = useRef<HTMLInputElement>(null);
+  const alvoTroca = useRef<{ pid: string; el: Imagem } | null>(null);
+  /** Põe bytes novos no lugar da imagem (a antiga continua no cofre; Ctrl + Z volta). */
+  const substituirImagem = async (pid: string, el: Imagem, b: Blob, patch: Partial<Imagem> = {}) => {
+    try {
+      const base64 = await blobParaBase64(b);
+      if (!base64) return;
+      const anexo = await api.anexarBytes(pid, `imagem.${extDeMime(b.type || "image/png")}`, base64);
+      setImagemUrls((u) => ({ ...u, [anexo.id]: `data:${b.type || "image/png"};base64,${base64}` }));
+      mudarCena(pid, { elementos: (cenasRef.current[pid]?.elementos ?? []).map((e) => (e.id === el.id ? { ...el, ...patch, anexoId: anexo.id } : e)) });
+      recado(t.imagem.feito);
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
+  const transformarImagem = async (como: "girar" | "espelhar") => {
+    if (!imagemSel) return;
+    const { pid, el } = imagemSel;
+    const u = imagemUrl(el.anexoId);
+    if (!u) return;
+    try {
+      const b = await transformar(await carregarImagem(u), como);
+      if (como === "espelhar") { await substituirImagem(pid, el, b); return; }
+      const cx = el.x + el.largura / 2, cy = el.y + el.altura / 2;
+      await substituirImagem(pid, el, b, { largura: el.altura, altura: el.largura, x: cx - el.altura / 2, y: cy - el.largura / 2 });
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
   const areaTransf: AcoesArea = {
+    imagem: imagemSel ? {
+      recortar: () => setEditImg({ modo: "recortar", ...imagemSel }),
+      fundo: () => setEditImg({ modo: "fundo", ...imagemSel }),
+      girar: () => void transformarImagem("girar"),
+      espelhar: () => void transformarImagem("espelhar"),
+      trocar: () => { alvoTroca.current = imagemSel; trocaRef.current?.click(); },
+    } : null,
     copiar: () => copiarPorBotao(false), recortar: () => copiarPorBotao(true), duplicar: duplicarSelecao, colar: () => void colarPorBotao(),
+    acrescentar: () => setAcrescentar((a) => !a),
   };
   // Segurar o dedo na folha (quando o dedo não desenha): abre a barrinha de colar
   // (e de copiar, se houver algo selecionado) ali onde o dedo está.
@@ -2886,7 +2932,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
           pos={posBarra} aoPos={mudarPosBarra} aoCiclar={ciclarBarra} miolo={mioloRef}
           dica={dicaBarra} aoFecharDica={fecharDicaBarra}
           aoDesfazer={() => andar(-1)} aoRefazer={() => andar(1)} podeDesfazer={podeDesfazer} podeRefazer={podeRefazer}
-          contexto={
+          contexto={ehSelecao ? null : (
             <BarraContexto ferramenta={ferramenta} aoFerramenta={escolherFerramenta}
               cor={cor} favoritos={favoritos} aoCorPrevia={setCor}
               aoCor={(c) => { usarCor(c); if (ehSelecao && selIds.length) recolorirSelecao(c); if (ehTexto && editandoTexto) recolorTextoEditando(c); }}
@@ -2897,7 +2943,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
               acrescentar={acrescentar} aoAcrescentar={setAcrescentar}
               editandoTexto={!!editandoTexto} tamTexto={tamTexto} aoTamTexto={mudarTamTexto} negritoTexto={negritoTexto} aoNegritoTexto={mudarNegritoTexto}
               slotTexto={setSlotTexto} paginaTexto={ehPaginaTexto(sel)} />
-          }
+          )}
         />
       )}
       </div>
@@ -2916,6 +2962,21 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       </Janela>
 
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void inserirImagem(f, f.name); e.target.value = ""; }} />
+      <input ref={trocaRef} type="file" accept="image/*" hidden onChange={(e) => {
+        const f = e.target.files?.[0], a = alvoTroca.current;
+        e.target.value = "";
+        if (!f || !a) return;
+        // A imagem nova fica no mesmo lugar, com a mesma largura (a altura segue a proporção dela).
+        void tamanhoImagem(f).then(({ w, h }) => substituirImagem(a.pid, a.el, f, { altura: a.el.largura * (h / w) }));
+      }} />
+      {editImg && imagemUrl(editImg.el.anexoId) && (
+        <EditarImagem url={imagemUrl(editImg.el.anexoId)!} modo={editImg.modo} aoFechar={() => setEditImg(null)}
+          aoAplicar={(b, r) => {
+            const { pid, el } = editImg;
+            if (!r) return substituirImagem(pid, el, b);
+            return substituirImagem(pid, el, b, { x: el.x + el.largura * r.x, y: el.y + el.altura * r.y, largura: el.largura * r.w, altura: el.altura * r.h });
+          }} />
+      )}
 
       <Janela titulo={t.imagemIa.titulo} aberta={iaAberta} aoFechar={() => setIaAberta(false)}>
         {iaAberta && <CriarImagemIa ia={ia} aoMudarIa={setIa} aoInserir={inserirDaIa} />}
@@ -3533,7 +3594,11 @@ function CaixaEditor({ tx, estilo, slot, negritoPadrao, aoTamPadrao, aoPatch, ao
  *  Com Shift (ou "acrescentar" ligado), cada toque soma ou tira da seleção.
  *  Selecionado: arrastar move, os cantos redimensionam, a alça de cima gira. */
 /** Copiar, recortar, colar e duplicar (barra da seleção e toque longo). */
-interface AcoesArea { copiar: () => void; recortar: () => void; colar: () => void; duplicar: () => void }
+interface AcoesArea {
+  copiar: () => void; recortar: () => void; colar: () => void; duplicar: () => void; acrescentar: () => void;
+  /** Só quando uma imagem está selecionada (sozinha). */
+  imagem: null | { recortar: () => void; fundo: () => void; girar: () => void; espelhar: () => void; trocar: () => void };
+}
 
 function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, escala, largura, altura, aoSelecionar, aoMover, aoEscalar, aoRotacionar, aoOrdenar, aoNivel, aoAgrupar, aoDesagrupar, aoFim, aoApagar, aoEditarTexto, area }: {
   elementos: Elemento[]; selecionados: string[]; modo: "laco" | "selecao" | null; acrescentar: boolean; escala: number; largura: number; altura: number;
@@ -3727,7 +3792,7 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
   let acoes: React.CSSProperties | null = null;
   if (ativa && lim && escala) {
     // A barra tem uns 560 px: fica dentro da folha (ou centrada, se a folha for estreita).
-    const meia = Math.min(280, (largura * escala) / 2);
+    const meia = Math.min(300, (largura * escala) / 2);
     const meioX = Math.min(Math.max((lim.x + lim.largura / 2) * escala, meia), largura * escala - meia);
     const embaixo = (lim.y + lim.altura) * escala + 10;
     acoes = embaixo < altura * escala - 48 ? { left: meioX, top: embaixo } : { left: meioX, top: Math.max(4, lim.y * escala - 90) };
@@ -3756,19 +3821,31 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
         )}
       </svg>
       {acoes && (
-        <div className="caderno-sel-acoes" style={acoes} role="toolbar" aria-label={t.selecao.acoes}>
-          <button type="button" className="botao-texto-pequeno" onClick={area.copiar}>{t.selecao.copiar}</button>
-          <button type="button" className="botao-texto-pequeno" onClick={area.recortar}>{t.selecao.recortar}</button>
-          <button type="button" className="botao-texto-pequeno" onClick={area.colar}>{t.selecao.colar}</button>
-          <button type="button" className="botao-texto-pequeno" onClick={area.duplicar}>{t.selecao.duplicar}</button>
-          <span className="caderno-sel-separador" aria-hidden="true" />
-          <button type="button" className="botao-icone pequeno" onClick={() => aoOrdenar(true)} aria-label={t.laco.paraFrente} title={t.laco.paraFrente}><IconeTudoFrente size="1em" aria-hidden="true" /></button>
-          <button type="button" className="botao-icone pequeno" onClick={() => aoNivel(true)} aria-label={t.selecao.umNivelFrente} title={t.selecao.umNivelFrente}><IconeNivelFrente size="1em" aria-hidden="true" /></button>
-          <button type="button" className="botao-icone pequeno" onClick={() => aoNivel(false)} aria-label={t.selecao.umNivelTras} title={t.selecao.umNivelTras}><IconeNivelTras size="1em" aria-hidden="true" /></button>
-          <button type="button" className="botao-icone pequeno" onClick={() => aoOrdenar(false)} aria-label={t.laco.paraTras} title={t.laco.paraTras}><IconeTudoTras size="1em" aria-hidden="true" /></button>
-          {podeAgrupar && <button type="button" className="botao-icone pequeno" onClick={aoAgrupar} aria-label={t.selecao.agrupar} title={t.selecao.agrupar}><IconeAgrupar size="1em" aria-hidden="true" /></button>}
-          {podeDesagrupar && <button type="button" className="botao-icone pequeno" onClick={aoDesagrupar} aria-label={t.selecao.desagrupar} title={t.selecao.desagrupar}><IconeDesagrupar size="1em" aria-hidden="true" /></button>}
-          <button type="button" className="botao-icone pequeno" onClick={aoApagar} aria-label={t.laco.apagar} title={t.laco.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
+        <div className={area.imagem ? "caderno-sel-acoes duas-linhas" : "caderno-sel-acoes"} style={acoes} role="toolbar" aria-label={t.selecao.acoes}>
+          <div className="caderno-sel-linha">
+            <button type="button" className="botao-texto-pequeno" onClick={area.copiar}>{t.selecao.copiar}</button>
+            <button type="button" className="botao-texto-pequeno" onClick={area.recortar}>{t.selecao.recortar}</button>
+            <button type="button" className="botao-texto-pequeno" onClick={area.colar}>{t.selecao.colar}</button>
+            <button type="button" className="botao-texto-pequeno" onClick={area.duplicar}>{t.selecao.duplicar}</button>
+            <button type="button" className={acrescentar ? "botao-texto-pequeno ativo" : "botao-texto-pequeno"} aria-pressed={acrescentar} title={t.selecao.acrescentarDica} onClick={area.acrescentar}>{t.selecao.acrescentar}</button>
+            <span className="caderno-sel-separador" aria-hidden="true" />
+            <button type="button" className="botao-icone pequeno" onClick={() => aoOrdenar(true)} aria-label={t.laco.paraFrente} title={t.laco.paraFrente}><IconeTudoFrente size="1em" aria-hidden="true" /></button>
+            <button type="button" className="botao-icone pequeno" onClick={() => aoNivel(true)} aria-label={t.selecao.umNivelFrente} title={t.selecao.umNivelFrente}><IconeNivelFrente size="1em" aria-hidden="true" /></button>
+            <button type="button" className="botao-icone pequeno" onClick={() => aoNivel(false)} aria-label={t.selecao.umNivelTras} title={t.selecao.umNivelTras}><IconeNivelTras size="1em" aria-hidden="true" /></button>
+            <button type="button" className="botao-icone pequeno" onClick={() => aoOrdenar(false)} aria-label={t.laco.paraTras} title={t.laco.paraTras}><IconeTudoTras size="1em" aria-hidden="true" /></button>
+            {podeAgrupar && <button type="button" className="botao-icone pequeno" onClick={aoAgrupar} aria-label={t.selecao.agrupar} title={t.selecao.agrupar}><IconeAgrupar size="1em" aria-hidden="true" /></button>}
+            {podeDesagrupar && <button type="button" className="botao-icone pequeno" onClick={aoDesagrupar} aria-label={t.selecao.desagrupar} title={t.selecao.desagrupar}><IconeDesagrupar size="1em" aria-hidden="true" /></button>}
+            <button type="button" className="botao-icone pequeno" onClick={aoApagar} aria-label={t.laco.apagar} title={t.laco.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
+          </div>
+          {area.imagem && (
+            <div className="caderno-sel-linha" role="group" aria-label={t.imagem.barra}>
+              <button type="button" className="botao-texto-pequeno" onClick={area.imagem.recortar}>{t.imagem.recortar}</button>
+              <button type="button" className="botao-texto-pequeno" onClick={area.imagem.fundo}>{t.imagem.tirarFundo}</button>
+              <button type="button" className="botao-texto-pequeno" title={t.imagem.girarDica} onClick={area.imagem.girar}>{t.imagem.girar}</button>
+              <button type="button" className="botao-texto-pequeno" title={t.imagem.espelharDica} onClick={area.imagem.espelhar}>{t.imagem.espelhar}</button>
+              <button type="button" className="botao-texto-pequeno" title={t.imagem.trocarDica} onClick={area.imagem.trocar}>{t.imagem.trocar}</button>
+            </div>
+          )}
         </div>
       )}
       {menuColar && ativa && escala > 0 && (
@@ -4147,12 +4224,12 @@ type IconeUI = React.ComponentType<{ size?: string; "aria-hidden"?: "true" }>;
 /** Ferramentas da barra principal (como no Goodnotes). Algumas reúnem duas:
  *  Selecionar (toque ou laço), Formas (com a seta) e Texto (com a nota adesiva).
  *  A escolha entre elas fica na barra de contexto. */
-type GrupoFerramenta = "selecao" | "caneta" | "lapis" | "pincel" | "marcatexto" | "borracha" | "forma" | "texto" | "laser";
+type GrupoFerramenta = "selecao" | "laco" | "caneta" | "lapis" | "pincel" | "marcatexto" | "borracha" | "forma" | "texto" | "laser";
 const FERRAMENTAS_UI: { id: GrupoFerramenta; icone: IconeUI }[] = [
-  { id: "selecao", icone: IconeCursor }, { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 },
+  { id: "selecao", icone: IconeCursor }, { id: "laco", icone: Lasso }, { id: "caneta", icone: PenLine }, { id: "lapis", icone: Pencil }, { id: "pincel", icone: Wand2 },
   { id: "marcatexto", icone: Highlighter }, { id: "borracha", icone: Eraser }, { id: "forma", icone: Shapes }, { id: "texto", icone: Type }, { id: "laser", icone: IconeLaser },
 ];
-const grupoDe = (f: FerramentaUI): GrupoFerramenta => (f === "laco" ? "selecao" : f === "seta" ? "forma" : f === "nota" ? "texto" : (f as GrupoFerramenta));
+const grupoDe = (f: FerramentaUI): GrupoFerramenta => (f === "seta" ? "forma" : f === "nota" ? "texto" : (f as GrupoFerramenta));
 
 /** Painel de adesivos prontos, por grupo. Clicar insere o adesivo na página. */
 function AdesivosPainel({ aoInserir }: { aoInserir: (id: string) => void }) {
@@ -4491,9 +4568,11 @@ function BarraFerramentas({ ferramenta, aoFerramenta, aoAjustar, painelAberto, a
   // Tocar numa ferramenta escolhe; tocar de novo mostra a barra de contexto ou,
   // com ela à vista, abre os ajustes (como no Goodnotes).
   const tocarFerramenta = (id: GrupoFerramenta) => {
-    if (grupo !== id) return aoFerramenta(id === "selecao" && ferramenta === "laco" ? "laco" : id);
+    if (grupo !== id) return aoFerramenta(id);
+    // Seta e laço não têm barra de contexto nem ajustes: o que fazer com a seleção aparece junto dela.
+    if (id === "selecao" || id === "laco") return;
     if (!painelAberto) return aoPainel(true);
-    if (id !== "selecao" && id !== "laser") aoAjustar(ferramenta);
+    if (id !== "laser") aoAjustar(ferramenta);
   };
   return (
     <div className={`caderno-barra-caixa pos-${pos}`}>
