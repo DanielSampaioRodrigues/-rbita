@@ -11,14 +11,14 @@ import { recarregarRecursos } from "../ditado/recursos";
 import { maisNovos } from "./modelos";
 
 const t = textos.ia;
-const FUNCOES: FuncaoIa[] = ["quebrar", "conversa", "revisao", "personalizacao"];
+const FUNCOES: FuncaoIa[] = ["quebrar", "conversa", "revisao", "personalizacao", "caderno"];
 const NENHUM = "nenhum";
 /** Na escolha de modelo: o modelo padrão do provedor. */
 const PADRAO = "__padrao__";
 
 /** Modelos de cada provedor, buscados uma vez (não gasta créditos). */
 const modelosEmCache = new Map<string, Promise<string[]>>();
-function modelosDe(p: ProvedorVisivel): Promise<string[]> {
+export function modelosDe(p: ProvedorVisivel): Promise<string[]> {
   const chave = `${p.id}|${p.url}`;
   if (!modelosEmCache.has(chave)) {
     const pedido = api.testarProvedorIa(p, null);
@@ -62,7 +62,7 @@ export function EscolherIaDaFuncao({ funcao, estado, aoMudar, legenda }: { funca
         <Escolha
           rotulo={t.provedorDaFuncao}
           valor={provedor?.id ?? NENHUM}
-          opcoes={[{ valor: NENHUM, nome: t.naoUsar }, ...estado.provedores.map((p) => ({ valor: p.id, nome: p.nome }))]}
+          opcoes={[{ valor: NENHUM, nome: funcao === "caderno" ? t.igualConversa : t.naoUsar }, ...estado.provedores.map((p) => ({ valor: p.id, nome: p.nome }))]}
           aoMudar={async (v) => aoMudar(await api.definirFuncaoIa(funcao, v === NENHUM ? null : v, null))}
         />
         {provedor && (

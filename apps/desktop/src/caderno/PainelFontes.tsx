@@ -9,10 +9,10 @@ import { useRecado } from "../app/Recado";
 import { Aviso, Campo } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { reduzirImagem } from "../fundo";
-import { marcarAvisado, precisaAvisar } from "../ia/avisoSensivel";
 import { pareceSensivel } from "../ia/sensivel";
 import { ChevronLeft, ChevronRight, Copy, FilePlus, FileText, Sparkles, X } from "../icones";
 import { textos } from "../textos/pt-BR";
+import { iaDoCaderno } from "./iaModelo";
 import { abrirPdf } from "@orbita/leitor";
 import { htmlDaIa } from "./PainelIa";
 import {
@@ -51,7 +51,6 @@ export function PainelFontes({ cadernoId, aoPorEmPaginaNova, aoMapaMental }: {
   const [erro, setErro] = useState<string | null>(null);
   const [pedido, setPedido] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const [aviso, setAviso] = useState<{ continuar: () => void } | null>(null);
   const [resposta, setResposta] = useState<Resposta | null>(null);
   const [colando, setColando] = useState<{ nome: string; texto: string } | null>(null);
   const [livros, setLivros] = useState<Livro[] | null>(null);
@@ -61,7 +60,8 @@ export function PainelFontes({ cadernoId, aoPorEmPaginaNova, aoMapaMental }: {
   const cartao = useRef<HTMLElement>(null);
   useEffect(() => { void lerFontes(cadernoId).then(setFontes); api.estadoIa().then(setEstado, () => setEstado(null)); }, [cadernoId]);
   useEffect(() => { if (resposta) cartao.current?.scrollIntoView({ block: "nearest" }); }, [resposta]);
-  const provedor = estado?.provedores.find((p) => p.id === estado.funcoes.conversa) ?? null;
+  // A mesma IA do painel do caderno (sem escolha própria, a da conversa).
+  const provedor = iaDoCaderno(estado)?.provedor ?? null;
 
   const salvarLista = async (lista: FonteCaderno[]) => { setFontes(lista); await gravarFontes(cadernoId, lista); };
   const juntar = async (f: FonteCaderno, trechos: Trecho[]) => {
@@ -184,7 +184,7 @@ export function PainelFontes({ cadernoId, aoPorEmPaginaNova, aoMapaMental }: {
     setResposta(null);
   };
 
-  const perguntar = async (texto: string, rotulo: string, acao?: string, confirmou = false) => {
+  const perguntar = async (texto: string, rotulo: string, acao?: string) => {
     if (!provedor || ocupado || !texto.trim()) return;
     const usaveis = fontes.map((f) => f.ligada && !f.semTexto);
     if (!usaveis.some(Boolean)) { setErro(t.semLigada); return; }
@@ -200,11 +200,6 @@ export function PainelFontes({ cadernoId, aoPorEmPaginaNova, aoMapaMental }: {
       // Sensível olha o pedido: as fontes são material de estudo (um texto de psicologia
       // fala de terapia sem ser dado de saúde da pessoa).
       const sensivel = pareceSensivel(texto);
-      if (!confirmou && (await precisaAvisar(sensivel, provedor, estado?.bloquearSensivel ?? false))) {
-        setAviso({ continuar: () => void perguntar(texto, rotulo, acao, true) });
-        return;
-      }
-      if (confirmou) void marcarAvisado(provedor.id);
       const r = await api.iaFontes(texto, trechos, sensivel);
       setResposta({ html: htmlDaIa(r.html), pedido: texto, rotulo, acao, achados });
     } catch (e) {
@@ -284,15 +279,6 @@ export function PainelFontes({ cadernoId, aoPorEmPaginaNova, aoMapaMental }: {
       )}
 
       {ocupado && <p role="status" className="texto-suave">{textos.caderno.ia.pensando(provedor?.nome ?? "")}</p>}
-      {aviso && provedor && (
-        <div className="painel-ia-aviso">
-          <Aviso tipo="info">{textos.ia.sensivelAvisoCaderno(provedor.nome)}</Aviso>
-          <div className="painel-ia-linha">
-            <Button className="botao pequeno" onPress={() => setAviso(null)}>{textos.comum.cancelar}</Button>
-            <Button className="botao pequeno principal" onPress={() => { const a = aviso; setAviso(null); a.continuar(); }}>{textos.caderno.ia.continuar}</Button>
-          </div>
-        </div>
-      )}
       {erro && <Aviso>{erro}</Aviso>}
 
       {resposta && (

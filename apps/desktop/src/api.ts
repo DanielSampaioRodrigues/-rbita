@@ -728,7 +728,7 @@ export function comoErro(e: unknown): ErroOrbita {
 }
 
 export type TipoProvedor = "claude" | "compativel";
-export type FuncaoIa = "quebrar" | "conversa" | "revisao" | "personalizacao";
+export type FuncaoIa = "quebrar" | "conversa" | "revisao" | "personalizacao" | "caderno";
 
 export interface Provedor {
   /** Vazio ao criar. */

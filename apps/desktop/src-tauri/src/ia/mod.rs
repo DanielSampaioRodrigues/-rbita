@@ -37,8 +37,9 @@ pub(crate) const CONFIG_IA: &str = "ia";
 pub(crate) const PREFIXO_CHAVE: &str = "ia_chave:";
 
 /// Funções que podem usar IA, cada uma com o seu provedor.
-/// "personalizacao": criar temas e desenhar ícones.
-pub const FUNCOES: &[&str] = &["quebrar", "conversa", "revisao", "personalizacao"];
+/// "personalizacao": criar temas e desenhar ícones. "caderno": a IA do caderno (sem
+/// escolha própria, usa a da conversa).
+pub const FUNCOES: &[&str] = &["quebrar", "conversa", "revisao", "personalizacao", "caderno"];
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -264,6 +265,8 @@ pub fn provedor_para(conn: &Connection, funcao: &str, id: &str) -> Result<Escolh
 /// saúde ou terapia; se a pessoa bloqueou, só um provedor local pode receber.
 pub fn provedor_da_funcao(conn: &Connection, funcao: &str, sensivel: bool) -> Result<Escolhido, Erro> {
     let config = ler(conn)?;
+    // O caderno sem escolha própria usa a IA (e o modelo) da conversa.
+    let funcao = if funcao == "caderno" && !config.funcoes.contains_key("caderno") { "conversa" } else { funcao };
     let id = config.funcoes.get(funcao).ok_or(Erro::Ia {
         motivo: "sem_provedor",
         mensagem: "Nenhum provedor de IA está escolhido para esta função. Dá para escolher em Ajustes, na parte de IA.".into(),
@@ -365,6 +368,12 @@ mod testes {
         assert!(provedor_da_funcao(&conn, "conversa", true).is_ok());
         definir_funcao(&conn, "conversa", None, None).unwrap();
         assert!(matches!(provedor_da_funcao(&conn, "conversa", false), Err(Erro::Ia { motivo: "sem_provedor", .. })));
+        // O caderno sem escolha própria segue a conversa; com escolha, usa a dele.
+        definir_funcao(&conn, "caderno", None, None).unwrap();
+        definir_funcao(&conn, "conversa", Some(&id), Some("modelo-da-conversa")).unwrap();
+        assert_eq!(provedor_da_funcao(&conn, "caderno", false).unwrap().provedor.modelo, "modelo-da-conversa");
+        definir_funcao(&conn, "caderno", Some(&id), Some("modelo-do-caderno")).unwrap();
+        assert_eq!(provedor_da_funcao(&conn, "caderno", false).unwrap().provedor.modelo, "modelo-do-caderno");
     }
 
     #[test]

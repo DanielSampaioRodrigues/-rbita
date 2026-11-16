@@ -2835,7 +2835,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
             aoIr={(id) => { setVisaoPaginas(false); requestAnimationFrame(() => irPara(id)); }}
             aoMoverPara={(id, i) => void moverPaginaPara(id, i)}
             aoAdicionar={() => setAdicionando(true)} aoVerGrade={() => setVisaoPaginas(true)}
-            ia={<PainelIa obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
+            ia={<PainelIa cadernoId={caderno.id} obterContexto={obterContextoIa} temDesenho={temDesenhoNaPagina} aoPorNaPagina={porNaPagina}
               aoPorEmPaginaNova={(html) => void porEmPaginaNova(html)} aoCriarImagem={() => setIaAberta(true)} aoMapaMental={(html) => void desenharMapaMental(html)}
               aoConferirEscrita={conferirEscrita} marcasAtivas={marcasVivas.length} aoTirarMarcas={() => setCorrecao(null)}
               aoAgir={infinito ? undefined : agirComIa} quadro={infinito} temFontes={temFontes} desfazer={reversoes[0] ? { resumo: reversoes[0].resumo, quando: reversoes[0].quando } : null} aoDesfazer={pedirDesfazerIa} />}

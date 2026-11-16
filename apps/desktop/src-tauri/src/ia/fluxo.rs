@@ -238,7 +238,7 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
             if !a.imagens.iter().all(|u| caderno::imagem_valida(u)) {
                 return Err(protocolo::erro("grande", "Uma das imagens é grande demais ou não é uma imagem. Tente uma foto menor."));
             }
-            let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
+            let e = super::provedor_da_funcao(conn, "caderno", a.sensivel)?;
             let contexto: String = a.contexto.chars().take(caderno::MAXIMO_DE_CARACTERES).collect();
             let resposta = match r {
                 None => {
@@ -273,7 +273,7 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
             if a.pedido.trim().is_empty() || a.trechos.trim().is_empty() {
                 return Err(Erro::TextoVazio);
             }
-            let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
+            let e = super::provedor_da_funcao(conn, "caderno", a.sensivel)?;
             let resposta = match r {
                 None => {
                     let trechos: String = a.trechos.chars().take(fontes::MAXIMO_DE_CARACTERES).collect();
@@ -317,7 +317,7 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
             if a.imagens.len() > caderno::MAXIMO_DE_IMAGENS || !a.imagens.iter().all(|u| caderno::imagem_valida(u)) {
                 return Err(protocolo::erro("grande", "Uma das imagens é grande demais ou são imagens demais (até 6)."));
             }
-            let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
+            let e = super::provedor_da_funcao(conn, "caderno", a.sensivel)?;
             let resposta = match r {
                 None => {
                     let mensagem = agente::montar(&a.pedido, &a.descricao, a.imagens.len(), &a.fontes.chars().take(fontes::MAXIMO_DE_CARACTERES / 2).collect::<String>());
@@ -353,7 +353,7 @@ pub fn avancar(conn: &Connection, comando: &str, args: &str, resposta: Option<&R
             if !caderno::imagem_valida(&a.imagem) {
                 return Err(protocolo::erro("grande", "A imagem da página ficou grande demais para enviar."));
             }
-            let e = super::provedor_da_funcao(conn, "conversa", a.sensivel)?;
+            let e = super::provedor_da_funcao(conn, "caderno", a.sensivel)?;
             let resposta = match r {
                 None => {
                     let imagens = [a.imagem.clone()];
