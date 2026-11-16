@@ -28,6 +28,7 @@ import { ADESIVOS, CAPAS_ARTE, urlAdesivo, urlCapaArte } from "./galeria";
 import { RenderCapaCena } from "./CapaEditor";
 import { CORES_LINHA, CORES_PAPEL, SeletorCor } from "./SeletorCor";
 import { CamadaDocumento, DocumentoEstatico } from "./Documento";
+import { lerAreaDeTransferencia, textoParaHtml } from "./colar";
 import { DocumentoAberto } from "./DocumentoAberto";
 import { useMeusEstilos } from "./editor/meusEstilos";
 import { PainelLateral, type AbaPainel } from "./PainelLateral";
@@ -1832,7 +1833,9 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
       const it = [...(e.clipboardData?.items ?? [])].find((x) => x.type.startsWith("image/"));
       const b = it?.getAsFile();
       if (b) { e.preventDefault(); void inserirRef.current(b, `colado.${extDeMime(b.type)}`); return; }
-      copiaRef.current.colar(e);
+      if (copiaRef.current.colar(e)) return;
+      const texto = e.clipboardData?.getData("text/plain") ?? "";
+      if (texto.trim() && texto !== MARCA_COPIA) { e.preventDefault(); colarTextoRef.current(texto); }
     };
     document.addEventListener("paste", aoColar);
     return () => document.removeEventListener("paste", aoColar);
@@ -2218,32 +2221,97 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     mudarCena(selPid, { elementos: ajustarConectores([...(cenas[selPid]?.elementos ?? []), ...novos], MEDIDA) });
     setSelIds(novos.map((e) => e.id));
   };
+  /** Guarda a seleção para colar (no Órbita). Devolve se havia o que copiar. */
+  const guardarCopia = (recortar: boolean): boolean => {
+    if (!ehSelecao || !selPid || !selIds.length) return false;
+    const els = (cenas[selPid]?.elementos ?? []).filter((x) => selIds.includes(x.id));
+    if (!els.length) return false;
+    areaDeCopia = { els: JSON.parse(JSON.stringify(els)) as Elemento[], pid: selPid, colagens: 0 };
+    if (recortar) apagarSelecao();
+    return true;
+  };
+  /** Cola o que foi copiado no caderno, na página atual, já selecionado. */
+  const colarInterno = (): boolean => {
+    if (!areaDeCopia || !sel) return false;
+    areaDeCopia.colagens += 1;
+    const passo = areaDeCopia.pid === sel.id ? 20 * areaDeCopia.colagens : 0;
+    const novos = copiarElementos(areaDeCopia.els, passo, passo);
+    mudarCena(sel.id, { elementos: ajustarConectores([...(cenas[sel.id]?.elementos ?? []), ...novos], MEDIDA) });
+    setFerramenta("selecao"); setSelPid(sel.id); setSelIds(novos.map((x) => x.id));
+    return true;
+  };
   const copiaRef = useRef<{ copiar: (e: ClipboardEvent, recortar: boolean) => boolean; colar: (e: ClipboardEvent) => boolean }>({ copiar: () => false, colar: () => false });
   copiaRef.current = {
     copiar: (e, recortar) => {
-      if (!ehSelecao || !selPid || !selIds.length) return false;
-      const els = (cenas[selPid]?.elementos ?? []).filter((x) => selIds.includes(x.id));
-      if (!els.length) return false;
-      areaDeCopia = { els: JSON.parse(JSON.stringify(els)) as Elemento[], pid: selPid, colagens: 0 };
+      if (!guardarCopia(recortar)) return false;
       e.clipboardData?.setData("text/plain", MARCA_COPIA);
       e.preventDefault();
-      if (recortar) apagarSelecao();
       return true;
     },
     colar: (e) => {
-      if (!areaDeCopia || !sel) return false;
+      if (!areaDeCopia) return false;
       const texto = e.clipboardData?.getData("text/plain") ?? "";
       if (texto && texto !== MARCA_COPIA) return false; // copiou outra coisa depois
+      if (!colarInterno()) return false;
       e.preventDefault();
-      areaDeCopia.colagens += 1;
-      const passo = areaDeCopia.pid === sel.id ? 20 * areaDeCopia.colagens : 0;
-      const novos = copiarElementos(areaDeCopia.els, passo, passo);
-      mudarCena(sel.id, { elementos: ajustarConectores([...(cenas[sel.id]?.elementos ?? []), ...novos], MEDIDA) });
-      // Já fica selecionado, para mover para o lugar certo.
-      setFerramenta("selecao"); setSelPid(sel.id); setSelIds(novos.map((x) => x.id));
       return true;
     },
   };
+  // Botões Copiar, Recortar e Colar (barra da seleção e toque longo): sem atalho de teclado
+  // não há evento de copiar, então escreve e lê a área de transferência direto.
+  const copiarPorBotao = (recortar: boolean) => {
+    if (!guardarCopia(recortar)) return;
+    void navigator.clipboard?.writeText?.(MARCA_COPIA).catch(() => {});
+    recado(recortar ? t.selecao.recortado : t.selecao.copiado);
+  };
+  const colarPorBotao = async () => {
+    const c = await lerAreaDeTransferencia().catch(() => ({ tipo: "nada" as const }));
+    if (c.tipo === "imagem") { await inserirRef.current(c.blob, `colado.${extDeMime(c.blob.type)}`); return; }
+    if (c.tipo === "texto" && c.texto !== MARCA_COPIA) { colarTexto(c.texto); return; }
+    if (colarInterno()) return;
+    recado(t.selecao.nadaParaColar);
+  };
+  const areaTransf: AcoesArea = {
+    copiar: () => copiarPorBotao(false), recortar: () => copiarPorBotao(true), duplicar: duplicarSelecao, colar: () => void colarPorBotao(),
+  };
+  // Segurar o dedo na folha (quando o dedo não desenha): abre a barrinha de colar
+  // (e de copiar, se houver algo selecionado) ali onde o dedo está.
+  const [menuToque, setMenuToque] = useState<{ x: number; y: number } | null>(null);
+  const dedoLivre = useRef(false);
+  dedoLivre.current = soCanetaEfetivo;
+  useEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    let espera: { t: ReturnType<typeof setTimeout>; id: number; x: number; y: number } | null = null;
+    const parar = () => { if (espera) { clearTimeout(espera.t); espera = null; } };
+    const desce = (e: PointerEvent) => {
+      parar();
+      if (e.pointerType !== "touch" || !dedoLivre.current) return;
+      if ((e.target as HTMLElement | null)?.closest?.("button, input, select, textarea, [contenteditable='true'], .caderno-sel-acoes")) return;
+      const x = e.clientX, y = e.clientY;
+      espera = { id: e.pointerId, x, y, t: setTimeout(() => { espera = null; setMenuToque({ x, y }); }, 550) };
+    };
+    const move = (e: PointerEvent) => { if (espera && e.pointerId === espera.id && Math.hypot(e.clientX - espera.x, e.clientY - espera.y) > 10) parar(); };
+    el.addEventListener("pointerdown", desce, true);
+    el.addEventListener("pointermove", move, true);
+    el.addEventListener("pointerup", parar, true);
+    el.addEventListener("pointercancel", parar, true);
+    el.addEventListener("scroll", parar, { passive: true });
+    return () => {
+      parar();
+      el.removeEventListener("pointerdown", desce, true);
+      el.removeEventListener("pointermove", move, true);
+      el.removeEventListener("pointerup", parar, true);
+      el.removeEventListener("pointercancel", parar, true);
+      el.removeEventListener("scroll", parar);
+    };
+  }, [infinito, visaoPaginas]);
+  useEffect(() => {
+    if (!menuToque) return;
+    const fechar = (e: PointerEvent) => { if (!(e.target as HTMLElement | null)?.closest?.(".caderno-menu-toque")) setMenuToque(null); };
+    const id = setTimeout(() => window.addEventListener("pointerdown", fechar, true), 0);
+    return () => { clearTimeout(id); window.removeEventListener("pointerdown", fechar, true); };
+  }, [menuToque]);
   useEffect(() => {
     const fora = (e: Event) => !(e.target as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable='true']");
     const copiar = (e: ClipboardEvent) => { if (fora(e)) copiaRef.current.copiar(e, false); };
@@ -2267,6 +2335,29 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     return { texto, imagens: [await blobParaDataUrl(await gerarPng(medida, 1.25))] };
   };
   const temDesenhoNaPagina = !!sel && (cenas[sel.id]?.elementos ?? []).some((e) => e.tipo !== "texto");
+  // Texto que passou do fim da folha: o resto vai para uma página de texto nova logo
+  // depois, com a mesma folha. Se veio da IA (ou já está repartindo), continua sozinho.
+  const [fluirAuto, setFluirAuto] = useState<Set<string>>(() => new Set());
+  const fluirAutoRef = useRef(fluirAuto);
+  fluirAutoRef.current = fluirAuto;
+  const marcarFluir = (id: string) => setFluirAuto((s) => new Set(s).add(id));
+  const continuarTexto = async (p: PaginaCaderno, resto: string) => {
+    try {
+      const auto = fluirAutoRef.current.has(p.id);
+      const nova = await api.salvarPaginaCaderno({
+        id: "", cadernoId: caderno.id, ordem: ordemPara("depois", p), tamanho: p.tamanho,
+        papel: { ...semCapa(folhaDe(p)), texto: true } as Papel, titulo: "", marcado: false, criadoEm: 0,
+      });
+      await api.salvarCenaCaderno(nova.id, serializarCena({ ...cenaVazia(), documento: resto }));
+      // Repartir continua sozinho na página nova (se ela também passar do fim).
+      marcarFluir(nova.id);
+      if (!auto) { setSelId(nova.id); rolarPara.current = nova.id; }
+      await carregar();
+      avisarMudanca();
+    } catch (e) {
+      setErro(mensagem(e));
+    }
+  };
   const porEmPaginaNova = async (html: string) => {
     // No quadro infinito não há páginas: vai para o meio do que está à vista.
     if (infinito) { porNaPagina(html); return; }
@@ -2277,6 +2368,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
         papel: { ...semCapa(base ? folhaDe(base) : papelPadrao()), texto: true } as Papel, titulo: "", marcado: false, criadoEm: 0,
       });
       await api.salvarCenaCaderno(nova.id, serializarCena({ ...cenaVazia(), documento: html }));
+      marcarFluir(nova.id);
       setSelId(nova.id); rolarPara.current = nova.id;
       await carregar();
     } catch (e) {
@@ -2408,15 +2500,25 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     if (!el || !bloco) return { x: 400, y: 300 };
     return { x: (el.scrollLeft + el.clientWidth / 2 - bloco.offsetLeft) / zoom, y: (el.scrollTop + el.clientHeight / 2 - bloco.offsetTop) / zoom };
   };
-  const porNaPagina = (html: string) => {
-    if (!sel) return;
+  const porNaPagina = (html: string): string | null => {
+    if (!sel) return null;
     const med = medidaDe(sel.tamanho);
     const meio = infinito ? meioDaVista() : null;
     const novo: Texto = meio
       ? { tipo: "texto", id: crypto.randomUUID(), x: Math.max(20, meio.x - 300), y: Math.max(20, meio.y - 120), largura: 600, texto: html, cor: "#1f2937", tamanho: tamTexto }
       : { tipo: "texto", id: crypto.randomUUID(), x: 60, y: 60, largura: Math.max(240, med.largura - 120), texto: html, cor: "#1f2937", tamanho: tamTexto };
     mudarCena(sel.id, { elementos: [...(cenas[sel.id]?.elementos ?? []), novo] });
+    return novo.id;
   };
+  /** Texto que veio de fora (outro app, o iPhone): vira uma caixa de texto, já selecionada. */
+  const colarTexto = (texto: string) => {
+    if (!sel || !texto.trim()) return;
+    const id = porNaPagina(textoParaHtml(texto));
+    if (!id) return;
+    setFerramenta("selecao"); setSelPid(sel.id); setSelIds([id]);
+  };
+  const colarTextoRef = useRef(colarTexto);
+  colarTextoRef.current = colarTexto;
 
   // IA com liberdade total (decisão de Dan, 04/11/2026): a IA muda o caderno direto.
   // Antes, o Órbita guarda uma cópia do que ela vai mexer (gravada junto com o caderno);
@@ -2464,6 +2566,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
     }
     const nova = await api.salvarPaginaCaderno({ id: "", cadernoId: caderno.id, ordem, tamanho: base && base.tamanho !== "infinito" ? base.tamanho : "a4", papel: { ...folha, texto: true } as Papel, titulo: "", marcado: false, criadoEm: 0 });
     await api.salvarCenaCaderno(nova.id, serializarCena({ ...cenaVazia(), documento: m.html }));
+    marcarFluir(nova.id);
     if (m.titulo) await api.salvarPaginaCaderno({ ...nova, titulo: m.titulo });
     return nova.id;
   };
@@ -2662,6 +2765,19 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
 
       {erro && <div className="leitor-aviso"><Aviso>{erro}</Aviso></div>}
       {importando && <div className="leitor-aviso" role="status"><Aviso tipo="info">{importando}</Aviso></div>}
+      {menuToque && (
+        <div className="caderno-sel-acoes caderno-menu-toque" role="toolbar" aria-label={t.selecao.acoes}
+          style={{ position: "fixed", left: Math.min(Math.max(menuToque.x, 140), window.innerWidth - 140), top: Math.max(8, menuToque.y - 64) }}>
+          {ehSelecao && selIds.length > 0 && (
+            <>
+              <button type="button" className="botao-texto-pequeno" onClick={() => { setMenuToque(null); areaTransf.copiar(); }}>{t.selecao.copiar}</button>
+              <button type="button" className="botao-texto-pequeno" onClick={() => { setMenuToque(null); areaTransf.recortar(); }}>{t.selecao.recortar}</button>
+              <button type="button" className="botao-texto-pequeno" onClick={() => { setMenuToque(null); areaTransf.duplicar(); }}>{t.selecao.duplicar}</button>
+            </>
+          )}
+          <button type="button" className="botao-texto-pequeno" onClick={() => { setMenuToque(null); areaTransf.colar(); }}>{t.selecao.colar}</button>
+        </div>
+      )}
       <Confirmar titulo={t.ia.desfazerTitulo} texto={t.ia.desfazerDepois} confirmar={t.ia.desfazerMesmo} aberta={confirmarDesfazer}
         aoCancelar={() => setConfirmarDesfazer(false)} aoConfirmar={() => { setConfirmarDesfazer(false); void desfazerIa(); }} />
 
@@ -2713,7 +2829,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
                   regua={p.id === selId ? regua : null} unidadeRegua={unidadeRegua} aoMudarRegua={setRegua} aoUnidadeRegua={mudarUnidadeRegua}
                   aoSelecionar={() => setSelId(p.id)}
                   aoDocumento={(html) => atualizarDocumento(p.id, html)}
-                  aoContinuarTexto={() => { setSelId(p.id); void adicionar(true, "depois", p.tamanho, { ...semCapa(folhaDe(p)), texto: true } as Papel); }}
+                  aoContinuarTexto={(resto) => void continuarTexto(p, resto)} fluir={fluirAuto.has(p.id)}
                   aoDesenhar={(tr) => aoDesenhar(p.id, tr)}
                   aoNovaForma={(fm) => aoNovaForma(p.id, fm)}
                   aoApagarParcial={(x, y, raio) => apagarParcial(p.id, x, y, raio)}
@@ -2726,7 +2842,7 @@ function CadernoAberto({ caderno, abas, aoTrocar, aoFechar }: { caderno: Caderno
                   aoNivelSelecao={(frente) => nivelSelecao(p.id, selIds, frente)}
                   aoAgrupar={agruparSelecao} aoDesagrupar={desagruparSelecao}
                   aoFimSelecao={() => fimGestoSelecao(p.id)}
-                  aoApagarSelecao={apagarSelecao}
+                  aoApagarSelecao={apagarSelecao} areaTransf={areaTransf}
                   aoEditarTexto={(id) => { setFerramenta("texto"); setEditandoTexto(id); }}
                   aoNovoTexto={(x, y, largura) => aoNovoTexto(p.id, x, y, ferramenta === "nota", largura)}
                   aoPatchTexto={(id, patch) => atualizarTexto(p.id, id, patch)}
@@ -3136,10 +3252,10 @@ function AdicionarPagina({ atual, total, aoAdicionar, aoImportar, aoCancelar }: 
   );
 }
 
-function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarTexto, cena, ferramenta, cor, ajuste, modeloPincel, forma, editandoTexto, selecionados, imagemUrl, soCaneta, multiToque, aoCaneta, opcoes, larguraTela, bloco, acrescentar, negritoTexto, slotTexto, aoTamTexto, regua, unidadeRegua, aoMudarRegua, aoUnidadeRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoNivelSelecao, aoAgrupar, aoDesagrupar, aoFimSelecao, aoApagarSelecao, aoEditarTexto, sobre }: {
+function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarTexto, fluir, cena, ferramenta, cor, ajuste, modeloPincel, forma, editandoTexto, selecionados, imagemUrl, soCaneta, multiToque, aoCaneta, opcoes, larguraTela, bloco, acrescentar, negritoTexto, slotTexto, aoTamTexto, regua, unidadeRegua, aoMudarRegua, aoUnidadeRegua, aoSelecionar, aoDesenhar, aoNovaForma, aoApagarParcial, aoApagarFim, aoNovoTexto, aoPatchTexto, aoFimTexto, aoApagarTexto, aoSelecionarTexto, aoSelecionarLaco, aoMoverSelecao, aoEscalarSelecao, aoRotacionarSelecao, aoOrdenarSelecao, aoNivelSelecao, aoAgrupar, aoDesagrupar, aoFimSelecao, aoApagarSelecao, aoEditarTexto, areaTransf, sobre }: {
   id: string; pagina: PaginaCaderno; numero?: number; selecionada?: boolean;
   /** Página de texto: o texto digitado mudou; e "continuar numa página nova". */
-  aoDocumento: (html: string) => void; aoContinuarTexto: () => void;
+  aoDocumento: (html: string) => void; aoContinuarTexto: (resto: string) => void; fluir: boolean;
   cena: Cena; ferramenta: FerramentaUI; cor: string; ajuste: AjusteTraco; modeloPincel: ModeloPincel; forma: AjusteForma; editandoTexto: string; selecionados: string[]; imagemUrl: (id: string) => string | undefined;
   soCaneta: boolean; multiToque: React.RefObject<boolean>; aoCaneta: () => void; opcoes: OpcoesCaderno;
   /** Largura da página na tela (px, já com o zoom); 0 enquanto mede. */
@@ -3158,13 +3274,14 @@ function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarT
   aoEscalarSelecao: (ids: string[], ax: number, ay: number, fator: number) => void;
   aoRotacionarSelecao: (ids: string[], ax: number, ay: number, graus: number) => void; aoOrdenarSelecao: (frente: boolean) => void;
   aoNivelSelecao: (frente: boolean) => void; aoAgrupar: () => void; aoDesagrupar: () => void;
-  aoFimSelecao: () => void; aoApagarSelecao: () => void; aoEditarTexto: (id: string) => void;
+  aoFimSelecao: () => void; aoApagarSelecao: () => void; aoEditarTexto: (id: string) => void; areaTransf: AcoesArea;
   /** Camada por cima da página (o corretor da escrita à mão), com a escala da tela. */
   sobre?: (escala: number) => React.ReactNode;
 }) {
   const med = medidaDe(pagina.tamanho);
   const areaRef = useRef<HTMLDivElement>(null);
   const [larguraPx, setLarguraPx] = useState(0);
+  const [slotAviso, setSlotAviso] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = areaRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -3187,7 +3304,7 @@ function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarT
         <Folha papel={folhaDe(pagina)} tamanho={pagina.tamanho} className="caderno-folha caderno-folha-fundo" imagemUrl={imagemUrl} />
         {ehPaginaTexto(pagina) && escala > 0 && (
           <CamadaDocumento html={cena.documento ?? ""} editavel={ferramenta === "texto"} escala={escala} largura={med.largura} altura={med.altura}
-            slot={selecionada ? slotTexto : null} aoMudar={aoDocumento} aoContinuar={aoContinuarTexto} />
+            slot={selecionada ? slotTexto : null} slotAviso={slotAviso} aoMudar={aoDocumento} aoContinuar={aoContinuarTexto} fluir={fluir} />
         )}
         <SuperficieDesenho cena={cena} ferramenta={ferramenta} cor={cor} ajuste={ajuste} modeloPincel={modeloPincel} forma={forma} regua={regua} largura={med.largura} altura={med.altura} imagemUrl={imagemUrl}
           soCaneta={soCaneta} multiToque={multiToque} aoCaneta={aoCaneta} opcoes={opcoes} aoDesenhar={aoDesenhar} aoNovaForma={aoNovaForma} aoApagarParcial={aoApagarParcial} aoApagarFim={aoApagarFim} />
@@ -3196,9 +3313,10 @@ function PaginaView({ id, pagina, numero, selecionada, aoDocumento, aoContinuarT
           aoNovo={aoNovoTexto} aoPatch={aoPatchTexto} aoFim={aoFimTexto} aoApagar={aoApagarTexto} aoSelecionar={aoSelecionarTexto} />
         <CamadaSelecao elementos={cena.elementos} selecionados={selecionados} modo={modoSel} acrescentar={acrescentar} soCaneta={soCaneta} escala={escala} largura={med.largura} altura={med.altura}
           aoSelecionar={aoSelecionarLaco} aoMover={aoMoverSelecao} aoEscalar={aoEscalarSelecao} aoRotacionar={aoRotacionarSelecao} aoOrdenar={aoOrdenarSelecao} aoNivel={aoNivelSelecao}
-          aoAgrupar={aoAgrupar} aoDesagrupar={aoDesagrupar} aoFim={aoFimSelecao} aoApagar={aoApagarSelecao} aoEditarTexto={aoEditarTexto} />
+          aoAgrupar={aoAgrupar} aoDesagrupar={aoDesagrupar} aoFim={aoFimSelecao} aoApagar={aoApagarSelecao} aoEditarTexto={aoEditarTexto} area={areaTransf} />
         {regua && <CamadaRegua regua={regua} unidade={unidadeRegua} escala={escala} largura={med.largura} altura={med.altura} aoMudar={aoMudarRegua} aoUnidade={aoUnidadeRegua} />}
         {sobre && escala > 0 && sobre(escala)}
+        {ehPaginaTexto(pagina) && <div ref={setSlotAviso} className="caderno-doc-aviso" />}
       </div>
     </section>
   );
@@ -3414,7 +3532,10 @@ function CaixaEditor({ tx, estilo, slot, negritoPadrao, aoTamPadrao, aoPatch, ao
  *  - laço ("laco"): contorna à mão livre o que quer selecionar.
  *  Com Shift (ou "acrescentar" ligado), cada toque soma ou tira da seleção.
  *  Selecionado: arrastar move, os cantos redimensionam, a alça de cima gira. */
-function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, escala, largura, altura, aoSelecionar, aoMover, aoEscalar, aoRotacionar, aoOrdenar, aoNivel, aoAgrupar, aoDesagrupar, aoFim, aoApagar, aoEditarTexto }: {
+/** Copiar, recortar, colar e duplicar (barra da seleção e toque longo). */
+interface AcoesArea { copiar: () => void; recortar: () => void; colar: () => void; duplicar: () => void }
+
+function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, escala, largura, altura, aoSelecionar, aoMover, aoEscalar, aoRotacionar, aoOrdenar, aoNivel, aoAgrupar, aoDesagrupar, aoFim, aoApagar, aoEditarTexto, area }: {
   elementos: Elemento[]; selecionados: string[]; modo: "laco" | "selecao" | null; acrescentar: boolean; escala: number; largura: number; altura: number;
   /** Com "só caneta", o dedo arrasta a folha e não seleciona. */
   soCaneta: boolean;
@@ -3422,9 +3543,15 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
   aoEscalar: (ids: string[], ax: number, ay: number, fator: number) => void;
   aoRotacionar: (ids: string[], ax: number, ay: number, graus: number) => void; aoOrdenar: (frente: boolean) => void;
   aoNivel: (frente: boolean) => void; aoAgrupar: () => void; aoDesagrupar: () => void;
-  aoFim: () => void; aoApagar: () => void; aoEditarTexto: (id: string) => void;
+  aoFim: () => void; aoApagar: () => void; aoEditarTexto: (id: string) => void; area: AcoesArea;
 }) {
   const ref = useRef<SVGSVGElement>(null);
+  // Segurar o dedo (ou a caneta, ou o mouse) num lugar vazio: aparece "Colar" ali.
+  const [menuColar, setMenuColar] = useState<Ponto2 | null>(null);
+  const segurar = useRef<{ t: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
+  const pararSegurar = () => { if (segurar.current) { clearTimeout(segurar.current.t); segurar.current = null; } };
+  useEffect(() => () => pararSegurar(), []);
+  useEffect(() => { if (modo === null) setMenuColar(null); }, [modo]);
   const [laco, setLacoEstado] = useState<Ponto2[] | null>(null);
   const [retangulo, setRetanguloEstado] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   // Espelhos em ref: o fim do gesto lê daqui (sem chamar o pai de dentro de um setState).
@@ -3464,6 +3591,8 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
     e.preventDefault();
     ref.current?.setPointerCapture(e.pointerId);
     const [x, y] = pt(e);
+    setMenuColar(null);
+    pararSegurar();
     const somar = acrescentar || e.shiftKey;
     if (!somar && selecionados.length) {
       // Perto da alça de girar? Começa a rotação em torno do centro.
@@ -3508,6 +3637,7 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
       if (!somar && dentroDaSelecao(x, y)) { novoGesto("mover", x, y); return; }
       novoGesto("retangulo", x, y, { somar });
       setRetangulo({ x0: x, y0: y, x1: x, y1: y });
+      comecarSegurar(x, y);
       return;
     }
     // Laço: dentro da seleção move; senão, começa um laço novo.
@@ -3515,12 +3645,25 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
     else {
       novoGesto("laco", x, y, { somar });
       setLaco([[x, y]]);
+      comecarSegurar(x, y);
     }
   };
+  function comecarSegurar(x: number, y: number) {
+    segurar.current = {
+      x, y,
+      t: setTimeout(() => {
+        segurar.current = null;
+        gesto.current = null;
+        setLaco(null); setRetangulo(null);
+        setMenuColar([x, y]);
+      }, 550),
+    };
+  }
   const mover = (e: React.PointerEvent) => {
     const g = gesto.current;
     if (!g) return;
     const [x, y] = pt(e);
+    if (segurar.current && Math.hypot(x - segurar.current.x, y - segurar.current.y) > tolToque) pararSegurar();
     if (g.modo === "laco") { const l = lacoRef.current; if (l) setLaco([...l, [x, y]]); }
     else if (g.modo === "retangulo") { const r = retRef.current; if (r) setRetangulo({ ...r, x1: x, y1: y }); }
     else if (g.modo === "mover") { aoMover(g.ids, x - g.ux, y - g.uy); g.ux = x; g.uy = y; }
@@ -3535,6 +3678,7 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
     }
   };
   const fim = () => {
+    pararSegurar();
     const g = gesto.current;
     gesto.current = null;
     if (!g) return;
@@ -3582,7 +3726,9 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
   // Botões da seleção: embaixo da caixa (ou em cima, se não couber).
   let acoes: React.CSSProperties | null = null;
   if (ativa && lim && escala) {
-    const meioX = Math.min(Math.max((lim.x + lim.largura / 2) * escala, 150), largura * escala - 150);
+    // A barra tem uns 560 px: fica dentro da folha (ou centrada, se a folha for estreita).
+    const meia = Math.min(280, (largura * escala) / 2);
+    const meioX = Math.min(Math.max((lim.x + lim.largura / 2) * escala, meia), largura * escala - meia);
     const embaixo = (lim.y + lim.altura) * escala + 10;
     acoes = embaixo < altura * escala - 48 ? { left: meioX, top: embaixo } : { left: meioX, top: Math.max(4, lim.y * escala - 90) };
   }
@@ -3611,6 +3757,11 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
       </svg>
       {acoes && (
         <div className="caderno-sel-acoes" style={acoes} role="toolbar" aria-label={t.selecao.acoes}>
+          <button type="button" className="botao-texto-pequeno" onClick={area.copiar}>{t.selecao.copiar}</button>
+          <button type="button" className="botao-texto-pequeno" onClick={area.recortar}>{t.selecao.recortar}</button>
+          <button type="button" className="botao-texto-pequeno" onClick={area.colar}>{t.selecao.colar}</button>
+          <button type="button" className="botao-texto-pequeno" onClick={area.duplicar}>{t.selecao.duplicar}</button>
+          <span className="caderno-sel-separador" aria-hidden="true" />
           <button type="button" className="botao-icone pequeno" onClick={() => aoOrdenar(true)} aria-label={t.laco.paraFrente} title={t.laco.paraFrente}><IconeTudoFrente size="1em" aria-hidden="true" /></button>
           <button type="button" className="botao-icone pequeno" onClick={() => aoNivel(true)} aria-label={t.selecao.umNivelFrente} title={t.selecao.umNivelFrente}><IconeNivelFrente size="1em" aria-hidden="true" /></button>
           <button type="button" className="botao-icone pequeno" onClick={() => aoNivel(false)} aria-label={t.selecao.umNivelTras} title={t.selecao.umNivelTras}><IconeNivelTras size="1em" aria-hidden="true" /></button>
@@ -3618,6 +3769,12 @@ function CamadaSelecao({ elementos, selecionados, modo, acrescentar, soCaneta, e
           {podeAgrupar && <button type="button" className="botao-icone pequeno" onClick={aoAgrupar} aria-label={t.selecao.agrupar} title={t.selecao.agrupar}><IconeAgrupar size="1em" aria-hidden="true" /></button>}
           {podeDesagrupar && <button type="button" className="botao-icone pequeno" onClick={aoDesagrupar} aria-label={t.selecao.desagrupar} title={t.selecao.desagrupar}><IconeDesagrupar size="1em" aria-hidden="true" /></button>}
           <button type="button" className="botao-icone pequeno" onClick={aoApagar} aria-label={t.laco.apagar} title={t.laco.apagar}><Trash2 size="1em" aria-hidden="true" /></button>
+        </div>
+      )}
+      {menuColar && ativa && escala > 0 && (
+        <div className="caderno-sel-acoes" role="toolbar" aria-label={t.selecao.acoes}
+          style={{ left: Math.min(Math.max(menuColar[0] * escala, 60), largura * escala - 60), top: Math.max(4, menuColar[1] * escala - 52) }}>
+          <button type="button" className="botao-texto-pequeno" onClick={() => { setMenuColar(null); area.colar(); }}>{t.selecao.colar}</button>
         </div>
       )}
     </div>

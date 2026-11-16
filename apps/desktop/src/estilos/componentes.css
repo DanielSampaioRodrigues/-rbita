@@ -898,6 +898,12 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-sel-alca { fill: var(--cor-superficie); stroke: var(--cor-destaque); stroke-width: 1.5; cursor: nwse-resize; }
 .caderno-sel-haste { stroke: var(--cor-destaque); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .caderno-sel-girar { fill: var(--cor-destaque); stroke: var(--cor-superficie); stroke-width: 1.5; cursor: grab; }
+.caderno-sel-acoes .botao-texto-pequeno { border: 0; background: transparent; color: var(--cor-texto); font: inherit; font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.caderno-sel-acoes .botao-texto-pequeno:hover { background: var(--cor-fundo-suave, rgba(127, 127, 127, 0.12)); }
+.caderno-sel-acoes .botao-texto-pequeno:focus-visible { outline: 2px solid var(--cor-foco, currentColor); outline-offset: 1px; }
+.caderno-menu-toque { z-index: 50; }
+.caderno-sel-acoes { flex-wrap: wrap; justify-content: center; max-width: min(92vw, 640px); }
+.caderno-sel-separador { width: 1px; align-self: stretch; margin: 0.25rem 0.1rem; background: var(--cor-borda); }
 .caderno-sel-acoes { position: absolute; transform: translateX(-50%); display: inline-flex; gap: 0.15rem; padding: 0.15rem; background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: 999px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); z-index: 3; }
 
 /* Régua: faixa translúcida com traços e números. Só o corpo e as pontas
@@ -1896,6 +1902,7 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-doc-conteudo .selectedCell { background: #dbeafe; }
 .caderno-doc-conteudo mark { border-radius: 2px; padding: 0 1px; }
 .caderno-doc-conteudo a { color: #1d4ed8; text-decoration: underline; }
+.caderno-doc-aviso { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
 .caderno-doc-passou { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: var(--espaco-2); padding: 6px 10px; border-radius: 999px; background: var(--cor-superficie); border: 1px solid var(--cor-borda); color: var(--cor-texto); font-size: 0.85rem; pointer-events: auto; box-shadow: 0 2px 8px rgb(0 0 0 / 0.12); white-space: nowrap; }
 .caderno-doc-barra { gap: 4px; }
 .caderno-doc-select { min-height: 36px; max-width: 9.5rem; padding: 0 0.4rem; border: 1px solid var(--cor-borda-controle); border-radius: 8px; background: var(--cor-superficie); color: var(--cor-texto); font: inherit; font-size: 0.85rem; }

@@ -2,7 +2,8 @@
 // títulos, fontes, cores, listas, tabelas e alinhamento. O desenho à mão fica por
 // cima (escreve-se com a caneta sobre o texto, como num papel impresso). O texto
 // é guardado em HTML na cena da página (`cena.documento`).
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { DOMSerializer } from "@tiptap/pm/model";
 import DOMPurify from "dompurify";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -23,13 +24,58 @@ export const htmlSeguro = (html: string) => DOMPurify.sanitize(html, { USE_PROFI
 
 
 /** A folha de texto, desenhada no tamanho real e reduzida pela escala da página. */
-export function CamadaDocumento({ html, editavel, escala, largura, altura, slot, aoMudar, aoContinuar }: {
+/**
+ * Corta o texto no fim da folha: tira do editor o que passou e devolve em HTML (ou null
+ * se cabe tudo). O corte é sempre entre parágrafos (ou itens de lista), nunca no meio
+ * de uma frase; se nem o primeiro parágrafo cabe, ele fica e o resto vai.
+ */
+export function cortarNoFim(editor: Editor, folha: HTMLElement, escala: number, altura: number): string | null {
+  const view = editor.view;
+  const doc = editor.state.doc;
+  // Ao digitar além do fim, a folha rola por dentro para seguir o cursor: volta ao topo para medir.
+  folha.scrollTop = 0;
+  const r = folha.getBoundingClientRect();
+  const limite = r.top + (altura - MARGEM_DOCUMENTO) * escala;
+  const conteudo = view.dom.getBoundingClientRect();
+  if (conteudo.bottom <= limite + 2) return null;
+  let pos: number | null = null;
+  const achado = view.posAtCoords({ left: conteudo.left + 4, top: limite - 2 });
+  if (achado) {
+    const $p = doc.resolve(achado.pos);
+    let d = $p.depth;
+    while (d > 0 && !$p.node(d).isTextblock) d--;
+    // Sobe enquanto for o primeiro filho (o item de lista inteiro vai junto).
+    while (d > 1 && $p.index(d - 1) === 0) d--;
+    pos = d > 0 ? $p.before(d) : null;
+    // A linha do limite pode ainda caber: se o bloco termina antes do limite, corta depois dele.
+    if (pos !== null) {
+      const dom = view.nodeDOM(pos) as HTMLElement | null;
+      if (dom?.getBoundingClientRect && dom.getBoundingClientRect().bottom <= limite + 1) pos = pos + doc.resolve(pos).nodeAfter!.nodeSize;
+    }
+  }
+  // Nada cabe antes do corte (ou não achou): leva do segundo bloco em diante.
+  if (pos === null || pos <= 1) pos = doc.childCount > 1 ? doc.child(0).nodeSize : null;
+  if (pos === null || pos >= doc.content.size) return null;
+  const resto = doc.slice(pos, doc.content.size);
+  const caixa = document.createElement("div");
+  caixa.appendChild(DOMSerializer.fromSchema(editor.schema).serializeFragment(resto.content));
+  const htmlResto = caixa.innerHTML;
+  if (!caixa.textContent?.trim() && !caixa.querySelector("img, table, hr")) return null;
+  editor.chain().deleteRange({ from: pos, to: doc.content.size }).run();
+  return htmlResto;
+}
+
+export function CamadaDocumento({ html, editavel, escala, largura, altura, slot, slotAviso, aoMudar, aoContinuar, fluir }: {
   html: string; editavel: boolean; escala: number; largura: number; altura: number;
   /** Onde a barra de formatação aparece (a barra de contexto), só na página atual. */
   slot: HTMLElement | null;
+  /** Onde fica o aviso "passou do fim" (por cima do desenho, para o botão receber o toque). */
+  slotAviso: HTMLElement | null;
   aoMudar: (html: string) => void;
-  /** O texto passou do fim da folha: criar uma página de texto depois desta. */
-  aoContinuar: () => void;
+  /** O texto passou do fim da folha: o que sobrou vai para uma página de texto nova, depois desta. */
+  aoContinuar: (resto: string) => void;
+  /** Leva o que passou para a página seguinte sozinho (texto que a IA criou). */
+  fluir?: boolean;
 }) {
   const aoMudarRef = useRef(aoMudar);
   aoMudarRef.current = aoMudar;
@@ -69,17 +115,35 @@ export function CamadaDocumento({ html, editavel, escala, largura, altura, slot,
     medir();
     return () => ro.disconnect();
   }, [editor]);
+  const continuar = () => {
+    const el = miolo.current;
+    if (!editor || !el) return;
+    const resto = cortarNoFim(editor, el, escala, altura);
+    if (resto === null) { setPassou(false); return; }
+    clearTimeout(timer.current);
+    aoMudarRef.current(editor.getHTML());
+    aoContinuar(resto);
+  };
+  const continuarRef = useRef(continuar);
+  continuarRef.current = continuar;
+  const jaFluiu = useRef(false);
+  useEffect(() => {
+    if (!fluir || !passou || jaFluiu.current) return;
+    jaFluiu.current = true;
+    // Espera as fontes e as imagens assentarem antes de medir.
+    const id = setTimeout(() => continuarRef.current(), 250);
+    return () => clearTimeout(id);
+  }, [fluir, passou]);
   return (
     <div className={editavel ? "caderno-doc editavel" : "caderno-doc"}>
       <div ref={miolo} className="caderno-doc-folha" style={{ width: largura, height: altura, padding: MARGEM_DOCUMENTO, transform: `scale(${escala})` }}>
         <EditorContent editor={editor} />
       </div>
-      {passou && (
+      {passou && !fluir && slotAviso && createPortal(
         <div className="caderno-doc-passou">
           <span>{t.passou}</span>
-          <button type="button" className="botao pequeno" onClick={aoContinuar}>{t.continuar}</button>
-        </div>
-      )}
+          <button type="button" className="botao pequeno" onPointerDown={(e) => e.stopPropagation()} onClick={continuar}>{t.continuar}</button>
+        </div>, slotAviso)}
       {editor && editavel && slot && createPortal(<FitaTexto editor={editor} compacta />, slot)}
     </div>
   );

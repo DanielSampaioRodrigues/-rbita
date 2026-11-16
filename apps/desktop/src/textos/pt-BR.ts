@@ -1654,6 +1654,8 @@ export const textos = {
       desagrupar: "Desagrupar (Ctrl + Shift + G)",
       umNivelFrente: "Um nível para a frente (Ctrl + ])",
       umNivelTras: "Um nível para trás (Ctrl + [)",
+      copiar: "Copiar", recortar: "Recortar", colar: "Colar", duplicar: "Duplicar",
+      copiado: "Copiado.", recortado: "Recortado.", nadaParaColar: "Não há nada para colar.",
     },
     pincel: {
       modelo: "Modelo do pincel",
