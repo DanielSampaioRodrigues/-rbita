@@ -1,3 +1,28 @@
+- **Caderno: o texto que não cabe na folha segue para as próximas páginas**
+  - O botão "Continuar numa página nova" funciona (antes não respondia ao toque) e leva o que sobrou para quantas páginas forem precisas, cortando entre parágrafos.
+  - O texto que a IA cria (como o resumo da foto do quadro) já se reparte em páginas sozinho.
+
+- **Copiar e colar de tudo no caderno**
+  - Ao selecionar, aparece uma barrinha com **Copiar, Recortar, Colar, Duplicar e Acrescentar**. Segurar o dedo num lugar vazio da folha abre **Colar**.
+  - Colar aceita imagem (sem fundo continua sem fundo), PDF (vira páginas), texto com formatação (títulos, negrito e listas) e texto puro, vindos do iPhone ou de outros apps.
+  - Copiar manda para os outros apps a imagem do que você selecionou, com fundo transparente.
+
+- **Seta e laço separados**: duas ferramentas na barra, sem a janela de explicação que abria toda vez.
+
+- **Barra da imagem**: com uma imagem selecionada, **Cortar, Tirar o fundo** (fundo liso, feito no aparelho, com prévia), **Girar, Espelhar e Trocar**. Tudo se desfaz.
+
+- **Painel da IA do caderno em forma de conversa**, como no Claude
+  - Caixa de escrever bem visível embaixo, com **+** (foto, imagem, corretor), página ou caderno todo, **Fontes** com quadrinhos (como no NotebookLM) e a **escolha do modelo**.
+  - Escolha qual IA e qual modelo respondem no caderno, entre as que você configurou (inclusive as que rodam no aparelho). Também em Ajustes, na função "Caderno".
+
+- **Sem o aviso de dado sensível**: o Órbita não para mais para avisar antes de mandar algo à IA. Quem quiser que dados de saúde e terapia não saiam do aparelho continua podendo ligar o bloqueio em Ajustes > IA.
+
+- **Corrigido**: a barra de opções da caneta ficava cortada atrás do painel lateral; a barrinha da seleção ficava cortada na borda da folha.
+
+---
+
+<!-- Abaixo: o que veio na 0.52.0. -->
+
 - **Estudos ligados ao resto do Órbita**
   - Prova, trabalho e entrega com data vão para a **Agenda**, com o aviso de sempre, e acompanham as mudanças.
   - **"Começar quantos dias antes"**: o dia de começar aparece no cartão ("Comece em ter., 17 de nov.") e na Agenda.

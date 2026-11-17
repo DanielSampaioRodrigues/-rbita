@@ -1,8 +1,7 @@
-// Aviso de dados de saúde ou terapia antes de ir para uma IA de fora do aparelho.
-// Pedido de Dan (11/2026): "aparece uma vez e discreto; muito aviso assusta". O aviso
-// aparece só na primeira vez com cada provedor; depois, o envio segue sem perguntar.
-// Quem não quer que esses dados saiam do aparelho liga o bloqueio em Ajustes > IA
-// ("Não enviar dados de saúde e terapia para fora do aparelho"): esse vale sempre.
+// Dados de saúde ou terapia indo para uma IA de fora do aparelho.
+// Decisão de Dan (17/11/2026): sem aviso em nenhuma parte do app ("esses avisos
+// atrapalham muito"). Só para quem ligou o bloqueio em Ajustes > IA ("Não enviar dados
+// de saúde e terapia para fora do aparelho"): aí o envio para e explica o bloqueio.
 // Fica guardado no banco criptografado (vai junto no backup), não no navegador.
 import { api } from "../api";
 
@@ -30,7 +29,5 @@ export async function marcarAvisado(provedorId: string): Promise<void> {
 
 /** Precisa parar para avisar (ou explicar o bloqueio) antes de enviar? */
 export async function precisaAvisar(sensivel: boolean, provedor: { id: string; local: boolean }, bloqueia: boolean): Promise<boolean> {
-  if (!sensivel || provedor.local) return false;
-  if (bloqueia) return true;
-  return !(await jaAvisou(provedor.id));
+  return sensivel && !provedor.local && bloqueia;
 }

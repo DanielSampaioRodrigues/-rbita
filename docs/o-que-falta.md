@@ -45,6 +45,14 @@ Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, su
 - [ ] **Parte 5 de `docs/configurar-contas.md`**: ligar a Google Classroom API e acrescentar as 3 permissões. Sem isso, "Ligar a conta Google" em Contas conectadas não funciona.
 - [ ] **Conta Microsoft (OneDrive)**: o código e o workflow estão prontos (`ORBITA_MICROSOFT_CLIENT_ID`); falta registrar o app na Microsoft (Parte 3).
 - [ ] **Testes no Windows e no iPad** da 0.51.x: IA mexendo no caderno com chave de verdade e o desfazer; Fontes com PDF grande; DOI/ISBN no Windows; Zotero do computador; Classroom; Espaço segurado para a mão; caneta do Windows virada para apagar; menu flutuante.
+- [ ] **Testes da 0.53.0 (publicada em 17/11/2026)**, no iPad e no Windows:
+  - Página de texto que passa da folha: "Continuar numa página nova" leva o resto (inclusive o texto antigo da IA que ficou cortado).
+  - Colar no caderno: foto e texto do iPhone, imagem sem fundo (continua sem fundo), PDF, texto do Word ou do navegador (com títulos e listas). No iPad, o botão Colar mostra o balão do sistema.
+  - Copiar uma seleção do caderno e colar no Notes ou no Keynote: vem a imagem sem fundo.
+  - Segurar o dedo na folha (com a seta ou com "só a caneta desenha") abre Colar.
+  - Seta e laço: nenhuma janela abre ao escolher; a barrinha aparece inteira.
+  - Imagem: Cortar, Tirar o fundo (foto de folha branca e de quadro branco), Girar, Espelhar, Trocar; Ctrl+Z volta.
+  - Painel da IA: conversa, fontes marcadas, trocar o modelo (e conferir em Ajustes > IA > Caderno).
 - [ ] **Testes da 0.52.0 (publicada em 12/11/2026)**, que aqui só deu para simular:
   - **Com a chave de IA de verdade**: "Preencher com a IA" na referência; "Ler as páginas com a IA" num PDF digitalizado nas Fontes; corretor com "Minhas palavras".
   - **Extrato do seu banco** (OFX ou CSV): conferir se as colunas e os sinais vêm certos.
