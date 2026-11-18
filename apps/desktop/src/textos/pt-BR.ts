@@ -167,7 +167,7 @@ export const textos = {
     guardar: "Guardar",
     capturaCompleta: "Captura completa (com voz e IA)",
     ideiaGuardada: "Ideia guardada. Ela está em órbita das Ideias.",
-    dica: "Arraste para girar. Dois dedos (ou o botão direito) passeiam para os lados. Pinça ou roda do mouse chega perto.",
+    dica: "Toque num planeta para entrar nele; toque de novo para abrir. Arraste para girar; dois dedos (ou o botão direito) passeiam; pinça ou roda chega perto.",
     pesado: "O céu está pesado para este aparelho. Posso reduzir as animações e os efeitos? Fica mais leve e gasta menos bateria.",
     reduzir: "Reduzir",
     manter: "Deixar como está",

@@ -32,6 +32,8 @@ export interface Cena {
 export interface OpcoesCena {
   /** O foco mudou (a vista entrou noutro sistema) ou a pessoa tocou num corpo. */
   aoMudar: (foco: No, tocado: No | null | undefined) => void;
+  /** A pessoa tocou de novo no corpo em que já estava, ou numa coisa (caderno, projeto…): abrir. */
+  aoAbrir: (n: No) => void;
   /** O aparelho não está acompanhando (medido nos primeiros segundos). */
   aoPesado: () => void;
   velocidade: Velocidade;
@@ -312,7 +314,10 @@ export function criarCena(tela: HTMLElement, nomes: HTMLElement, op: OpcoesCena)
   const aoSoltar = (e: PointerEvent) => {
     const p = dedos.get(e.pointerId); dedos.delete(e.pointerId); if (dedos.size < 2) pinca = null; tela.classList.remove("pegando");
     if (arrasto && p) {
-      if (arrasto.andou <= 5) { const a = corpoEm(p.x, p.y); velPan.set(0, 0, 0); if (a) { sel = temFilhos(a) ? null : a; voarPara(a); op.aoMudar(foco, a); } else if (sel) { sel = null; op.aoMudar(foco, null); } }
+      if (arrasto.andou <= 5) { const a = corpoEm(p.x, p.y); velPan.set(0, 0, 0); if (a && a !== raiz && (a === foco || a === sel || !temFilhos(a))) {
+        // Uma coisa (caderno, projeto, livro…) abre no primeiro toque; um planeta, no segundo (o primeiro entra nele).
+        op.aoAbrir(a);
+      } else if (a) { sel = temFilhos(a) ? null : a; voarPara(a); op.aoMudar(foco, a); } else if (sel) { sel = null; op.aoMudar(foco, null); } }
       else if (performance.now() - arrasto.ut > 90) velPan.set(0, 0, 0);
     }
     if (!dedos.size) arrasto = null;

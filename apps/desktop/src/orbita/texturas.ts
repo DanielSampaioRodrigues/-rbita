@@ -38,17 +38,20 @@ const faixas = (paleta: Cor[], sem: number): Pintor => (x, y, z, lat) => {
   return [c[0] * turb, c[1] * turb, c[2] * turb];
 };
 const pedra = (c1: Cor, c2: Cor, sem: number, polos = false): Pintor => (x, y, z, lat) => {
-  if (polos && Math.abs(lat) > 1.36) return [232, 222, 214];
   const h = fbm(x * 2.6 + sem, y * 2.6, z * 2.6, 6), r = Math.abs(fbm(x * 8, y * 8 + sem, z * 8, 4) - 0.5) * 2, c = mis(c1, c2, h * 1.5 - 0.2), k = 0.76 + 0.24 * r;
-  return [c[0] * k, c[1] * k, c[2] * k];
+  const chao: Cor = [c[0] * k, c[1] * k, c[2] * k];
+  return polos ? mis(chao, gelo(x, y, z), calota(x, y, z, lat, 1.36)) : chao;
 };
+/** Quanto de gelo há neste ponto (0 a 1): só perto do polo, com a borda irregular e suave. */
+const calota = (x: number, y: number, z: number, lat: number, onde: number) => suave(onde, onde + 0.14, Math.abs(lat) + (fbm(x * 5 + 70, y * 5, z * 5, 4) - 0.5) * 0.3);
+/** O gelo com relevo (branco azulado, não uma mancha lisa). */
+const gelo = (x: number, y: number, z: number): Cor => { const v = 0.82 + 0.18 * fbm(x * 9 + 40, y * 9, z * 9, 4); return [238 * v, 244 * v, 250 * v]; };
 const alturaTerra = (x: number, y: number, z: number) => fbm(x * 1.9 + 3, y * 1.9, z * 1.9, 6);
 const MUNDOS: Record<Mundo, Pintor> = {
   terra: (x, y, z, lat) => {
-    const h = alturaTerra(x, y, z);
-    if (Math.abs(lat) > 1.2 - fbm(x * 4, y * 4, z * 4, 3) * 0.25) return [236, 242, 248];
-    if (h > 0.52) { const a = (h - 0.52) * 5; return mis(mis([64, 112, 62], [150, 132, 88], a), [222, 214, 200], suave(0.75, 1, a)); }
-    return mis([8, 26, 78], [30, 96, 150], suave(0.3, 0.52, h));
+    const h = alturaTerra(x, y, z), a = (h - 0.52) * 5;
+    const chao: Cor = h > 0.52 ? mis(mis([64, 112, 62], [150, 132, 88], a), [222, 214, 200], suave(0.75, 1, a)) : mis([8, 26, 78], [30, 96, 150], suave(0.3, 0.52, h));
+    return mis(chao, gelo(x, y, z), calota(x, y, z, lat, 1.3));
   },
   selva: (x, y, z) => { const h = fbm(x * 2.2 + 11, y * 2.2, z * 2.2, 6); return h > 0.47 ? mis([34, 92, 48], [120, 150, 70], (h - 0.47) * 4) : mis([14, 52, 60], [36, 104, 96], h * 2); },
   deserto: pedra([120, 52, 28], [214, 138, 82], 21, true),

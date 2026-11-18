@@ -61,6 +61,7 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (
   const [passear, setPassear] = useState(false);
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState(false);
+  const abrirRef = useRef<(n: No) => void>(() => {});
   const orb = prefs.orbita, orbRef = useRef(orb); orbRef.current = orb;
   const mudarOrbita = useCallback((m: Partial<typeof orb>) => mudar({ orbita: { ...orbRef.current, ...m } }), [mudar]);
   const visiveis = useMemo(() => prefs.menu.ordem.filter((s) => !prefs.menu.ocultos.includes(s) && !SECOES_JUNTAS[s]), [prefs.menu]);
@@ -72,6 +73,7 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (
       const c = criarCena(tela.current, nomes.current, {
         velocidade: orbRef.current.velocidade, reduzido: orbRef.current.reduzido,
         aoMudar: (f, tocado) => { setFoco(f); if (tocado !== undefined) setSel(tocado && tocado.filhos.length === 0 ? tocado : null); },
+        aoAbrir: (x) => abrirRef.current(x),
         aoPesado: () => { if (!orbRef.current.perguntou && !orbRef.current.reduzido) setPesado(true); },
       });
       cena.current = c;
@@ -95,6 +97,7 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (
     if (a.tipo === "caderno" || a.tipo === "livro") pedirAbrir(a.tipo, a.id);
     aoIr(a.secao);
   };
+  abrirRef.current = abrir;
   const ir = (n: No) => cena.current?.irPara(n);
   const guardar = async (e: React.FormEvent) => {
     e.preventDefault();

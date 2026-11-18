@@ -1,3 +1,11 @@
+- **No céu, tocar abre**: toque num caderno, projeto, livro ou ideia e ele abre direto. Num planeta, o primeiro toque entra nele (para ver o que tem em volta) e o segundo abre o espaço. Vale para o planeta e para o nome dele. O botão do cartão continua funcionando.
+
+- **Corrigido**: alguns planetas apareciam com uma mancha cinza lisa em cima (era o gelo do polo, mal desenhado). Agora o gelo é menor, com borda irregular e relevo.
+
+---
+
+<!-- Abaixo: o que veio na 0.54.0. -->
+
 - **O Órbita agora abre num céu em 3D**
   - No centro, o sol é o seu agora. Perto dele, o que é de hoje. Em volta, cada espaço é um planeta (Caderno, Estudos, Projetos…), com os seus cadernos, projetos, ideias, livros e matérias em órbita.
   - **Arraste** para girar a vista. **Dois dedos** (ou o botão direito do mouse) passeiam para os lados. **Pinça ou roda** chega perto; em cima de um planeta, você entra nele.
