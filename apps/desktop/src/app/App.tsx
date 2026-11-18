@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { temWebGL } from "../orbita/webgl";
+import { Paleta } from "./Paleta";
 
 // O céu em 3D só é baixado quando a tela de entrada é ele (a biblioteca de 3D é grande).
 const Orbita = lazy(() => import("../orbita/Orbita").then((m) => ({ default: m.Orbita })));
@@ -115,6 +116,7 @@ export function App() {
     return () => window.removeEventListener("mouseup", aoClicar);
   }, [voltar, avancar]);
 
+  const [paleta, setPaleta] = useState(false);
   const pedirCaptura = useCallback(() => {
     if (aberto) setCapturando(true);
     else capturaPendente.current = true;
@@ -171,6 +173,8 @@ export function App() {
       bloquear: () => void bloquear(),
     };
     const aoTeclar = (e: KeyboardEvent) => {
+      // Ctrl + K: buscar ou fazer algo, de qualquer tela (se o editor de texto não usou a tecla).
+      if (aberto && !e.defaultPrevented && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "k") { e.preventDefault(); setPaleta(true); return; }
       // Quem já tratou a tecla (o editor de texto, o zoom do caderno) tem a vez:
       // assim Ctrl+Shift+L alinha o texto em vez de trocar o claro/escuro.
       if (e.defaultPrevented) return;
@@ -202,16 +206,17 @@ export function App() {
     else if (secao === "agenda") pagina = <Agenda aoAbrirProjeto={abrirProjeto} />;
     else if (secao === "rotinas") pagina = <Rotinas />;
     else if (secao === "foco") pagina = <PaginaFoco />;
-    else if (secao === "energia")
-      pagina = <PaginaEnergia aoLigarBaixa={() => mudar({ baixaEnergia: true })} aoAbrirProjeto={abrirProjeto} />;
+
     else if (secao === "projetos")
       pagina = projetoAberto ? (
         <Projeto key={projetoAberto} id={projetoAberto} aoVoltar={() => irPara("projetos")} />
       ) : (
         <Projetos aoAbrir={abrirProjeto} aoMudarLimite={() => irPara("ajustes")} />
       );
-    else if (secao === "saude") pagina = <PaginaSaude aoAbrirPlanoDeCrise={() => setPlanoCrise(true)} />;
-    else if (secao === "cuidado") pagina = <PaginaCuidado />;
+    else if (secao === "saude" || secao === "energia" || secao === "cuidado")
+      // Energia e Cuidado moram dentro da Saúde: os caminhos antigos abrem a aba certa.
+      pagina = <PaginaSaude key={secao} abaPedida={secao === "energia" ? "energia" : secao === "cuidado" ? "profissionais" : undefined} aoAbrirPlanoDeCrise={() => setPlanoCrise(true)}
+        energia={<PaginaEnergia aoLigarBaixa={() => mudar({ baixaEnergia: true })} aoAbrirProjeto={abrirProjeto} />} profissionais={<PaginaCuidado />} />;
     else if (secao === "estudos") pagina = <PaginaEstudos aoIr={irPara} aoAbrirProjeto={abrirProjeto} />;
     else if (secao === "dinheiro") pagina = <PaginaDinheiro />;
     else if (secao === "hobbies") pagina = <PaginaHobbies />;
@@ -220,7 +225,7 @@ export function App() {
     else if (secao === "aparencia") pagina = <Aparencia />;
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} temSenha={situacao.temSenha} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
     else if (prefs.orbita.inicio && !prefs.baixoEstimulo && temWebGL())
-      pagina = <Suspense fallback={null}><Orbita aoIr={irPara} aoAbrirProjeto={abrirProjeto} aoCapturar={pedirCaptura} /></Suspense>;
+      pagina = <Suspense fallback={null}><Orbita aoIr={irPara} aoAbrirProjeto={abrirProjeto} aoCapturar={pedirCaptura} aoBuscar={() => setPaleta(true)} /></Suspense>;
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
     tela = (
       <ProvedorAtualizacao procurarAoAbrir={prefs.procurarAtualizacao}>
@@ -240,13 +245,14 @@ export function App() {
               <Moldura
                 secao={secao}
                 aoEscolherSecao={irPara}
-                navegacao={{ podeVoltar: historico.posicao > 0, podeAvancar: historico.posicao < historico.lugares.length - 1, voltar, avancar, lugares: historico.lugares, posicao: historico.posicao, irParaPosicao }} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura}>
+                navegacao={{ podeVoltar: historico.posicao > 0, podeAvancar: historico.posicao < historico.lugares.length - 1, voltar, avancar, lugares: historico.lugares, posicao: historico.posicao, irParaPosicao }} aoVerAtalhos={() => setAtalhosAbertos(true)} aoBloquear={bloquear} aoCapturar={pedirCaptura} aoBuscar={() => setPaleta(true)}>
                 <AvisosDeTransicao config={prefs.avisos} aberto={aberto} />
                 <AvisoAtualizacao />
                 <InstalarCartao />
                 {pagina}
               </Moldura>
             )}
+            <Paleta aberta={paleta} aoFechar={() => setPaleta(false)} aoIr={irPara} aoAbrirProjeto={abrirProjeto} />
             <Captura aberta={capturando} aoFechar={() => setCapturando(false)} />
            </ProvedorImersivo>
           </ProvedorFoco>

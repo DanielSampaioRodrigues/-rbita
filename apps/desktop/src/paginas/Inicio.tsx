@@ -189,7 +189,16 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
           <LayoutGrid aria-hidden="true" size="1.1em" /> {organizando ? t.pronto : t.organizar}
         </Button>
       </div>
-      <p className="pagina-intro">{organizando ? `${t.organizarExplicacao} ${t.atalhosExplicacao} ${t.menuExplicacao}` : t.construcao}</p>
+      {prefs.recuperacaoPendente && (
+        <div className="cartao linha-ajuste esticado">
+          <p>{textos.orbita.recuperacao}</p>
+          <div className="linha-ajuste">
+            <Button className="botao principal" onPress={() => { mudar({ recuperacaoPendente: false }); aoIr("ajustes"); }}>{textos.orbita.recuperacaoSim}</Button>
+            <Button className="botao" onPress={() => mudar({ recuperacaoPendente: false })}>{textos.orbita.recuperacaoNao}</Button>
+          </div>
+        </div>
+      )}
+      <p className={organizando ? "pagina-intro sempre" : "pagina-intro"}>{organizando ? `${t.organizarExplicacao} ${t.atalhosExplicacao} ${t.menuExplicacao}` : t.construcao}</p>
       {organizando && (
         <div className="inicio-escondidos esticado">
           {ocultos.length > 0 && (

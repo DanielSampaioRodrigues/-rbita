@@ -75,6 +75,10 @@ export interface Preferencias {
   lembreteCorpo: LembreteCorpo;
   /** A tela de entrada em forma de sistema solar (em 3D). */
   orbita: PrefsOrbita;
+  /** O cofre foi criado sem a pessoa guardar a recuperação: o Órbita oferece depois, com calma. */
+  recuperacaoPendente: boolean;
+  /** Mostrar o parágrafo de explicação no alto das telas (desligado: telas mais limpas). */
+  explicacoes: boolean;
 }
 
 export const LEMBRETES_CORPO = [0, 60, 120, 180] as const;
@@ -98,6 +102,10 @@ export const BLOCOS_ATALHO = ["organizacao", "rotinas", "foco", "dinheiro", "sau
 /** Seções do menu lateral, na ordem de fábrica. Seção nova de versão futura entra aqui (e no fim do menu de quem já arrumou). */
 export const SECOES_MENU = ["inicio", "organizacao", "ideias", "projetos", "agenda", "rotinas", "foco", "energia", "dinheiro", "saude", "cuidado", "estudos", "hobbies", "leitura", "caderno", "aparencia", "ajustes"] as const;
 export type SecaoMenu = (typeof SECOES_MENU)[number];
+/** Espaços que passaram a morar dentro de outro (decisão de Dan, 18/11/2026): Energia e Cuidado são abas da Saúde. Somem do menu e do céu; os atalhos antigos levam à aba certa. */
+export const SECOES_JUNTAS: Partial<Record<SecaoMenu, SecaoMenu>> = { energia: "saude", cuidado: "saude" };
+/** O que vem marcado na primeira vez, em "O que você quer usar?". */
+export const SECOES_SUGERIDAS: readonly SecaoMenu[] = ["agenda", "rotinas", "foco", "ideias", "projetos", "saude", "estudos", "caderno"];
 /** Ficam sempre no menu (podem mudar de lugar, não podem ser escondidas). Aparência é a saída rápida do baixo estímulo. */
 export const SECOES_TRAVADAS: readonly SecaoMenu[] = ["inicio", "aparencia", "ajustes"];
 
@@ -127,6 +135,8 @@ export const PADRAO: Preferencias = {
   estiloFoco: "circulo",
   lembreteCorpo: 0,
   orbita: { ...ORBITA_PADRAO },
+  recuperacaoPendente: false,
+  explicacoes: false,
 };
 
 export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
@@ -177,6 +187,8 @@ export function validar(bruto: unknown): Preferencias {
     estiloFoco: dentro(p.estiloFoco, ESTILOS_FOCO) ? p.estiloFoco : PADRAO.estiloFoco,
     lembreteCorpo: LEMBRETES_CORPO.includes(p.lembreteCorpo as LembreteCorpo) ? (p.lembreteCorpo as LembreteCorpo) : PADRAO.lembreteCorpo,
     orbita: validarOrbita(p.orbita),
+    recuperacaoPendente: p.recuperacaoPendente === true,
+    explicacoes: p.explicacoes === true,
   };
 }
 

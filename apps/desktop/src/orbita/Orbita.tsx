@@ -11,6 +11,7 @@ import type { Secao } from "../app/Moldura";
 import { useRecado } from "../app/Recado";
 import { avisarMudanca, useMudancas } from "../dados";
 import { usePreferencias } from "../estado";
+import { SECOES_JUNTAS } from "../preferencias";
 import { textos } from "../textos/pt-BR";
 import { criarCena, type Cena } from "./cena";
 import { ESPACOS, montarUniverso, type Alvo, type DadosOrbita, type EspacoEntrada, type No } from "./universo";
@@ -48,7 +49,7 @@ async function carregar(visiveis: Secao[]): Promise<DadosOrbita> {
   };
 }
 
-export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar }: { aoIr: (s: Secao) => void; aoAbrirProjeto: (id: string) => void; aoCapturar: () => void }) {
+export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (s: Secao) => void; aoAbrirProjeto: (id: string) => void; aoCapturar: () => void; aoBuscar: () => void }) {
   useEntrarImersivo();
   const { prefs, mudar } = usePreferencias();
   const recado = useRecado();
@@ -62,7 +63,7 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar }: { aoIr: (s: Secao) 
   const [erro, setErro] = useState(false);
   const orb = prefs.orbita, orbRef = useRef(orb); orbRef.current = orb;
   const mudarOrbita = useCallback((m: Partial<typeof orb>) => mudar({ orbita: { ...orbRef.current, ...m } }), [mudar]);
-  const visiveis = useMemo(() => prefs.menu.ordem.filter((s) => !prefs.menu.ocultos.includes(s)), [prefs.menu]);
+  const visiveis = useMemo(() => prefs.menu.ordem.filter((s) => !prefs.menu.ocultos.includes(s) && !SECOES_JUNTAS[s]), [prefs.menu]);
 
   // Monta a cena uma vez.
   useEffect(() => {
@@ -119,6 +120,7 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar }: { aoIr: (s: Secao) 
           ))}
         </nav>
         <div className="orbita-controles orbita-vidro" role="group" aria-label={t.controles}>
+          <button type="button" title={`${textos.paleta.titulo} (${textos.paleta.atalho})`} onClick={aoBuscar}>{textos.paleta.botao}</button>
           <button type="button" aria-label={t.centro} title={t.centro} onClick={() => trilha[0] && ir(trilha[0])}>⌂</button>
           <button type="button" aria-label={t.afastar} title={t.afastar} onClick={() => cena.current?.zoom(1.55)}>−</button>
           <button type="button" aria-label={t.aproximar} title={t.aproximar} onClick={() => cena.current?.zoom(0.65)}>+</button>
@@ -147,6 +149,15 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar }: { aoIr: (s: Secao) 
         </aside>
       )}
 
+      {prefs.recuperacaoPendente && !pesado && (
+        <div className="orbita-recuperar orbita-vidro">
+          <p>{t.recuperacao}</p>
+          <div>
+            <Button className="botao principal" onPress={() => { mudar({ recuperacaoPendente: false }); aoIr("ajustes"); }}>{t.recuperacaoSim}</Button>
+            <Button className="botao" onPress={() => mudar({ recuperacaoPendente: false })}>{t.recuperacaoNao}</Button>
+          </div>
+        </div>
+      )}
       {pesado && (
         <div className="orbita-pesado orbita-vidro" role="status">
           <p>{t.pesado}</p>

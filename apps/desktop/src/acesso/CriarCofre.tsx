@@ -5,23 +5,30 @@ import { Aviso, Campo } from "../componentes/Campo";
 import { ChaveRecuperacao } from "../componentes/ChaveRecuperacao";
 import { EscolhaModo } from "../componentes/EscolhaModo";
 import { RestaurarBackup } from "../componentes/RestaurarBackup";
+import { ICONES } from "../app/Moldura";
+import { usePreferencias } from "../estado";
+import { SECOES_JUNTAS, SECOES_MENU, SECOES_SUGERIDAS, SECOES_TRAVADAS, type SecaoMenu } from "../preferencias";
 import { textos } from "../textos/pt-BR";
 import { useHelloDisponivel } from "../useHello";
 import { MolduraAcesso } from "./Moldura";
 import { avaliarPin } from "./validacao";
 import { EscolherRecuperacao, RecuperarDaNuvem, useContasDisponiveis } from "../nuvem/Nuvem";
 import { contaNaPrimeiraTela, continuarSincroniaDepois, entrarAntesDoCofre } from "../sincronia/ProvedorSincronia";
-import { CartaoConta, LogoGoogle, mensagemDe } from "../sincronia/TelasSincronia";
+import { CartaoConta, mensagemDe } from "../sincronia/TelasSincronia";
 import type { PerfilGoogle } from "../sincronia/googleWeb";
 
 const t = textos.criar;
+/** O que dá para escolher na primeira vez (o Início, a Aparência e os Ajustes ficam sempre). */
+const MODULOS: SecaoMenu[] = SECOES_MENU.filter((s) => !SECOES_TRAVADAS.includes(s) && !SECOES_JUNTAS[s]);
 const c = textos.comum;
 
 // Sem senha para inventar: as 6 palavras são a tranca forte (a senha é opcional, em Ajustes).
-type Passo = "boasVindas" | "restaurar" | "nuvem" | "modo" | "pin" | "recuperacao" | "chave" | "googlePin";
+type Passo = "boasVindas" | "usar" | "restaurar" | "nuvem" | "modo" | "pin" | "recuperacao" | "chave" | "googlePin";
 
 export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const [passo, setPasso] = useState<Passo>("boasVindas");
+  const { prefs, mudar } = usePreferencias();
+  const [usar, setUsar] = useState<SecaoMenu[]>(() => MODULOS.filter((s) => SECOES_SUGERIDAS.includes(s)));
   const comHello = useHelloDisponivel() ?? false;
   // Até a pessoa escolher, a recomendação: Windows Hello quando houver, senão PIN.
   const [escolhido, setModo] = useState<ModoAbrir | null>(null);
@@ -40,6 +47,21 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
   const avPin = avaliarPin(pin, pin2);
   const ordem: Passo[] = modo === "pin" ? ["modo", "pin", "chave"] : ["modo", "chave"];
   const numero = (p: Passo) => c.passo(ordem.indexOf(p === "recuperacao" ? "chave" : p) + 1, ordem.length);
+
+  // Primeira vez sem burocracia (decisão de Dan, 18/11/2026): abre direto, sem PIN e sem as 6 palavras
+  // na entrada. A trava e a recuperação viram opção, oferecida depois (Ajustes > Segurança).
+  const criarDireto = async () => {
+    setOcupado(true);
+    setErro(null);
+    try {
+      await api.criarCofre(null, "direto");
+      mudar({ recuperacaoPendente: true, menu: { ordem: prefs.menu.ordem, ocultos: MODULOS.filter((s) => !usar.includes(s)) } });
+      aoConcluir();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+      setOcupado(false);
+    }
+  };
 
   const criar = async () => {
     setOcupado(true);
@@ -83,30 +105,6 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
     }
   };
 
-  if (passo === "boasVindas" && comConta) {
-    return (
-      <MolduraAcesso>
-        <h1>{t.boasVindasTitulo}</h1>
-        <p>{t.boasVindasConta}</p>
-        <div className="primeira-conta">
-          <Button className="botao principal grande botao-google-destaque" autoFocus isDisabled={ocupado} onPress={entrarGoogle}>
-            <LogoGoogle tamanho="1.35em" /> {ocupado ? textos.sincronia.entrando : textos.sincronia.entrarComGoogle}
-          </Button>
-          <p className="texto-suave pequeno">{t.googleTexto}</p>
-        </div>
-        <Aviso>{erro}</Aviso>
-        <div className="primeira-sem-conta">
-          <span className="primeira-ou" aria-hidden="true">{t.ou}</span>
-          <Button className="botao" onPress={() => (setErro(null), setPasso("modo"))}>{t.usarSemConta}</Button>
-          <p className="texto-suave pequeno">{t.semContaTexto}</p>
-        </div>
-        <div className="links">
-          <Button className="link" onPress={() => setPasso("restaurar")}>{textos.backup.tenhoBackup}</Button>
-        </div>
-      </MolduraAcesso>
-    );
-  }
-
   if (passo === "googlePin") {
     return (
       <MolduraAcesso>
@@ -137,12 +135,47 @@ export function CriarCofre({ aoConcluir }: { aoConcluir: () => void }) {
       <MolduraAcesso>
         <h1>{t.boasVindasTitulo}</h1>
         <p>{t.boasVindasTexto}</p>
-        <p className="texto-suave">{t.boasVindasPassos}</p>
-        <Button className="botao principal" autoFocus onPress={() => setPasso("modo")}>{t.comecar}</Button>
+        <ul className="primeira-pontos">{t.pontos.map((x) => <li key={x}>{x}</li>)}</ul>
+        <Aviso>{erro}</Aviso>
+        <Button className="botao principal grande" autoFocus onPress={() => (setErro(null), setPasso("usar"))}>{t.comecar}</Button>
         <div className="links">
+          {comConta && <Button className="link" isDisabled={ocupado} onPress={entrarGoogle}>{ocupado ? textos.sincronia.entrando : t.jaUsoGoogle}</Button>}
           {contas.length > 0 && <Button className="link" onPress={() => setPasso("nuvem")}>{textos.nuvem.jaUso}</Button>}
           <Button className="link" onPress={() => setPasso("restaurar")}>{textos.backup.tenhoBackup}</Button>
         </div>
+      </MolduraAcesso>
+    );
+  }
+
+  if (passo === "usar") {
+    const tudo = usar.length === MODULOS.length;
+    return (
+      <MolduraAcesso passo={c.passo(2, 2)}>
+        <div className="linha-ajuste esticado">
+          <h1>{t.usarTitulo}</h1>
+          <Button className="botao" onPress={() => setUsar(tudo ? [] : [...MODULOS])}>{tudo ? t.desmarcarTudo : t.escolherTudo}</Button>
+        </div>
+        <p className="texto-suave">{t.usarTexto}</p>
+        <div className="primeira-modulos" role="group" aria-label={t.usarTitulo}>
+          {MODULOS.map((s) => {
+            const Icone = ICONES[s], ligado = usar.includes(s);
+            return (
+              <button key={s} type="button" className={ligado ? "primeira-modulo ligado" : "primeira-modulo"} aria-pressed={ligado}
+                onClick={() => setUsar((u) => (u.includes(s) ? u.filter((x) => x !== s) : [...u, s]))}>
+                <Icone aria-hidden="true" size="1.2em" strokeWidth={1.75} />
+                <b>{textos.secoes[s]}</b>
+                <small>{t.modulos[s as keyof typeof t.modulos]}</small>
+              </button>
+            );
+          })}
+        </div>
+        <Aviso>{erro}</Aviso>
+        <div className="botoes">
+          <span className="texto-suave pequeno">{t.quantos(usar.length, MODULOS.length)}</span>
+          <Button className="botao" onPress={() => setPasso("boasVindas")}>{c.voltar}</Button>
+          <Button className="botao principal grande" isDisabled={ocupado} onPress={() => void criarDireto()}>{ocupado ? t.protegendo : t.abrirOrbita}</Button>
+        </div>
+        <p className="texto-suave pequeno">{t.semTrava}</p>
       </MolduraAcesso>
     );
   }

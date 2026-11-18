@@ -45,6 +45,16 @@ Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, su
 - [ ] **Parte 5 de `docs/configurar-contas.md`**: ligar a Google Classroom API e acrescentar as 3 permissões. Sem isso, "Ligar a conta Google" em Contas conectadas não funciona.
 - [ ] **Conta Microsoft (OneDrive)**: o código e o workflow estão prontos (`ORBITA_MICROSOFT_CLIENT_ID`); falta registrar o app na Microsoft (Parte 3).
 - [ ] **Testes no Windows e no iPad** da 0.51.x: IA mexendo no caderno com chave de verdade e o desfazer; Fontes com PDF grande; DOI/ISBN no Windows; Zotero do computador; Classroom; Espaço segurado para a mão; caneta do Windows virada para apagar; menu flutuante.
+- [ ] **Testes da 0.54.0 (publicada em 18/11/2026)**, no iPad e no Windows:
+  - O céu: está fluido? Arrastar gira, dois dedos passeiam, pinça aproxima? Os nomes se leem bem?
+  - Aparelho lento: apareceu a pergunta "Posso reduzir as animações e os efeitos?" e "Reduzir" ajudou?
+  - Tocar num caderno, projeto ou livro no céu e abrir pela barra do cartão.
+  - Baixo estímulo ligado: o Início volta para a lista. "Ver o céu" e "Lista" trocam.
+  - Primeira vez (num navegador limpo ou aparelho novo): duas telas, "Escolher tudo", abre sem PIN.
+  - Saúde com as abas Energia e Profissionais (os dados antigos de Energia e Cuidado estão lá).
+  - Ctrl + K: achar um caderno pelo nome; escrever algo e guardar como ideia.
+- [ ] **Órbita em 3D, o que falta:** linhas ligando coisas relacionadas; criar caderno ou projeto direto do céu; páginas em órbita dos cadernos; resto da "cara de programa" nas telas por dentro (painéis, um só tipo de aba, botão "Novo").
+- [ ] **Início em lista:** o quadro "O que mudou na versão" mostra a lista da primeira versão, não as notas de verdade.
 - [ ] **Testes da 0.53.0 (publicada em 17/11/2026)**, no iPad e no Windows:
   - Página de texto que passa da folha: "Continuar numa página nova" leva o resto (inclusive o texto antigo da IA que ficou cortado).
   - Colar no caderno: foto e texto do iPhone, imagem sem fundo (continua sem fundo), PDF, texto do Word ou do navegador (com títulos e listas). No iPad, o botão Colar mostra o balão do sistema.

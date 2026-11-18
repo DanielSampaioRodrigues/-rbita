@@ -89,6 +89,7 @@ export function aplicarAparencia(salvas: Preferencias, raiz: HTMLElement = docum
   });
   raiz.dataset.modo = modo;
   raiz.dataset.baixoEstimulo = String(prefs.baixoEstimulo);
+  raiz.dataset.explicacoes = String(prefs.explicacoes);
   raiz.dataset.contorno = String(!comTrava(prefs) && prefs.contornoLetras);
   raiz.dataset.semSombra = String(tema.sombra === false);
   // Ícones: família, preenchimento e desenhos próprios vêm do tema; o efeito vai para o CSS.

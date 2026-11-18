@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button, Tab, TabList, TabPanel, Tabs } from "react-aria-components";
 import { chaveDia } from "../agenda/datas";
 import { api, type AvisoSaude, type Remedio } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { Confirmar, Janela } from "../componentes/Janela";
 import { avisarMudanca, useMudancas } from "../dados";
-import { CalendarDays, Heart, ListChecks, Pencil, Pause, Pill, Play, Plus, Sun, Trash2 } from "../icones";
+import { BatteryMedium, CalendarDays, Heart, ListChecks, Pencil, Pause, Pill, Play, Plus, Quote, Sun, Trash2 } from "../icones";
 import { textos } from "../textos/pt-BR";
 import { FormRemedio, novoRemedio } from "./FormRemedio";
 import { AbaHoje } from "./AbaHoje";
@@ -15,8 +15,8 @@ import { AbaPlanos } from "./AbaPlanos";
 const t = textos.saude;
 const fmtData = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" });
 
-export type AbaSaude = "hoje" | "remedios" | "historico" | "planos";
-const ABAS: AbaSaude[] = ["hoje", "remedios", "historico", "planos"];
+export type AbaSaude = "hoje" | "remedios" | "energia" | "profissionais" | "historico" | "planos";
+const ABAS: AbaSaude[] = ["hoje", "remedios", "energia", "profissionais", "historico", "planos"];
 const CHAVE_ABA = "orbita.saude.aba";
 
 function lerAba(): AbaSaude {
@@ -30,8 +30,14 @@ function lerAba(): AbaSaude {
 
 export { CartaoRemediosHoje } from "./RemediosHoje";
 
-export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () => void }) {
-  const [aba, setAbaEstado] = useState<AbaSaude>(lerAba);
+export function PaginaSaude({ aoAbrirPlanoDeCrise, abaPedida, energia, profissionais }: {
+  aoAbrirPlanoDeCrise: () => void;
+  /** Abrir direto numa aba (quem veio de "Energia" ou de "Cuidado"). */
+  abaPedida?: AbaSaude;
+  /** As telas de Energia e de Cuidado, que agora moram aqui dentro. */
+  energia: ReactNode; profissionais: ReactNode;
+}) {
+  const [aba, setAbaEstado] = useState<AbaSaude>(() => abaPedida ?? lerAba());
 
   const setAba = (a: AbaSaude) => {
     setAbaEstado(a);
@@ -51,6 +57,8 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
         <TabList className="saude-abas" aria-label={t.abas.rotulo}>
           <Tab id="hoje" className="saude-aba"><Sun aria-hidden="true" size="1.1em" /> {t.abas.hoje}</Tab>
           <Tab id="remedios" className="saude-aba"><Pill aria-hidden="true" size="1.1em" /> {t.abas.remedios}</Tab>
+          <Tab id="energia" className="saude-aba"><BatteryMedium aria-hidden="true" size="1.1em" /> {t.abas.energia}</Tab>
+          <Tab id="profissionais" className="saude-aba"><Quote aria-hidden="true" size="1.1em" /> {t.abas.profissionais}</Tab>
           <Tab id="historico" className="saude-aba"><ListChecks aria-hidden="true" size="1.1em" /> {t.abas.historico}</Tab>
           <Tab id="planos" className="saude-aba"><CalendarDays aria-hidden="true" size="1.1em" /> {t.abas.planos}</Tab>
         </TabList>
@@ -60,6 +68,8 @@ export function PaginaSaude({ aoAbrirPlanoDeCrise }: { aoAbrirPlanoDeCrise: () =
         <TabPanel id="remedios" className="saude-painel">
           <AbaRemedios />
         </TabPanel>
+        <TabPanel id="energia" className="saude-painel saude-embutida">{energia}</TabPanel>
+        <TabPanel id="profissionais" className="saude-painel saude-embutida">{profissionais}</TabPanel>
         <TabPanel id="historico" className="saude-painel">
           <AbaHistorico />
         </TabPanel>

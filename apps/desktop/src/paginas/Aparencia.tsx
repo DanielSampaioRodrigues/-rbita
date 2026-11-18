@@ -228,6 +228,8 @@ export function Aparencia() {
           <Interruptor rotulo={textos.orbita.ajuste.ceu} ligado={prefs.orbita.inicio} aoMudar={(inicio) => mudar({ orbita: { ...prefs.orbita, inicio } })} />
           <Interruptor rotulo={textos.orbita.ajuste.reduzido} ligado={prefs.orbita.reduzido} aoMudar={(reduzido) => mudar({ orbita: { ...prefs.orbita, reduzido, perguntou: true } })} />
           <p className="campo-ajuda">{textos.orbita.ajuste.ajuda}</p>
+          <Interruptor rotulo={textos.explicacoes.rotulo} ligado={prefs.explicacoes} aoMudar={(explicacoes) => mudar({ explicacoes })} />
+          <p className="campo-ajuda">{textos.explicacoes.ajuda}</p>
         </div>
         <div>
           <p className="aparencia-subtitulo">{ta.baixoEstimuloOQueMuda}</p>

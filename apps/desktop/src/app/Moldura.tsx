@@ -1,14 +1,14 @@
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, pointerWithin, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, GripVertical, List, Palette, BatteryMedium, BookOpen, Books, CalendarDays, FolderKanban, Heart, LayoutGrid, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon } from "../icones";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, GripVertical, List, Palette, BatteryMedium, BookOpen, Books, CalendarDays, FolderKanban, Heart, LayoutGrid, ListChecks, Quote, Sparkles, Timer, House, Keyboard, Lightbulb, Lock, PenLine, SlidersHorizontal, Wallet, type LucideIcon, Search } from "../icones";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 import { api } from "../api";
 import { Interruptor } from "../componentes/Interruptor";
 import { usePreferencias } from "../estado";
-import { SECOES_TRAVADAS, type SecaoMenu } from "../preferencias";
+import { SECOES_JUNTAS, SECOES_TRAVADAS, type SecaoMenu } from "../preferencias";
 import { textos } from "../textos/pt-BR";
 import { formatarRestante, useFoco } from "../foco/Foco";
 import { useImersivo } from "./Imersivo";
@@ -19,7 +19,7 @@ import { AvisoSincronia } from "../sincronia/AvisoSincronia";
 /** As seções do app (a lista e a ordem de fábrica ficam em preferencias.ts, junto da validação do menu). */
 export type Secao = SecaoMenu;
 
-const ICONES: Record<Secao, LucideIcon> = {
+export const ICONES: Record<Secao, LucideIcon> = {
   inicio: House, organizacao: LayoutGrid, ideias: Lightbulb, projetos: FolderKanban, agenda: CalendarDays,
   rotinas: ListChecks, foco: Timer, energia: BatteryMedium, dinheiro: Wallet, saude: Heart, cuidado: Quote,
   estudos: BookOpen, hobbies: Sparkles, leitura: Books, caderno: PenLine, aparencia: Palette, ajustes: SlidersHorizontal,
@@ -45,6 +45,8 @@ interface Props {
   aoVerAtalhos: () => void;
   aoBloquear: () => void;
   aoCapturar: () => void;
+  /** Abre "Buscar ou fazer algo" (Ctrl + K). */
+  aoBuscar?: () => void;
   /** Setas de voltar e avançar entre as funções (como num navegador), mais a lista das últimas telas. */
   navegacao: { podeVoltar: boolean; podeAvancar: boolean; voltar: () => void; avancar: () => void; lugares: Lugar[]; posicao: number; irParaPosicao: (i: number) => void };
   children: ReactNode;
@@ -88,7 +90,7 @@ function lerMenuRecolhido(): boolean {
   return (globalThis.innerWidth ?? 1200) < 900;
 }
 
-export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCapturar, navegacao, children }: Props) {
+export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCapturar, aoBuscar, navegacao, children }: Props) {
   const { prefs, mudar } = usePreferencias();
   const foco = useFoco();
   const { imersivo } = useImersivo();
@@ -102,7 +104,7 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
     [organizando, arrastando],
   );
   const { ordem, ocultos } = prefs.menu;
-  const visiveis = ordem.filter((s) => !ocultos.includes(s));
+  const visiveis = ordem.filter((s) => !ocultos.includes(s) && !SECOES_JUNTAS[s]);
   const mudarMenu = (m: Partial<typeof prefs.menu>) => mudar({ menu: { ...prefs.menu, ...m } });
   const esconder = (s: Secao) => { if (!SECOES_TRAVADAS.includes(s) && !ocultos.includes(s)) mudarMenu({ ocultos: [...ocultos, s] }); };
   const mover = (s: Secao, delta: number) => {
@@ -288,6 +290,11 @@ export function Moldura({ secao, aoEscolherSecao, aoVerAtalhos, aoBloquear, aoCa
             <Button className="botao-icone seta-nav" aria-label={`${textos.navegacao.avancar} (Alt + →)`} isDisabled={!navegacao.podeAvancar} onPress={navegacao.avancar}>
               <ArrowRight aria-hidden="true" size="1.5em" strokeWidth={2.25} />
             </Button>
+            {aoBuscar && (
+              <Button className="busca-topo" onPress={aoBuscar}>
+                <Search aria-hidden="true" size="1.05em" /> <span>{textos.paleta.titulo}…</span> <kbd>{textos.paleta.atalho}</kbd>
+              </Button>
+            )}
             <AvisoSincronia />
           </div>
         )}
@@ -370,9 +377,9 @@ function ItemMenuOrganizar({ id, primeiro, ultimo, aoSubir, aoDescer, aoEsconder
 export function ModulosEscondidos() {
   const { prefs, mudar } = usePreferencias();
   const { arrastandoMenu } = useOrganizar();
-  const { ocultos } = prefs.menu;
+  const ocultos = prefs.menu.ocultos.filter((s) => !SECOES_JUNTAS[s]);
   const { setNodeRef, isOver } = useDroppable({ id: CAIXA_ESCONDIDOS, disabled: !arrastandoMenu });
-  const mostrar = (s: Secao) => mudar({ menu: { ...prefs.menu, ocultos: ocultos.filter((x) => x !== s) } });
+  const mostrar = (s: Secao) => mudar({ menu: { ...prefs.menu, ocultos: prefs.menu.ocultos.filter((x) => x !== s) } });
   return (
     <section
       ref={setNodeRef}

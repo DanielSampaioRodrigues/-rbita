@@ -1,3 +1,23 @@
+- **O Órbita agora abre num céu em 3D**
+  - No centro, o sol é o seu agora. Perto dele, o que é de hoje. Em volta, cada espaço é um planeta (Caderno, Estudos, Projetos…), com os seus cadernos, projetos, ideias, livros e matérias em órbita.
+  - **Arraste** para girar a vista. **Dois dedos** (ou o botão direito do mouse) passeiam para os lados. **Pinça ou roda** chega perto; em cima de um planeta, você entra nele.
+  - Toque num nome para ir até ele, e use o botão do cartão para **abrir** o caderno, o projeto ou o espaço.
+  - A barra de baixo guarda uma ideia com Enter.
+  - **Prefere a lista?** O botão "Lista", no alto, volta ao Início de antes. Com o **baixo estímulo** ligado, o Órbita abre sempre na lista.
+  - Se o seu aparelho ficar lento, o Órbita **pergunta** se pode reduzir as animações e os efeitos.
+
+- **Buscar ou fazer algo (Ctrl + K)**: de qualquer tela, escreva o nome de um espaço, caderno, projeto, livro ou ideia e aperte Enter. Se não existir, o que você escreveu vira uma ideia.
+
+- **Saúde, Energia e Cuidado numa tela só**: Energia e Cuidado viraram abas da Saúde ("Energia" e "Profissionais"). Nada foi apagado: está tudo lá.
+
+- **Telas mais limpas**: o parágrafo de explicação no alto de cada tela saiu. Para ver de novo: Aparência > Baixo estímulo > "Mostrar as explicações no alto das telas".
+
+- **Primeira vez mais simples** (para quem instala agora): duas telas, sem PIN. A pessoa escolhe o que quer usar, com o botão "Escolher tudo". A trava e a recuperação continuam em Ajustes > Segurança, para quem quiser. Quem já usa o Órbita continua abrindo do mesmo jeito.
+
+---
+
+<!-- Abaixo: o que veio na 0.53.0. -->
+
 - **Caderno: o texto que não cabe na folha segue para as próximas páginas**
   - O botão "Continuar numa página nova" funciona (antes não respondia ao toque) e leva o que sobrou para quantas páginas forem precisas, cortando entre parágrafos.
   - O texto que a IA cria (como o resumo da foto do quadro) já se reparte em páginas sozinho.
