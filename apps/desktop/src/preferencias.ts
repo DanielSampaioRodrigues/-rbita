@@ -73,6 +73,8 @@ export interface Preferencias {
   estiloFoco: EstiloFoco;
   /** Lembrete "como está o corpo?" (água, comida, banheiro, pausa): de quantos em quantos minutos. 0 = desligado. */
   lembreteCorpo: LembreteCorpo;
+  /** A tela de entrada em forma de sistema solar (em 3D). */
+  orbita: PrefsOrbita;
 }
 
 export const LEMBRETES_CORPO = [0, 60, 120, 180] as const;
@@ -80,6 +82,14 @@ export type LembreteCorpo = (typeof LEMBRETES_CORPO)[number];
 
 export const ESTILOS_FOCO = ["circulo", "analogico", "ampulheta", "barra"] as const;
 export type EstiloFoco = (typeof ESTILOS_FOCO)[number];
+
+/** `inicio`: abrir no céu (ou na lista de sempre). `velocidade`: 0 rápido, 1 lento, 2 parado. `reduzido`: menos efeitos. `perguntou`: já ofereceu reduzir neste aparelho. */
+export interface PrefsOrbita { inicio: boolean; velocidade: 0 | 1 | 2; reduzido: boolean; perguntou: boolean }
+export const ORBITA_PADRAO: PrefsOrbita = { inicio: true, velocidade: 0, reduzido: false, perguntou: false };
+export function validarOrbita(b: unknown): PrefsOrbita {
+  const o = (typeof b === "object" && b !== null ? b : {}) as Record<string, unknown>;
+  return { inicio: o.inicio !== false, velocidade: o.velocidade === 1 || o.velocidade === 2 ? o.velocidade : 0, reduzido: o.reduzido === true, perguntou: o.perguntou === true };
+}
 
 export const BLOCOS_INICIO = ["capturar", "energia", "hoje", "continuar", "ideias", "novidades", "organizacao", "rotinas", "foco", "dinheiro", "saude", "cuidado", "estudos", "hobbies", "leitura", "caderno"] as const;
 /** Atalhos para os outros módulos: começam escondidos, para o Início não mudar sem a pessoa pedir. */
@@ -116,6 +126,7 @@ export const PADRAO: Preferencias = {
   menu: { ordem: [...SECOES_MENU], ocultos: [] },
   estiloFoco: "circulo",
   lembreteCorpo: 0,
+  orbita: { ...ORBITA_PADRAO },
 };
 
 export const ANTECEDENCIAS = [5, 10, 15, 30] as const;
@@ -165,6 +176,7 @@ export function validar(bruto: unknown): Preferencias {
     menu: validarMenu(p.menu),
     estiloFoco: dentro(p.estiloFoco, ESTILOS_FOCO) ? p.estiloFoco : PADRAO.estiloFoco,
     lembreteCorpo: LEMBRETES_CORPO.includes(p.lembreteCorpo as LembreteCorpo) ? (p.lembreteCorpo as LembreteCorpo) : PADRAO.lembreteCorpo,
+    orbita: validarOrbita(p.orbita),
   };
 }
 

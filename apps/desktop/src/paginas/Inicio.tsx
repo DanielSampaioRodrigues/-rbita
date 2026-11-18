@@ -184,6 +184,7 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
     <div className="pagina pagina-inicio">
       <div className="linha-ajuste esticado">
         <h1>{t.titulo}</h1>
+        {!prefs.orbita.inicio && !prefs.baixoEstimulo && <Button className="botao" onPress={() => mudar({ orbita: { ...prefs.orbita, inicio: true } })}>{textos.orbita.voltarAoCeu}</Button>}
         <Button className={organizando ? "botao principal" : "botao"} onPress={() => setOrganizando((v) => !v)}>
           <LayoutGrid aria-hidden="true" size="1.1em" /> {organizando ? t.pronto : t.organizar}
         </Button>

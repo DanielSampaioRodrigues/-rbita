@@ -291,6 +291,20 @@ A interface deve ir além da do Escuta: a pessoa monta o próprio ambiente, do m
 - **Ajustar sozinho** mexe primeiro só nas cores de frente; se os fundos pedem letras opostas, o texto segue os painéis e o fundo da janela e as áreas destacadas mudam de claridade.
 - **Cores da imagem** (IA): "Suaves" (padrão, calmo e com pouco contraste) ou "Vivas" (fiel ao estilo pedido).
 
+## Órbita em 3D: a tela de entrada (em construção, 18/11/2026)
+
+Pedido de Dan depois de mostrar o app a uma pessoa que "se perdeu logo no começo" e achou que "parece manual": o Órbita abre num **céu em 3D**, sem menu à vista. Protótipo aprovado por Dan em 18/11/2026. Código em `apps/desktop/src/orbita/` (`universo.ts` monta a árvore e faz as contas, testado; `texturas.ts` pinta os planetas; `cena.ts` desenha e move; `Orbita.tsx` é a tela).
+
+- **O que aparece:** no centro, o sol é o **agora** ("livre até 14:30" ou o compromisso em curso). Perto dele, as coisas de **hoje** (os próximos compromissos). Mais longe, os **espaços** como planetas (os itens visíveis do menu, menos Início, Aparência e Ajustes), em um ou dois anéis. Em volta de cada planeta, as coisas dele: cadernos, projetos ativos, ideias, livros, matérias (até 11; o resto vira "+ N", que abre o espaço) e um "+ Novo".
+- **Navegar:** arrastar **gira** a vista; **dois dedos** (ou botão direito, botão do meio, Shift, ou o modo "Passear") **andam para os lados**, de um sistema para outro, sem precisar afastar; pinça ou roda **aproxima do ponto apontado** e, em cima de um corpo, a vista se prende a ele e vai junto. Tocar num corpo ou no nome voa até ele. Setas do teclado andam, + e − aproximam. A vista não sai para o vazio além dos planetas.
+- **Sempre acessível sem o céu:** o cartão lista em texto tudo o que está "em órbita" ou "aqui dentro" (botões comuns, para teclado e leitor de tela), o caminho no alto ("Órbita › Caderno") volta níveis, e o botão de menu abre a lateral de sempre.
+- **Abrir:** o botão principal do cartão abre a tela de trabalho (o caderno, o projeto, o livro ou o espaço inteiro). A barra de baixo guarda uma ideia com Enter; "⋯" abre a captura completa.
+- **Decisões de Dan (18/11/2026):** o céu é **sempre escuro** (não segue o tema claro); **movimento rápido por padrão** (o botão alterna rápido, lento, parado; quem pediu ao sistema para reduzir movimento começa parado); **realismo**: sol com superfície viva e raios, planetas com dia e noite, mar que brilha, luzes de cidade, anéis, cinturão de pedras, cometa, Via Láctea. **Texturas pintadas pelo próprio app**, sem imagens de fora.
+- **Princípio 2 preservado:** com o **baixo estímulo** ligado, o Órbita abre na **lista** de sempre (o Início antigo), sem o céu. Em Aparência > Baixo estímulo há "Abrir no céu" e "Menos efeitos no céu"; na lista, o botão "Ver o céu" volta.
+- **Aparelho fraco:** o Órbita mede os primeiros segundos; se não chega a 30 quadros por segundo, **pergunta** uma vez "O céu está pesado para este aparelho. Posso reduzir as animações e os efeitos?" (ideia de Dan). "Reduzir" baixa a resolução, tira nuvens, coroa, cinturão e cometa, e deixa o movimento lento. Sem 3D no aparelho, cai na lista.
+- **Técnica:** biblioteca three.js (MIT), carregada só quando a tela de entrada é o céu (uns 130 KB comprimidos). Preferências em `prefs.orbita` (fora do cofre, como as outras de aparência).
+- **Próximas etapas (aprovadas):** boas-vindas sem PIN, com "o que você quer usar" e "Escolher tudo" (trava e recuperação viram opção oferecida depois); juntar Saúde, Cuidado e Energia; telas por dentro com cara de programa (barra de cima com busca que faz coisas, painéis, um só tipo de aba); ligações entre coisas (linhas como sinapses); criar caderno ou projeto direto do céu.
+
 ## Privacidade e dados
 
 Os dados ficam no aparelho da pessoa, criptografados, e só saem dali se ela quiser. Isso pesa especialmente em saúde, dinheiro e cuidado psicológico.

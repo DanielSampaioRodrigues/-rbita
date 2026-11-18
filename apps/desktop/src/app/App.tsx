@@ -1,5 +1,9 @@
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { temWebGL } from "../orbita/webgl";
+
+// O céu em 3D só é baixado quando a tela de entrada é ele (a biblioteca de 3D é grande).
+const Orbita = lazy(() => import("../orbita/Orbita").then((m) => ({ default: m.Orbita })));
 import { recarregarRecursos } from "../ditado/recursos";
 import { BloqueioAutomatico } from "./BloqueioAutomatico";
 import { CriarCofre } from "../acesso/CriarCofre";
@@ -215,6 +219,8 @@ export function App() {
     else if (secao === "caderno") pagina = <PaginaCaderno />;
     else if (secao === "aparencia") pagina = <Aparencia />;
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} temSenha={situacao.temSenha} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
+    else if (prefs.orbita.inicio && !prefs.baixoEstimulo && temWebGL())
+      pagina = <Suspense fallback={null}><Orbita aoIr={irPara} aoAbrirProjeto={abrirProjeto} aoCapturar={pedirCaptura} /></Suspense>;
     else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
     tela = (
       <ProvedorAtualizacao procurarAoAbrir={prefs.procurarAtualizacao}>
