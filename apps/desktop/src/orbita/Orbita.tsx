@@ -49,7 +49,8 @@ async function carregar(visiveis: Secao[]): Promise<DadosOrbita> {
   };
 }
 
-export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (s: Secao) => void; aoAbrirProjeto: (id: string) => void; aoCapturar: () => void; aoBuscar: () => void }) {
+/** `calmo`: aberto de dentro do baixo estímulo. Começa parado e com menos efeitos, não grava preferência, e "Lista" só fecha o céu (`aoLista`). */
+export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar, calmo = false, aoLista }: { aoIr: (s: Secao) => void; aoAbrirProjeto: (id: string) => void; aoCapturar: () => void; aoBuscar: () => void; calmo?: boolean; aoLista?: () => void }) {
   useEntrarImersivo();
   const { prefs, mudar } = usePreferencias();
   const recado = useRecado();
@@ -63,6 +64,10 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (
   const [erro, setErro] = useState(false);
   const abrirRef = useRef<(n: No) => void>(() => {});
   const orb = prefs.orbita, orbRef = useRef(orb); orbRef.current = orb;
+  const [velCalma, setVelCalma] = useState<0 | 1 | 2>(2);
+  const vel = calmo ? velCalma : orb.velocidade, red = calmo || orb.reduzido;
+  const inicial = useRef({ vel, red });
+  const lista = () => (calmo && aoLista ? aoLista() : mudarOrbita({ inicio: false }));
   const mudarOrbita = useCallback((m: Partial<typeof orb>) => mudar({ orbita: { ...orbRef.current, ...m } }), [mudar]);
   const visiveis = useMemo(() => prefs.menu.ordem.filter((s) => !prefs.menu.ocultos.includes(s) && !SECOES_JUNTAS[s]), [prefs.menu]);
 
@@ -71,10 +76,10 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (
     if (!tela.current || !nomes.current) return;
     try {
       const c = criarCena(tela.current, nomes.current, {
-        velocidade: orbRef.current.velocidade, reduzido: orbRef.current.reduzido,
+        velocidade: inicial.current.vel, reduzido: inicial.current.red,
         aoMudar: (f, tocado) => { setFoco(f); if (tocado !== undefined) setSel(tocado && tocado.filhos.length === 0 ? tocado : null); },
         aoAbrir: (x) => abrirRef.current(x),
-        aoPesado: () => { if (!orbRef.current.perguntou && !orbRef.current.reduzido) setPesado(true); },
+        aoPesado: () => { if (!calmo && !orbRef.current.perguntou && !orbRef.current.reduzido) setPesado(true); },
       });
       cena.current = c;
       return () => { c.destruir(); cena.current = null; };
@@ -86,7 +91,7 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (
     void carregar(visiveis).then((d) => { if (vivo) cena.current?.definir(montarUniverso(d)); });
     return () => { vivo = false; };
   }, [versao, visiveis]);
-  useEffect(() => { cena.current?.velocidade(orb.velocidade); cena.current?.reduzir(orb.reduzido); }, [orb.velocidade, orb.reduzido]);
+  useEffect(() => { cena.current?.velocidade(vel); cena.current?.reduzir(red); }, [vel, red]);
   useEffect(() => { cena.current?.passear(passear); }, [passear]);
 
   const abrir = (n: No) => {
@@ -106,7 +111,7 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (
     try { await api.criarIdeia(v); setTexto(""); avisarMudanca(); recado(t.ideiaGuardada); } catch (x) { recado(x instanceof Error ? x.message : String(x)); }
   };
 
-  if (erro) return <div className="orbita-sem"><p>{t.sem3d}</p><Button className="botao principal" onPress={() => mudarOrbita({ inicio: false })}>{t.usarLista}</Button></div>;
+  if (erro) return <div className="orbita-sem"><p>{t.sem3d}</p><Button className="botao principal" onPress={lista}>{t.usarLista}</Button></div>;
   const n = sel ?? foco;
   const trilha: No[] = []; for (let x = foco; x; x = x.pai) trilha.unshift(x);
   const tipo = !n ? "" : n.tipo === "agora" ? t.tipos.agora : n.tipo === "hoje" ? t.tipos.hoje : n.tipo === "espaco" ? t.tipos.espaco : (trilha[1]?.nome ?? "");
@@ -128,8 +133,8 @@ export function Orbita({ aoIr, aoAbrirProjeto, aoCapturar, aoBuscar }: { aoIr: (
           <button type="button" aria-label={t.afastar} title={t.afastar} onClick={() => cena.current?.zoom(1.55)}>−</button>
           <button type="button" aria-label={t.aproximar} title={t.aproximar} onClick={() => cena.current?.zoom(0.65)}>+</button>
           <button type="button" aria-pressed={passear} title={t.passearDica} onClick={() => setPassear((v) => !v)}>{t.passear}</button>
-          <button type="button" title={t.movimentoDica} onClick={() => mudarOrbita({ velocidade: ((orb.velocidade + 1) % 3) as 0 | 1 | 2 })}><span className="orbita-so-largo">{t.movimento} </span>{t.velocidades[orb.velocidade]}</button>
-          <button type="button" title={t.usarListaDica} onClick={() => mudarOrbita({ inicio: false })}>{t.lista}</button>
+          <button type="button" title={t.movimentoDica} onClick={() => { const v = ((vel + 1) % 3) as 0 | 1 | 2; if (calmo) setVelCalma(v); else mudarOrbita({ velocidade: v }); }}><span className="orbita-so-largo">{t.movimento} </span>{t.velocidades[vel]}</button>
+          <button type="button" title={calmo ? t.voltarLista : t.usarListaDica} onClick={lista}>{t.lista}</button>
         </div>
       </div>
 

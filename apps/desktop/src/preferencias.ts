@@ -87,12 +87,12 @@ export type LembreteCorpo = (typeof LEMBRETES_CORPO)[number];
 export const ESTILOS_FOCO = ["circulo", "analogico", "ampulheta", "barra"] as const;
 export type EstiloFoco = (typeof ESTILOS_FOCO)[number];
 
-/** `inicio`: abrir no céu (ou na lista de sempre). `velocidade`: 0 rápido, 1 lento, 2 parado. `reduzido`: menos efeitos. `perguntou`: já ofereceu reduzir neste aparelho. */
-export interface PrefsOrbita { inicio: boolean; velocidade: 0 | 1 | 2; reduzido: boolean; perguntou: boolean }
-export const ORBITA_PADRAO: PrefsOrbita = { inicio: true, velocidade: 0, reduzido: false, perguntou: false };
+/** `inicio`: abrir no céu (ou na lista de sempre). `velocidade`: 0 rápido, 1 lento, 2 parado. `reduzido`: menos efeitos. `perguntou`: já ofereceu reduzir neste aparelho. `dicaVista`: a pessoa já dispensou a linha que conta, no baixo estímulo, que o céu existe. */
+export interface PrefsOrbita { inicio: boolean; velocidade: 0 | 1 | 2; reduzido: boolean; perguntou: boolean; dicaVista: boolean }
+export const ORBITA_PADRAO: PrefsOrbita = { inicio: true, velocidade: 0, reduzido: false, perguntou: false, dicaVista: false };
 export function validarOrbita(b: unknown): PrefsOrbita {
   const o = (typeof b === "object" && b !== null ? b : {}) as Record<string, unknown>;
-  return { inicio: o.inicio !== false, velocidade: o.velocidade === 1 || o.velocidade === 2 ? o.velocidade : 0, reduzido: o.reduzido === true, perguntou: o.perguntou === true };
+  return { inicio: o.inicio !== false, velocidade: o.velocidade === 1 || o.velocidade === 2 ? o.velocidade : 0, reduzido: o.reduzido === true, perguntou: o.perguntou === true, dicaVista: o.dicaVista === true };
 }
 
 export const BLOCOS_INICIO = ["capturar", "energia", "hoje", "continuar", "ideias", "novidades", "organizacao", "rotinas", "foco", "dinheiro", "saude", "cuidado", "estudos", "hobbies", "leitura", "caderno"] as const;

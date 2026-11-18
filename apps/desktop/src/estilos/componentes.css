@@ -2375,6 +2375,9 @@ body > .caderno-sel-acoes { z-index: 30; font-size: 1rem; }
 .orbita-pesado { position: absolute; left: 50%; transform: translateX(-50%); bottom: 124px; width: min(520px, calc(100% - 24px)); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; z-index: 2; }
 .orbita-pesado p { margin: 0; }
 .orbita-pesado div { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Linha discreta no Início em lista: conta, no baixo estímulo, que o céu existe. */
+.dica-ceu { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--espaco-3); padding: var(--espaco-3) var(--espaco-4); border: 1px solid var(--cor-borda); border-radius: var(--canto-grande); color: var(--cor-texto-suave); font-size: 0.95rem; }
+.dica-ceu p { margin: 0; flex: 1 1 18rem; }
 .orbita-sem { display: grid; gap: var(--espaco-3); justify-items: start; }
 @media (max-width: 900px) {
   .orbita-cartao { left: 12px; right: 12px; top: auto; bottom: 122px; width: auto; max-height: 38%; }

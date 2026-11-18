@@ -34,10 +34,12 @@ interface Props {
   aoAbrirProjeto: (id: string) => void;
   aoIr: (secao: Secao) => void;
   aoLigarBaixa: () => void;
+  /** No baixo estímulo, abre o céu parado e com menos efeitos (só nesta sessão). Ausente quando o aparelho não desenha 3D. */
+  aoVerCeuCalmo?: () => void;
 }
 
 /** Retomar importa tanto quanto começar: o Início abre com o que está em andamento. Os blocos são da pessoa. */
-export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props) {
+export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa, aoVerCeuCalmo }: Props) {
   const [ativos, setAtivos] = useState<Projeto[]>([]);
   const [ideias, setIdeias] = useState(0);
   const [hoje, setHoje] = useState<Ocorrencia[]>([]);
@@ -185,10 +187,20 @@ export function Inicio({ aoCapturar, aoAbrirProjeto, aoIr, aoLigarBaixa }: Props
       <div className="linha-ajuste esticado">
         <h1>{t.titulo}</h1>
         {!prefs.orbita.inicio && !prefs.baixoEstimulo && <Button className="botao" onPress={() => mudar({ orbita: { ...prefs.orbita, inicio: true } })}>{textos.orbita.voltarAoCeu}</Button>}
+        {prefs.baixoEstimulo && aoVerCeuCalmo && (prefs.orbita.dicaVista || !prefs.orbita.inicio) && <Button className="botao" onPress={aoVerCeuCalmo}>{textos.orbita.voltarAoCeu}</Button>}
         <Button className={organizando ? "botao principal" : "botao"} onPress={() => setOrganizando((v) => !v)}>
           <LayoutGrid aria-hidden="true" size="1.1em" /> {organizando ? t.pronto : t.organizar}
         </Button>
       </div>
+      {prefs.baixoEstimulo && aoVerCeuCalmo && prefs.orbita.inicio && !prefs.orbita.dicaVista && (
+        <div className="dica-ceu">
+          <p>{textos.orbita.dicaBaixo}</p>
+          <div className="linha-ajuste">
+            <Button className="botao" onPress={aoVerCeuCalmo}>{textos.orbita.verMesmoAssim}</Button>
+            <Button className="botao" onPress={() => mudar({ orbita: { ...prefs.orbita, dicaVista: true } })}>{textos.orbita.dicaEntendi}</Button>
+          </div>
+        </div>
+      )}
       {prefs.recuperacaoPendente && (
         <div className="cartao linha-ajuste esticado">
           <p>{textos.orbita.recuperacao}</p>

@@ -68,6 +68,12 @@ describe("preferências", () => {
     expect(validar({ menu: "estragado" }).menu).toEqual(PADRAO.menu);
   });
 
+  it("guarda que a pessoa dispensou a dica do céu, e começa sem dispensar", () => {
+    expect(validar({}).orbita.dicaVista).toBe(false);
+    expect(validar({ orbita: { dicaVista: true } }).orbita.dicaVista).toBe(true);
+    expect(validar({ orbita: { dicaVista: "sim" } }).orbita.dicaVista).toBe(false);
+  });
+
   it("não quebra com texto corrompido", () => {
     const m = new Memoria();
     m.setItem("orbita.preferencias.v1", "{isto não é json");

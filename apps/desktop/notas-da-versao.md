@@ -1,3 +1,9 @@
+- **Para quem usa o baixo estímulo**: o Início em lista agora conta, numa linha, que existe também o céu em 3D. Ele continua sem abrir sozinho. Se você tocar em "Ver o céu mesmo assim", ele abre parado e com menos efeitos, e o botão "Lista" volta para a lista. Quem não quiser ver a linha toca em "Não mostrar mais" (o botão "Ver o céu" continua no alto da tela).
+
+---
+
+<!-- Abaixo: o que veio na 0.54.1. -->
+
 - **No céu, tocar abre**: toque num caderno, projeto, livro ou ideia e ele abre direto. Num planeta, o primeiro toque entra nele (para ver o que tem em volta) e o segundo abre o espaço. Vale para o planeta e para o nome dele. O botão do cartão continua funcionando.
 
 - **Corrigido**: alguns planetas apareciam com uma mancha cinza lisa em cima (era o gelo do polo, mal desenhado). Agora o gelo é menor, com borda irregular e relevo.

@@ -117,6 +117,8 @@ export function App() {
   }, [voltar, avancar]);
 
   const [paleta, setPaleta] = useState(false);
+  // Céu aberto a pedido de dentro do baixo estímulo: vale até fechar o app ou tocar em "Lista".
+  const [ceuCalmo, setCeuCalmo] = useState(false);
   const pedirCaptura = useCallback(() => {
     if (aberto) setCapturando(true);
     else capturaPendente.current = true;
@@ -224,9 +226,10 @@ export function App() {
     else if (secao === "caderno") pagina = <PaginaCaderno />;
     else if (secao === "aparencia") pagina = <Aparencia />;
     else if (secao === "ajustes") pagina = <Ajustes modo={situacao.modo} temSenha={situacao.temSenha} aoMudarSeguranca={atualizar} aoRestaurar={aoAbrir} />;
-    else if (prefs.orbita.inicio && !prefs.baixoEstimulo && temWebGL())
-      pagina = <Suspense fallback={null}><Orbita aoIr={irPara} aoAbrirProjeto={abrirProjeto} aoCapturar={pedirCaptura} aoBuscar={() => setPaleta(true)} /></Suspense>;
-    else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} />;
+    else if (temWebGL() && (prefs.baixoEstimulo ? ceuCalmo : prefs.orbita.inicio))
+      // No baixo estímulo o céu só abre a pedido (botão no Início em lista), parado e com menos efeitos, e só nesta sessão.
+      pagina = <Suspense fallback={null}><Orbita key={prefs.baixoEstimulo ? "calmo" : "ceu"} calmo={prefs.baixoEstimulo} aoLista={() => setCeuCalmo(false)} aoIr={irPara} aoAbrirProjeto={abrirProjeto} aoCapturar={pedirCaptura} aoBuscar={() => setPaleta(true)} /></Suspense>;
+    else pagina = <Inicio aoCapturar={pedirCaptura} aoAbrirProjeto={abrirProjeto} aoIr={irPara} aoLigarBaixa={() => mudar({ baixaEnergia: true })} aoVerCeuCalmo={temWebGL() ? () => setCeuCalmo(true) : undefined} />;
     tela = (
       <ProvedorAtualizacao procurarAoAbrir={prefs.procurarAtualizacao}>
        <ProvedorSincronia>
