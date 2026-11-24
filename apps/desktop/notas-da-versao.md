@@ -1,3 +1,25 @@
+O caderno aberto mudou de cara. Nada do que você escreveu muda; só o arranjo da tela.
+
+- **Mais folha, menos barra**: em cima fica uma barra só. A folha ocupa quase a largura toda no tablet e no celular (no computador com a tela deitada continua a página inteira; dá para trocar em Configurações do caderno, "Encaixe"). O contador de páginas virou um "2 de 11" pequeno no canto.
+
+- **Visual novo**: a folha fica sobre um fundo escuro, e as barras têm a cor do seu tema. Caderno novo já nasce com folha creme e pautada (dá para escolher outra na hora de criar). Seus cadernos antigos continuam como estão.
+
+- **Um botão só para escrever**: caneta, lápis, pincel e marca-texto dividem um botão na barra. A troca entre eles fica na barra de opções, junto das espessuras e das cores, numa linha só. Os liga-desliga ("Forma ao segurar" e outros) foram para o botão de ajustes dessa barra, com a explicação de cada um.
+
+- **Rabiscar apaga**: com a caneta ou o lápis, rabisque em zigue-zague por cima do que você escreveu e aquilo é apagado, sem trocar para a borracha. Só apaga escrita à mão; texto digitado, formas e imagens ficam. Se apagar sem querer, desfaça (dois dedos ou Ctrl + Z). Para desligar: ajustes da barra da caneta, "Rabiscar apaga".
+
+- **Abas**: os cadernos que você abre ficam em abas na barra de cima, sempre na mesma ordem. Toque para trocar; o "x" fecha a aba (o caderno continua na estante).
+
+- **Apresentar**: no botão "…" da barra de cima. Mostra só a página, inteira, com o apontador laser. As setas do teclado viram a página; Esc ou "Sair" voltam ao normal. O "…" também guarda "Mudar a folha" e "Configurações do caderno".
+
+- **Painel de páginas**: duas miniaturas por linha.
+
+- **Corrigido**: com o painel aberto, às vezes uma página nova era criada sozinha.
+
+---
+
+<!-- Abaixo: o que veio na 0.54.2. -->
+
 - **Para quem usa o baixo estímulo**: o Início em lista agora conta, numa linha, que existe também o céu em 3D. Ele continua sem abrir sozinho. Se você tocar em "Ver o céu mesmo assim", ele abre parado e com menos efeitos, e o botão "Lista" volta para a lista. Quem não quiser ver a linha toca em "Não mostrar mais" (o botão "Ver o céu" continua no alto da tela).
 
 ---

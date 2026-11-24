@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { larguraDaPagina, paginaAoSoltar, paginaNaPosicao } from "./visor";
+import { encaixePadrao, FOLGA_PAGINA, larguraDaPagina, paginaAoSoltar, paginaNaPosicao } from "./visor";
+
+const FOLGA = FOLGA_PAGINA * 2;
 
 const A4 = { largura: 794, altura: 1123 };
 
@@ -7,17 +9,24 @@ describe("visor do caderno", () => {
   it("página inteira cabe na tela: iPad em pé usa a altura, deitado também", () => {
     // iPad em pé (área 820 × 1000): pela largura daria 796 de largura e 1126 de altura (passa da tela).
     const emPe = larguraDaPagina({ largura: 820, altura: 1000 }, A4, "pagina", false);
-    expect(emPe * (A4.altura / A4.largura)).toBeLessThanOrEqual(1000 - 24);
+    expect(emPe * (A4.altura / A4.largura)).toBeLessThanOrEqual(1000 - FOLGA);
     // Deitado (1180 × 700): cabe pela altura.
     const deitado = larguraDaPagina({ largura: 1180, altura: 700 }, A4, "pagina", false);
-    expect(deitado * (A4.altura / A4.largura)).toBeLessThanOrEqual(700 - 24);
+    expect(deitado * (A4.altura / A4.largura)).toBeLessThanOrEqual(700 - FOLGA);
     // "largura" usa a largura inteira.
-    expect(larguraDaPagina({ largura: 820, altura: 1000 }, A4, "largura", false)).toBe(820 - 24);
+    expect(larguraDaPagina({ largura: 820, altura: 1000 }, A4, "largura", false)).toBe(820 - FOLGA);
+  });
+
+  it("quem ainda não escolheu: toque e tela em pé começam na largura toda; computador deitado, na página inteira", () => {
+    expect(encaixePadrao(true, 834, 1194)).toBe("largura");
+    expect(encaixePadrao(true, 1194, 834)).toBe("largura");
+    expect(encaixePadrao(false, 900, 1400)).toBe("largura");
+    expect(encaixePadrao(false, 1366, 768)).toBe("pagina");
   });
 
   it("rolagem lateral sempre cabe na altura", () => {
     const l = larguraDaPagina({ largura: 2000, altura: 800 }, A4, "largura", true);
-    expect(Math.round(l * (A4.altura / A4.largura))).toBeLessThanOrEqual(800 - 24);
+    expect(Math.round(l * (A4.altura / A4.largura))).toBeLessThanOrEqual(800 - FOLGA);
   });
 
   it("virar a página ao soltar", () => {

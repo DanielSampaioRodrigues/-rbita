@@ -45,6 +45,14 @@ Já existem: estante em prateleiras, leitor de EPUB e PDF com fontes e cores, su
 - [ ] **Parte 5 de `docs/configurar-contas.md`**: ligar a Google Classroom API e acrescentar as 3 permissões. Sem isso, "Ligar a conta Google" em Contas conectadas não funciona.
 - [ ] **Conta Microsoft (OneDrive)**: o código e o workflow estão prontos (`ORBITA_MICROSOFT_CLIENT_ID`); falta registrar o app na Microsoft (Parte 3).
 - [ ] **Testes no Windows e no iPad** da 0.51.x: IA mexendo no caderno com chave de verdade e o desfazer; Fontes com PDF grande; DOI/ISBN no Windows; Zotero do computador; Classroom; Espaço segurado para a mão; caneta do Windows virada para apagar; menu flutuante.
+- [ ] **Testes da 0.55.0 (publicada em 24/11/2026)**, no iPad e no Windows:
+  - Caderno aberto: a folha ocupa a tela? A barra de cima, a pílula de opções e o contador atrapalham a escrita em algum canto?
+  - Caneta de verdade (Apple Pencil): rabiscar apaga? Apaga sem querer com letra cursiva ou hachura? (Só foi testado com mouse simulado.)
+  - Botão único de escrita: trocar entre caneta, lápis, pincel e marca-texto pela pílula.
+  - Abas: abrir três cadernos, trocar, fechar. Apresentar: no iPad (sem tela cheia no navegador) e no Windows (tela cheia).
+  - Caderno antigo com "cor da barra" escolhida: a faixa de cima acompanha a cor e os ícones se leem?
+  - Computador com a tela deitada: a página inteira deixa muita mesa vazia dos lados; decidir se o começo ali também deve ser "largura toda".
+- [ ] **Caderno, o que ficou de fora da 0.55.0:** capas (a Galeria já tem capas prontas; a capa de cor lisa não mudou); o painel lateral continua na cor do tema (claro), ao lado da mesa escura; "circular para laçar" (o outro gesto de caneta do Goodnotes).
 - [ ] **Testes da 0.54.0 (publicada em 18/11/2026)**, no iPad e no Windows:
   - O céu: está fluido? Arrastar gira, dois dedos passeiam, pinça aproxima? Os nomes se leem bem?
   - Aparelho lento: apareceu a pergunta "Posso reduzir as animações e os efeitos?" e "Reduzir" ajudou?

@@ -11,7 +11,8 @@ import { Button } from "react-aria-components";
 import { api, type Caderno, type PaginaCaderno } from "../api";
 import { Aviso } from "../componentes/Campo";
 import { useEntrarImersivo } from "../app/Imersivo";
-import { ChevronLeft, FileText, Minus, Plus } from "../icones";
+import { ChevronLeft, Minus, Plus } from "../icones";
+import { AbasCadernos } from "./AbasCadernos";
 import { textos } from "../textos/pt-BR";
 import { FitaTexto } from "./editor/Fita";
 import { cabecalhoRodape, cm, CONJUNTOS, lerConfigDocumento, medidaDocumento, varsDoConjunto, type ConfigDocumento } from "./editor/estilos";
@@ -75,7 +76,7 @@ function EditorPaginado({ html, config, aoMudar, aoEditor }: { html: string; con
   return <EditorContent editor={editor} />;
 }
 
-export function DocumentoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFechar: () => void }) {
+export function DocumentoAberto({ caderno, abas, aoTrocar, aoFecharAba, aoFechar }: { caderno: Caderno; abas: Caderno[]; aoTrocar: (c: Caderno) => void; aoFecharAba: (id: string) => void; aoFechar: () => void }) {
   useEntrarImersivo();
   const temaCaderno = useTemaCaderno();
   const [pagina, setPagina] = useState<PaginaCaderno | null>(null);
@@ -166,11 +167,11 @@ export function DocumentoAberto({ caderno, aoFechar }: { caderno: Caderno; aoFec
 
   return (
     <div className="documento-tela" style={temaCaderno.estilo}>
-      <div className="leitor-barra caderno-barra-topo">
+      <div className="caderno-topo">
         <Button className="botao-icone" onPress={aoFechar} aria-label={t.voltarEstante}><ChevronLeft aria-hidden="true" size="1.2em" /></Button>
-        <strong className="leitor-titulo quebra"><FileText aria-hidden="true" size="1em" /> {caderno.nome}</strong>
+        <AbasCadernos abas={abas} atual={caderno} aoTrocar={aoTrocar} aoFecharAba={aoFecharAba} />
         <MenuEnviar opcoes={[{ id: "pdf", nome: te2.pdf }, { id: "word", nome: te2.word }, { id: "txt", nome: te2.txt }, { id: "md", nome: te2.md }]} aoEscolher={exportar} google={{ pdf: "pdf", word: "word" }} />
-        <span className="linha-ajuste">
+        <span className="caderno-topo-acoes">
           <Button className="botao-icone" onPress={() => mudarZoom(zoom - 0.1)} aria-label={te.zoomMenos} isDisabled={zoom <= 0.5}><Minus aria-hidden="true" size="1.1em" /></Button>
           <Button className="botao pequeno caderno-zoom" onPress={() => mudarZoom(1)} aria-label={t.zoom.voltar(Math.round(zoom * 100))}>{Math.round(zoom * 100)}%</Button>
           <Button className="botao-icone" onPress={() => mudarZoom(zoom + 0.1)} aria-label={te.zoomMais} isDisabled={zoom >= 2}><Plus aria-hidden="true" size="1.1em" /></Button>

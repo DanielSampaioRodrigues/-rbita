@@ -2,7 +2,7 @@
 // direto a uma página, todas ou só as marcadas), IA, Fontes e Biblioteca. Abre e fecha pela
 // barra de cima; o lado (esquerda ou direita) fica nas configurações do caderno.
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components";
@@ -91,13 +91,13 @@ export function PainelLateral({ aba, aoAba, aoFechar, paginas, atualId, miniatur
             {filtro === "marcadas" && !mostradas.length && <p className="texto-suave pequeno caderno-painel-vazio">{t.nenhumaMarcada}</p>}
             <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={soltar}
               accessibility={{ screenReaderInstructions: { draggable: textos.caderno.visao.arrastarInstrucoes } }}>
-            <SortableContext items={mostradas.map(({ p }) => p.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={mostradas.map(({ p }) => p.id)} strategy={rectSortingStrategy}>
             <ol className="caderno-painel-paginas" ref={lista}>
               {mostradas.map(({ p, n }) => (
                 <PaginaArrastavel key={p.id} id={p.id} desligado={!arrastavel} rotuloAlca={t.arrastar(n, p.titulo)}>
                   <button type="button" data-pagina={p.id} className={p.id === atualId ? "caderno-painel-pagina atual" : "caderno-painel-pagina"}
                     aria-current={p.id === atualId ? "page" : undefined} aria-label={t.irPara(n, p.titulo)} onClick={() => aoIr(p.id)}>
-                    {miniatura(p, 150)}
+                    {miniatura(p, 108)}
                     <span className="caderno-painel-numero">{p.marcado && <Bookmark aria-hidden="true" size="0.85em" />}{n}</span>
                   </button>
                 </PaginaArrastavel>

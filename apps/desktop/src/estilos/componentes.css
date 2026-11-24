@@ -814,11 +814,6 @@ input[type="date"].entrada-texto, input[type="time"].entrada-texto { color-schem
 .caderno-capa-previa { width: 7rem; height: 9rem; border-radius: var(--raio-1); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.22); }
 
 .caderno-tela { display: flex; flex-direction: column; height: 100%; }
-.caderno-abas { display: flex; gap: var(--espaco-1); padding: var(--espaco-1) var(--espaco-3); overflow-x: auto; border-bottom: 1px solid var(--cor-borda-suave); scrollbar-width: thin; }
-.caderno-aba { display: inline-flex; align-items: center; gap: 0.35em; max-width: 12rem; padding: 0.3rem 0.7rem; border: 1px solid var(--cor-borda-suave); border-bottom: none; border-radius: var(--raio-1) var(--raio-1) 0 0; background: var(--cor-fundo); color: var(--cor-texto-suave); cursor: pointer; white-space: nowrap; flex: none; }
-.caderno-aba:hover { background: var(--cor-superficie); }
-.caderno-aba.atual { background: var(--cor-superficie); color: var(--cor-texto); font-weight: 600; border-color: var(--cor-borda); }
-.caderno-aba .quebra { overflow: hidden; text-overflow: ellipsis; }
 .caderno-corpo { flex: 1; overflow: auto; padding: var(--espaco-4); display: flex; flex-direction: column; gap: var(--espaco-4); }
 .caderno-aviso-breve { display: flex; align-items: center; gap: var(--espaco-2); padding: var(--espaco-3) var(--espaco-4); background: var(--cor-fundo-suave); border: 1px solid var(--cor-borda-suave); border-radius: var(--raio-1); color: var(--cor-texto-suave); }
 .caderno-paginas-topo { align-items: flex-end; flex-wrap: wrap; gap: var(--espaco-3); }
@@ -2416,3 +2411,125 @@ body > .caderno-sel-acoes { z-index: 30; font-size: 1rem; }
 .paleta-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .paleta-item small { color: var(--cor-texto-suave); }
 @media (max-width: 700px) { .busca-topo { min-width: 0; } .busca-topo kbd { display: none; } }
+
+/* ===== Caderno aberto (0.55.0): mais folha, menos barra =====
+   Uma barra só em cima (a faixa), com as abas dos cadernos abertos; a folha encosta
+   nas bordas sobre uma "mesa" escura; as opções da ferramenta flutuam numa pílula. */
+.caderno-tela, .documento-tela {
+  --cad-faixa: color-mix(in srgb, var(--cor-destaque) 34%, #12151c);
+  --cad-fg: #f3f4f6;
+  --cad-destaque: color-mix(in srgb, var(--cor-destaque) 38%, #ffffff);
+  --cad-mesa: color-mix(in srgb, var(--cor-destaque) 9%, #1c1f25);
+}
+/* Dentro da faixa e das pílulas, as cores do tema viram as da faixa: tudo o que é
+   desenhado com as variáveis do tema (botões, campos, separadores) acompanha. */
+.caderno-tela :is(.caderno-topo, .caderno-barra, .caderno-flutuante, .caderno-apresentar-barra), .documento-tela .caderno-topo {
+  --cor-superficie: var(--cad-faixa);
+  --cor-superficie-alternativa: color-mix(in srgb, var(--cad-fg) 17%, var(--cad-faixa));
+  --cor-fundo: color-mix(in srgb, var(--cad-fg) 8%, var(--cad-faixa));
+  --cor-texto: var(--cad-fg);
+  --cor-texto-suave: color-mix(in srgb, var(--cad-fg) 82%, var(--cad-faixa));
+  --cor-borda: color-mix(in srgb, var(--cad-fg) 20%, var(--cad-faixa));
+  --cor-borda-suave: color-mix(in srgb, var(--cad-fg) 14%, var(--cad-faixa));
+  --cor-borda-controle: color-mix(in srgb, var(--cad-fg) 42%, var(--cad-faixa));
+  --cor-destaque: var(--cad-destaque);
+  --cor-texto-sobre-destaque: var(--cad-faixa);
+  --cor-foco: var(--cad-fg);
+  color: var(--cor-texto);
+}
+.caderno-topo { flex: none; display: flex; align-items: center; gap: 4px; min-height: 52px; padding: 4px 8px; background: var(--cad-faixa); }
+.moldura.imersivo .caderno-topo { padding-left: 3.5rem; }
+.caderno-topo .botao-icone { flex: none; width: 40px; height: 40px; border-radius: 10px; border-color: transparent; background: none; color: var(--cor-texto); }
+.caderno-topo .botao-icone[data-hovered] { background: var(--cor-superficie-alternativa); }
+.caderno-topo .botao-icone.ativo, .caderno-topo .botao-icone[aria-pressed="true"] { background: var(--cor-superficie-alternativa); color: var(--cor-texto); box-shadow: inset 0 0 0 1px var(--cor-borda-controle); }
+.caderno-topo .botao-icone[data-disabled] { opacity: 0.4; }
+.caderno-topo .botao { background: none; color: var(--cor-texto); border-color: var(--cor-borda-controle); min-height: 40px; }
+.caderno-topo .botao[data-hovered] { background: var(--cor-superficie-alternativa); }
+.caderno-topo-acoes { flex: none; display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
+.caderno-abas { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 0 4px; border: none; }
+.caderno-abas::-webkit-scrollbar { display: none; }
+.caderno-aba { flex: 0 1 auto; min-width: 3.2rem; max-width: 15rem; display: inline-flex; align-items: center; border-radius: 10px; color: var(--cor-texto-suave); }
+.caderno-aba.atual { flex-shrink: 0.25; background: var(--cor-superficie-alternativa); color: var(--cor-texto); font-weight: 600; }
+.caderno-aba:not(.atual):hover { background: var(--cor-fundo); }
+.caderno-aba-nome { flex: 1; min-width: 0; height: 40px; display: inline-flex; align-items: center; gap: 0.45em; padding: 0 0.7rem; border: none; border-radius: 10px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.caderno-aba.atual .caderno-aba-nome { cursor: default; }
+.caderno-aba-nome > svg { flex: none; }
+.caderno-aba-texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.caderno-aba-fechar { flex: none; width: 32px; height: 32px; margin-right: 4px; display: grid; place-items: center; border: none; border-radius: 50%; background: none; color: inherit; opacity: 0.75; cursor: pointer; }
+.caderno-aba-fechar:hover { opacity: 1; background: var(--cor-borda); }
+.caderno-aba-nome:focus-visible, .caderno-aba-fechar:focus-visible { outline: 2px solid var(--cor-foco); outline-offset: -2px; }
+/* O botão do menu do app (canto de cima) entra na faixa sem parecer um remendo. */
+.moldura.imersivo:has(.caderno-topo) .imersivo-menu { top: 6px; left: 8px; width: 40px; height: 40px; border-color: transparent; background: none; color: var(--cad-menu-fg, #f3f4f6); box-shadow: none; }
+.moldura.imersivo:has(.caderno-topo) .imersivo-menu[data-hovered] { background: rgb(255 255 255 / 0.16); }
+body.caderno-apresentando .imersivo-menu { display: none; }
+@media (max-width: 1000px) { .caderno-topo .botao.com-icone { font-size: 0; gap: 0; width: 40px; padding: 0; justify-content: center; border-color: transparent; } .caderno-topo .botao.com-icone > svg { font-size: 1.15rem; } }
+@media (max-width: 560px) { .caderno-topo { flex-wrap: wrap; } .caderno-abas { order: 3; flex-basis: 100%; } }
+
+/* A mesa e a folha */
+.caderno-palco { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; }
+.caderno-palco[hidden] { display: none; }
+.caderno-tela .caderno-rolagem { background: var(--cad-mesa); padding: 8px; gap: 14px; }
+.caderno-tela .caderno-rolagem.modo-pagina { padding: 0; gap: 0; }
+.caderno-tela .caderno-folha-area { border: none; border-radius: 3px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.38); }
+.caderno-tela .caderno-puxar, .caderno-tela .caderno-puxar-vazia { color: #c9ced6; }
+.caderno-tela .caderno-fantasma { border-color: rgb(255 255 255 / 0.35); color: #e5e7eb; }
+.caderno-tela.apresentando .caderno-rolagem { background: #000; }
+
+/* O contador: pequeno, no canto da folha */
+.caderno-contador { position: absolute; left: 10px; bottom: 10px; z-index: 4; display: inline-flex; align-items: center; padding: 2px; border-radius: 999px; background: rgb(18 21 28 / 0.78); color: #f3f4f6; font-size: 0.85rem; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.caderno-contador-num { min-height: 36px; padding: 0 0.45rem; display: inline-flex; align-items: center; gap: 4px; border: none; border-radius: 999px; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; }
+.caderno-contador-seta { width: 36px; height: 36px; display: grid; place-items: center; border: none; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
+.caderno-contador-seta[data-disabled] { opacity: 0.35; cursor: default; }
+.caderno-contador :is(.caderno-contador-num, .caderno-contador-seta)[data-hovered] { background: rgb(255 255 255 / 0.16); }
+.caderno-contador :is(.caderno-contador-num, .caderno-contador-seta)[data-focus-visible] { outline: 2px solid #f3f4f6; outline-offset: -2px; }
+
+/* A barra de ferramentas e as opções, na cor da faixa */
+.caderno-tela .caderno-barra { --barra-fg: var(--cad-fg); border-color: var(--cor-borda); box-shadow: 0 6px 22px rgb(0 0 0 / 0.34), 0 1px 3px rgb(0 0 0 / 0.3); }
+.caderno-tela .caderno-barra :is(.caderno-ferramenta, .botao-icone, .caderno-mover-barra) { color: var(--barra-fg); }
+.caderno-tela .caderno-barra :is(.caderno-ferramenta, .botao-icone)[data-hovered], .caderno-tela .caderno-barra .caderno-mover-barra:hover { background: color-mix(in srgb, var(--barra-fg) 16%, transparent); }
+.caderno-tela .caderno-barra .caderno-ferramenta.ativa, .caderno-tela .caderno-barra .botao-icone.ativo { background: color-mix(in srgb, var(--barra-fg) 24%, transparent); color: var(--barra-fg); border-color: color-mix(in srgb, var(--barra-fg) 45%, transparent); }
+.caderno-tela .caderno-barra .botao-icone[data-disabled] { opacity: 0.38; }
+.caderno-tela .caderno-barra .caderno-barra-sep, .caderno-tela .caderno-flutuante .caderno-barra-sep { background: var(--cor-borda); }
+.caderno-tela .caderno-flutuante { border-color: var(--cor-borda); box-shadow: 0 8px 26px rgb(0 0 0 / 0.36), 0 1px 3px rgb(0 0 0 / 0.3); }
+.caderno-tela .caderno-contexto { max-width: calc(100vw - 16px); padding: 5px 8px; border-radius: 999px; }
+.caderno-tela :is(.pos-direita, .pos-esquerda) > .caderno-contexto { border-radius: 18px; }
+.caderno-escritas { gap: 2px; }
+.caderno-escrita { width: 40px; min-height: 40px; padding: 0; gap: 1px; border-color: transparent; }
+.caderno-escrita.com-modelos { width: auto; padding: 0 6px 0 9px; }
+.caderno-contexto .caderno-sub-botao.caderno-escrita.ativo { background: var(--cor-superficie-alternativa); color: var(--cor-texto); border-color: var(--cor-borda-controle); }
+.caderno-mais-opcoes { width: 40px; padding: 0; }
+.caderno-opcoes-lista { display: grid; gap: var(--espaco-3); max-width: 21rem; }
+.caderno-opcao { display: grid; gap: 2px; }
+.caderno-opcao .campo-ajuda { margin: 0; }
+.caderno-opcoes-lista > .botao { justify-self: start; }
+
+/* Apresentar: só a página; os controles ficam quase apagados até a pessoa chegar perto */
+.caderno-apresentar-barra { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 6; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: rgb(18 21 28 / 0.86); opacity: 0.35; transition: opacity 0.2s; }
+.caderno-apresentar-barra:hover, .caderno-apresentar-barra:focus-within { opacity: 1; }
+@media (hover: none) { .caderno-apresentar-barra { opacity: 0.8; } }
+.caderno-apresentar-barra .botao-icone { width: 40px; height: 40px; border-radius: 50%; border-color: transparent; background: none; color: #f3f4f6; }
+.caderno-apresentar-barra .botao-icone.ativo { background: rgb(255 255 255 / 0.22); }
+.caderno-apresentar-barra .botao-icone[data-disabled] { opacity: 0.35; }
+.caderno-apresentar-barra .botao { background: none; color: #f3f4f6; border-color: rgb(255 255 255 / 0.4); }
+.caderno-apresentar-num { padding: 0 0.3rem; color: #f3f4f6; font-size: 0.9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.caderno-tela { background: var(--cad-mesa); }
+/* O contador fica do lado oposto à barra de ferramentas, para as opções não passarem por cima dele. */
+.caderno-miolo.pos-baixo .caderno-contador { bottom: auto; top: 10px; }
+.caderno-miolo.pos-esquerda .caderno-contador { left: auto; right: 10px; }
+/* Na pílula escura, a amostra de espessura é clara (a cor fica nas bolinhas de cor) e toda cor ganha um aro. */
+.caderno-espessura span { background: var(--cor-texto); }
+.caderno-tela .caderno-contexto .caderno-cor { border-color: color-mix(in srgb, var(--cad-fg) 55%, transparent); }
+.caderno-tela .caderno-contexto .caderno-cor.atual { border-color: var(--cad-fg); outline-color: var(--cad-fg); }
+.caderno-tela .caderno-cor-nativa { border-color: color-mix(in srgb, var(--cad-fg) 60%, transparent); }
+/* Painel de páginas: duas miniaturas por linha (antes era uma, e sobrava muito vazio). */
+.caderno-painel-paginas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 6px 8px; }
+.caderno-painel-pagina { padding: 5px; width: 100%; }
+.caderno-painel-alca { top: 4px; right: 4px; }
+/* O contador: discreto até a pessoa chegar perto. */
+.caderno-contador { opacity: 0.72; font-size: 0.8rem; }
+.caderno-contador:hover, .caderno-contador:focus-within { opacity: 1; }
+.caderno-contador-num { min-height: 32px; }
+.caderno-contador-seta { width: 32px; height: 32px; }
+/* A área de "puxe para criar página", na mesa escura. */
+.caderno-tela .caderno-fantasma { border-color: rgb(255 255 255 / 0.4); background: rgb(255 255 255 / 0.07); color: #e5e7eb; }
+.caderno-tela .caderno-fantasma[data-pronto="1"] { border-color: #f3f4f6; color: #f3f4f6; }

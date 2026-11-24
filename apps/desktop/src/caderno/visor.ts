@@ -6,7 +6,16 @@
 export type Encaixe = "pagina" | "largura";
 
 /** Folga em volta da página, em px de tela. */
-export const FOLGA_PAGINA = 12;
+export const FOLGA_PAGINA = 8;
+
+/**
+ * O encaixe de quem ainda não escolheu. No tablet, no celular e em tela em pé, a folha
+ * ocupa a largura toda (com "página inteira" ali sobra muita tela vazia dos lados).
+ * No computador com a tela deitada, a página inteira continua sendo o começo.
+ */
+export function encaixePadrao(toque: boolean, largura: number, altura: number): Encaixe {
+  return toque || altura > largura ? "largura" : "pagina";
+}
 
 /**
  * Largura da página na tela, em px, no zoom 1.
