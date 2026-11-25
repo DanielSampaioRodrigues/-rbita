@@ -99,6 +99,47 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
 
+      # A máquina Windows do GitHub troca de compilador de tempos em tempos. O
+      # whisper.cpp (ditado) guarda, na pasta de build que vem do cache, o caminho
+      # do compilador antigo, e o CMake para com "is not a full path to an existing
+      # compiler tool" (aconteceu na 0.55.0, em 24/11/2026). Aqui, se o compilador
+      # guardado não existe mais, apaga só aquela pasta de build do CMake, e ela é
+      # refeita com o compilador de agora. O resto do cache continua valendo.
+      - name: Limpar build do CMake se o compilador mudou
+        shell: pwsh
+        run: |
+          $raiz = "apps/desktop/src-tauri/target/release/build"
+          if (-not (Test-Path -LiteralPath $raiz)) { Write-Host "Sem cache de build."; exit 0 }
+          $caches = @(Get-ChildItem -LiteralPath $raiz -Recurse -Filter CMakeCache.txt -File -ErrorAction SilentlyContinue)
+          Write-Host "Pastas de build do CMake no cache: $($caches.Count)"
+          foreach ($c in $caches) {
+            if (-not (Test-Path -LiteralPath $c.FullName)) { continue }
+            $pasta = $c.Directory.FullName
+            # O caminho do compilador fica no CMakeCache.txt e nos CMake*Compiler.cmake ao lado.
+            $arquivos = @($c.FullName)
+            $arquivos += @(Get-ChildItem -LiteralPath (Join-Path $pasta "CMakeFiles") -Recurse -Filter "CMake*Compiler.cmake" -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+            $velho = $false
+            foreach ($a in $arquivos) {
+              foreach ($m in @(Select-String -LiteralPath $a -Pattern '^(?:set\()?CMAKE_[A-Z_]+_COMPILER(?::[A-Z]+=| ")(.+?)"?\)?\s*$' -ErrorAction SilentlyContinue)) {
+                $exe = $m.Matches[0].Groups[1].Value.Trim()
+                if ($exe -match '^[A-Za-z]:[\\/]' -and -not (Test-Path -LiteralPath $exe)) {
+                  Write-Host "Compilador que nao existe mais: $exe"
+                  $velho = $true
+                }
+              }
+            }
+            if ($velho) {
+              Write-Host "Apagando $pasta"
+              try { Remove-Item -LiteralPath $pasta -Recurse -Force -ErrorAction Stop }
+              catch {
+                Write-Host "Nao deu para apagar a pasta inteira ($_). Apagando so o que guarda o compilador."
+                Remove-Item -LiteralPath $c.FullName -Force -ErrorAction SilentlyContinue
+                Remove-Item -LiteralPath (Join-Path $pasta "CMakeFiles") -Recurse -Force -ErrorAction SilentlyContinue
+              }
+            }
+          }
+          exit 0
+
       - name: Instalar dependências
         run: pnpm install --frozen-lockfile
 
