@@ -29,4 +29,4 @@ Onda 1 (base e coração, Windows): construída (versão 0.23.0, com os ajustes 
 
 ## Licença
 
-O Órbita é software livre, distribuído sob a [GNU GPL versão 3](LICENSE). Você pode usar, estudar, modificar e redistribuir o código; quem distribuir versões modificadas precisa mantê-las abertas sob a mesma licença.
+Órbita © 2026 Daniel Sampaio Rodrigues. O Órbita é software livre, distribuído sob a [GNU GPL versão 3](LICENSE), com um termo adicional de atribuição de autoria descrito em [AVISO.md](AVISO.md). Você pode usar, estudar, modificar e redistribuir o código; quem distribuir versões modificadas precisa mantê-las abertas sob a mesma licença.

@@ -3984,6 +3984,8 @@ export const textos = {
   atualizacao: {
     titulo: "Atualizações",
     versaoAtual: (v: string) => `Você está na versão ${v}.`,
+    autoria: "Órbita © 2026 Daniel Sampaio Rodrigues.",
+    licenca: "Software livre, sob a licença GNU GPL versão 3, sem nenhuma garantia. O texto da licença está em gnu.org/licenses/gpl-3.0.",
     procurar: "Procurar atualização",
     procurando: "Procurando...",
     emDia: "Você já está na versão mais nova.",

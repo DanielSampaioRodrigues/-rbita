@@ -87,6 +87,7 @@ export function AjustesAtualizacao() {
     <section className="cartao">
       <h2>{t.titulo}</h2>
       <p className="campo-ajuda">{t.versaoAtual(__VERSAO__)}</p>
+      <p className="campo-ajuda">{t.autoria} {t.licenca}</p>
       <div className="botoes">
         <Button className="botao com-icone" onPress={procurar} isDisabled={estado.fase === "procurando"}>
           <RefreshCw aria-hidden="true" size="1em" /> {estado.fase === "procurando" ? t.procurando : t.procurar}
